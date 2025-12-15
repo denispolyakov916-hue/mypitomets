@@ -1,0 +1,160 @@
+/**
+ * Глобальные CSS стили для Питомец+
+ * 
+ * Включает:
+ * - Директивы Tailwind CSS
+ * - Кастомные глобальные стили
+ * - CSS переменные для темизации
+ */
+
+/* Директивы Tailwind CSS */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* CSS переменные */
+:root {
+  --color-primary: #3b82f6;
+  --color-secondary: #22c55e;
+  --color-accent: #f97316;
+  --color-background: #f8fafc;
+  --color-surface: #ffffff;
+  --color-text: #1e293b;
+  --color-text-muted: #64748b;
+  --color-border: #e2e8f0;
+  --color-error: #ef4444;
+  --color-success: #22c55e;
+}
+
+/* Базовые стили */
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  background-color: var(--color-background);
+  color: var(--color-text);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Кастомные утилитарные классы */
+@layer components {
+  /* Компонент карточки */
+  .card {
+    @apply bg-white rounded-xl shadow-sm border border-gray-100 p-6;
+  }
+  
+  /* Основная кнопка */
+  .btn-primary {
+    @apply bg-primary-500 hover:bg-primary-600 text-white font-medium py-2.5 px-5 rounded-lg 
+           transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  
+  /* Вторичная кнопка */
+  .btn-secondary {
+    @apply bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-2.5 px-5 rounded-lg 
+           transition-colors duration-200;
+  }
+  
+  /* Кнопка с обводкой */
+  .btn-outline {
+    @apply border-2 border-primary-500 text-primary-500 hover:bg-primary-50 font-medium 
+           py-2 px-5 rounded-lg transition-colors duration-200;
+  }
+  
+  /* Кнопка опасности */
+  .btn-danger {
+    @apply bg-red-500 hover:bg-red-600 text-white font-medium py-2.5 px-5 rounded-lg 
+           transition-colors duration-200;
+  }
+  
+  /* Поле ввода */
+  .input {
+    @apply w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 
+           focus:ring-primary-500 focus:border-primary-500 outline-none transition-all;
+  }
+  
+  /* Поле ввода с ошибкой */
+  .input-error {
+    @apply border-red-500 focus:ring-red-500 focus:border-red-500;
+  }
+  
+  /* Метка поля */
+  .label {
+    @apply block text-sm font-medium text-gray-700 mb-1.5;
+  }
+  
+  /* Сообщение об ошибке */
+  .error-message {
+    @apply text-sm text-red-500 mt-1;
+  }
+  
+  /* Контейнер страницы */
+  .page-container {
+    @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8;
+  }
+  
+  /* Заголовок страницы */
+  .page-title {
+    @apply text-2xl sm:text-3xl font-bold text-gray-900 mb-6;
+  }
+  
+  /* Заголовок секции */
+  .section-title {
+    @apply text-xl font-semibold text-gray-900 mb-4;
+  }
+}
+
+/* Анимации */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+/* Стилизация полосы прокрутки */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}

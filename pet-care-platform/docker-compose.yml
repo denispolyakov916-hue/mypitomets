@@ -1,0 +1,54 @@
+# Docker Compose for Питомец+ MVP
+# 
+# Usage:
+#   docker-compose up -d          # Start all services
+#   docker-compose down           # Stop all services
+#   docker-compose logs -f        # View logs
+#
+# Services:
+#   - backend:  Django REST API on port 8000
+#   - frontend: React (Vite) on port 5173
+
+version: '3.8'
+
+services:
+  # Django Backend
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: pitomets-backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+    environment:
+      - DEBUG=True
+      - DJANGO_SECRET_KEY=docker-dev-secret-key
+      - ALLOWED_HOSTS=localhost,127.0.0.1,backend
+    command: python manage.py runserver 0.0.0.0:8000
+    restart: unless-stopped
+
+  # React Frontend
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: pitomets-frontend
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      - VITE_API_URL=http://localhost:8000/api
+    command: npm run dev -- --host
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+# Networks
+networks:
+  default:
+    name: pitomets-network
+
