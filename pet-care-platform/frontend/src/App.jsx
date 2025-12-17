@@ -35,9 +35,16 @@ import PetList from './pages/PetProfile/PetList'
 import PetForm from './pages/PetProfile/PetForm'
 import PetProfile from './pages/PetProfile/PetProfile'
 import Shop from './pages/Shop/Shop'
+import ProductDetail from './pages/Shop/ProductDetail'
+import ProductCheckout from './pages/Shop/ProductCheckout'
 import Cart from './pages/Shop/Cart'
 import Courses from './pages/Training/Courses'
+import CourseDetail from './pages/Training/CourseDetail'
+import CourseCheckout from './pages/Training/CourseCheckout'
+import Payment from './pages/Payment/Payment'
 import Profile from './pages/Dashboard/Profile'
+import Settings from './pages/Dashboard/Settings'
+import HealthDiary from './pages/HealthDiary/HealthDiary'
 
 // Хранилище для состояния аутентификации
 import { useAuthStore } from './store/authStore'
@@ -67,9 +74,14 @@ function App() {
         
         {/* Магазин - Публичный */}
         <Route path="/shop" element={<Shop />} />
+        <Route path="/shop/products/:id" element={<ProductDetail />} />
         
         {/* Курсы - Публичный каталог */}
         <Route path="/courses" element={<Courses />} />
+        <Route path="/courses/:id" element={<CourseDetail />} />
+        
+        {/* Оплата - Публичная (но требует аутентификации внутри) */}
+        <Route path="/payment" element={<Payment />} />
         
         {/* Защищённые маршруты - Требуют аутентификации */}
         <Route element={<PrivateRoute />}>
@@ -82,8 +94,17 @@ function App() {
           {/* Корзина - Защищённая */}
           <Route path="/cart" element={<Cart />} />
           
+          {/* Оформление заказов - Защищённые */}
+          <Route path="/shop/checkout" element={<ProductCheckout />} />
+          <Route path="/courses/:id/checkout" element={<CourseCheckout />} />
+          <Route path="/courses/:id/payment" element={<Payment />} />
+          
           {/* Профиль */}
           <Route path="/profile" element={<Profile />} />
+          <Route path="/settings" element={<Settings />} />
+          
+          {/* Дневник здоровья */}
+          <Route path="/health-diary" element={<HealthDiary />} />
         </Route>
         
         {/* Fallback - Редирект на главную */}

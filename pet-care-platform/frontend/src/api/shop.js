@@ -16,28 +16,37 @@ import api from './client'
 // =============================================================================
 
 /**
- * Получение каталога товаров
+ * Получение каталога товаров с расширенной фильтрацией
  * 
- * Возвращает все товары с опциональной фильтрацией.
+ * Возвращает товары с опциональной фильтрацией и пагинацией.
  * Публичный эндпоинт - аутентификация не требуется.
  * 
  * @param {Object} [filters] - Опциональные фильтры
- * @param {string} [filters.pet_type] - Фильтр по животному ('dog', 'cat')
- * @param {string} [filters.product_type] - Фильтр по категории ('dry_food', 'wet_food', 'treats')
- * @returns {Promise<Object>} Массив товаров, количество и доступные фильтры
+ * @param {string} [filters.animal] - Фильтр по животному ('dog', 'cat')
+ * @param {string} [filters.category] - Категория ('food', 'pharmacy', 'ammunition', 'care', 'transport', 'toys')
+ * @param {string} [filters.subcategory] - Подкатегория
+ * @param {string} [filters.vendor] - Бренд
+ * @param {string} [filters.min_price] - Минимальная цена
+ * @param {string} [filters.max_price] - Максимальная цена
+ * @param {string} [filters.in_stock] - Только в наличии ('true')
+ * @param {string} [filters.search] - Поиск по названию
+ * @param {string} [filters.page] - Номер страницы
+ * @returns {Promise<Object>} Товары, пагинация и доступные фильтры
  * 
  * @example
- *   const { products } = await getProducts({ pet_type: 'dog' })
+ *   const { products, pagination, filters } = await getProducts({ animal: 'dog', category: 'food' })
  */
 export const getProducts = async (filters = {}) => {
   const params = new URLSearchParams()
   
-  if (filters.pet_type) {
-    params.append('pet_type', filters.pet_type)
-  }
-  if (filters.product_type) {
-    params.append('product_type', filters.product_type)
-  }
+  // Добавляем только непустые фильтры
+  const filterKeys = ['animal', 'pet_id', 'category', 'subcategory', 'vendor', 'min_price', 'max_price', 'in_stock', 'search', 'page', 'per_page']
+  
+  filterKeys.forEach(key => {
+    if (filters[key]) {
+      params.append(key, filters[key])
+    }
+  })
   
   const queryString = params.toString()
   const url = queryString ? `/shop/products/?${queryString}` : '/shop/products/'

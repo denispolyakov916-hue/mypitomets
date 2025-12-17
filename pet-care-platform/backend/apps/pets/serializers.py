@@ -101,6 +101,35 @@ class PetCreateSerializer(serializers.Serializer):
         help_text="Вес в килограммах (опционально)"
     )
     
+    gender = serializers.ChoiceField(
+        required=False,
+        choices=[('male', 'Самец'), ('female', 'Самка'), ('unknown', 'Не указан')],
+        default='unknown',
+        help_text="Пол питомца (опционально)"
+    )
+    
+    is_neutered = serializers.BooleanField(
+        required=False,
+        default=False,
+        help_text="Кастрирован/Стерилизован (опционально)"
+    )
+    
+    favorite_foods = serializers.ListField(
+        child=serializers.CharField(),
+        required=False,
+        allow_empty=True,
+        default=list,
+        help_text="Список любимых продуктов/кормов (опционально)"
+    )
+    
+    allergies = serializers.ListField(
+        child=serializers.CharField(),
+        required=False,
+        allow_empty=True,
+        default=list,
+        help_text="Список аллергенов (опционально)"
+    )
+    
     def validate_name(self, value):
         """
         Валидация клички питомца.
@@ -252,6 +281,35 @@ class PetUpdateSerializer(serializers.Serializer):
         help_text="Новый вес в килограммах"
     )
     
+    gender = serializers.ChoiceField(
+        required=False,
+        choices=[('male', 'Самец'), ('female', 'Самка'), ('unknown', 'Не указан')],
+        allow_null=True,
+        help_text="Пол питомца"
+    )
+    
+    is_neutered = serializers.BooleanField(
+        required=False,
+        allow_null=True,
+        help_text="Кастрирован/Стерилизован"
+    )
+    
+    favorite_foods = serializers.ListField(
+        child=serializers.CharField(),
+        required=False,
+        allow_empty=True,
+        allow_null=True,
+        help_text="Список любимых продуктов/кормов"
+    )
+    
+    allergies = serializers.ListField(
+        child=serializers.CharField(),
+        required=False,
+        allow_empty=True,
+        allow_null=True,
+        help_text="Список аллергенов"
+    )
+    
     def validate_name(self, value):
         """Валидация клички при обновлении."""
         if value is None:
@@ -330,5 +388,10 @@ class PetSerializer(serializers.Serializer):
     breed = serializers.CharField(read_only=True, allow_null=True)
     date_of_birth = serializers.CharField(read_only=True, allow_null=True)
     weight = serializers.FloatField(read_only=True, allow_null=True)
+    gender = serializers.CharField(read_only=True)
+    is_neutered = serializers.BooleanField(read_only=True)
+    photo = serializers.CharField(read_only=True, allow_null=True)
+    favorite_foods = serializers.ListField(child=serializers.CharField(), read_only=True)
+    allergies = serializers.ListField(child=serializers.CharField(), read_only=True)
     created_at = serializers.CharField(read_only=True)
     updated_at = serializers.CharField(read_only=True)

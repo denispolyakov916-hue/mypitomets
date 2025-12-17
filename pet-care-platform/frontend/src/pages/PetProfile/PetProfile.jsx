@@ -201,6 +201,22 @@ function PetProfile() {
             <p className="text-gray-900">{pet.breed || 'Не указана'}</p>
           </div>
           
+          {/* Пол */}
+          <div>
+            <h3 className="text-sm font-medium text-gray-500 mb-1">Пол</h3>
+            <p className="text-gray-900">
+              {pet.gender === 'male' ? 'Самец' : pet.gender === 'female' ? 'Самка' : 'Не указан'}
+            </p>
+          </div>
+          
+          {/* Статус кастрации */}
+          <div>
+            <h3 className="text-sm font-medium text-gray-500 mb-1">Кастрация/Стерилизация</h3>
+            <p className="text-gray-900">
+              {pet.is_neutered ? 'Да' : 'Нет'}
+            </p>
+          </div>
+          
           {/* Дата создания */}
           <div>
             <h3 className="text-sm font-medium text-gray-500 mb-1">Профиль создан</h3>
@@ -213,6 +229,37 @@ function PetProfile() {
             <p className="text-gray-900">{formatDate(pet.updated_at)}</p>
           </div>
         </div>
+        
+        {/* Вкусовые предпочтения и аллергии */}
+        {(pet.favorite_foods?.length > 0 || pet.allergies?.length > 0) && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-6 border-t border-gray-100">
+            {pet.favorite_foods?.length > 0 && (
+              <div>
+                <h3 className="text-sm font-medium text-gray-500 mb-2">Любимые продукты</h3>
+                <div className="flex flex-wrap gap-2">
+                  {pet.favorite_foods.map((food, idx) => (
+                    <span key={idx} className="px-3 py-1 bg-green-100 text-green-700 text-sm rounded-full">
+                      {food}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+            
+            {pet.allergies?.length > 0 && (
+              <div>
+                <h3 className="text-sm font-medium text-gray-500 mb-2">Аллергии</h3>
+                <div className="flex flex-wrap gap-2">
+                  {pet.allergies.map((allergy, idx) => (
+                    <span key={idx} className="px-3 py-1 bg-red-100 text-red-700 text-sm rounded-full">
+                      {allergy}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
       
       {/* Секция рекомендаций (заглушка) */}

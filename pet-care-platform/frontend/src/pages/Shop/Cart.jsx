@@ -41,14 +41,10 @@ function Cart() {
     loadCart, 
     updateQuantity, 
     removeItem,
-    checkout,
     clearError 
   } = useCartStore()
   
-  // Состояние формы оформления
-  const [shippingAddress, setShippingAddress] = useState('')
-  const [isCheckingOut, setIsCheckingOut] = useState(false)
-  const [checkoutError, setCheckoutError] = useState(null)
+  // Состояние успешного заказа (оставлено для обратной совместимости, но не используется)
   const [orderSuccess, setOrderSuccess] = useState(null)
   
   /**
@@ -74,30 +70,6 @@ function Cart() {
     await removeItem(productId)
   }
   
-  /**
-   * Обработчик оформления заказа
-   */
-  const handleCheckout = async (e) => {
-    e.preventDefault()
-    
-    if (!shippingAddress.trim()) {
-      setCheckoutError('Введите адрес доставки')
-      return
-    }
-    
-    setIsCheckingOut(true)
-    setCheckoutError(null)
-    
-    const order = await checkout(shippingAddress)
-    
-    setIsCheckingOut(false)
-    
-    if (order) {
-      setOrderSuccess(order)
-    } else {
-      setCheckoutError('Не удалось оформить заказ. Попробуйте ещё раз.')
-    }
-  }
   
   // Состояние загрузки
   if (isLoading && items.length === 0) {
@@ -252,43 +224,15 @@ function Cart() {
               </div>
             </div>
             
-            {/* Форма оформления */}
-            <form onSubmit={handleCheckout} className="pt-4 space-y-4">
-              {checkoutError && (
-                <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">
-                  {checkoutError}
-                </div>
-              )}
-              
-              <div>
-                <label htmlFor="address" className="label">
-                  Адрес доставки
-                </label>
-                <textarea
-                  id="address"
-                  value={shippingAddress}
-                  onChange={(e) => setShippingAddress(e.target.value)}
-                  className="input min-h-[100px]"
-                  placeholder="Город, улица, дом, квартира"
-                  disabled={isCheckingOut}
-                />
-              </div>
-              
-              <button
-                type="submit"
-                className="w-full btn-primary py-3 flex items-center justify-center gap-2"
-                disabled={isCheckingOut || isLoading}
+            {/* Кнопка оформления заказа */}
+            <div className="pt-4">
+              <Link
+                to="/shop/checkout"
+                className="block w-full btn-primary py-3 text-center"
               >
-                {isCheckingOut ? (
-                  <>
-                    <ButtonLoader />
-                    Оформление...
-                  </>
-                ) : (
-                  'Оформить заказ'
-                )}
-              </button>
-            </form>
+                Оформить заказ
+              </Link>
+            </div>
             
             <p className="text-xs text-gray-500 mt-4 text-center">
               Нажимая кнопку, вы соглашаетесь с условиями доставки

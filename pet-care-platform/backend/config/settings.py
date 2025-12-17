@@ -1,49 +1,40 @@
 """
-Настройки Django для MVP Питомец+
+Настройки Django для платформы Питомец+
 
-Этот конфигурационный файл содержит все настройки для запуска
-MVP версии платформы для владельцев домашних животных.
-
-Ключевые особенности:
+Конфигурация:
+- PostgreSQL база данных
 - JWT-аутентификация
-- CORS для связи с фронтендом
-- In-memory хранилище данных (база данных не требуется для MVP)
-- Настройки для разработки
-
-Заметка по безопасности:
-    В продакшене все секретные ключи и конфиденциальные данные
-    должны загружаться из переменных окружения, а не быть захардкожены.
+- CORS для фронтенда
 """
 
 import os
 from pathlib import Path
 from datetime import timedelta
 
+# Загрузка переменных окружения из .env (опционально)
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass  # python-dotenv не установлен, используем переменные окружения напрямую
+
 # =============================================================================
 # БАЗОВАЯ КОНФИГУРАЦИЯ
 # =============================================================================
 
-# Базовый путь проекта: BASE_DIR / 'subdir'
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# ПРЕДУПРЕЖДЕНИЕ БЕЗОПАСНОСТИ: держите секретный ключ в тайне в продакшене!
-# Для MVP используется захардкоженный ключ. В продакшене используйте:
-# SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY')
-SECRET_KEY = 'django-insecure-mvp-key-change-in-production-pitomets-plus-2024'
+SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'django-insecure-change-in-production')
 
-# ПРЕДУПРЕЖДЕНИЕ БЕЗОПАСНОСТИ: не запускайте с DEBUG=True в продакшене!
-DEBUG = True
+DEBUG = os.getenv('DEBUG', 'True').lower() == 'true'
 
-# Хосты, которым разрешён доступ к приложению
-# Для MVP разрешаем localhost соединения
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', '0.0.0.0']
+ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1,0.0.0.0,192.168.1.139').split(',')
 
 # =============================================================================
-# ОПРЕДЕЛЕНИЕ ПРИЛОЖЕНИЙ
+# ПРИЛОЖЕНИЯ
 # =============================================================================
 
 INSTALLED_APPS = [
-    # Встроенные приложения Django
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -51,22 +42,20 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     
-    # Сторонние приложения
-    'rest_framework',           # Django REST Framework для API
-    'rest_framework_simplejwt', # JWT аутентификация
-    'corsheaders',              # CORS заголовки для фронтенда
+    # Сторонние
+    'rest_framework',
+    'rest_framework_simplejwt',
+    'corsheaders',
     
-    # Приложения проекта - каждое представляет бизнес-модуль
-    'apps.users',               # Аутентификация и профили пользователей
-    'apps.pets',                # PetID - центральный модуль
-    'apps.shop',                # Магазин, корзина, заказы
-    'apps.training',            # Образовательные курсы
+    # Приложения проекта
+    'apps.users',
+    'apps.pets',
+    'apps.shop',
+    'apps.training',
 ]
 
 MIDDLEWARE = [
-    # CORS middleware должен быть размещён перед CommonMiddleware
     'corsheaders.middleware.CorsMiddleware',
-    
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -97,33 +86,33 @@ TEMPLATES = [
 WSGI_APPLICATION = 'config.wsgi.application'
 
 # =============================================================================
-# КОНФИГУРАЦИЯ БАЗЫ ДАННЫХ
+# БАЗА ДАННЫХ - PostgreSQL
 # =============================================================================
 
-# Для MVP используем SQLite, который не требует настройки
-# Все бизнес-данные хранятся в памяти в data_store.py
-# SQLite используется только для внутренних нужд Django (сессии и т.д.)
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': os.getenv('DB_NAME', 'pitomets_db'),
+        'USER': os.getenv('DB_USER', 'pitomets'),
+        'PASSWORD': os.getenv('DB_PASSWORD', 'pitomets_password'),
+        'HOST': os.getenv('DB_HOST', 'localhost'),
+        'PORT': os.getenv('DB_PORT', '5432'),
     }
 }
+
+# =============================================================================
+# КАСТОМНАЯ МОДЕЛЬ ПОЛЬЗОВАТЕЛЯ
+# =============================================================================
+
+AUTH_USER_MODEL = 'users.User'
 
 # =============================================================================
 # ВАЛИДАЦИЯ ПАРОЛЕЙ
 # =============================================================================
 
 AUTH_PASSWORD_VALIDATORS = [
-    {
-        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
-        'OPTIONS': {
-            'min_length': 6,  # Упрощено для тестирования MVP
-        }
-    },
+    {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator', 'OPTIONS': {'min_length': 6}},
 ]
 
 # =============================================================================
@@ -140,98 +129,78 @@ USE_TZ = True
 # =============================================================================
 
 STATIC_URL = 'static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'
 
 # =============================================================================
-# ТИП ПЕРВИЧНОГО КЛЮЧА ПО УМОЛЧАНИЮ
+# МЕДИА ФАЙЛЫ (загруженные пользователями)
+# =============================================================================
+
+MEDIA_URL = 'media/'
+MEDIA_ROOT = BASE_DIR / 'media'
+
+# =============================================================================
+# МЕДИА ФАЙЛЫ
+# =============================================================================
+
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
+
+# =============================================================================
+# ПЕРВИЧНЫЙ КЛЮЧ
 # =============================================================================
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # =============================================================================
-# КОНФИГУРАЦИЯ DJANGO REST FRAMEWORK
+# DJANGO REST FRAMEWORK
 # =============================================================================
 
 REST_FRAMEWORK = {
-    # Аутентификация по умолчанию через кастомный JWT (работает с in-memory хранилищем)
     'DEFAULT_AUTHENTICATION_CLASSES': (
-        'core.authentication.CustomJWTAuthentication',
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
-    
-    # Разрешения по умолчанию - разрешаем всё для публичных эндпоинтов
-    # Отдельные views переопределяют это при необходимости
     'DEFAULT_PERMISSION_CLASSES': (
         'rest_framework.permissions.AllowAny',
     ),
-    
-    # Обработка исключений
-    'EXCEPTION_HANDLER': 'rest_framework.views.exception_handler',
-    
-    # Формат ответа
     'DEFAULT_RENDERER_CLASSES': (
         'rest_framework.renderers.JSONRenderer',
     ),
 }
 
 # =============================================================================
-# КОНФИГУРАЦИЯ JWT
+# JWT КОНФИГУРАЦИЯ
 # =============================================================================
 
 SIMPLE_JWT = {
-    # Настройки времени жизни токенов
-    # Access токен истекает через 1 день (расширено для удобства тестирования MVP)
     'ACCESS_TOKEN_LIFETIME': timedelta(days=1),
-    
-    # Refresh токен истекает через 7 дней
     'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
-    
-    # Ротация refresh токенов для лучшей безопасности
     'ROTATE_REFRESH_TOKENS': True,
-    
-    # Блокировка старых токенов после ротации
     'BLACKLIST_AFTER_ROTATION': False,
-    
-    # Алгоритм подписи токенов
     'ALGORITHM': 'HS256',
-    
-    # Ключ для подписи (использует SECRET_KEY Django)
     'SIGNING_KEY': SECRET_KEY,
-    
-    # Идентификация типа токена
     'AUTH_HEADER_TYPES': ('Bearer',),
-    'AUTH_HEADER_NAME': 'HTTP_AUTHORIZATION',
-    
-    # Поле идентификации пользователя
     'USER_ID_FIELD': 'id',
     'USER_ID_CLAIM': 'user_id',
 }
 
 # =============================================================================
-# КОНФИГУРАЦИЯ CORS
+# CORS
 # =============================================================================
 
-# Разрешаем все источники в разработке (ограничить в продакшене!)
 CORS_ALLOW_ALL_ORIGINS = True
 
-# Альтернативно, можно указать разрешённые источники явно:
-# CORS_ALLOWED_ORIGINS = [
-#     "http://localhost:5173",
-#     "http://127.0.0.1:5173",
-# ]
-
-# Разрешаем credentials (куки, заголовки авторизации)
-CORS_ALLOW_CREDENTIALS = True
-
-# Разрешённые HTTP методы
-CORS_ALLOW_METHODS = [
-    'DELETE',
-    'GET',
-    'OPTIONS',
-    'PATCH',
-    'POST',
-    'PUT',
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://192.168.1.139:5173",
+    "http://localhost:8000",
+    "http://127.0.0.1:8000",
 ]
 
-# Разрешённые HTTP заголовки
+CORS_ALLOW_CREDENTIALS = True
+
+CORS_ALLOW_METHODS = ['DELETE', 'GET', 'OPTIONS', 'PATCH', 'POST', 'PUT']
+
 CORS_ALLOW_HEADERS = [
     'accept',
     'accept-encoding',
@@ -245,47 +214,34 @@ CORS_ALLOW_HEADERS = [
 ]
 
 # =============================================================================
-# КОНФИГУРАЦИЯ ЛОГИРОВАНИЯ
+# ЛОГИРОВАНИЕ
 # =============================================================================
 
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
-    
-    # Определения форматов логов
     'formatters': {
-        'verbose': {
-            'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
-            'style': '{',
-        },
         'simple': {
             'format': '[{asctime}] {levelname} {name}: {message}',
             'style': '{',
             'datefmt': '%Y-%m-%d %H:%M:%S',
         },
     },
-    
-    # Определения обработчиков
     'handlers': {
         'console': {
-            'level': 'DEBUG',
+            'level': 'INFO',
             'class': 'logging.StreamHandler',
             'formatter': 'simple',
         },
     },
-    
-    # Определения логгеров
     'loggers': {
-        # Внутренний логгер Django
         'django': {
             'handlers': ['console'],
-            'level': 'INFO',
-            'propagate': True,
+            'level': 'WARNING',
         },
-        # Логгер приложения для наших кастомных apps
         'apps': {
             'handlers': ['console'],
-            'level': 'DEBUG',
+            'level': 'INFO',
             'propagate': False,
         },
     },

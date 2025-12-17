@@ -122,7 +122,12 @@ function Profile() {
       
       {/* Информация об аккаунте */}
       <div className="card mb-8">
-        <h2 className="section-title">Информация об аккаунте</h2>
+        <div className="flex justify-between items-start mb-4">
+          <h2 className="section-title mb-0">Информация об аккаунте</h2>
+          <Link to="/settings" className="btn-secondary text-sm">
+            Редактировать профиль
+          </Link>
+        </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <span className="text-sm text-gray-500">Email</span>
@@ -132,6 +137,18 @@ function Profile() {
             <span className="text-sm text-gray-500">Дата регистрации</span>
             <p className="text-gray-900">{formatDate(user.created_at)}</p>
           </div>
+          {user.first_name && (
+            <div>
+              <span className="text-sm text-gray-500">Имя</span>
+              <p className="text-gray-900">{user.first_name} {user.last_name}</p>
+            </div>
+          )}
+          {user.phone && (
+            <div>
+              <span className="text-sm text-gray-500">Телефон</span>
+              <p className="text-gray-900">{user.phone}</p>
+            </div>
+          )}
         </div>
       </div>
       

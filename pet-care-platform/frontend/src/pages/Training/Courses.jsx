@@ -9,7 +9,7 @@
  */
 
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import { getCourses, purchaseCourse, getUserCourses } from '../../api/courses'
 import { useAuthStore } from '../../store/authStore'
 import { PageLoader, ButtonLoader } from '../../components/Loader'
@@ -21,6 +21,15 @@ const PET_TYPE_OPTIONS = [
   { value: '', label: 'Все курсы' },
   { value: 'dog', label: 'Для собак' },
   { value: 'cat', label: 'Для кошек' },
+]
+
+/**
+ * Варианты фильтра по цене
+ */
+const PRICE_FILTER_OPTIONS = [
+  { value: '', label: 'Все курсы' },
+  { value: 'free', label: 'Бесплатные' },
+  { value: 'paid', label: 'Платные' },
 ]
 
 /**
@@ -51,12 +60,16 @@ const formatDuration = (minutes) => {
 function CourseCard({ course, isOwned, onPurchase, isPurchasing }) {
   return (
     <div className="card hover:shadow-lg transition-shadow flex flex-col h-full">
-      {/* Заглушка изображения курса */}
-      <div className="aspect-video bg-gradient-to-br from-primary-100 to-primary-200 rounded-lg mb-4 flex items-center justify-center">
-        <span className="text-6xl">
-          {course.pet_type === 'dog' ? '🐕' : course.pet_type === 'cat' ? '🐱' : '📚'}
-        </span>
-      </div>
+      {/* Заглушка изображения курса - кликабельная */}
+      <Link to={`/courses/${course.id}`} className="aspect-video bg-gradient-to-br from-primary-100 to-primary-200 rounded-lg mb-4 flex items-center justify-center block">
+        {course.image_url ? (
+          <img src={course.image_url} alt={course.title} className="w-full h-full object-cover rounded-lg" />
+        ) : (
+          <span className="text-6xl">
+            {course.pet_type === 'dog' ? '🐕' : course.pet_type === 'cat' ? '🐱' : '📚'}
+          </span>
+        )}
+      </Link>
       
       {/* Бейджи */}
       <div className="flex gap-2 mb-3">
@@ -74,29 +87,33 @@ function CourseCard({ course, isOwned, onPurchase, isPurchasing }) {
         </span>
       </div>
       
-      {/* Название и описание */}
-      <h3 className="text-lg font-semibold text-gray-900 mb-2 line-clamp-2">
-        {course.title}
-      </h3>
-      <p className="text-sm text-gray-600 mb-4 line-clamp-3 flex-1">
-        {course.description}
-      </p>
+      {/* Название и описание - кликабельные */}
+      <Link to={`/courses/${course.id}`}>
+        <h3 className="text-lg font-semibold text-gray-900 mb-2 line-clamp-2 hover:text-primary-600 transition-colors">
+          {course.title}
+        </h3>
+      </Link>
+      <Link to={`/courses/${course.id}`}>
+        <p className="text-sm text-gray-600 mb-4 line-clamp-3 flex-1 hover:text-gray-900 transition-colors">
+          {course.description}
+        </p>
+      </Link>
       
       {/* Кнопка действия */}
       <div className="mt-auto pt-4 border-t border-gray-100">
         {isOwned ? (
-          <button
-            className="w-full btn-secondary py-2.5 flex items-center justify-center gap-2"
-            disabled
+          <Link
+            to={`/courses/${course.id}`}
+            className="block w-full btn-secondary py-2.5 flex items-center justify-center gap-2"
           >
             <svg className="w-5 h-5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
             </svg>
             Уже приобретён
-          </button>
+          </Link>
         ) : (
           <button
-            onClick={() => onPurchase(course)}
+            onClick={(e) => onPurchase(course, e)}
             disabled={isPurchasing}
             className="w-full btn-primary py-2.5 flex items-center justify-center gap-2"
           >
@@ -130,14 +147,15 @@ function Courses() {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState(null)
   const [petTypeFilter, setPetTypeFilter] = useState('')
+  const [priceFilter, setPriceFilter] = useState('')
   const [purchasingId, setPurchasingId] = useState(null)
   
   /**
-   * Загрузка курсов при монтировании и изменении фильтра
+   * Загрузка курсов при монтировании и изменении фильтров
    */
   useEffect(() => {
     fetchCourses()
-  }, [petTypeFilter])
+  }, [petTypeFilter, priceFilter])
   
   /**
    * Загрузка курсов пользователя если авторизован
@@ -156,9 +174,21 @@ function Courses() {
     setError(null)
     
     try {
-      const filters = petTypeFilter ? { pet_type: petTypeFilter } : {}
+      const filters = {}
+      if (petTypeFilter) {
+        filters.pet_type = petTypeFilter
+      }
       const response = await getCourses(filters)
-      setCourses(response.courses || [])
+      let coursesList = response.courses || []
+      
+      // Фильтрация по цене на клиенте
+      if (priceFilter === 'free') {
+        coursesList = coursesList.filter(c => c.price === 0)
+      } else if (priceFilter === 'paid') {
+        coursesList = coursesList.filter(c => c.price > 0)
+      }
+      
+      setCourses(coursesList)
     } catch (err) {
       setError(err.message || 'Не удалось загрузить курсы')
     } finally {
@@ -182,7 +212,9 @@ function Courses() {
   /**
    * Обработчик покупки курса
    */
-  const handlePurchase = async (course) => {
+  const handlePurchase = async (course, e) => {
+    e.preventDefault()
+    e.stopPropagation()
     if (!isAuthenticated) {
       if (confirm('Для приобретения курса необходимо войти в аккаунт. Перейти на страницу входа?')) {
         navigate('/login', { state: { from: { pathname: '/courses' } } })
@@ -215,7 +247,7 @@ function Courses() {
         </p>
       </div>
       
-      {/* Фильтр */}
+      {/* Фильтры */}
       <div className="card mb-8">
         <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-end">
           <div className="flex-1 max-w-xs">
@@ -229,6 +261,24 @@ function Courses() {
               className="input"
             >
               {PET_TYPE_OPTIONS.map(option => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          
+          <div className="flex-1 max-w-xs">
+            <label htmlFor="price_filter" className="label">
+              Фильтр по цене
+            </label>
+            <select
+              id="price_filter"
+              value={priceFilter}
+              onChange={(e) => setPriceFilter(e.target.value)}
+              className="input"
+            >
+              {PRICE_FILTER_OPTIONS.map(option => (
                 <option key={option.value} value={option.value}>
                   {option.label}
                 </option>

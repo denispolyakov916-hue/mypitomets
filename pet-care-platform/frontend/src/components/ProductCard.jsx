@@ -5,30 +5,33 @@
  * Включает функцию добавления в корзину.
  * 
  * Props:
- *   product: Объект товара с name, price, description и т.д.
+ *   product: Объект товара с name, price, images и т.д.
  *   onAddToCart: Обработчик добавления в корзину
  *   isLoading: Состояние загрузки для добавления в корзину
  */
 
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { ButtonLoader } from './Loader'
 
 /**
- * Маппинг названий типов животных
+ * Маппинг названий животных
  */
-const petTypeLabels = {
+const animalLabels = {
   dog: 'Для собак',
   cat: 'Для кошек',
-  all: 'Универсальный'
 }
 
 /**
- * Маппинг названий типов товаров
+ * Маппинг названий категорий
  */
-const productTypeLabels = {
-  dry_food: 'Сухой корм',
-  wet_food: 'Влажный корм',
-  treats: 'Лакомство'
+const categoryLabels = {
+  food: 'Корм',
+  pharmacy: 'Ветаптека',
+  ammunition: 'Амуниция',
+  care: 'Уход',
+  transport: 'Транспортировка',
+  toys: 'Игрушки',
 }
 
 /**
@@ -48,18 +51,18 @@ const formatPrice = (price) => {
  * Компонент ProductCard
  * 
  * Отображает товар с:
- * - Заглушкой изображения
- * - Названием и описанием
+ * - Изображением товара
+ * - Названием и брендом
  * - Ценой
  * - Бейджами категорий
  * - Кнопкой добавления в корзину
  */
 function ProductCard({ product, onAddToCart, isLoading = false }) {
   const [isAdding, setIsAdding] = useState(false)
+  const [imageError, setImageError] = useState(false)
   
   /**
    * Обработчик клика по добавлению в корзину
-   * Показывает состояние загрузки во время обработки
    */
   const handleAddToCart = async () => {
     if (isAdding || isLoading) return
@@ -72,56 +75,96 @@ function ProductCard({ product, onAddToCart, isLoading = false }) {
     }
   }
   
+  // Главное изображение товара
+  const mainImage = product.main_image || (product.images && product.images[0])
+  
   return (
-    <div className="card hover:shadow-md transition-shadow flex flex-col h-full">
-      {/* Заглушка изображения товара */}
-      <div className="aspect-square bg-gray-100 rounded-lg mb-4 flex items-center justify-center">
-        <span className="text-6xl opacity-50">
-          {product.pet_type === 'dog' ? '🐕' : product.pet_type === 'cat' ? '🐱' : '🐾'}
-        </span>
-      </div>
+    <div className="bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow flex flex-col h-full overflow-hidden">
+      {/* Изображение товара - кликабельное */}
+      <Link to={`/shop/products/${product.id}`} className="aspect-square bg-gray-50 relative overflow-hidden block">
+        {mainImage && !imageError ? (
+          <img
+            src={mainImage}
+            alt={product.name}
+            className="w-full h-full object-contain p-2"
+            loading="lazy"
+            onError={() => setImageError(true)}
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center">
+            <span className="text-6xl opacity-30">
+              {product.animal === 'dog' ? '🐕' : product.animal === 'cat' ? '🐱' : '🐾'}
+            </span>
+          </div>
+        )}
+        
+        {/* Бейдж наличия */}
+        {!product.in_stock && (
+          <div className="absolute top-2 right-2 px-2 py-1 bg-red-500 text-white text-xs rounded-lg">
+            Нет в наличии
+          </div>
+        )}
+        
+        {/* Бейдж животного */}
+        <div className="absolute top-2 left-2 px-2 py-1 bg-white/90 text-xs rounded-lg font-medium">
+          {animalLabels[product.animal] || product.animal}
+        </div>
+      </Link>
       
       {/* Информация о товаре */}
-      <div className="flex-1 flex flex-col">
-        {/* Бейджи категорий */}
-        <div className="flex flex-wrap gap-2 mb-2">
-          <span className="px-2 py-0.5 bg-primary-50 text-primary-700 text-xs rounded-full">
-            {petTypeLabels[product.pet_type] || product.pet_type}
-          </span>
-          <span className="px-2 py-0.5 bg-gray-100 text-gray-600 text-xs rounded-full">
-            {productTypeLabels[product.product_type] || product.product_type}
-          </span>
-        </div>
+      <div className="flex-1 flex flex-col p-4">
+        {/* Бренд */}
+        {product.vendor && (
+          <p className="text-xs text-primary-600 font-medium mb-1 uppercase tracking-wide">
+            {product.vendor}
+          </p>
+        )}
         
-        {/* Название и описание */}
-        <h3 className="font-semibold text-gray-900 mb-1 line-clamp-2">
-          {product.name}
-        </h3>
-        <p className="text-sm text-gray-500 mb-4 line-clamp-2 flex-1">
-          {product.description}
+        {/* Название - кликабельное */}
+        <Link to={`/shop/products/${product.id}`}>
+          <h3 className="font-medium text-gray-900 mb-1 line-clamp-2 text-sm leading-snug hover:text-primary-600 transition-colors">
+            {product.name}
+          </h3>
+        </Link>
+        
+        {/* Категория */}
+        <p className="text-xs text-gray-500 mb-3">
+          {categoryLabels[product.category] || product.category}
+          {product.category_name && ` • ${product.category_name}`}
         </p>
         
+        {/* Вес если есть */}
+        {product.weight && (
+          <p className="text-xs text-gray-400 mb-2">
+            Вес: {product.weight} кг
+          </p>
+        )}
+        
         {/* Цена и добавление в корзину */}
-        <div className="flex items-center justify-between mt-auto pt-4 border-t border-gray-100">
+        <div className="flex items-center justify-between mt-auto pt-3 border-t border-gray-100">
           <span className="text-lg font-bold text-gray-900">
             {formatPrice(product.price)}
           </span>
           <button
             onClick={handleAddToCart}
             disabled={isAdding || isLoading || !product.in_stock}
-            className="btn-primary text-sm py-2 px-4 flex items-center gap-2"
+            className={`text-sm py-2 px-3 rounded-lg flex items-center gap-1.5 transition-colors ${
+              !product.in_stock
+                ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                : 'bg-primary-600 hover:bg-primary-700 text-white'
+            }`}
           >
             {isAdding ? (
               <>
                 <ButtonLoader />
-                <span>Добавление...</span>
+                <span>...</span>
               </>
             ) : !product.in_stock ? (
-              'Нет в наличии'
+              'Нет'
             ) : (
               <>
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
                 </svg>
                 В корзину
               </>

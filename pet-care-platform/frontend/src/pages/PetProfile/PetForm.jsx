@@ -9,10 +9,11 @@
  * - /pets/:id/edit - Редактирование существующего питомца
  */
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { createPet, updatePet, getPet, SPECIES_OPTIONS } from '../../api/pets'
 import { PageLoader, ButtonLoader } from '../../components/Loader'
+import { dogBreeds, catBreeds } from '../../data/breeds'
 
 /**
  * Компонент страницы PetForm
@@ -34,12 +35,21 @@ function PetForm() {
     species: 'dog',
     breed: '',
     date_of_birth: '',
-    weight: ''
+    weight: '',
+    gender: 'unknown',
+    is_neutered: false,
+    favorite_foods: [],
+    allergies: []
   })
+  const [foodInput, setFoodInput] = useState('')
+  const [allergyInput, setAllergyInput] = useState('')
   const [validationErrors, setValidationErrors] = useState({})
   const [isLoading, setIsLoading] = useState(false)
   const [isFetching, setIsFetching] = useState(isEditMode)
   const [error, setError] = useState(null)
+  const [breedSuggestions, setBreedSuggestions] = useState([])
+  const [showBreedSuggestions, setShowBreedSuggestions] = useState(false)
+  const breedInputRef = useRef(null)
   
   /**
    * Загрузка данных питомца в режиме редактирования
@@ -66,7 +76,11 @@ function PetForm() {
         species: pet.species || 'dog',
         breed: pet.breed || '',
         date_of_birth: pet.date_of_birth || '',
-        weight: pet.weight ? String(pet.weight) : ''
+        weight: pet.weight ? String(pet.weight) : '',
+        gender: pet.gender || 'unknown',
+        is_neutered: pet.is_neutered || false,
+        favorite_foods: pet.favorite_foods || [],
+        allergies: pet.allergies || []
       })
     } catch (err) {
       setError(err.message || 'Не удалось загрузить данные питомца')
@@ -111,10 +125,32 @@ function PetForm() {
     const { name, value } = e.target
     setFormData(prev => ({ ...prev, [name]: value }))
     
+    // Автодополнение породы
+    if (name === 'breed') {
+      const breeds = formData.species === 'dog' ? dogBreeds : formData.species === 'cat' ? catBreeds : []
+      if (value && breeds.length > 0) {
+        const filtered = breeds.filter(breed => 
+          breed.toLowerCase().includes(value.toLowerCase())
+        )
+        setBreedSuggestions(filtered)
+        setShowBreedSuggestions(filtered.length > 0)
+      } else {
+        setShowBreedSuggestions(false)
+      }
+    }
+    
     // Очистка ошибки поля при изменении
     if (validationErrors[name]) {
       setValidationErrors(prev => ({ ...prev, [name]: null }))
     }
+  }
+  
+  /**
+   * Выбор породы из списка
+   */
+  const selectBreed = (breed) => {
+    setFormData(prev => ({ ...prev, breed }))
+    setShowBreedSuggestions(false)
   }
   
   /**
@@ -128,13 +164,17 @@ function PetForm() {
     setIsLoading(true)
     setError(null)
     
-    // Подготовка данных (конвертация веса в число если указан)
+    // Подготовка данных
     const petData = {
       name: formData.name.trim(),
       species: formData.species,
       breed: formData.breed.trim() || null,
       date_of_birth: formData.date_of_birth || null,
-      weight: formData.weight ? parseFloat(formData.weight) : null
+      weight: formData.weight ? parseFloat(formData.weight) : null,
+      gender: formData.gender,
+      is_neutered: formData.is_neutered,
+      favorite_foods: formData.favorite_foods,
+      allergies: formData.allergies
     }
     
     try {
@@ -230,21 +270,42 @@ function PetForm() {
               )}
             </div>
             
-            {/* Порода */}
-            <div>
+            {/* Порода с автодополнением */}
+            <div className="relative">
               <label htmlFor="breed" className="label">
                 Порода
               </label>
               <input
+                ref={breedInputRef}
                 type="text"
                 id="breed"
                 name="breed"
                 value={formData.breed}
                 onChange={handleChange}
+                onFocus={() => {
+                  if (formData.breed && breedSuggestions.length > 0) {
+                    setShowBreedSuggestions(true)
+                  }
+                }}
                 className="input"
-                placeholder="Например: Лабрадор"
+                placeholder="Начните вводить породу..."
                 disabled={isLoading}
+                autoComplete="off"
               />
+              {showBreedSuggestions && breedSuggestions.length > 0 && (
+                <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-auto">
+                  {breedSuggestions.slice(0, 10).map((breed, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => selectBreed(breed)}
+                      className="w-full text-left px-4 py-2 hover:bg-primary-50 text-gray-900 text-sm"
+                    >
+                      {breed}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
             
             {/* Дата рождения */}
@@ -288,6 +349,40 @@ function PetForm() {
               {validationErrors.weight && (
                 <p className="error-message">{validationErrors.weight}</p>
               )}
+            </div>
+            
+            {/* Пол */}
+            <div>
+              <label htmlFor="gender" className="label">
+                Пол
+              </label>
+              <select
+                id="gender"
+                name="gender"
+                value={formData.gender}
+                onChange={handleChange}
+                className="input"
+                disabled={isLoading}
+              >
+                <option value="unknown">Не указан</option>
+                <option value="male">Самец</option>
+                <option value="female">Самка</option>
+              </select>
+            </div>
+            
+            {/* Статус кастрации */}
+            <div>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  name="is_neutered"
+                  checked={formData.is_neutered}
+                  onChange={(e) => setFormData(prev => ({ ...prev, is_neutered: e.target.checked }))}
+                  className="w-4 h-4 text-primary-600 focus:ring-primary-500 rounded"
+                  disabled={isLoading}
+                />
+                <span className="label mb-0">Кастрирован/Стерилизован</span>
+              </label>
             </div>
             
             {/* Кнопки отправки */}
