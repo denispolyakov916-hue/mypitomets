@@ -127,26 +127,52 @@ export const removeFromCart = async (productId) => {
   })
 }
 
+/**
+ * Обновление корзины (refreshCart)
+ * 
+ * @returns {Promise<Object>} Актуальное состояние корзины
+ */
+export const refreshCart = async () => {
+  return await api.get('/shop/cart/refresh/')
+}
+
 // =============================================================================
 // ЗАКАЗЫ
 // =============================================================================
 
 /**
- * Создание заказа из корзины
+ * Получение информации для оформления заказа
+ * 
+ * @returns {Promise<Object>} Детальная информация о заказе, адресах и доставке
+ */
+export const getCheckoutInfo = async () => {
+  return await api.get('/shop/checkout/')
+}
+
+/**
+ * Создание заказа с расширенными данными
  * 
  * Оформляет заказ с текущим содержимым корзины и очищает корзину.
  * 
- * @param {string} shippingAddress - Адрес доставки
+ * @param {Object} orderData - Данные заказа
+ * @param {string} [orderData.shipping_address] - Адрес доставки (текст)
+ * @param {string} [orderData.address_id] - ID сохраненного адреса
+ * @param {string} [orderData.delivery_type] - Тип доставки ('standard', 'express', 'pickup')
+ * @param {number} [orderData.delivery_cost] - Стоимость доставки
+ * @param {string} [orderData.recipient_name] - Имя получателя
+ * @param {string} [orderData.recipient_phone] - Телефон получателя
  * @returns {Promise<Object>} Данные созданного заказа
  * @throws {Object} Ошибка если корзина пуста
  * 
  * @example
- *   const { order } = await createOrder('Москва, ул. Ленина, 1')
+ *   const { order } = await createOrder({
+ *     address_id: '123',
+ *     delivery_type: 'standard',
+ *     delivery_cost: 500
+ *   })
  */
-export const createOrder = async (shippingAddress) => {
-  return await api.post('/shop/orders/', {
-    shipping_address: shippingAddress
-  })
+export const createOrder = async (orderData) => {
+  return await api.post('/shop/orders/', orderData)
 }
 
 /**
@@ -156,6 +182,39 @@ export const createOrder = async (shippingAddress) => {
  */
 export const getOrders = async () => {
   return await api.get('/shop/orders/history/')
+}
+
+// =============================================================================
+// АДРЕСА
+// =============================================================================
+
+/**
+ * Получение списка адресов пользователя
+ * 
+ * @returns {Promise<Object>} Список адресов
+ */
+export const getAddresses = async () => {
+  return await api.get('/shop/addresses/')
+}
+
+/**
+ * Создание нового адреса
+ * 
+ * @param {Object} addressData - Данные адреса
+ * @returns {Promise<Object>} Созданный адрес
+ */
+export const createAddress = async (addressData) => {
+  return await api.post('/shop/addresses/', addressData)
+}
+
+/**
+ * Поиск адресов
+ * 
+ * @param {string} query - Поисковый запрос
+ * @returns {Promise<Object>} Предложения адресов
+ */
+export const searchAddresses = async (query) => {
+  return await api.get(`/shop/addresses/search/?query=${encodeURIComponent(query)}`)
 }
 
 // =============================================================================

@@ -5,7 +5,7 @@
  * - Email, паролем, подтверждением пароля
  * - Клиентской валидацией
  * - Обработкой серверных ошибок
- * - Автоматическим входом после регистрации
+ * - Формой активации после регистрации
  */
 
 import { useState, useEffect } from 'react'
@@ -20,19 +20,21 @@ import { ButtonLoader } from '../../components/Loader'
  * - Валидация формы (формат email, длина пароля, совпадение паролей)
  * - Обратная связь по валидации в реальном времени
  * - Отображение серверных ошибок
- * - Редирект на страницу питомцев после успешной регистрации
+ * - Форма активации после успешной регистрации
  */
 function Register() {
   const navigate = useNavigate()
-  const { register, isLoading, error, clearError } = useAuthStore()
+  const { register, activateByCode, isLoading, error, clearError } = useAuthStore()
   
-  // Состояние формы
+  // Состояние формы регистрации
   const [formData, setFormData] = useState({
     email: '',
     password: '',
     passwordConfirm: ''
   })
   const [validationErrors, setValidationErrors] = useState({})
+  const [registrationSuccess, setRegistrationSuccess] = useState(false)
+  const [activationCode, setActivationCode] = useState('')
   
   // Очистка ошибок при монтировании
   useEffect(() => {
@@ -85,21 +87,41 @@ function Register() {
   }
   
   /**
-   * Обработчик отправки формы
+   * Обработчик отправки формы регистрации
    */
   const handleSubmit = async (e) => {
     e.preventDefault()
     
     if (!validateForm()) return
     
-    const success = await register(
-      formData.email, 
-      formData.password, 
-      formData.passwordConfirm
-    )
+    try {
+      const response = await register(
+        formData.email, 
+        formData.password, 
+        formData.passwordConfirm
+      )
+      
+      // Регистрация успешна - показываем форму активации
+      setRegistrationSuccess(true)
+    } catch (error) {
+      // Ошибка уже обработана в store
+    }
+  }
+  
+  /**
+   * Обработчик активации
+   */
+  const handleActivation = async (e) => {
+    e.preventDefault()
+    
+    if (activationCode.length !== 6) {
+      setValidationErrors({ activationCode: 'Код должен содержать 6 цифр' })
+      return
+    }
+    
+    const success = await activateByCode(activationCode)
     
     if (success) {
-      // Редирект на страницу питомцев после успешной регистрации
       navigate('/pets', { replace: true })
     }
   }
@@ -110,102 +132,162 @@ function Register() {
         {/* Заголовок */}
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            Создать аккаунт
+            {registrationSuccess ? 'Подтвердите email' : 'Создать аккаунт'}
           </h1>
           <p className="text-gray-600">
-            Зарегистрируйтесь, чтобы начать использовать Питомец+
+            {registrationSuccess
+              ? 'Введите код активации из письма'
+              : 'Зарегистрируйтесь, чтобы начать использовать Питомец+'
+            }
           </p>
         </div>
         
-        {/* Карточка формы */}
         <div className="card">
-          <form onSubmit={handleSubmit} className="space-y-5">
-            {/* Серверная ошибка */}
-            {error && (
-              <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">
-                {error}
+          {!registrationSuccess ? (
+            // Форма регистрации
+            <form onSubmit={handleSubmit} className="space-y-5">
+              {/* Серверная ошибка */}
+              {error && (
+                <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">
+                  {error}
+                </div>
+              )}
+              
+              {/* Поле Email */}
+              <div>
+                <label htmlFor="email" className="label">
+                  Email
+                </label>
+                <input
+                  type="email"
+                  id="email"
+                  name="email"
+                  value={formData.email}
+                  onChange={handleChange}
+                  className={`input ${validationErrors.email ? 'input-error' : ''}`}
+                  placeholder="your@email.com"
+                  autoComplete="email"
+                  disabled={isLoading}
+                />
+                {validationErrors.email && (
+                  <p className="error-message">{validationErrors.email}</p>
+                )}
               </div>
-            )}
-            
-            {/* Поле Email */}
-            <div>
-              <label htmlFor="email" className="label">
-                Email
-              </label>
-              <input
-                type="email"
-                id="email"
-                name="email"
-                value={formData.email}
-                onChange={handleChange}
-                className={`input ${validationErrors.email ? 'input-error' : ''}`}
-                placeholder="your@email.com"
-                autoComplete="email"
+              
+              {/* Поле пароля */}
+              <div>
+                <label htmlFor="password" className="label">
+                  Пароль
+                </label>
+                <input
+                  type="password"
+                  id="password"
+                  name="password"
+                  value={formData.password}
+                  onChange={handleChange}
+                  className={`input ${validationErrors.password ? 'input-error' : ''}`}
+                  placeholder="Минимум 6 символов"
+                  autoComplete="new-password"
+                  disabled={isLoading}
+                />
+                {validationErrors.password && (
+                  <p className="error-message">{validationErrors.password}</p>
+                )}
+              </div>
+              
+              {/* Поле подтверждения пароля */}
+              <div>
+                <label htmlFor="passwordConfirm" className="label">
+                  Подтвердите пароль
+                </label>
+                <input
+                  type="password"
+                  id="passwordConfirm"
+                  name="passwordConfirm"
+                  value={formData.passwordConfirm}
+                  onChange={handleChange}
+                  className={`input ${validationErrors.passwordConfirm ? 'input-error' : ''}`}
+                  placeholder="Повторите пароль"
+                  autoComplete="new-password"
+                  disabled={isLoading}
+                />
+                {validationErrors.passwordConfirm && (
+                  <p className="error-message">{validationErrors.passwordConfirm}</p>
+                )}
+              </div>
+              
+              {/* Кнопка отправки */}
+              <button
+                type="submit"
+                className="w-full btn-primary py-3 flex items-center justify-center gap-2"
                 disabled={isLoading}
-              />
-              {validationErrors.email && (
-                <p className="error-message">{validationErrors.email}</p>
+              >
+                {isLoading ? (
+                  <>
+                    <ButtonLoader />
+                    Регистрация...
+                  </>
+                ) : (
+                  'Зарегистрироваться'
+                )}
+              </button>
+            </form>
+          ) : (
+            // Форма активации
+            <form onSubmit={handleActivation} className="space-y-5">
+              {error && (
+                <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">
+                  {error}
+                </div>
               )}
-            </div>
-            
-            {/* Поле пароля */}
-            <div>
-              <label htmlFor="password" className="label">
-                Пароль
-              </label>
-              <input
-                type="password"
-                id="password"
-                name="password"
-                value={formData.password}
-                onChange={handleChange}
-                className={`input ${validationErrors.password ? 'input-error' : ''}`}
-                placeholder="Минимум 6 символов"
-                autoComplete="new-password"
-                disabled={isLoading}
-              />
-              {validationErrors.password && (
-                <p className="error-message">{validationErrors.password}</p>
-              )}
-            </div>
-            
-            {/* Поле подтверждения пароля */}
-            <div>
-              <label htmlFor="passwordConfirm" className="label">
-                Подтвердите пароль
-              </label>
-              <input
-                type="password"
-                id="passwordConfirm"
-                name="passwordConfirm"
-                value={formData.passwordConfirm}
-                onChange={handleChange}
-                className={`input ${validationErrors.passwordConfirm ? 'input-error' : ''}`}
-                placeholder="Повторите пароль"
-                autoComplete="new-password"
-                disabled={isLoading}
-              />
-              {validationErrors.passwordConfirm && (
-                <p className="error-message">{validationErrors.passwordConfirm}</p>
-              )}
-            </div>
-            
-            {/* Кнопка отправки */}
-            <button
-              type="submit"
-              className="w-full btn-primary py-3 flex items-center justify-center gap-2"
-              disabled={isLoading}
-            >
-              {isLoading ? (
-                <>
-                  <ButtonLoader />
-                  Регистрация...
-                </>
-              ) : (
-                'Зарегистрироваться'
-              )}
-            </button>
-          </form>
+              
+              <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-800">
+                Код активации отправлен на <strong>{formData.email}</strong>
+              </div>
+              
+              <div>
+                <label htmlFor="activationCode" className="label">
+                  Код активации
+                </label>
+                <input
+                  type="text"
+                  id="activationCode"
+                  name="activationCode"
+                  value={activationCode}
+                  onChange={(e) => {
+                    const value = e.target.value.replace(/\D/g, '').slice(0, 6)
+                    setActivationCode(value)
+                    setValidationErrors({})
+                  }}
+                  className={`input text-center text-2xl tracking-widest ${validationErrors.activationCode ? 'input-error' : ''}`}
+                  placeholder="000000"
+                  maxLength={6}
+                  disabled={isLoading}
+                />
+                {validationErrors.activationCode && (
+                  <p className="error-message">{validationErrors.activationCode}</p>
+                )}
+              </div>
+              
+              <button
+                type="submit"
+                className="w-full btn-primary py-3"
+                disabled={isLoading || activationCode.length !== 6}
+              >
+                {isLoading ? 'Активация...' : 'Активировать'}
+              </button>
+              
+              <div className="text-center text-sm text-gray-600">
+                <button
+                  type="button"
+                  onClick={() => setRegistrationSuccess(false)}
+                  className="text-primary-600 hover:text-primary-700"
+                >
+                  Назад к регистрации
+                </button>
+              </div>
+            </form>
+          )}
           
           {/* Ссылка на вход */}
           <div className="mt-6 text-center text-sm text-gray-600">

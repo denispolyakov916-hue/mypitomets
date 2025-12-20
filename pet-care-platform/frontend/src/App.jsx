@@ -31,6 +31,7 @@ import PrivateRoute from './components/PrivateRoute'
 import Home from './pages/Home'
 import Login from './pages/Auth/Login'
 import Register from './pages/Auth/Register'
+import Activate from './pages/Auth/Activate'
 import PetList from './pages/PetProfile/PetList'
 import PetForm from './pages/PetProfile/PetForm'
 import PetProfile from './pages/PetProfile/PetProfile'
@@ -71,6 +72,7 @@ function App() {
           path="/register" 
           element={isAuthenticated ? <Navigate to="/pets" /> : <Register />} 
         />
+        <Route path="/activate" element={<Activate />} />
         
         {/* Магазин - Публичный */}
         <Route path="/shop" element={<Shop />} />

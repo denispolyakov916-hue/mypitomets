@@ -14,8 +14,10 @@
  */
 
 import axios from 'axios'
+import { refreshToken } from './auth'
 
-// Базовый URL API - использует прокси в разработке, прямой URL в продакшене
+// Базовый URL API - использует переменную окружения или прокси в разработке
+// Если VITE_API_URL не установлен, используется '/api' (прокси из vite.config.js)
 const API_BASE_URL = import.meta.env.VITE_API_URL || '/api'
 
 /**
@@ -25,6 +27,7 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || '/api'
  * - baseURL: Префикс API эндпоинтов
  * - timeout: 30 секунд для медленных соединений
  * - headers: JSON content type по умолчанию
+ * - withCredentials: true для работы с httpOnly cookie (refresh токен)
  */
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -32,6 +35,7 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+  withCredentials: true, // Важно для работы с httpOnly cookie
 })
 
 /**
@@ -70,7 +74,7 @@ api.interceptors.response.use(
     // Возвращаем данные напрямую для удобства
     return response.data
   },
-  (error) => {
+  async (error) => {
     // Обработка сетевых ошибок
     if (!error.response) {
       console.error('Сетевая ошибка:', error.message)
@@ -84,13 +88,50 @@ api.interceptors.response.use(
     
     // Обработка 401 Unauthorized - токен истёк или невалиден
     if (status === 401) {
-      // Очищаем сохранённые токены
-      localStorage.removeItem('access_token')
-      localStorage.removeItem('refresh_token')
+      // Пытаемся обновить токен через refresh
+      const originalRequest = error.config
       
-      // Перенаправляем на страницу входа, если ещё не там
-      if (window.location.pathname !== '/login') {
-        window.location.href = '/login'
+      // Избегаем бесконечного цикла при ошибке refresh
+      if (originalRequest.url === '/auth/refresh/' || originalRequest._retry) {
+        // Очищаем сохранённые токены
+        localStorage.removeItem('access_token')
+        
+        // Перенаправляем на страницу входа, если ещё не там
+        if (window.location.pathname !== '/login' && window.location.pathname !== '/register') {
+          window.location.href = '/login'
+        }
+        
+        return Promise.reject({
+          status,
+          message: 'Сессия истекла. Пожалуйста, войдите снова.',
+          isNetworkError: false
+        })
+      }
+      
+      // Пытаемся обновить токен
+      originalRequest._retry = true
+      
+      try {
+        const newTokens = await refreshToken()
+        
+        if (newTokens && newTokens.accessToken) {
+          // Обновляем токен в заголовке и повторяем запрос
+          originalRequest.headers.Authorization = `Bearer ${newTokens.accessToken}`
+          return api(originalRequest)
+        }
+      } catch (refreshError) {
+        // Если refresh не удался, очищаем токены и редиректим
+        localStorage.removeItem('access_token')
+        
+        if (window.location.pathname !== '/login' && window.location.pathname !== '/register') {
+          window.location.href = '/login'
+        }
+        
+        return Promise.reject({
+          status,
+          message: 'Сессия истекла. Пожалуйста, войдите снова.',
+          isNetworkError: false
+        })
       }
     }
     

@@ -113,7 +113,10 @@ function Profile() {
           <p className="text-gray-600 mt-1">{user.email}</p>
         </div>
         <button
-          onClick={logout}
+          onClick={async () => {
+            await logout()
+            window.location.href = '/'
+          }}
           className="btn-secondary"
         >
           Выйти из аккаунта

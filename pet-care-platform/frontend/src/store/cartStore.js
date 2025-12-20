@@ -193,6 +193,13 @@ export const useCartStore = create((set, get) => ({
   },
   
   /**
+   * Обновление корзины (алиас для loadCart)
+   */
+  refreshCart: async () => {
+    return get().loadCart()
+  },
+  
+  /**
    * Очистка состояния ошибки
    */
   clearError: () => {

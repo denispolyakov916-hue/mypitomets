@@ -38,8 +38,8 @@ function Navbar() {
    * Обработчик выхода
    * Выполняет выход и перенаправляет на главную
    */
-  const handleLogout = () => {
-    logout()
+  const handleLogout = async () => {
+    await logout()
     navigate('/')
     setMobileMenuOpen(false)
   }

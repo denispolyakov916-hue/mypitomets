@@ -37,7 +37,7 @@ function FilterSidebar({ filters, availableFilters, onFilterChange, onReset }) {
     <div className="bg-white rounded-xl shadow-sm p-5 sticky top-4">
       <div className="flex justify-between items-center mb-4">
         <h3 className="font-semibold text-gray-900">Фильтры</h3>
-        {(filters.animal || filters.pet_id || filters.category || filters.subcategory || filters.vendor || filters.min_price || filters.max_price) && (
+        {(filters.animal || filters.pet_id || filters.category || filters.subcategory || filters.vendor || filters.min_price || filters.max_price || filters.in_stock || filters.search) && (
           <button
             onClick={onReset}
             className="text-sm text-primary-600 hover:text-primary-700"

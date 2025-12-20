@@ -79,9 +79,14 @@ export const useAuthStore = create((set, get) => ({
       
       return true
     } catch (error) {
+      // Обработка ошибок валидации
+      const errorMessage = error.errors 
+        ? Object.values(error.errors).flat().join(', ')
+        : error.message || 'Ошибка входа'
+      
       set({
         isLoading: false,
-        error: error.message || 'Ошибка входа'
+        error: errorMessage
       })
       return false
     }
@@ -90,18 +95,47 @@ export const useAuthStore = create((set, get) => ({
   /**
    * Регистрация нового аккаунта
    * 
-   * Создаёт аккаунт, сохраняет токены и выполняет вход.
+   * Создаёт аккаунт, но НЕ выполняет автоматический вход.
+   * Пользователь должен активировать аккаунт через email.
    * 
    * @param {string} email - Email пользователя
    * @param {string} password - Пароль пользователя
    * @param {string} passwordConfirm - Подтверждение пароля
-   * @returns {Promise<boolean>} True если регистрация успешна
+   * @returns {Promise<Object>} Результат регистрации с сообщением
    */
   register: async (email, password, passwordConfirm) => {
     set({ isLoading: true, error: null })
     
     try {
       const response = await authApi.register(email, password, passwordConfirm)
+      
+      // НЕ устанавливаем isAuthenticated - токены не выдаются
+      set({
+        isLoading: false,
+        error: null
+      })
+      
+      return response // Возвращаем ответ с сообщением
+    } catch (error) {
+      set({
+        isLoading: false,
+        error: error.message || 'Ошибка регистрации'
+      })
+      throw error
+    }
+  },
+  
+  /**
+   * Активация аккаунта по коду
+   * 
+   * @param {string} activationCode - Код активации из email
+   * @returns {Promise<boolean>} True если активация успешна
+   */
+  activateByCode: async (activationCode) => {
+    set({ isLoading: true, error: null })
+    
+    try {
+      const response = await authApi.activateByCode(activationCode)
       
       set({
         user: response.user,
@@ -114,7 +148,7 @@ export const useAuthStore = create((set, get) => ({
     } catch (error) {
       set({
         isLoading: false,
-        error: error.message || 'Ошибка регистрации'
+        error: error.message || 'Ошибка активации'
       })
       return false
     }
@@ -125,8 +159,8 @@ export const useAuthStore = create((set, get) => ({
    * 
    * Очищает токены и сбрасывает состояние авторизации.
    */
-  logout: () => {
-    authApi.logout()
+  logout: async () => {
+    await authApi.logout()
     
     set({
       user: null,
