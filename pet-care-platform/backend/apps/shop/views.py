@@ -483,3 +483,60 @@ class OrderHistoryView(APIView):
             'orders': orders_data,
             'count': len(orders_data)
         }, status=status.HTTP_200_OK)
+
+
+class OrderConfirmPaymentView(APIView):
+    """
+    Подтверждение оплаты заказа через единую систему платежей.
+
+    POST /api/shop/orders/{order_id}/confirm-payment/
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, order_id):
+        try:
+            order = Order.objects.get(id=order_id, user=request.user)
+        except Order.DoesNotExist:
+            return Response(
+                {'error': 'Заказ не найден'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        # Проверка статуса заказа
+        if order.status != 'pending':
+            status_display = dict(Order.STATUS_CHOICES).get(order.status, order.status)
+            return Response(
+                {'error': f'Заказ уже обработан. Текущий статус: {status_display}'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Создание платежа через единую систему
+        from apps.payments.services import PaymentService
+
+        try:
+            payment = PaymentService.create_payment(
+                user=request.user,
+                payment_type='shop_order',
+                object_id=str(order.id),
+                amount=order.total_amount,
+                payment_method='card',  # Можно передать в request.data
+                metadata={'order_id': str(order.id)}
+            )
+
+            # Обработка платежа (имитация)
+            success = PaymentService.process_payment(payment)
+
+            if success:
+                return Response({
+                    'message': 'Оплата успешно подтверждена',
+                    'order': order.to_dict(),
+                    'payment_id': str(payment.id)
+                }, status=status.HTTP_200_OK)
+            else:
+                return Response(
+                    {'error': 'Не удалось обработать платеж'},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
+
+        except ValueError as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)

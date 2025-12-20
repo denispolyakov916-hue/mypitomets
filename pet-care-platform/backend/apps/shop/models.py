@@ -4,9 +4,10 @@
 Включает: Product, Cart, CartItem, Order, OrderItem
 """
 
-import uuid
 from django.db import models
 from django.conf import settings
+from django.utils import timezone
+from core.utils import generate_uuid7
 
 
 class Product(models.Model):
@@ -163,7 +164,13 @@ class Cart(models.Model):
     Один пользователь - одна корзина.
     """
     
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    id = models.CharField(
+        primary_key=True,
+        max_length=36,
+        default=generate_uuid7,
+        editable=False,
+        help_text="UUIDv7 идентификатор корзины"
+    )
     user = models.OneToOneField(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
@@ -171,7 +178,7 @@ class Cart(models.Model):
         verbose_name='Пользователь'
     )
     
-    created_at = models.DateTimeField(auto_now_add=True)
+    created_at = models.DateTimeField(default=timezone.now)
     updated_at = models.DateTimeField(auto_now=True)
     
     class Meta:
@@ -251,7 +258,13 @@ class Order(models.Model):
         ('cancelled', 'Отменён'),
     ]
     
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    id = models.CharField(
+        primary_key=True,
+        max_length=36,
+        default=generate_uuid7,
+        editable=False,
+        help_text="UUIDv7 идентификатор заказа"
+    )
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
@@ -268,7 +281,7 @@ class Order(models.Model):
         verbose_name='Статус'
     )
     
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name='Дата заказа')
+    created_at = models.DateTimeField(default=timezone.now, verbose_name='Дата заказа')
     updated_at = models.DateTimeField(auto_now=True)
     
     class Meta:

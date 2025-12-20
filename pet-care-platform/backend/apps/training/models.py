@@ -2,6 +2,21 @@
 Модели для модуля обучения (Курсы)
 
 Включает: Course, UserCourse (связь пользователь-курс)
+
+Система категоризации курсов:
+- category: Основы, Дрессировка, Уход, Здоровье, Питание, Поведение, Специализированные, Развлечения
+- subcategory: Подкатегории внутри каждой категории
+- level: Начинающий, Средний, Продвинутый, Эксперт
+- format_type: Видео, Текст, Интерактивный, Смешанный, Вебинар, Мастер-класс
+
+Фильтрация:
+- pet_type: dog, cat, all (для всех)
+- category: фильтр по основной категории
+- subcategory: фильтр по подкатегории
+- level: фильтр по уровню сложности
+- format_type: фильтр по формату обучения
+- min_price/max_price: фильтр по цене
+- personal=true: персональная подборка по питомцам пользователя
 """
 
 from django.db import models
@@ -11,14 +26,78 @@ from django.conf import settings
 class Course(models.Model):
     """
     Модель образовательного курса.
-    
+
     Курсы могут быть бесплатными (price=0) или платными.
+    Поддерживают категоризацию, уровни сложности и форматы обучения.
     """
-    
+
     PET_TYPE_CHOICES = [
         ('dog', 'Для собак'),
         ('cat', 'Для кошек'),
         ('all', 'Для всех'),
+    ]
+
+    CATEGORY_CHOICES = [
+        ('basics', 'Основы'),
+        ('training', 'Дрессировка'),
+        ('care', 'Уход'),
+        ('health', 'Здоровье'),
+        ('nutrition', 'Питание'),
+        ('behavior', 'Поведение'),
+        ('specialized', 'Специализированные'),
+        ('entertainment', 'Развлечения'),
+    ]
+
+    SUBCATEGORY_CHOICES = [
+        # Основы
+        ('first_steps', 'Первые шаги'),
+        ('socialization', 'Социализация'),
+        ('toilet_training', 'Приучение к туалету'),
+        # Дрессировка
+        ('obedience', 'Послушание'),
+        ('tricks', 'Трюки'),
+        ('sports', 'Спортивная'),
+        ('service', 'Служебная'),
+        # Уход
+        ('grooming', 'Груминг'),
+        ('hygiene', 'Гигиена'),
+        ('coat_care', 'Уход за шерстью'),
+        # Здоровье
+        ('prevention', 'Профилактика'),
+        ('first_aid', 'Первая помощь'),
+        ('vaccination', 'Вакцинация'),
+        # Питание
+        ('feeding_basics', 'Основы кормления'),
+        ('diet_selection', 'Выбор рациона'),
+        ('natural_feeding', 'Натуральное питание'),
+        # Поведение
+        ('behavior_problems', 'Проблемы поведения'),
+        ('aggression', 'Агрессия'),
+        ('anxiety', 'Тревожность'),
+        # Специализированные
+        ('breeding', 'Разведение'),
+        ('shows', 'Выставки'),
+        ('therapy', 'Канистерапия'),
+        # Развлечения
+        ('games', 'Игры'),
+        ('toys', 'Игрушки'),
+        ('activities', 'Активности'),
+    ]
+
+    LEVEL_CHOICES = [
+        ('beginner', 'Начинающий'),
+        ('intermediate', 'Средний'),
+        ('advanced', 'Продвинутый'),
+        ('expert', 'Эксперт'),
+    ]
+
+    FORMAT_CHOICES = [
+        ('video', 'Видео'),
+        ('text', 'Текст'),
+        ('interactive', 'Интерактивный'),
+        ('mixed', 'Смешанный'),
+        ('webinar', 'Вебинар'),
+        ('workshop', 'Мастер-класс'),
     ]
     
     id = models.AutoField(primary_key=True)
@@ -42,7 +121,40 @@ class Course(models.Model):
         default='all',
         verbose_name='Тип животного'
     )
-    
+
+    category = models.CharField(
+        max_length=20,
+        choices=CATEGORY_CHOICES,
+        default='basics',
+        db_index=True,
+        verbose_name='Категория'
+    )
+
+    subcategory = models.CharField(
+        max_length=30,
+        choices=SUBCATEGORY_CHOICES,
+        blank=True,
+        null=True,
+        db_index=True,
+        verbose_name='Подкатегория'
+    )
+
+    level = models.CharField(
+        max_length=15,
+        choices=LEVEL_CHOICES,
+        default='beginner',
+        db_index=True,
+        verbose_name='Уровень сложности'
+    )
+
+    format_type = models.CharField(
+        max_length=15,
+        choices=FORMAT_CHOICES,
+        default='video',
+        db_index=True,
+        verbose_name='Формат обучения'
+    )
+
     is_active = models.BooleanField(default=True, verbose_name='Активен')
     
     created_at = models.DateTimeField(auto_now_add=True)
@@ -53,6 +165,13 @@ class Course(models.Model):
         verbose_name = 'Курс'
         verbose_name_plural = 'Курсы'
         ordering = ['title']
+        indexes = [
+            models.Index(fields=['pet_type', 'category']),
+            models.Index(fields=['pet_type', 'category', 'level']),
+            models.Index(fields=['category', 'level']),
+            models.Index(fields=['price']),
+            models.Index(fields=['format_type']),
+        ]
     
     def __str__(self):
         return self.title
@@ -72,6 +191,10 @@ class Course(models.Model):
             'price': float(self.price),
             'image_url': self.image_url,
             'pet_type': self.pet_type,
+            'category': self.category,
+            'subcategory': self.subcategory,
+            'level': self.level,
+            'format_type': self.format_type,
             'is_free': self.is_free
         }
 

@@ -28,7 +28,7 @@ SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'django-insecure-change-in-productio
 
 DEBUG = os.getenv('DEBUG', 'True').lower() == 'true'
 
-ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1,0.0.0.0,192.168.1.139').split(',')
+ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1,0.0.0.0,192.168.1.139,testserver').split(',')
 
 # =============================================================================
 # ПРИЛОЖЕНИЯ
@@ -52,6 +52,7 @@ INSTALLED_APPS = [
     'apps.pets',
     'apps.shop',
     'apps.training',
+    'apps.payments',
 ]
 
 MIDDLEWARE = [
@@ -111,8 +112,26 @@ AUTH_USER_MODEL = 'users.User'
 # =============================================================================
 
 AUTH_PASSWORD_VALIDATORS = [
-    {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
-    {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator', 'OPTIONS': {'min_length': 6}},
+    {
+        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
+    },
+    {
+        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
+        'OPTIONS': {
+            'min_length': 6,  # Упрощено для тестирования MVP
+        }
+    },
+]
+
+# =============================================================================
+# ХЭШИРОВАНИЕ ПАРОЛЕЙ - Argon2id
+# =============================================================================
+
+PASSWORD_HASHERS = [
+    'django.contrib.auth.hashers.Argon2PasswordHasher',
+    'django.contrib.auth.hashers.PBKDF2PasswordHasher',
+    'django.contrib.auth.hashers.PBKDF2SHA1PasswordHasher',
+    'django.contrib.auth.hashers.BCryptSHA256PasswordHasher',
 ]
 
 # =============================================================================
@@ -156,12 +175,21 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # =============================================================================
 
 REST_FRAMEWORK = {
+    # Аутентификация по умолчанию через кастомный JWT (работает с моделью User Django)
     'DEFAULT_AUTHENTICATION_CLASSES': (
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
+        'core.authentication.CustomJWTAuthentication',
     ),
+    
+    # Разрешения по умолчанию - разрешаем всё для публичных эндпоинтов
+    # Отдельные views переопределяют это при необходимости
     'DEFAULT_PERMISSION_CLASSES': (
         'rest_framework.permissions.AllowAny',
     ),
+    
+    # Обработка исключений
+    'EXCEPTION_HANDLER': 'rest_framework.views.exception_handler',
+    
+    # Формат ответа
     'DEFAULT_RENDERER_CLASSES': (
         'rest_framework.renderers.JSONRenderer',
     ),
@@ -172,13 +200,30 @@ REST_FRAMEWORK = {
 # =============================================================================
 
 SIMPLE_JWT = {
+    # Настройки времени жизни токенов
+    # Access токен истекает через 1 день (расширено для удобства тестирования MVP)
     'ACCESS_TOKEN_LIFETIME': timedelta(days=1),
+    
+    # Refresh токен истекает через 7 дней
     'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
+    
+    # Ротация refresh токенов для лучшей безопасности
     'ROTATE_REFRESH_TOKENS': True,
+    
+    # Блокировка старых токенов после ротации
     'BLACKLIST_AFTER_ROTATION': False,
+    
+    # Алгоритм подписи токенов
     'ALGORITHM': 'HS256',
+    
+    # Ключ для подписи (использует SECRET_KEY Django)
     'SIGNING_KEY': SECRET_KEY,
+    
+    # Идентификация типа токена
     'AUTH_HEADER_TYPES': ('Bearer',),
+    'AUTH_HEADER_NAME': 'HTTP_AUTHORIZATION',
+    
+    # Поле идентификации пользователя
     'USER_ID_FIELD': 'id',
     'USER_ID_CLAIM': 'user_id',
 }

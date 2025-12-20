@@ -9,6 +9,7 @@ URL маршруты для эндпоинтов магазина.
     PUT  /api/shop/cart/item/       - Обновление элемента корзины
     DELETE /api/shop/cart/item/     - Удаление из корзины
     POST /api/shop/orders/          - Оформление заказа
+    POST /api/shop/orders/{id}/confirm-payment/ - Подтверждение оплаты заказа
     GET  /api/shop/orders/history/  - История заказов
 
 Все пути имеют префикс /api/shop/ в главном urls.py
@@ -21,7 +22,8 @@ from .views import (
     CartView,
     CartItemView,
     OrderCreateView,
-    OrderHistoryView
+    OrderHistoryView,
+    OrderConfirmPaymentView
 )
 
 urlpatterns = [
@@ -44,6 +46,9 @@ urlpatterns = [
     # Операции с заказами
     # POST /api/shop/orders/ - оформление заказа
     path('orders/', OrderCreateView.as_view(), name='order-create'),
+    
+    # POST /api/shop/orders/{order_id}/confirm-payment/ - подтверждение оплаты
+    path('orders/<str:order_id>/confirm-payment/', OrderConfirmPaymentView.as_view(), name='order-confirm-payment'),
     
     # GET /api/shop/orders/history/ - история заказов
     path('orders/history/', OrderHistoryView.as_view(), name='order-history'),
