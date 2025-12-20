@@ -17,7 +17,8 @@ from .views import (
     PaymentListView,
     PaymentConfirmView,
     PaymentCancelView,
-    PaymentStatisticsView
+    PaymentStatisticsView,
+    PaymentPageView
 )
 
 urlpatterns = [
@@ -26,6 +27,10 @@ urlpatterns = [
     # GET /api/payments/ - список платежей пользователя
     path('', PaymentListView.as_view(), name='payment-list'),
     path('create/', PaymentCreateView.as_view(), name='payment-create'),
+    
+    # Единая страница оплаты
+    # POST /api/payments/page/ - оплата с полями карты
+    path('page/', PaymentPageView.as_view(), name='payment-page'),
 
     # Детали платежа
     # GET /api/payments/{id}/
@@ -42,3 +47,5 @@ urlpatterns = [
     # GET /api/payments/statistics/
     path('statistics/', PaymentStatisticsView.as_view(), name='payment-statistics'),
 ]
+
+

@@ -68,18 +68,11 @@ class UserService:
             # Продолжаем регистрацию даже если email не отправился
             # В production можно использовать очередь задач (Celery)
         
-        # Генерация токенов
-        tokens = TokenService.generate_tokens(user)
-        
-        # Сохранение refresh токена в БД
-        TokenService.save_token(user.id, tokens['refreshToken'])
-        
-        # DTO пользователя
-        user_dto = user.to_dict()
-        
+        # Не возвращаем токены при регистрации - пользователь должен сначала активировать аккаунт
+        # Токены будут выданы только после активации через login
         return {
-            **tokens,
-            'user': user_dto
+            'message': 'Регистрация успешна. Проверьте email для активации аккаунта.',
+            'email': email
         }
     
     @staticmethod
@@ -91,8 +84,12 @@ class UserService:
             activation_link: Ссылка активации из email (опционально)
             activation_code: Код активации (6 цифр) (опционально)
             
+        Возвращает:
+            dict: Словарь с пользователем и временным кодом для получения токенов (для активации по ссылке)
+            или dict с токенами и данными пользователя (для активации по коду)
+            
         Исключения:
-            ApiError: Если ссылка или код активации некорректны
+            ApiError: Если ссылка или код активации некорректны, или аккаунт уже активирован
         """
         if not activation_link and not activation_code:
             raise ApiError.bad_request('Необходимо указать ссылку или код активации')
@@ -107,6 +104,11 @@ class UserService:
         except User.DoesNotExist:
             raise ApiError.bad_request('Некорректная ссылка или код активации')
         
+        # Проверка на повторную активацию
+        if user.is_activated:
+            logger.warning(f"Попытка повторной активации аккаунта: {user.email}")
+            raise ApiError.bad_request('Аккаунт уже активирован')
+        
         user.is_activated = True
         # Очищаем код и ссылку после активации для безопасности
         user.activation_code = None
@@ -114,6 +116,62 @@ class UserService:
         user.save()
         
         logger.info(f"Пользователь активирован: {user.email}")
+        user_dto = user.to_dict()
+        
+        # Для активации по коду возвращаем токены сразу
+        if activation_code:
+            tokens = TokenService.generate_tokens(user)
+            TokenService.save_token(user.id, tokens['refreshToken'])
+            return {
+                **tokens,
+                'user': user_dto,
+                'message': 'Аккаунт успешно активирован'
+            }
+        
+        # Для активации по ссылке генерируем временный код для получения токенов
+        # Используем activation_code как временное хранилище (код уже очищен выше)
+        temp_auth_code = str(random.randint(100000, 999999))
+        user.activation_code = temp_auth_code  # Временно сохраняем код для обмена на токены
+        user.save()
+        
+        return {
+            'user': user_dto,
+            'temp_auth_code': temp_auth_code
+        }
+    
+    @staticmethod
+    def exchange_temp_code_for_tokens(temp_auth_code):
+        """
+        Обмен временного кода на токены после активации по ссылке.
+        
+        Аргументы:
+            temp_auth_code: Временный код активации (6 цифр)
+            
+        Возвращает:
+            dict: Словарь с токенами и данными пользователя
+            
+        Исключения:
+            ApiError: Если код некорректный или уже использован
+        """
+        try:
+            user = User.objects.get(activation_code=temp_auth_code, is_activated=True)
+        except User.DoesNotExist:
+            raise ApiError.bad_request('Некорректный код активации или аккаунт не активирован')
+        
+        # Генерируем токены
+        tokens = TokenService.generate_tokens(user)
+        TokenService.save_token(user.id, tokens['refreshToken'])
+        
+        # Очищаем временный код после использования
+        user.activation_code = None
+        user.save()
+        
+        user_dto = user.to_dict()
+        
+        return {
+            **tokens,
+            'user': user_dto
+        }
     
     @staticmethod
     def login(email, password):
@@ -142,6 +200,10 @@ class UserService:
         # Проверка активности пользователя
         if not user.is_active:
             raise ApiError.bad_request('Аккаунт пользователя неактивен')
+        
+        # Проверка активации аккаунта
+        if not user.is_activated:
+            raise ApiError.bad_request('Аккаунт не активирован. Проверьте email для активации.')
         
         # Генерация токенов
         tokens = TokenService.generate_tokens(user)
@@ -213,6 +275,10 @@ class UserService:
         
         # Проверка активности пользователя
         if not user.is_active:
+            raise ApiError.unauthorized_error()
+        
+        # Проверка активации аккаунта
+        if not user.is_activated:
             raise ApiError.unauthorized_error()
         
         # Генерация новых токенов

@@ -130,7 +130,8 @@ class CourseDetailView(APIView):
                 status=status.HTTP_404_NOT_FOUND
             )
         
-        response_data = {'course': course.to_dict()}
+        # Используем detailed=True для полной информации
+        response_data = {'course': course.to_dict(detailed=True)}
         
         # Проверка владения для авторизованных пользователей
         if request.user.is_authenticated:
@@ -140,6 +141,72 @@ class CourseDetailView(APIView):
             ).exists()
         
         return Response(response_data, status=status.HTTP_200_OK)
+
+
+class CourseCheckoutView(APIView):
+    """
+    Страница оформления курса с детальной информацией.
+    
+    GET /api/courses/{id}/checkout/
+    Возвращает детальную информацию о курсе для оформления.
+    """
+    
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request, course_id):
+        """Получение информации для оформления курса."""
+        try:
+            course = Course.objects.get(id=course_id, is_active=True)
+        except Course.DoesNotExist:
+            return Response(
+                {'error': 'Курс не найден'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        # Проверка, не куплен ли уже
+        is_owned = UserCourse.objects.filter(user=request.user, course=course).exists()
+        if is_owned:
+            return Response(
+                {'error': 'Вы уже приобрели этот курс'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Детальная информация о курсе
+        course_data = course.to_dict(detailed=True)
+        
+        # Форматирование длительности
+        duration_hours = course.duration // 60
+        duration_minutes = course.duration % 60
+        duration_display = f"{duration_hours} ч {duration_minutes} мин" if duration_hours > 0 else f"{duration_minutes} мин"
+        
+        # Текст соглашения (дисклеймер)
+        disclaimer_text = (
+            "Приобретая данный курс, вы подтверждаете, что понимаете и соглашаетесь с тем, "
+            "что мы не гарантируем стопроцентного результата. Результаты обучения зависят от "
+            "индивидуальных особенностей питомца, усердия в выполнении рекомендаций и других факторов."
+        )
+        
+        return Response({
+            'course': course_data,
+            'duration_display': duration_display,
+            'price': float(course.price),
+            'is_free': course.is_free,
+            'disclaimer': {
+                'text': disclaimer_text,
+                'required': True
+            },
+            'summary': {
+                'title': course.title,
+                'instructor': course.instructor_name or 'Инструктор',
+                'format': course.get_format_display_name(),
+                'level': course.get_level_display_name(),
+                'duration': duration_display,
+                'completion_time': course.completion_time or 'Не указано',
+                'lessons_count': course.lessons_count,
+                'videos_count': course.videos_count,
+                'materials_count': course.materials_count,
+            }
+        }, status=status.HTTP_200_OK)
 
 
 class CoursePurchaseView(APIView):
@@ -166,6 +233,15 @@ class CoursePurchaseView(APIView):
                 {'error': 'Вы уже приобрели этот курс'},
                 status=status.HTTP_400_BAD_REQUEST
             )
+        
+        # Проверка согласия с дисклеймером (требуется только для платных курсов)
+        if course.price > 0:
+            disclaimer_accepted = request.data.get('disclaimer_accepted', False)
+            if not disclaimer_accepted:
+                return Response(
+                    {'error': 'Необходимо согласиться с условиями использования'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
         
         # Оплата через единую систему платежей
         payment = None

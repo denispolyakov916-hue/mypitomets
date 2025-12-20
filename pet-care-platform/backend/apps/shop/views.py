@@ -11,7 +11,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated
 
-from .models import Product, Cart, CartItem, Order, OrderItem
+from .models import Product, Cart, CartItem, Order, OrderItem, Address
 from .serializers import (
     CartItemAddSerializer,
     CartItemUpdateSerializer,
@@ -256,6 +256,7 @@ class CartView(APIView):
             'items_count': items_count
         }, status=status.HTTP_200_OK)
     
+    
     def post(self, request):
         """Добавление товара в корзину."""
         serializer = CartItemAddSerializer(data=request.data)
@@ -382,6 +383,115 @@ class CartItemView(APIView):
         }, status=status.HTTP_200_OK)
 
 
+class CartRefreshView(APIView):
+    """
+    Обновление корзины (для фронтенда).
+    
+    GET /api/shop/cart/refresh/
+    """
+    
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        """Обновление корзины - возвращает актуальное состояние."""
+        cart, _ = Cart.objects.get_or_create(user=request.user)
+        
+        items = [item.to_dict() for item in cart.items.select_related('product').all()]
+        total = float(cart.get_total())
+        items_count = cart.get_items_count()
+        
+        return Response({
+            'cart': items,
+            'total': total,
+            'items_count': items_count
+        }, status=status.HTTP_200_OK)
+
+
+class OrderCheckoutView(APIView):
+    """
+    Страница оформления заказа с детальной информацией.
+    
+    GET /api/shop/checkout/
+    Возвращает детальную информацию о составе заказа и ценах.
+    """
+    
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        """Получение информации для оформления заказа."""
+        try:
+            cart = Cart.objects.prefetch_related('items__product').get(user=request.user)
+        except Cart.DoesNotExist:
+            return Response(
+                {'error': 'Корзина пуста'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        cart_items = cart.items.all()
+        if not cart_items:
+            return Response(
+                {'error': 'Корзина пуста. Добавьте товары перед оформлением заказа.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Детальная информация о товарах
+        items_detail = []
+        for item in cart_items:
+            product = item.product
+            items_detail.append({
+                'product_id': product.id,
+                'product_name': product.name,
+                'product_image': product.main_image,
+                'vendor': product.vendor,
+                'price': float(product.price),
+                'quantity': item.quantity,
+                'item_total': float(item.get_total()),
+                'weight': float(product.weight) if product.weight else None,
+            })
+        
+        subtotal = float(cart.get_total())
+        
+        # Получение адресов пользователя
+        user_addresses = Address.objects.filter(user=request.user).order_by('-is_default', '-created_at')
+        addresses = [addr.to_dict() for addr in user_addresses]
+        
+        # Варианты доставки
+        delivery_options = [
+            {
+                'type': 'standard',
+                'name': 'Стандартная доставка',
+                'cost': 300.0,
+                'days': '3-5 дней',
+                'description': 'Доставка в пункт выдачи или курьером'
+            },
+            {
+                'type': 'express',
+                'name': 'Экспресс доставка',
+                'cost': 600.0,
+                'days': '1-2 дня',
+                'description': 'Быстрая доставка курьером'
+            },
+            {
+                'type': 'pickup',
+                'name': 'Самовывоз',
+                'cost': 0.0,
+                'days': 'Сегодня',
+                'description': 'Самовывоз из магазина'
+            }
+        ]
+        
+        return Response({
+            'items': items_detail,
+            'subtotal': subtotal,
+            'delivery_options': delivery_options,
+            'addresses': addresses,
+            'summary': {
+                'items_count': len(items_detail),
+                'subtotal': subtotal,
+            }
+        }, status=status.HTTP_200_OK)
+
+
 class OrderCreateView(APIView):
     """
     Оформление заказа.
@@ -418,14 +528,38 @@ class OrderCreateView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
         
+        # Получение дополнительных данных
+        address_id = serializer.validated_data.get('address_id')
+        delivery_type = serializer.validated_data.get('delivery_type', 'standard')
+        delivery_cost = serializer.validated_data.get('delivery_cost', 0)
+        recipient_name = serializer.validated_data.get('recipient_name')
+        recipient_phone = serializer.validated_data.get('recipient_phone')
+        
+        # Получение объекта адреса если указан
+        address_obj = None
+        if address_id:
+            try:
+                address_obj = Address.objects.get(id=address_id, user=request.user)
+                if not shipping_address:
+                    shipping_address = address_obj.get_full_address()
+            except Address.DoesNotExist:
+                pass
+        
         # Создание заказа в транзакции
         with transaction.atomic():
-            total_amount = cart.get_total()
+            subtotal = cart.get_total()
+            total_amount = subtotal + delivery_cost
             
             order = Order.objects.create(
                 user=request.user,
+                subtotal_amount=subtotal,
+                delivery_cost=delivery_cost,
                 total_amount=total_amount,
-                shipping_address=shipping_address
+                shipping_address=shipping_address,
+                address=address_obj,
+                delivery_type=delivery_type,
+                recipient_name=recipient_name or request.user.first_name,
+                recipient_phone=recipient_phone or request.user.phone,
             )
             
             # Создание элементов заказа
@@ -540,3 +674,97 @@ class OrderConfirmPaymentView(APIView):
 
         except ValueError as e:
             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class AddressListView(APIView):
+    """
+    Список адресов пользователя.
+    
+    GET  /api/shop/addresses/ - список адресов
+    POST /api/shop/addresses/ - создание адреса
+    """
+    
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        """Получение списка адресов пользователя."""
+        addresses = Address.objects.filter(user=request.user).order_by('-is_default', '-created_at')
+        return Response({
+            'addresses': [addr.to_dict() for addr in addresses]
+        }, status=status.HTTP_200_OK)
+    
+    def post(self, request):
+        """Создание нового адреса."""
+        from .serializers import AddressCreateSerializer
+        
+        serializer = AddressCreateSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(
+                {'errors': serializer.errors},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Если это первый адрес или указано is_default=True, делаем его адресом по умолчанию
+        is_default = serializer.validated_data.get('is_default', False)
+        if is_default or not Address.objects.filter(user=request.user).exists():
+            Address.objects.filter(user=request.user).update(is_default=False)
+            is_default = True
+        
+        address = Address.objects.create(
+            user=request.user,
+            country=serializer.validated_data.get('country', 'Россия'),
+            city=serializer.validated_data['city'],
+            street=serializer.validated_data['street'],
+            house=serializer.validated_data['house'],
+            building=serializer.validated_data.get('building'),
+            apartment=serializer.validated_data.get('apartment'),
+            postal_code=serializer.validated_data.get('postal_code'),
+            comment=serializer.validated_data.get('comment'),
+            is_default=is_default,
+            latitude=serializer.validated_data.get('latitude'),
+            longitude=serializer.validated_data.get('longitude'),
+        )
+        
+        return Response({
+            'message': 'Адрес успешно создан',
+            'address': address.to_dict()
+        }, status=status.HTTP_201_CREATED)
+
+
+class AddressSearchView(APIView):
+    """
+    Поиск адресов (заглушка для геокодинга).
+    
+    GET /api/shop/addresses/search/?query=Москва, Тверская
+    """
+    
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        """Поиск адресов через внешний сервис (заглушка)."""
+        query = request.query_params.get('query', '').strip()
+        
+        if not query or len(query) < 3:
+            return Response(
+                {'error': 'Минимум 3 символа для поиска'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Заглушка - в реальности здесь будет интеграция с Яндекс.Картами или DaData
+        # Пока возвращаем примеры
+        suggestions = [
+            {
+                'value': f"{query}, ул. Ленина, д. 1",
+                'city': query.split(',')[0] if ',' in query else query,
+                'street': 'ул. Ленина',
+                'house': '1',
+                'full_address': f"{query}, ул. Ленина, д. 1",
+                'latitude': 55.7558,
+                'longitude': 37.6173,
+            }
+        ]
+        
+        return Response({
+            'suggestions': suggestions,
+            'query': query
+        }, status=status.HTTP_200_OK)
