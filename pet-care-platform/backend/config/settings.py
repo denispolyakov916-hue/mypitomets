@@ -28,7 +28,57 @@ SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'django-insecure-change-in-productio
 
 DEBUG = os.getenv('DEBUG', 'True').lower() == 'true'
 
-ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1,0.0.0.0,192.168.1.139,testserver').split(',')
+ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1,0.0.0.0,192.168.1.139').split(',')
+
+# URL клиентского приложения для редиректов
+CLIENT_URL = os.getenv('CLIENT_URL', 'http://localhost:5173')
+
+# URL API для формирования ссылок активации
+API_URL = os.getenv('API_URL', 'http://localhost:8000')
+
+# =============================================================================
+# НАСТРОЙКИ EMAIL
+# =============================================================================
+
+# Настройки SMTP для отправки email
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = os.getenv('SMTP_HOST', 'smtp.gmail.com')
+EMAIL_PORT = int(os.getenv('SMTP_PORT', '587'))
+
+# TLS и SSL взаимоисключающие - определяем автоматически по порту или из переменных окружения
+# Для Gmail: порт 587 использует TLS, порт 465 использует SSL
+smtp_port = int(os.getenv('SMTP_PORT', '587'))
+use_tls_env = os.getenv('EMAIL_USE_TLS', '').lower()
+use_ssl_env = os.getenv('EMAIL_USE_SSL', '').lower()
+
+if use_tls_env == 'true' and use_ssl_env == 'true':
+    # Если оба установлены в True, приоритет у TLS (для Gmail обычно используется TLS)
+    use_tls_env = 'true'
+    use_ssl_env = 'false'
+
+if smtp_port == 465:
+    # Порт 465 использует SSL
+    EMAIL_USE_TLS = False
+    EMAIL_USE_SSL = True
+elif use_tls_env == 'true' or (use_tls_env == '' and smtp_port == 587):
+    # Порт 587 и другие используют TLS по умолчанию
+    EMAIL_USE_TLS = True
+    EMAIL_USE_SSL = False
+elif use_ssl_env == 'true':
+    EMAIL_USE_TLS = False
+    EMAIL_USE_SSL = True
+else:
+    # По умолчанию для порта 587 используем TLS
+    EMAIL_USE_TLS = True
+    EMAIL_USE_SSL = False
+
+EMAIL_HOST_USER = os.getenv('SMTP_USER', '')
+EMAIL_HOST_PASSWORD = os.getenv('SMTP_PASSWORD', '')
+# DEFAULT_FROM_EMAIL использует EMAIL_HOST_USER, если он задан, иначе fallback
+DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', None) or EMAIL_HOST_USER or 'noreply@petcare-platform.com'
+
+# Для разработки можно использовать консольный backend (выводит email в консоль)
+# EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 
 # =============================================================================
 # ПРИЛОЖЕНИЯ
@@ -112,26 +162,8 @@ AUTH_USER_MODEL = 'users.User'
 # =============================================================================
 
 AUTH_PASSWORD_VALIDATORS = [
-    {
-        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
-        'OPTIONS': {
-            'min_length': 6,  # Упрощено для тестирования MVP
-        }
-    },
-]
-
-# =============================================================================
-# ХЭШИРОВАНИЕ ПАРОЛЕЙ - Argon2id
-# =============================================================================
-
-PASSWORD_HASHERS = [
-    'django.contrib.auth.hashers.Argon2PasswordHasher',
-    'django.contrib.auth.hashers.PBKDF2PasswordHasher',
-    'django.contrib.auth.hashers.PBKDF2SHA1PasswordHasher',
-    'django.contrib.auth.hashers.BCryptSHA256PasswordHasher',
+    {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator', 'OPTIONS': {'min_length': 6}},
 ]
 
 # =============================================================================
@@ -175,21 +207,12 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # =============================================================================
 
 REST_FRAMEWORK = {
-    # Аутентификация по умолчанию через кастомный JWT (работает с моделью User Django)
     'DEFAULT_AUTHENTICATION_CLASSES': (
-        'core.authentication.CustomJWTAuthentication',
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
-    
-    # Разрешения по умолчанию - разрешаем всё для публичных эндпоинтов
-    # Отдельные views переопределяют это при необходимости
     'DEFAULT_PERMISSION_CLASSES': (
         'rest_framework.permissions.AllowAny',
     ),
-    
-    # Обработка исключений
-    'EXCEPTION_HANDLER': 'rest_framework.views.exception_handler',
-    
-    # Формат ответа
     'DEFAULT_RENDERER_CLASSES': (
         'rest_framework.renderers.JSONRenderer',
     ),
@@ -200,30 +223,13 @@ REST_FRAMEWORK = {
 # =============================================================================
 
 SIMPLE_JWT = {
-    # Настройки времени жизни токенов
-    # Access токен истекает через 1 день (расширено для удобства тестирования MVP)
     'ACCESS_TOKEN_LIFETIME': timedelta(days=1),
-    
-    # Refresh токен истекает через 7 дней
     'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
-    
-    # Ротация refresh токенов для лучшей безопасности
     'ROTATE_REFRESH_TOKENS': True,
-    
-    # Блокировка старых токенов после ротации
     'BLACKLIST_AFTER_ROTATION': False,
-    
-    # Алгоритм подписи токенов
     'ALGORITHM': 'HS256',
-    
-    # Ключ для подписи (использует SECRET_KEY Django)
     'SIGNING_KEY': SECRET_KEY,
-    
-    # Идентификация типа токена
     'AUTH_HEADER_TYPES': ('Bearer',),
-    'AUTH_HEADER_NAME': 'HTTP_AUTHORIZATION',
-    
-    # Поле идентификации пользователя
     'USER_ID_FIELD': 'id',
     'USER_ID_CLAIM': 'user_id',
 }

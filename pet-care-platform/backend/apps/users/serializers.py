@@ -229,3 +229,27 @@ class UserProfileFullSerializer(serializers.Serializer):
     pets = serializers.ListField(read_only=True)
     orders = serializers.ListField(read_only=True)
     courses = serializers.ListField(read_only=True)
+
+
+class ActivationCodeSerializer(serializers.Serializer):
+    """
+    Сериализатор для активации аккаунта по коду.
+    
+    Поля:
+        activation_code (str): 6-значный код активации из email
+    """
+    
+    activation_code = serializers.CharField(
+        required=True,
+        min_length=6,
+        max_length=6,
+        help_text="6-значный код активации"
+    )
+    
+    def validate_activation_code(self, value):
+        """Валидация кода активации - должен содержать только цифры."""
+        if not value.isdigit():
+            raise serializers.ValidationError('Код активации должен содержать только цифры')
+        if len(value) != 6:
+            raise serializers.ValidationError('Код активации должен содержать 6 цифр')
+        return value
