@@ -70,9 +70,12 @@ class Payment(models.Model):
 
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
         related_name='payments',
-        verbose_name='Пользователь'
+        verbose_name='Пользователь',
+        help_text='Пользователь, совершивший платеж. Может быть NULL, если пользователь удалён.'
     )
 
     # Тип платежа и связанные объекты
@@ -166,10 +169,12 @@ class Payment(models.Model):
             models.Index(fields=['payment_type', 'status']),
             models.Index(fields=['external_payment_id']),
             models.Index(fields=['status', 'created_at']),
+            models.Index(fields=['-created_at']),  # Для запросов без фильтра по user
         ]
 
     def __str__(self):
-        return f"{self.get_payment_type_display()} {self.id} - {self.amount} {self.currency}"
+        user_info = f" ({self.user.email})" if self.user else " (пользователь удалён)"
+        return f"{self.get_payment_type_display()} {self.id} - {self.amount} {self.currency}{user_info}"
 
     def is_successful(self):
         """Проверка успешности платежа."""
@@ -203,7 +208,7 @@ class Payment(models.Model):
         """Сериализация для API."""
         return {
             'id': str(self.id),
-            'user_id': str(self.user_id),
+            'user_id': str(self.user_id) if self.user_id else None,
             'payment_type': self.payment_type,
             'object_id': self.object_id,
             'amount': float(self.amount),

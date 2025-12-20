@@ -9,6 +9,7 @@ from decimal import Decimal
 from typing import Optional, Dict, Any
 from django.conf import settings
 from django.utils import timezone
+from django.db.models import Sum
 
 from .models import Payment
 
@@ -231,6 +232,10 @@ class PaymentService:
         """Активация заказа товаров после оплаты."""
         from apps.shop.models import Order
 
+        if not payment.user:
+            logger.warning(f"Невозможно активировать заказ: пользователь удалён для платежа {payment.id}")
+            return
+
         try:
             order = Order.objects.get(id=payment.object_id, user=payment.user)
             order.status = 'processing'
@@ -243,6 +248,10 @@ class PaymentService:
     def _activate_course_access(payment: Payment):
         """Предоставление доступа к курсу после оплаты."""
         from apps.training.models import Course, UserCourse
+
+        if not payment.user:
+            logger.warning(f"Невозможно предоставить доступ к курсу: пользователь удалён для платежа {payment.id}")
+            return
 
         try:
             course = Course.objects.get(id=payment.object_id)
@@ -280,7 +289,7 @@ class PaymentService:
         total_payments = queryset.count()
         successful_payments = queryset.filter(status='completed').count()
         total_amount = queryset.filter(status='completed').aggregate(
-            total=models.Sum('amount')
+            total=Sum('amount')
         )['total'] or Decimal('0')
 
         return {

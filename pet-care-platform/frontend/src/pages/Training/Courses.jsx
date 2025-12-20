@@ -1,15 +1,15 @@
 /**
  * Компонент страницы курсов
  * 
- * Каталог обучающих курсов с расширенной фильтрацией:
- * - Сетка карточек курсов
- * - Бейджи Бесплатно/Платно
+ * Каталог обучающих курсов с:
+ * - Сеткой карточек курсов
+ * - Бейджами Бесплатно/Платно
  * - Функцией покупки
- * - Полная фильтрация согласно логике бекенда
+ * - Фильтром по типу животного
  */
 
-import { useState, useEffect, useCallback } from 'react'
-import { useNavigate, Link, useSearchParams } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import { useNavigate, Link } from 'react-router-dom'
 import { getCourses, purchaseCourse, getUserCourses } from '../../api/courses'
 import { useAuthStore } from '../../store/authStore'
 import { PageLoader, ButtonLoader } from '../../components/Loader'
@@ -21,43 +21,15 @@ const PET_TYPE_OPTIONS = [
   { value: '', label: 'Все курсы' },
   { value: 'dog', label: 'Для собак' },
   { value: 'cat', label: 'Для кошек' },
-  { value: 'all', label: 'Для всех' },
 ]
 
 /**
- * Варианты категорий курсов
+ * Варианты фильтра по цене
  */
-const CATEGORY_OPTIONS = [
-  { value: 'basics', label: 'Основы' },
-  { value: 'training', label: 'Дрессировка' },
-  { value: 'care', label: 'Уход' },
-  { value: 'health', label: 'Здоровье' },
-  { value: 'nutrition', label: 'Питание' },
-  { value: 'behavior', label: 'Поведение' },
-  { value: 'specialized', label: 'Специализированные' },
-  { value: 'entertainment', label: 'Развлечения' },
-]
-
-/**
- * Варианты уровней сложности
- */
-const LEVEL_OPTIONS = [
-  { value: 'beginner', label: 'Начинающий' },
-  { value: 'intermediate', label: 'Средний' },
-  { value: 'advanced', label: 'Продвинутый' },
-  { value: 'expert', label: 'Эксперт' },
-]
-
-/**
- * Варианты форматов обучения
- */
-const FORMAT_OPTIONS = [
-  { value: 'video', label: 'Видео' },
-  { value: 'text', label: 'Текст' },
-  { value: 'interactive', label: 'Интерактивный' },
-  { value: 'mixed', label: 'Смешанный' },
-  { value: 'webinar', label: 'Вебинар' },
-  { value: 'workshop', label: 'Мастер-класс' },
+const PRICE_FILTER_OPTIONS = [
+  { value: '', label: 'Все курсы' },
+  { value: 'free', label: 'Бесплатные' },
+  { value: 'paid', label: 'Платные' },
 ]
 
 /**
@@ -100,7 +72,7 @@ function CourseCard({ course, isOwned, onPurchase, isPurchasing }) {
       </Link>
       
       {/* Бейджи */}
-      <div className="flex gap-2 mb-3 flex-wrap">
+      <div className="flex gap-2 mb-3">
         {course.is_free ? (
           <span className="px-2 py-0.5 bg-green-100 text-green-700 text-xs font-medium rounded-full">
             Бесплатно
@@ -113,11 +85,6 @@ function CourseCard({ course, isOwned, onPurchase, isPurchasing }) {
         <span className="px-2 py-0.5 bg-gray-100 text-gray-600 text-xs rounded-full">
           {formatDuration(course.duration)}
         </span>
-        {course.level && (
-          <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs rounded-full">
-            {LEVEL_OPTIONS.find(l => l.value === course.level)?.label || course.level}
-          </span>
-        )}
       </div>
       
       {/* Название и описание - кликабельные */}
@@ -168,201 +135,10 @@ function CourseCard({ course, isOwned, onPurchase, isPurchasing }) {
 }
 
 /**
- * Компонент боковой панели фильтров
- */
-function FilterSidebar({ filters, onFilterChange, onReset, isAuthenticated }) {
-  const [priceRange, setPriceRange] = useState({
-    min: filters.min_price || '',
-    max: filters.max_price || ''
-  })
-  
-  const handlePriceApply = () => {
-    onFilterChange('min_price', priceRange.min)
-    onFilterChange('max_price', priceRange.max)
-  }
-  
-  const hasActiveFilters = filters.pet_type || filters.category || filters.subcategory || 
-                          filters.level || filters.format_type || filters.personal === 'true' || 
-                          filters.min_price || filters.max_price
-  
-  return (
-    <div className="bg-white rounded-xl shadow-sm p-5 sticky top-4">
-      <div className="flex justify-between items-center mb-4">
-        <h3 className="font-semibold text-gray-900">Фильтры</h3>
-        {hasActiveFilters && (
-          <button
-            onClick={onReset}
-            className="text-sm text-primary-600 hover:text-primary-700"
-          >
-            Сбросить
-          </button>
-        )}
-      </div>
-      
-      {/* Персональная подборка */}
-      {isAuthenticated && (
-        <div className="mb-5 pb-5 border-b border-gray-200">
-          <label className="flex items-center cursor-pointer group p-2 rounded-lg transition-colors">
-            <input
-              type="checkbox"
-              checked={filters.personal === 'true'}
-              onChange={(e) => onFilterChange('personal', e.target.checked ? 'true' : '')}
-              className="w-4 h-4 text-primary-600 focus:ring-primary-500 rounded"
-            />
-            <span className="ml-2 text-sm text-gray-700 group-hover:text-primary-600 flex items-center gap-2">
-              <span className="text-primary-600">⭐</span>
-              Персональная подборка
-            </span>
-          </label>
-          <p className="text-xs text-gray-500 mt-2 ml-6">
-            Курсы для ваших питомцев
-          </p>
-        </div>
-      )}
-      
-      {/* Тип животного */}
-      <div className="mb-5">
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Тип животного
-        </label>
-        <select
-          value={filters.pet_type || ''}
-          onChange={(e) => onFilterChange('pet_type', e.target.value)}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-primary-500 focus:border-primary-500"
-        >
-          {PET_TYPE_OPTIONS.map(opt => (
-            <option key={opt.value} value={opt.value}>{opt.label}</option>
-          ))}
-        </select>
-      </div>
-      
-      {/* Категория */}
-      <div className="mb-5">
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Категория
-        </label>
-        <select
-          value={filters.category || ''}
-          onChange={(e) => onFilterChange('category', e.target.value)}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-primary-500 focus:border-primary-500"
-        >
-          <option value="">Все категории</option>
-          {CATEGORY_OPTIONS.map(opt => (
-            <option key={opt.value} value={opt.value}>{opt.label}</option>
-          ))}
-        </select>
-      </div>
-      
-      {/* Подкатегория (текстовое поле, так как вариантов много) */}
-      <div className="mb-5">
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Подкатегория
-        </label>
-        <input
-          type="text"
-          value={filters.subcategory || ''}
-          onChange={(e) => onFilterChange('subcategory', e.target.value)}
-          placeholder="Введите подкатегорию"
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-primary-500 focus:border-primary-500"
-        />
-      </div>
-      
-      {/* Уровень */}
-      <div className="mb-5">
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Уровень сложности
-        </label>
-        <select
-          value={filters.level || ''}
-          onChange={(e) => onFilterChange('level', e.target.value)}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-primary-500 focus:border-primary-500"
-        >
-          <option value="">Все уровни</option>
-          {LEVEL_OPTIONS.map(opt => (
-            <option key={opt.value} value={opt.value}>{opt.label}</option>
-          ))}
-        </select>
-      </div>
-      
-      {/* Формат */}
-      <div className="mb-5">
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Формат обучения
-        </label>
-        <select
-          value={filters.format_type || ''}
-          onChange={(e) => onFilterChange('format_type', e.target.value)}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-primary-500 focus:border-primary-500"
-        >
-          <option value="">Все форматы</option>
-          {FORMAT_OPTIONS.map(opt => (
-            <option key={opt.value} value={opt.value}>{opt.label}</option>
-          ))}
-        </select>
-      </div>
-      
-      {/* Цена */}
-      <div className="mb-5">
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Цена, ₽
-        </label>
-        <div className="flex gap-2 items-center">
-          <input
-            type="number"
-            placeholder="от"
-            value={priceRange.min}
-            onChange={(e) => setPriceRange(prev => ({ ...prev, min: e.target.value }))}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-          />
-          <span className="text-gray-400">—</span>
-          <input
-            type="number"
-            placeholder="до"
-            value={priceRange.max}
-            onChange={(e) => setPriceRange(prev => ({ ...prev, max: e.target.value }))}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-          />
-        </div>
-        <button
-          onClick={handlePriceApply}
-          className="mt-2 w-full py-1.5 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
-        >
-          Применить
-        </button>
-        {/* Быстрые фильтры по цене */}
-        <div className="mt-2 flex gap-2">
-          <button
-            onClick={() => {
-              setPriceRange({ min: '0', max: '0' })
-              onFilterChange('min_price', '0')
-              onFilterChange('max_price', '0')
-            }}
-            className="flex-1 py-1 text-xs bg-green-50 hover:bg-green-100 text-green-700 rounded transition-colors"
-          >
-            Бесплатные
-          </button>
-          <button
-            onClick={() => {
-              setPriceRange({ min: '1', max: '' })
-              onFilterChange('min_price', '1')
-              onFilterChange('max_price', '')
-            }}
-            className="flex-1 py-1 text-xs bg-primary-50 hover:bg-primary-100 text-primary-700 rounded transition-colors"
-          >
-            Платные
-          </button>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-/**
- * Главный компонент страницы курсов
+ * Компонент страницы курсов
  */
 function Courses() {
   const navigate = useNavigate()
-  const [searchParams, setSearchParams] = useSearchParams()
   const { isAuthenticated } = useAuthStore()
   
   // Состояние
@@ -370,91 +146,68 @@ function Courses() {
   const [ownedCourseIds, setOwnedCourseIds] = useState(new Set())
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [petTypeFilter, setPetTypeFilter] = useState('')
+  const [priceFilter, setPriceFilter] = useState('')
   const [purchasingId, setPurchasingId] = useState(null)
   
-  // Фильтры из URL
-  const filters = {
-    pet_type: searchParams.get('pet_type') || '',
-    category: searchParams.get('category') || '',
-    subcategory: searchParams.get('subcategory') || '',
-    level: searchParams.get('level') || '',
-    format_type: searchParams.get('format_type') || '',
-    personal: searchParams.get('personal') || '',
-    min_price: searchParams.get('min_price') || '',
-    max_price: searchParams.get('max_price') || '',
-  }
+  /**
+   * Загрузка курсов при монтировании и изменении фильтров
+   */
+  useEffect(() => {
+    fetchCourses()
+  }, [petTypeFilter, priceFilter])
   
   /**
-   * Обновление фильтра
+   * Загрузка курсов пользователя если авторизован
    */
-  const handleFilterChange = useCallback((name, value) => {
-    const newParams = new URLSearchParams(searchParams)
-    
-    if (value) {
-      newParams.set(name, value)
-    } else {
-      newParams.delete(name)
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchUserCourses()
     }
-    
-    // При включении персональной подборки сбрасываем pet_type
-    if (name === 'personal' && value === 'true') {
-      newParams.delete('pet_type')
-    }
-    
-    // При выборе pet_type сбрасываем персональную подборку
-    if (name === 'pet_type') {
-      newParams.delete('personal')
-    }
-    
-    setSearchParams(newParams)
-  }, [searchParams, setSearchParams])
-  
-  /**
-   * Сброс всех фильтров
-   */
-  const handleReset = useCallback(() => {
-    setSearchParams(new URLSearchParams())
-  }, [setSearchParams])
+  }, [isAuthenticated])
   
   /**
    * Загрузка курсов из API
    */
-  useEffect(() => {
-    const fetchCourses = async () => {
-      setIsLoading(true)
-      setError(null)
-      
-      try {
-        const response = await getCourses(filters)
-        setCourses(response.courses || [])
-      } catch (err) {
-        setError(err.message || 'Не удалось загрузить курсы')
-      } finally {
-        setIsLoading(false)
-      }
-    }
+  const fetchCourses = async () => {
+    setIsLoading(true)
+    setError(null)
     
-    fetchCourses()
-  }, [searchParams])
+    try {
+      const filters = {}
+      if (petTypeFilter) {
+        filters.pet_type = petTypeFilter
+      }
+      const response = await getCourses(filters)
+      let coursesList = response.courses || []
+      
+      // Фильтрация по цене на клиенте
+      if (priceFilter === 'free') {
+        coursesList = coursesList.filter(c => c.price === 0)
+      } else if (priceFilter === 'paid') {
+        coursesList = coursesList.filter(c => c.price > 0)
+      }
+      
+      setCourses(coursesList)
+    } catch (err) {
+      setError(err.message || 'Не удалось загрузить курсы')
+    } finally {
+      setIsLoading(false)
+    }
+  }
   
   /**
    * Загрузка приобретённых курсов пользователя
    */
-  useEffect(() => {
-    if (isAuthenticated) {
-      const fetchUserCourses = async () => {
-        try {
-          const response = await getUserCourses()
-          const ids = new Set((response.courses || []).map(c => c.course.id))
-          setOwnedCourseIds(ids)
-        } catch (err) {
-          console.error('Не удалось загрузить курсы пользователя:', err)
-        }
-      }
-      
-      fetchUserCourses()
+  const fetchUserCourses = async () => {
+    try {
+      const response = await getUserCourses()
+      const ids = new Set((response.courses || []).map(c => c.course.id))
+      setOwnedCourseIds(ids)
+    } catch (err) {
+      console.error('Не удалось загрузить курсы пользователя:', err)
     }
-  }, [isAuthenticated])
+  }
   
   /**
    * Обработчик покупки курса
@@ -487,134 +240,100 @@ function Courses() {
   return (
     <div className="page-container animate-fadeIn">
       {/* Заголовок */}
-      <div className="mb-6">
-        <h1 className="page-title mb-4">Обучающие курсы</h1>
+      <div className="mb-8">
+        <h1 className="page-title">Обучающие курсы</h1>
         <p className="text-gray-600">
           Курсы по уходу, дрессировке и воспитанию от профессионалов
         </p>
       </div>
       
-      <div className="flex gap-6">
-        {/* Боковая панель с фильтрами */}
-        <aside className="w-64 flex-shrink-0 hidden lg:block">
-          <FilterSidebar
-            filters={filters}
-            onFilterChange={handleFilterChange}
-            onReset={handleReset}
-            isAuthenticated={isAuthenticated}
-          />
-        </aside>
-        
-        {/* Основной контент */}
-        <main className="flex-1 min-w-0">
-          {/* Мобильные фильтры */}
-          <div className="lg:hidden mb-4">
-            <div className="flex gap-2 overflow-x-auto pb-2">
-              {isAuthenticated && (
-                <label className="flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-lg bg-white whitespace-nowrap">
-                  <input
-                    type="checkbox"
-                    checked={filters.personal === 'true'}
-                    onChange={(e) => handleFilterChange('personal', e.target.checked ? 'true' : '')}
-                    className="w-4 h-4 text-primary-600"
-                  />
-                  <span className="text-sm">⭐ Персональные</span>
-                </label>
-              )}
-              <select
-                value={filters.pet_type || ''}
-                onChange={(e) => handleFilterChange('pet_type', e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white"
-              >
-                {PET_TYPE_OPTIONS.map(opt => (
-                  <option key={opt.value} value={opt.value}>{opt.label}</option>
-                ))}
-              </select>
-              <select
-                value={filters.category || ''}
-                onChange={(e) => handleFilterChange('category', e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white"
-              >
-                <option value="">Все категории</option>
-                {CATEGORY_OPTIONS.map(opt => (
-                  <option key={opt.value} value={opt.value}>{opt.label}</option>
-                ))}
-              </select>
-              <select
-                value={filters.level || ''}
-                onChange={(e) => handleFilterChange('level', e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white"
-              >
-                <option value="">Все уровни</option>
-                {LEVEL_OPTIONS.map(opt => (
-                  <option key={opt.value} value={opt.value}>{opt.label}</option>
-                ))}
-              </select>
-            </div>
+      {/* Фильтры */}
+      <div className="card mb-8">
+        <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-end">
+          <div className="flex-1 max-w-xs">
+            <label htmlFor="pet_type" className="label">
+              Фильтр по животному
+            </label>
+            <select
+              id="pet_type"
+              value={petTypeFilter}
+              onChange={(e) => setPetTypeFilter(e.target.value)}
+              className="input"
+            >
+              {PET_TYPE_OPTIONS.map(option => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
           </div>
           
-          {/* Информация о персональной подборке */}
-          {filters.personal === 'true' && (
-            <div className="mb-4 p-3 bg-primary-50 border border-primary-200 rounded-lg">
-              <p className="text-sm text-primary-800">
-                <span className="font-medium">⭐ Персональная подборка</span>
-                <span className="text-primary-600 ml-2">Курсы для ваших питомцев</span>
-              </p>
-            </div>
-          )}
+          <div className="flex-1 max-w-xs">
+            <label htmlFor="price_filter" className="label">
+              Фильтр по цене
+            </label>
+            <select
+              id="price_filter"
+              value={priceFilter}
+              onChange={(e) => setPriceFilter(e.target.value)}
+              className="input"
+            >
+              {PRICE_FILTER_OPTIONS.map(option => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </div>
           
-          {/* Состояние загрузки */}
-          {isLoading && <PageLoader />}
-          
-          {/* Состояние ошибки */}
-          {error && !isLoading && (
-            <div className="card text-center py-12">
-              <p className="text-red-500 mb-4">{error}</p>
-              <button onClick={() => window.location.reload()} className="btn-primary">
-                Попробовать снова
-              </button>
-            </div>
+          {isAuthenticated && (
+            <p className="text-sm text-gray-500">
+              Приобретённых курсов: {ownedCourseIds.size}
+            </p>
           )}
-          
-          {/* Пустое состояние */}
-          {!isLoading && !error && courses.length === 0 && (
-            <div className="card text-center py-12">
-              <div className="text-6xl mb-4">📚</div>
-              <h2 className="text-xl font-semibold text-gray-900 mb-2">
-                Курсы не найдены
-              </h2>
-              <p className="text-gray-600 mb-4">
-                Попробуйте изменить параметры фильтра
-              </p>
-              <button onClick={handleReset} className="btn-primary">
-                Сбросить фильтры
-              </button>
-            </div>
-          )}
-          
-          {/* Результаты */}
-          {!isLoading && !error && courses.length > 0 && (
-            <>
-              <p className="text-gray-600 mb-4">
-                Найдено курсов: {courses.length}
-              </p>
-              
-              {/* Сетка курсов */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
-                {courses.map(course => (
-                  <CourseCard
-                    key={course.id}
-                    course={course}
-                    isOwned={ownedCourseIds.has(course.id)}
-                    onPurchase={handlePurchase}
-                    isPurchasing={purchasingId === course.id}
-                  />
-                ))}
-              </div>
-            </>
-          )}
-        </main>
+        </div>
       </div>
+      
+      {/* Состояние загрузки */}
+      {isLoading && <PageLoader />}
+      
+      {/* Состояние ошибки */}
+      {error && !isLoading && (
+        <div className="card text-center py-12">
+          <p className="text-red-500 mb-4">{error}</p>
+          <button onClick={fetchCourses} className="btn-primary">
+            Попробовать снова
+          </button>
+        </div>
+      )}
+      
+      {/* Пустое состояние */}
+      {!isLoading && !error && courses.length === 0 && (
+        <div className="card text-center py-12">
+          <div className="text-6xl mb-4">📚</div>
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">
+            Курсы не найдены
+          </h2>
+          <p className="text-gray-600">
+            Попробуйте изменить фильтр
+          </p>
+        </div>
+      )}
+      
+      {/* Сетка курсов */}
+      {!isLoading && !error && courses.length > 0 && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {courses.map(course => (
+            <CourseCard
+              key={course.id}
+              course={course}
+              isOwned={ownedCourseIds.has(course.id)}
+              onPurchase={handlePurchase}
+              isPurchasing={purchasingId === course.id}
+            />
+          ))}
+        </div>
+      )}
     </div>
   )
 }

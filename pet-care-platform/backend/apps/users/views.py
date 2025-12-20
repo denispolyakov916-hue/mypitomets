@@ -1,8 +1,9 @@
 """
 Views для аутентификации пользователей
 
-API для регистрации, входа и управления профилем.
-Использует Django ORM и JWT токены.
+API для регистрации, входа, выхода, обновления токенов и активации.
+Использует сервисы для бизнес-логики и cookie для refresh токенов.
+Аналогично user-controller.js из проекта-образца.
 """
 
 import logging
@@ -10,13 +11,18 @@ from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated
-from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework.decorators import api_view, permission_classes
+from django.http import HttpResponseRedirect
+from django.conf import settings
 
 from .models import User
 from .serializers import (
     UserRegistrationSerializer, 
     UserLoginSerializer,
+    ActivationCodeSerializer,
 )
+from .services import UserService
+from core.exceptions import ApiError
 
 logger = logging.getLogger('apps.users')
 
@@ -25,51 +31,61 @@ class RegisterView(APIView):
     """
     Регистрация нового пользователя.
     
-    POST /api/auth/register/
+    POST /api/auth/registration/
+    Тело: {"email": "...", "password": "...", "password_confirm": "..."}
+    
+    Возвращает access токен в ответе и устанавливает refresh токен в cookie.
     """
     
     permission_classes = [AllowAny]
     
     def post(self, request):
-        serializer = UserRegistrationSerializer(data=request.data)
-        
-        if not serializer.is_valid():
-            return Response(
-                {'errors': serializer.errors},
-                status=status.HTTP_400_BAD_REQUEST
+        try:
+            # Логируем входящие данные для отладки
+            logger.debug(f"Попытка регистрации, данные: {request.data}")
+            
+            serializer = UserRegistrationSerializer(data=request.data)
+            
+            if not serializer.is_valid():
+                # Логируем ошибки валидации
+                logger.warning(f"Ошибка валидации при регистрации: {serializer.errors}")
+                logger.warning(f"Полученные данные: {request.data}")
+                raise ApiError.bad_request('Ошибка при валидации', serializer.errors)
+            
+            email = serializer.validated_data['email']
+            password = serializer.validated_data['password']
+            
+            # Регистрация через сервис
+            user_data = UserService.registration(email, password)
+            
+            # Установка refresh токена в cookie (httpOnly, 30 дней)
+            response = Response(user_data, status=status.HTTP_201_CREATED)
+            response.set_cookie(
+                'refreshToken',
+                user_data['refreshToken'],
+                max_age=30 * 24 * 60 * 60,  # 30 дней
+                httponly=True,
+                samesite='Lax',
+                secure=not settings.DEBUG  # HTTPS только в production
             )
-        
-        email = serializer.validated_data['email']
-        password = serializer.validated_data['password']
-        
-        # Проверка существования email
-        if User.objects.filter(email=email).exists():
+            
+            logger.info(f"Пользователь зарегистрирован: {email}")
+            
+            return response
+            
+        except ApiError as e:
+            # Логируем ошибки API для отладки
+            logger.warning(f"ApiError при регистрации: {e.detail}, errors: {getattr(e, 'errors', [])}")
             return Response(
-                {'error': 'Пользователь с таким email уже существует'},
-                status=status.HTTP_409_CONFLICT
+                {'error': e.detail, 'errors': getattr(e, 'errors', [])},
+                status=e.status_code
             )
-        
-        # Создание пользователя
-        user = User.objects.create_user(email=email, password=password)
-        
-        # Генерация JWT токенов
-        tokens = self._generate_tokens(user)
-        
-        logger.info(f"Пользователь зарегистрирован: {email}")
-        
-        return Response({
-            'message': 'Регистрация успешна',
-            'user': user.to_dict(),
-            'tokens': tokens
-        }, status=status.HTTP_201_CREATED)
-    
-    def _generate_tokens(self, user) -> dict:
-        """Генерация JWT токенов."""
-        refresh = RefreshToken.for_user(user)
-        return {
-            'access': str(refresh.access_token),
-            'refresh': str(refresh)
-        }
+        except Exception as e:
+            logger.error(f"Ошибка при регистрации: {str(e)}")
+            return Response(
+                {'error': 'Внутренняя ошибка сервера'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
 
 class LoginView(APIView):
@@ -77,52 +93,248 @@ class LoginView(APIView):
     Аутентификация пользователя.
     
     POST /api/auth/login/
+    Тело: {"email": "...", "password": "..."}
+    
+    Возвращает access токен в ответе и устанавливает refresh токен в cookie.
     """
     
     permission_classes = [AllowAny]
     
     def post(self, request):
-        serializer = UserLoginSerializer(data=request.data)
-        
-        if not serializer.is_valid():
-            return Response(
-                {'errors': serializer.errors},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
-        email = serializer.validated_data['email']
-        password = serializer.validated_data['password']
-        
-        # Поиск пользователя
         try:
-            user = User.objects.get(email=email)
-        except User.DoesNotExist:
-            return Response(
-                {'error': 'Неверный email или пароль'},
-                status=status.HTTP_401_UNAUTHORIZED
+            # Логируем входящие данные для отладки
+            logger.debug(f"Попытка входа, данные: {request.data}")
+            
+            serializer = UserLoginSerializer(data=request.data)
+            
+            if not serializer.is_valid():
+                # Логируем ошибки валидации
+                logger.warning(f"Ошибка валидации при входе: {serializer.errors}")
+                logger.warning(f"Полученные данные: {request.data}")
+                logger.warning(f"Content-Type: {request.content_type}")
+                raise ApiError.bad_request('Ошибка при валидации', serializer.errors)
+            
+            email = serializer.validated_data['email']
+            password = serializer.validated_data['password']
+            
+            # Вход через сервис
+            user_data = UserService.login(email, password)
+            
+            # Установка refresh токена в cookie (httpOnly, 30 дней)
+            response = Response(user_data, status=status.HTTP_200_OK)
+            response.set_cookie(
+                'refreshToken',
+                user_data['refreshToken'],
+                max_age=30 * 24 * 60 * 60,  # 30 дней
+                httponly=True,
+                samesite='Lax',
+                secure=not settings.DEBUG  # HTTPS только в production
             )
-        
-        # Проверка пароля
-        if not user.check_password(password):
+            
+            logger.info(f"Пользователь вошёл: {email}")
+            
+            return response
+            
+        except ApiError as e:
+            # Логируем ошибки API для отладки
+            logger.warning(f"ApiError при входе: {e.detail}, errors: {getattr(e, 'errors', [])}")
             return Response(
-                {'error': 'Неверный email или пароль'},
-                status=status.HTTP_401_UNAUTHORIZED
+                {'error': e.detail, 'errors': getattr(e, 'errors', [])},
+                status=e.status_code
             )
-        
-        # Генерация токенов
-        refresh = RefreshToken.for_user(user)
-        tokens = {
-            'access': str(refresh.access_token),
-            'refresh': str(refresh)
-        }
-        
-        logger.info(f"Пользователь вошёл: {email}")
-        
-        return Response({
-            'message': 'Вход выполнен успешно',
-            'user': user.to_dict(),
-            'tokens': tokens
-        }, status=status.HTTP_200_OK)
+        except Exception as e:
+            logger.error(f"Ошибка при входе: {str(e)}")
+            return Response(
+                {'error': 'Внутренняя ошибка сервера'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
+class LogoutView(APIView):
+    """
+    Выход пользователя.
+    
+    POST /api/auth/logout/
+    
+    Удаляет refresh токен из БД и очищает cookie.
+    """
+    
+    permission_classes = [AllowAny]  # Разрешаем всем, т.к. токен в cookie
+    
+    def post(self, request):
+        try:
+            # Получение refresh токена из cookie
+            refresh_token = request.COOKIES.get('refreshToken')
+            
+            # Выход через сервис
+            result = UserService.logout(refresh_token)
+            
+            # Очистка cookie
+            response = Response(result, status=status.HTTP_200_OK)
+            response.delete_cookie('refreshToken')
+            
+            logger.info("Пользователь вышел")
+            
+            return response
+            
+        except ApiError as e:
+            return Response(
+                {'error': e.detail},
+                status=e.status_code
+            )
+        except Exception as e:
+            logger.error(f"Ошибка при выходе: {str(e)}")
+            return Response(
+                {'error': 'Внутренняя ошибка сервера'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
+class RefreshView(APIView):
+    """
+    Обновление access токена по refresh токену.
+    
+    GET /api/auth/refresh/
+    
+    Получает refresh токен из cookie, валидирует его и возвращает новые токены.
+    """
+    
+    permission_classes = [AllowAny]  # Разрешаем всем, т.к. токен в cookie
+    
+    def get(self, request):
+        try:
+            # Получение refresh токена из cookie
+            refresh_token = request.COOKIES.get('refreshToken')
+            
+            # Обновление токенов через сервис
+            user_data = UserService.refresh(refresh_token)
+            
+            # Установка нового refresh токена в cookie
+            response = Response(user_data, status=status.HTTP_200_OK)
+            response.set_cookie(
+                'refreshToken',
+                user_data['refreshToken'],
+                max_age=30 * 24 * 60 * 60,  # 30 дней
+                httponly=True,
+                samesite='Lax',
+                secure=not settings.DEBUG
+            )
+            
+            return response
+            
+        except ApiError as e:
+            return Response(
+                {'error': e.detail},
+                status=e.status_code
+            )
+        except Exception as e:
+            logger.error(f"Ошибка при обновлении токена: {str(e)}")
+            return Response(
+                {'error': 'Внутренняя ошибка сервера'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
+class ActivateView(APIView):
+    """
+    Активация пользователя по ссылке из email.
+    
+    GET /api/auth/activate/<activation_link>/
+    
+    Перенаправляет на клиент после активации.
+    """
+    
+    permission_classes = [AllowAny]
+    
+    def get(self, request, activation_link):
+        try:
+            # Активация через сервис
+            UserService.activate(activation_link=activation_link)
+            
+            # Перенаправление на клиент
+            client_url = getattr(settings, 'CLIENT_URL', 'http://localhost:5173')
+            return HttpResponseRedirect(client_url)
+            
+        except ApiError as e:
+            logger.error(f"Ошибка активации: {e.detail}")
+            # Перенаправление на клиент с ошибкой
+            client_url = getattr(settings, 'CLIENT_URL', 'http://localhost:5173')
+            return HttpResponseRedirect(f"{client_url}?activation_error=1")
+        except Exception as e:
+            logger.error(f"Ошибка при активации: {str(e)}")
+            client_url = getattr(settings, 'CLIENT_URL', 'http://localhost:5173')
+            return HttpResponseRedirect(f"{client_url}?activation_error=1")
+
+
+class ActivateByCodeView(APIView):
+    """
+    Активация пользователя по коду из email.
+    
+    POST /api/auth/activate-by-code/
+    Тело: {"activation_code": "123456"}
+    
+    Возвращает результат активации.
+    """
+    
+    permission_classes = [AllowAny]
+    
+    def post(self, request):
+        try:
+            serializer = ActivationCodeSerializer(data=request.data)
+            
+            if not serializer.is_valid():
+                return Response(
+                    {'error': 'Ошибка валидации', 'errors': serializer.errors},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            activation_code = serializer.validated_data['activation_code']
+            
+            # Активация через сервис
+            UserService.activate(activation_code=activation_code)
+            
+            logger.info(f"Пользователь активирован по коду: {activation_code}")
+            
+            return Response(
+                {'message': 'Аккаунт успешно активирован'},
+                status=status.HTTP_200_OK
+            )
+            
+        except ApiError as e:
+            logger.error(f"Ошибка активации по коду: {e.detail}")
+            return Response(
+                {'error': e.detail},
+                status=e.status_code
+            )
+        except Exception as e:
+            logger.error(f"Ошибка при активации по коду: {str(e)}")
+            return Response(
+                {'error': 'Внутренняя ошибка сервера'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
+class GetUsersView(APIView):
+    """
+    Получение списка всех пользователей (для тестирования).
+    
+    GET /api/auth/users/
+    Требует аутентификации.
+    """
+    
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        try:
+            users = UserService.get_all_users()
+            users_data = [user.to_dict() for user in users]
+            return Response(users_data, status=status.HTTP_200_OK)
+        except Exception as e:
+            logger.error(f"Ошибка при получении пользователей: {str(e)}")
+            return Response(
+                {'error': 'Внутренняя ошибка сервера'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
 
 class ProfileView(APIView):
@@ -144,7 +356,7 @@ class ProfileView(APIView):
         courses = [uc.to_dict() for uc in user.user_courses.all()]
         
         return Response({
-            'user': user.to_dict(),
+            'user': user.to_dict_full(),
             'pets': pets,
             'orders': orders,
             'courses': courses
@@ -175,7 +387,7 @@ class ProfileView(APIView):
         
         return Response({
             'message': 'Профиль обновлён',
-            'user': user.to_dict()
+            'user': user.to_dict_full()
         }, status=status.HTTP_200_OK)
 
 

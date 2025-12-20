@@ -14,7 +14,6 @@ User = get_user_model()
 
 # Данные для суперпользователя
 # Используем email в качестве логина (модель использует email вместо username)
-# Пробуем использовать "admin" как email, если не получится - используем "admin@admin.com"
 email = 'admin'
 password = 'admin123'
 
@@ -35,8 +34,7 @@ else:
     )
     print(f'[OK] Суперпользователь "{email}" успешно создан!')
 
-print(f'\nЛогин (email): {email}')
+print(f'\nЛогин: {email}')
 print(f'Пароль: {password}')
 print(f'\nАдминка доступна по адресу: http://localhost:8000/admin/')
-print(f'\n[ВАЖНО] Для входа используйте email "{email}" в качестве логина!')
 
