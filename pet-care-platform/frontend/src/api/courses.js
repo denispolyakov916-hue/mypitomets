@@ -15,19 +15,31 @@ import api from './client'
 /**
  * Получение каталога курсов
  * 
- * Возвращает все доступные курсы.
+ * Возвращает все доступные курсы с опциональной фильтрацией.
  * Публичный эндпоинт - аутентификация не требуется.
  * 
  * @param {Object} [filters] - Опциональные фильтры
- * @param {string} [filters.pet_type] - Фильтр по типу животного
+ * @param {string} [filters.pet_type] - Фильтр по типу животного ('dog', 'cat', 'all')
+ * @param {string} [filters.category] - Фильтр по категории
+ * @param {string} [filters.subcategory] - Фильтр по подкатегории
+ * @param {string} [filters.level] - Фильтр по уровню сложности
+ * @param {string} [filters.format_type] - Фильтр по формату обучения
+ * @param {string} [filters.personal] - Персональная подборка ('true')
+ * @param {string} [filters.min_price] - Минимальная цена
+ * @param {string} [filters.max_price] - Максимальная цена
  * @returns {Promise<Object>} Массив курсов и количество
  */
 export const getCourses = async (filters = {}) => {
   const params = new URLSearchParams()
   
-  if (filters.pet_type) {
-    params.append('pet_type', filters.pet_type)
-  }
+  // Добавляем только непустые фильтры
+  const filterKeys = ['pet_type', 'category', 'subcategory', 'level', 'format_type', 'personal', 'min_price', 'max_price']
+  
+  filterKeys.forEach(key => {
+    if (filters[key]) {
+      params.append(key, filters[key])
+    }
+  })
   
   const queryString = params.toString()
   const url = queryString ? `/courses/?${queryString}` : '/courses/'
