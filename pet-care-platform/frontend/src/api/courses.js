@@ -77,13 +77,20 @@ export const getCourseCheckout = async (courseId) => {
  * 
  * @param {number} courseId - Курс для покупки
  * @param {boolean} disclaimerAccepted - Согласие с дисклеймером
+ * @param {string} [petId] - ID питомца для привязки курса (опционально)
  * @returns {Promise<Object>} Сообщение об успехе и данные курса
- * @throws {Object} Ошибка если курс уже куплен
+ * @throws {Object} Ошибка если курс уже куплен или несоответствие типа курса/питомца
  */
-export const purchaseCourse = async (courseId, disclaimerAccepted = false) => {
-  return await api.post(`/courses/${courseId}/purchase/`, {
-    disclaimer_accepted: disclaimerAccepted
-  })
+export const purchaseCourse = async (courseId, disclaimerAccepted = false, petId = null) => {
+  const body = {
+    disclaimer_accepted: Boolean(disclaimerAccepted)  // Гарантируем булево значение
+  }
+  
+  if (petId) {
+    body.pet_id = petId
+  }
+  
+  return await api.post(`/courses/${courseId}/purchase/`, body)
 }
 
 /**
@@ -92,8 +99,10 @@ export const purchaseCourse = async (courseId, disclaimerAccepted = false) => {
  * Возвращает все курсы, к которым пользователь имеет доступ.
  * Требует аутентификации.
  * 
+ * @param {string} [petId] - Опциональный фильтр по ID питомца
  * @returns {Promise<Object>} Массив курсов с информацией о прогрессе
  */
-export const getUserCourses = async () => {
-  return await api.get('/courses/my/')
+export const getUserCourses = async (petId = null) => {
+  const url = petId ? `/courses/my/?pet_id=${petId}` : '/courses/my/'
+  return await api.get(url)
 }

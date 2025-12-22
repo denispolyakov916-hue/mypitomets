@@ -11,6 +11,7 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { getProfile } from '../../api/auth'
+import { getUserCourses } from '../../api/courses'
 import { useAuthStore } from '../../store/authStore'
 import PetCard from '../../components/PetCard'
 import { PageLoader } from '../../components/Loader'
@@ -55,6 +56,9 @@ function Profile() {
   
   // Состояние
   const [profile, setProfile] = useState(null)
+  const [courses, setCourses] = useState([])
+  const [coursesLoading, setCoursesLoading] = useState(false)
+  const [selectedPetFilter, setSelectedPetFilter] = useState('')
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState(null)
   const [activeTab, setActiveTab] = useState('pets')
@@ -67,6 +71,15 @@ function Profile() {
   }, [])
   
   /**
+   * Загрузка курсов при переключении на вкладку курсов или изменении фильтра
+   */
+  useEffect(() => {
+    if (activeTab === 'courses' && profile) {
+      fetchCourses()
+    }
+  }, [activeTab, selectedPetFilter, profile])
+  
+  /**
    * Загрузка профиля из API
    */
   const fetchProfile = async () => {
@@ -76,10 +89,31 @@ function Profile() {
     try {
       const data = await getProfile()
       setProfile(data)
+      // Инициализируем курсы из профиля (для обратной совместимости)
+      if (data.courses) {
+        setCourses(data.courses)
+      }
     } catch (err) {
       setError(err.message || 'Не удалось загрузить профиль')
     } finally {
       setIsLoading(false)
+    }
+  }
+  
+  /**
+   * Загрузка курсов пользователя с фильтрацией по питомцу
+   */
+  const fetchCourses = async () => {
+    setCoursesLoading(true)
+    try {
+      const petId = selectedPetFilter || null
+      const response = await getUserCourses(petId)
+      setCourses(response.courses || [])
+    } catch (err) {
+      console.error('Не удалось загрузить курсы:', err)
+      setCourses([])
+    } finally {
+      setCoursesLoading(false)
     }
   }
   
@@ -102,7 +136,7 @@ function Profile() {
     )
   }
   
-  const { user, pets, orders, courses } = profile
+  const { user, pets, orders } = profile
   
   return (
     <div className="page-container animate-fadeIn">
@@ -162,7 +196,10 @@ function Profile() {
             { id: 'pets', label: 'Питомцы', count: pets.length },
             { id: 'orders', label: 'Заказы', count: orders.length },
             { id: 'courses', label: 'Курсы', count: courses.length },
-          ].map(tab => (
+          ].map(tab => {
+            // Для вкладки курсов показываем актуальное количество
+            const count = tab.id === 'courses' ? courses.length : tab.count
+            return (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
@@ -173,20 +210,21 @@ function Profile() {
               }`}
             >
               {tab.label}
-              {tab.count > 0 && (
+              {count > 0 && (
                 <span className={`ml-2 px-2 py-0.5 rounded-full text-xs ${
                   activeTab === tab.id
                     ? 'bg-primary-100 text-primary-600'
                     : 'bg-gray-100 text-gray-600'
                 }`}>
-                  {tab.count}
+                  {count}
                 </span>
               )}
               {activeTab === tab.id && (
                 <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-600" />
               )}
             </button>
-          ))}
+            )
+          })}
         </nav>
       </div>
       
@@ -285,15 +323,50 @@ function Profile() {
         {/* Вкладка курсов */}
         {activeTab === 'courses' && (
           <div>
-            {courses.length === 0 ? (
+            {/* Фильтр по питомцу */}
+            {pets.length > 0 && (
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Фильтр по питомцу
+                </label>
+                <select
+                  value={selectedPetFilter}
+                  onChange={(e) => setSelectedPetFilter(e.target.value)}
+                  className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-primary-500 focus:border-primary-500"
+                >
+                  <option value="">Все курсы</option>
+                  {pets.map(pet => (
+                    <option key={pet.id} value={pet.id}>
+                      {pet.name} ({pet.species === 'dog' ? 'Собака' : pet.species === 'cat' ? 'Кошка' : pet.species})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+            
+            {coursesLoading ? (
+              <div className="card text-center py-12">
+                <PageLoader />
+              </div>
+            ) : courses.length === 0 ? (
               <div className="card text-center py-12">
                 <div className="text-5xl mb-4">📚</div>
                 <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                  У вас пока нет курсов
+                  {selectedPetFilter ? 'Нет курсов для выбранного питомца' : 'У вас пока нет курсов'}
                 </h3>
                 <p className="text-gray-600 mb-4">
-                  Изучите наш каталог обучающих материалов
+                  {selectedPetFilter 
+                    ? 'Попробуйте выбрать другого питомца или посмотрите все курсы'
+                    : 'Изучите наш каталог обучающих материалов'}
                 </p>
+                {selectedPetFilter ? (
+                  <button 
+                    onClick={() => setSelectedPetFilter('')}
+                    className="btn-secondary mr-2"
+                  >
+                    Показать все курсы
+                  </button>
+                ) : null}
                 <Link to="/courses" className="btn-primary">
                   Смотреть курсы
                 </Link>
@@ -313,6 +386,15 @@ function Profile() {
                         <p className="text-sm text-gray-500 line-clamp-2">
                           {item.course.description}
                         </p>
+                        {/* Информация о питомце, если курс привязан к питомцу */}
+                        {item.pet && (
+                          <div className="mt-2 mb-2">
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-primary-100 text-primary-700 text-xs font-medium rounded-full">
+                              <span>🐾</span>
+                              Для: {item.pet.name}
+                            </span>
+                          </div>
+                        )}
                         <div className="flex items-center gap-4 mt-2">
                           <span className="text-xs text-gray-500">
                             Приобретён: {formatDate(item.purchased_at)}

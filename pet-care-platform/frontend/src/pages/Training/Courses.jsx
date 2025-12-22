@@ -12,7 +12,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate, Link, useSearchParams } from 'react-router-dom'
-import { getCourses, purchaseCourse, getUserCourses } from '../../api/courses'
+import { getCourses, getUserCourses } from '../../api/courses'
 import { useAuthStore } from '../../store/authStore'
 import { usePets } from '../../hooks/usePets'
 import { PageLoader, ButtonLoader } from '../../components/Loader'
@@ -483,6 +483,7 @@ function Courses() {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const { isAuthenticated } = useAuthStore()
+  const { addCourse } = useCartStore()
   const { pets } = usePets()
   
   // Состояние
@@ -618,19 +619,9 @@ function Courses() {
       return
     }
     
-    setPurchasingId(course.id)
-    
-    try {
-      await purchaseCourse(course.id)
-      setOwnedCourseIds(prev => new Set([...prev, course.id]))
-      
-      const action = course.is_free ? 'добавлен' : 'приобретён'
-      alert(`Курс "${course.title}" успешно ${action}!`)
-    } catch (err) {
-      alert(err.message || 'Не удалось приобрести курс')
-    } finally {
-      setPurchasingId(null)
-    }
+    // Все курсы (платные и бесплатные) добавляются в корзину через страницу оформления
+    // Для платных курсов там можно согласиться с условиями
+    navigate(`/courses/${course.id}/checkout`)
   }
   
   return (

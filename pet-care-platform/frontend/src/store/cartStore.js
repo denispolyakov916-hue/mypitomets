@@ -16,6 +16,7 @@
 
 import { create } from 'zustand'
 import * as shopApi from '../api/shop'
+import * as coursesApi from '../api/courses'
 
 /**
  * Хранилище корзины
@@ -99,6 +100,37 @@ export const useCartStore = create((set, get) => ({
       set({
         isLoading: false,
         error: error.message || 'Не удалось добавить товар'
+      })
+      return false
+    }
+  },
+  
+  /**
+   * Добавление курса в корзину
+   * 
+   * @param {number} courseId - Курс для добавления
+   * @param {string} [petId] - ID питомца для привязки курса (опционально)
+   * @param {boolean} [disclaimerAccepted=false] - Согласие с условиями использования
+   * @returns {Promise<boolean>} True если добавление успешно
+   */
+  addCourse: async (courseId, petId = null, disclaimerAccepted = false) => {
+    set({ isLoading: true, error: null })
+    
+    try {
+      const response = await shopApi.addCourseToCart(courseId, petId, disclaimerAccepted)
+      
+      set({
+        items: response.cart || [],
+        total: response.total || 0,
+        itemsCount: (response.cart || []).reduce((sum, item) => sum + (item.quantity || 1), 0),
+        isLoading: false
+      })
+      
+      return true
+    } catch (error) {
+      set({
+        isLoading: false,
+        error: error.message || 'Не удалось добавить курс в корзину'
       })
       return false
     }

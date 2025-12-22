@@ -70,6 +70,13 @@ function Cart() {
     await removeItem(productId)
   }
   
+  /**
+   * Проверка, является ли элемент курсом
+   */
+  const isCourse = (item) => {
+    return item.course !== undefined && item.course !== null
+  }
+  
   
   // Состояние загрузки
   if (isLoading && items.length === 0) {
@@ -142,66 +149,112 @@ function Cart() {
         {/* Товары в корзине */}
         <div className="lg:col-span-2">
           <div className="card divide-y divide-gray-100">
-            {items.map(item => (
-              <div key={item.product.id} className="py-4 first:pt-0 last:pb-0">
-                <div className="flex gap-4">
-                  {/* Заглушка изображения товара */}
-                  <div className="w-20 h-20 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <span className="text-3xl opacity-50">
-                      {item.product.pet_type === 'dog' ? '🐕' : item.product.pet_type === 'cat' ? '🐱' : '🐾'}
-                    </span>
-                  </div>
-                  
-                  {/* Информация о товаре */}
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-semibold text-gray-900 truncate">
-                      {item.product.name}
-                    </h3>
-                    <p className="text-sm text-gray-500 truncate">
-                      {item.product.description}
-                    </p>
-                    <p className="font-medium text-gray-900 mt-1">
-                      {formatPrice(item.product.price)}
-                    </p>
-                  </div>
-                  
-                  {/* Управление количеством */}
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => handleQuantityChange(item.product.id, item.quantity - 1)}
-                      className="w-8 h-8 rounded-lg border border-gray-300 flex items-center justify-center hover:bg-gray-50 transition-colors"
-                      disabled={isLoading}
-                    >
-                      -
-                    </button>
-                    <span className="w-8 text-center font-medium">
-                      {item.quantity}
-                    </span>
-                    <button
-                      onClick={() => handleQuantityChange(item.product.id, item.quantity + 1)}
-                      className="w-8 h-8 rounded-lg border border-gray-300 flex items-center justify-center hover:bg-gray-50 transition-colors"
-                      disabled={isLoading}
-                    >
-                      +
-                    </button>
-                  </div>
-                  
-                  {/* Сумма и удаление */}
-                  <div className="text-right">
-                    <p className="font-semibold text-gray-900">
-                      {formatPrice(item.product.price * item.quantity)}
-                    </p>
-                    <button
-                      onClick={() => handleRemove(item.product.id)}
-                      className="text-sm text-red-600 hover:text-red-700 mt-1"
-                      disabled={isLoading}
-                    >
-                      Удалить
-                    </button>
+            {items.map(item => {
+              // Безопасная проверка структуры данных
+              if (!item) return null
+              
+              const isCourseItem = isCourse(item)
+              
+              // Если это не курс и нет product, пропускаем
+              if (!isCourseItem && !item.product) {
+                console.error('Cart item missing product:', item)
+                return null
+              }
+              
+              const itemId = isCourseItem 
+                ? (item.course?.id || `course-${item.id}`) 
+                : (item.product?.id || item.id)
+              const itemName = isCourseItem 
+                ? (item.course?.title || 'Курс') 
+                : (item.product?.name || 'Товар')
+              const itemDescription = isCourseItem 
+                ? (item.course?.description || '') 
+                : (item.product?.description || '')
+              const itemPrice = isCourseItem 
+                ? (item.course?.price || 0) 
+                : (item.product?.price || 0)
+              const itemQuantity = item.quantity || 1
+              // Исправление: используем animal вместо pet_type для товаров
+              const itemPetType = isCourseItem 
+                ? (item.course?.pet_type || 'all') 
+                : (item.product?.animal || 'all')
+              
+              return (
+                <div key={itemId} className="py-4 first:pt-0 last:pb-0">
+                  <div className="flex gap-4">
+                    {/* Заглушка изображения товара/курса */}
+                    <div className="w-20 h-20 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <span className="text-3xl opacity-50">
+                        {itemPetType === 'dog' ? '🐕' : itemPetType === 'cat' ? '🐱' : isCourseItem ? '📚' : '🐾'}
+                      </span>
+                    </div>
+                    
+                    {/* Информация о товаре/курсе */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <h3 className="font-semibold text-gray-900 truncate">
+                          {itemName}
+                        </h3>
+                        {isCourseItem && (
+                          <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs font-medium rounded-full whitespace-nowrap">
+                            Курс
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-sm text-gray-500 truncate">
+                        {itemDescription}
+                      </p>
+                      {/* Информация о питомце для курса */}
+                      {isCourseItem && item.pet && (
+                        <p className="text-xs text-primary-600 mt-1">
+                          🐾 Для: {item.pet.name}
+                        </p>
+                      )}
+                      <p className="font-medium text-gray-900 mt-1">
+                        {formatPrice(itemPrice)}
+                      </p>
+                    </div>
+                    
+                    {/* Управление количеством (только для товаров) */}
+                    {!isCourseItem && (
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => handleQuantityChange(item.product.id, itemQuantity - 1)}
+                          className="w-8 h-8 rounded-lg border border-gray-300 flex items-center justify-center hover:bg-gray-50 transition-colors"
+                          disabled={isLoading}
+                        >
+                          -
+                        </button>
+                        <span className="w-8 text-center font-medium">
+                          {itemQuantity}
+                        </span>
+                        <button
+                          onClick={() => handleQuantityChange(item.product.id, itemQuantity + 1)}
+                          className="w-8 h-8 rounded-lg border border-gray-300 flex items-center justify-center hover:bg-gray-50 transition-colors"
+                          disabled={isLoading}
+                        >
+                          +
+                        </button>
+                      </div>
+                    )}
+                    
+                    {/* Сумма и удаление */}
+                    <div className="text-right">
+                      <p className="font-semibold text-gray-900">
+                        {formatPrice(itemPrice * itemQuantity)}
+                      </p>
+                      <button
+                        onClick={() => handleRemove(itemId)}
+                        className="text-sm text-red-600 hover:text-red-700 mt-1"
+                        disabled={isLoading}
+                      >
+                        Удалить
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
         </div>
         
@@ -215,8 +268,8 @@ function Cart() {
             {/* Итог заказа */}
             <div className="space-y-2 pb-4 border-b border-gray-100">
               <div className="flex justify-between text-gray-600">
-                <span>Товаров:</span>
-                <span>{items.reduce((sum, i) => sum + i.quantity, 0)} шт.</span>
+                <span>Позиций:</span>
+                <span>{items.length} шт.</span>
               </div>
               <div className="flex justify-between text-lg font-semibold text-gray-900">
                 <span>Итого:</span>

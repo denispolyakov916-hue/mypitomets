@@ -100,6 +100,32 @@ export const addToCart = async (productId, quantity = 1) => {
 }
 
 /**
+ * Добавление курса в корзину
+ * 
+ * Добавляет курс в корзину с опциональной привязкой к питомцу.
+ * 
+ * @param {number} courseId - Курс для добавления
+ * @param {string} [petId] - ID питомца для привязки курса (опционально)
+ * @param {boolean} [disclaimerAccepted=false] - Согласие с условиями использования
+ * @returns {Promise<Object>} Обновлённые данные корзины
+ * 
+ * @example
+ *   await addCourseToCart(5, 'pet-uuid', true)  // Добавить курс #5 для питомца с согласием
+ */
+export const addCourseToCart = async (courseId, petId = null, disclaimerAccepted = false) => {
+  const body = {
+    course_id: courseId,
+    disclaimer_accepted: disclaimerAccepted
+  }
+  
+  if (petId) {
+    body.pet_id = petId
+  }
+  
+  return await api.post('/shop/cart/', body)
+}
+
+/**
  * Обновление количества товара в корзине
  * 
  * При quantity=0 товар удаляется.
