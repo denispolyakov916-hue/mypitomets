@@ -22,7 +22,7 @@ export default defineConfig({
     // Это позволяет избежать CORS проблем в разработке
     proxy: {
       '/api': {
-        target: 'http://localhost:8000',
+        target: 'http://192.168.1.139:8000',
         changeOrigin: true,
         secure: false,
       }
