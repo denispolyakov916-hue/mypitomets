@@ -7,6 +7,7 @@
 from django.db import models
 from django.conf import settings
 from django.utils import timezone
+from datetime import timedelta
 from core.utils import generate_uuid7
 
 
@@ -321,6 +322,70 @@ class CartItem(models.Model):
                 }
             return data
         return {}
+
+
+class Reservation(models.Model):
+    """
+    Резервирование товаров и курсов на время оформления заказа.
+
+    Предотвращает перепродажу и даёт пользователю время на оплату.
+    """
+
+    RESERVATION_TYPE_CHOICES = [
+        ('product', 'Резервирование товара'),
+        ('course', 'Резервирование курса'),
+    ]
+
+    id = models.CharField(
+        primary_key=True,
+        max_length=36,
+        default=generate_uuid7,
+        editable=False
+    )
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='reservations'
+    )
+
+    reservation_type = models.CharField(
+        max_length=20,
+        choices=RESERVATION_TYPE_CHOICES
+    )
+
+    # ID объекта (product.id или course.id)
+    object_id = models.CharField(max_length=36)
+
+    # Для курсов - ID питомца (опционально)
+    pet_id = models.CharField(max_length=36, null=True, blank=True)
+
+    quantity = models.PositiveIntegerField(default=1)
+
+    # Таймаут резервирования (10 минут по умолчанию)
+    expires_at = models.DateTimeField()
+
+    created_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        db_table = 'reservations'
+        indexes = [
+            models.Index(fields=['user', 'expires_at']),
+            models.Index(fields=['reservation_type', 'object_id']),
+            models.Index(fields=['expires_at']),
+        ]
+
+    def __str__(self):
+        return f"{self.get_reservation_type_display()} {self.object_id} for {self.user.email}"
+
+    @property
+    def is_expired(self):
+        return timezone.now() > self.expires_at
+
+    def extend_reservation(self, minutes=10):
+        """Продлить резервирование."""
+        self.expires_at = timezone.now() + timedelta(minutes=minutes)
+        self.save()
 
 
 class Address(models.Model):

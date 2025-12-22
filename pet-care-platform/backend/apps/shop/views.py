@@ -11,13 +11,18 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated
 
-from .models import Product, Cart, CartItem, Order, OrderItem, Address
+from apps.payments.models import Payment
+from apps.training.models import UserCourse
+
+from .models import Product, Cart, CartItem, Order, OrderItem, Address, Reservation
 from .serializers import (
     CartItemAddSerializer,
     CartItemUpdateSerializer,
     CartItemSerializer,
-    OrderCreateSerializer
+    OrderCreateSerializer,
+    UnifiedOrderSerializer
 )
+from .services.reservation_service import ReservationService
 
 logger = logging.getLogger('apps.shop')
 
@@ -249,20 +254,25 @@ class CartView(APIView):
         return cart
     
     def get(self, request):
-        """Просмотр корзины."""
+        """Просмотр корзины с группировкой по типам."""
         cart = self._get_or_create_cart(request.user)
 
-        cart_serializer = CartItemSerializer(
-            cart.items.select_related('product', 'course', 'pet').all(),
-            many=True
-        )
-        total = float(cart.get_total())
-        items_count = cart.get_items_count()
+        items = cart.items.select_related('product', 'course', 'pet').all()
+
+        # Группировка
+        products = [item for item in items if item.product]
+        courses = [item for item in items if item.course]
 
         return Response({
-            'cart': cart_serializer.data,
-            'total': total,
-            'items_count': items_count
+            'products': CartItemSerializer(products, many=True).data,
+            'courses': CartItemSerializer(courses, many=True).data,
+            'totals': {
+                'products': sum(p.get_total() for p in products),
+                'courses': sum(c.get_total() for c in courses),
+                'total': cart.get_total()
+            },
+            'items_count': len(products) + len(courses),
+            'can_checkout': len(products) + len(courses) > 0
         }, status=status.HTTP_200_OK)
     
     
@@ -851,6 +861,11 @@ class OrderConfirmPaymentView(APIView):
 
                 # Для каждого курса в заказе создаем UserCourse
                 for item in order.items.filter(course__isnull=False):
+                    # Проверяем согласие с условиями для платных курсов
+                    if item.course.price > 0 and not item.disclaimer_accepted:
+                        logger.warning(f"Курс {item.course.title} не имеет согласия с условиями при активации")
+                        continue  # Пропускаем курс без согласия
+
                     from apps.training.models import UserCourse
                     UserCourse.objects.create(
                         user=request.user,
@@ -966,3 +981,214 @@ class AddressSearchView(APIView):
             'suggestions': suggestions,
             'query': query
         }, status=status.HTTP_200_OK)
+
+
+class UnifiedCheckoutView(APIView):
+    """
+    Единый checkout для товаров и курсов.
+
+    GET /api/checkout/ - получить данные для оформления
+    POST /api/checkout/ - создать заказ и начать оплату
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        """Получить данные для единого оформления заказа."""
+        try:
+            cart = Cart.objects.prefetch_related(
+                'items__product',
+                'items__course',
+                'items__pet'
+            ).get(user=request.user)
+        except Cart.DoesNotExist:
+            return Response({'error': 'Корзина пуста'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Разделить на товары и курсы
+        product_items = []
+        course_items = []
+
+        for item in cart.items.all():
+            if item.product:
+                product_items.append({
+                    'id': item.id,
+                    'product': item.product.to_dict(),
+                    'quantity': item.quantity,
+                    'price': float(item.product.discounted_price),
+                    'total': float(item.get_total())
+                })
+            elif item.course:
+                course_items.append({
+                    'id': item.id,
+                    'course': item.course.to_dict(),
+                    'pet': item.pet.to_dict() if item.pet else None,
+                    'quantity': 1,
+                    'price': float(item.course.price),
+                    'total': float(item.get_total())
+                })
+
+        # Подсчитать суммы
+        products_total = sum(item['total'] for item in product_items)
+        courses_total = sum(item['total'] for item in course_items)
+        delivery_options = [] if not product_items else [
+            {'type': 'standard', 'cost': 300, 'name': 'Стандартная доставка'},
+            {'type': 'express', 'cost': 600, 'name': 'Экспресс доставка'},
+            {'type': 'pickup', 'cost': 0, 'name': 'Самовывоз'}
+        ]
+
+        # Получить адреса пользователя
+        addresses = Address.objects.filter(user=request.user).order_by('-is_default')
+
+        return Response({
+            'products': {
+                'items': product_items,
+                'subtotal': products_total,
+                'delivery_options': delivery_options
+            },
+            'courses': {
+                'items': course_items,
+                'subtotal': courses_total
+            },
+            'addresses': [addr.to_dict() for addr in addresses],
+            'totals': {
+                'products': products_total,
+                'courses': courses_total,
+                'delivery': 0,  # Рассчитывается динамически
+                'grand_total': products_total + courses_total
+            }
+        })
+
+    def post(self, request):
+        """Создать единый заказ и начать оплату."""
+        serializer = UnifiedOrderSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            cart = Cart.objects.get(user=request.user)
+
+            # Создать резервирования
+            reservations = ReservationService.create_reservations_from_cart(cart)
+
+            # Создать заказы
+            orders_data = self._create_orders_from_cart(
+                cart,
+                serializer.validated_data,
+                reservations
+            )
+
+            # Создать единый платёж
+            payment = self._create_unified_payment(orders_data)
+
+            return Response({
+                'reservation_id': str(reservations[0].id) if reservations else None,
+                'orders': orders_data,
+                'payment': {
+                    'id': payment.id,
+                    'amount': float(payment.amount),
+                    'url': f"https://payment.gateway/pay/{payment.id}"
+                }
+            })
+
+        except Exception as e:
+            # При ошибке отменить резервирования
+            if 'reservations' in locals():
+                ReservationService.cancel_reservations(reservations)
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def _create_orders_from_cart(self, cart, data, reservations):
+        """Создать заказы товаров и записи на курсы."""
+        orders_data = {'products_order': None, 'courses': []}
+
+        # Создать заказ товаров если есть
+        product_reservations = [r for r in reservations if r.reservation_type == 'product']
+        order = None
+        if product_reservations:
+            order = Order.objects.create(
+                user=cart.user,
+                delivery_type=data['delivery_type'],
+                address_id=data.get('address_id'),
+                shipping_address=data.get('shipping_address'),
+                total_amount=0  # Рассчитается ниже
+            )
+
+            # Добавить элементы заказа для товаров
+            for reservation in product_reservations:
+                cart_item = cart.items.get(product_id=reservation.object_id)
+                OrderItem.objects.create(
+                    order=order,
+                    product_id=reservation.object_id,
+                    product_name=cart_item.product.name,
+                    price=cart_item.product.discounted_price,
+                    quantity=reservation.quantity
+                )
+
+            # Рассчитать итоговую сумму для товаров
+            order.subtotal_amount = order.get_subtotal()
+            order.delivery_cost = self._calculate_delivery_cost(data['delivery_type'])
+            order.total_amount = order.get_total_with_delivery()
+            order.save()
+
+            orders_data['products_order'] = order.to_dict()
+
+        # Создать записи на курсы
+        course_reservations = [r for r in reservations if r.reservation_type == 'course']
+        for reservation in course_reservations:
+            cart_item = cart.items.get(course_id=reservation.object_id)
+
+            # Если есть заказ товаров, добавляем курс как OrderItem к этому заказу
+            if order:
+                OrderItem.objects.create(
+                    order=order,
+                    course=cart_item.course,
+                    pet=cart_item.pet,
+                    product_name=cart_item.course.title,
+                    price=float(cart_item.course.price),
+                    quantity=1,
+                    disclaimer_accepted=cart_item.disclaimer_accepted
+                )
+                # Обновляем сумму заказа с учетом курса
+                order.total_amount += float(cart_item.course.price)
+                order.save()
+                orders_data['products_order'] = order.to_dict()
+
+            user_course = UserCourse.objects.create(
+                user=cart.user,
+                course_id=reservation.object_id,
+                pet_id=reservation.pet_id
+            )
+
+            orders_data['courses'].append({
+                'user_course_id': user_course.id,
+                'course_name': cart_item.course.title,
+                'amount': float(cart_item.course.price)
+            })
+
+        return orders_data
+
+    def _create_unified_payment(self, orders_data):
+        """Создать единый платёж для всех заказов."""
+        total_amount = 0
+
+        if orders_data['products_order']:
+            total_amount += orders_data['products_order']['total_amount']
+
+        total_amount += sum(course['amount'] for course in orders_data['courses'])
+
+        # Создать единый платёж
+        payment = Payment.objects.create(
+            user=self.request.user,
+            payment_type='unified_checkout',
+            amount=total_amount,
+            metadata={
+                'products_order_id': orders_data['products_order']['id'] if orders_data['products_order'] else None,
+                'course_ids': [c['user_course_id'] for c in orders_data['courses']]
+            }
+        )
+
+        return payment
+
+    def _calculate_delivery_cost(self, delivery_type):
+        """Рассчитать стоимость доставки."""
+        costs = {'standard': 300, 'express': 600, 'pickup': 0}
+        return costs.get(delivery_type, 300)
