@@ -1,4 +1,4 @@
-# Руководство по работе с Git для команды
+# Руководство по работе с Git и синхронизации проекта
 
 ## Структура веток
 
@@ -10,85 +10,271 @@
 - `feature/название-задачи` - для новых фич
 - Создаются под задачу, удаляются после мержа
 
-## Ежедневный workflow
+## Первоначальная настройка
 
-### 1. Начало работы (ОБЯЗАТЕЛЬНО каждый день)
+### 1. Клонирование и настройка окружения
 
 ```bash
-# Переключиться на develop
+git clone <repository-url>
+cd pet-care-platform
+```
+
+### 2. Backend (Windows / Linux)
+
+**Первый запуск (настройка):**
+
+```bash
+cd backend
+
+# Создание виртуального окружения
+# Windows:
+python -m venv venv
+.\venv\Scripts\activate
+# Linux:
+python3 -m venv venv
+source venv/bin/activate
+
+# Установка зависимостей
+pip install -r requirements.txt
+
+# Создание .env из шаблона
+# Windows:
+copy .env.example .env
+# Linux:
+cp .env.example .env
+
+# Настройка БД
+# Windows:
+.\setup_database.bat
+# Linux:
+chmod +x setup_db.sh
+./setup_db.sh
+
+# Применение миграций
+python manage.py migrate
+```
+
+**Запуск бэкенда:**
+
+```bash
+cd backend
+
+# Windows:
+.\start_backend.bat
+
+# Linux (первый раз сделать исполняемым):
+chmod +x start_backend.sh
+./start_backend.sh
+```
+
+### 3. Frontend (Windows / Linux)
+
+**Первый запуск (настройка):**
+
+```bash
+cd frontend
+
+# Установка зависимостей
+npm install
+
+# Создание .env из шаблона
+# Windows:
+copy .env.example .env
+# Linux:
+cp .env.example .env
+
+# Отредактируйте .env, указав URL бэкенда
+```
+
+**Запуск фронтенда:**
+
+```bash
+cd frontend
+
+# Windows:
+.\start_frontend.bat
+
+# Linux (первый раз сделать исполняемым):
+chmod +x start_frontend.sh
+./start_frontend.sh
+```
+
+**Примечание для Linux:** После первого `chmod +x` скрипты будут исполняемыми, повторно делать не нужно.
+
+## Ежедневный workflow
+
+### Начало работы (ОБЯЗАТЕЛЬНО)
+
+```bash
+# 1. Переключиться на develop
 git switch develop
 
-# Получить последние изменения
+# 2. Получить последние изменения
 git pull origin develop
 
-# Создать новую ветку для задачи
+# 3. Синхронизация проекта (применит миграции, обновит зависимости)
+# Windows:
+.\sync_after_pull.bat
+# Linux:
+chmod +x sync_after_pull.sh  # первый раз
+./sync_after_pull.sh
+
+# 4. Создать ветку для задачи
 git switch -c feature/название-задачи
 ```
 
 **Примеры названий веток:**
 - `feature/backend-user-auth`
 - `feature/frontend-login-page`
-- `feature/frontend-fix-api-call` (если фронтенд меняет бекенд)
+- `feature/fix-api-call`
 
-### 2. Работа над задачей
+### Работа над задачей
 
 ```bash
-# Проверить статус изменений
+# Проверить статус
 git status
 
-# Добавить файлы в staging
+# Добавить изменения
 git add .                    # все файлы
 git add путь/к/файлу         # конкретный файл
 
 # Создать коммит
 git commit -m "Описание что сделано"
 
-# Отправить изменения на сервер
+# Отправить на сервер
 git push origin feature/название-задачи
 ```
 
-### 3. Завершение задачи
+### Завершение задачи
 
 ```bash
-# Вернуться на develop
+# 1. Вернуться на develop
 git switch develop
 
-# Получить последние изменения (на случай если друг что-то добавил)
+# 2. Получить последние изменения
 git pull origin develop
 
-# Влить свою ветку
+# 3. Влить свою ветку
 git merge feature/название-задачи
 
-# Отправить изменения
+# 4. Отправить изменения
 git push origin develop
 
-# Удалить локальную ветку (опционально)
+# 5. Удалить локальную ветку
 git branch -d feature/название-задачи
 ```
 
-### 4. Релиз в продакшн
+## Работа с миграциями БД
+
+### Создание миграций
 
 ```bash
-git switch main
-git pull origin main
-git merge develop
-git push origin main
+cd backend
+# Windows:
+.\venv\Scripts\activate
+# Linux:
+source venv/bin/activate
+
+# После изменения models.py
+python manage.py makemigrations
+python manage.py migrate  # применить локально
+
+# Добавить миграции в Git
+git add apps/*/migrations/
+git commit -m "Migration: описание изменений"
+git push
 ```
 
-## Основные команды
+### Применение миграций после pull
+
+```bash
+# Автоматически через sync_after_pull.bat (Windows)
+# Или вручную:
+cd backend
+# Windows:
+.\venv\Scripts\activate
+# Linux:
+source venv/bin/activate
+python manage.py migrate
+```
+
+**Правила:**
+- ✅ ВСЕГДА коммитьте миграции вместе с изменениями моделей
+- ❌ НЕ редактируйте миграции вручную
+- ❌ НЕ удаляйте миграции без согласования
+
+## Работа с зависимостями
+
+### Backend
+
+```bash
+cd backend
+# Windows:
+.\venv\Scripts\activate
+# Linux:
+source venv/bin/activate
+
+# Установить новую зависимость
+pip install package-name
+
+# Обновить requirements.txt
+pip freeze > requirements.txt
+
+# Закоммитить
+git add requirements.txt
+git commit -m "Add package-name"
+```
+
+### Frontend
+
+```bash
+cd frontend
+
+# Установить зависимость
+npm install package-name
+
+# package.json и package-lock.json обновятся автоматически
+git add package.json package-lock.json
+git commit -m "Add package-name"
+```
+
+## Настройка .env файлов
+
+### Синхронизация между разработчиками
+
+`.env` файлы коммитятся в Git для синхронизации настроек команды.
+
+**Для личных настроек используйте `.env.local`** (не коммитится):
+- `backend/.env.local` - переопределения для бэкенда
+- `frontend/.env.local` - переопределения для фронтенда
+
+### Настройка IP адресов (работа в одной сети)
+
+**На компьютере с бэкендом:**
+1. Узнайте IP: `ipconfig` (Windows) или `ifconfig` (Linux)
+2. В `backend/.env` добавьте IP в `ALLOWED_HOSTS`:
+   ```
+   ALLOWED_HOSTS=localhost,127.0.0.1,0.0.0.0,192.168.1.139
+   ```
+3. Запустите: `python manage.py runserver 0.0.0.0:8000`
+
+**На компьютере с фронтендом:**
+В `frontend/.env` укажите: `VITE_API_URL=http://192.168.1.139:8000/api`
+
+## Основные команды Git
 
 ### Навигация
 ```bash
 git switch ветка                # Переключиться на ветку
 git switch -c новая-ветка       # Создать и переключиться
 git branch                      # Список локальных веток
-git branch -a                   # Все ветки (локальные + удаленные)
+git branch -a                   # Все ветки
 ```
 
 ### Работа с изменениями
 ```bash
 git status                       # Статус изменений
-git add .                        # Добавить все изменения
+git add .                        # Добавить все
 git add файл                     # Добавить конкретный файл
 git commit -m "Сообщение"        # Создать коммит
 git push origin ветка            # Отправить на сервер
@@ -103,212 +289,107 @@ git diff                         # Изменения в рабочей дире
 git diff --staged                # Изменения в staging
 ```
 
-### Команда git pull
+## Решение конфликтов
 
-`git pull` обновляет вашу локальную ветку из удалённого репозитория. Эта команда фактически выполняет два действия:
-1. `git fetch` - загружает изменения из удалённого репозитория
-2. `git merge` - объединяет полученные изменения с вашей текущей веткой
-
-#### Базовое использование
+### Конфликты при merge/pull
 
 ```bash
-git pull
+# 1. Git покажет файлы с конфликтами
+# 2. Откройте файлы, найдите маркеры:
+#    <<<<<<< HEAD
+#    ваш код
+#    =======
+#    чужой код
+#    >>>>>>> branch-name
+# 3. Выберите нужный код, удалите маркеры
+# 4. Сохраните файл
+git add файл-с-конфликтом
+git commit -m "Resolve conflict"
 ```
-Загружает изменения из удалённого репозитория, связанного с текущей веткой, и объединяет их с текущей веткой.
+
+### Конфликты в миграциях
 
 ```bash
-git pull origin main
+# Удалить конфликтующие миграции (кроме __init__.py)
+# Windows:
+del apps\*\migrations\0*.py
+# Linux:
+rm apps/*/migrations/0*.py
+
+# Создать новые миграции
+python manage.py makemigrations
+python manage.py migrate
+
+# Закоммитить
+git add apps/*/migrations/
+git commit -m "Resolve migration conflicts"
 ```
-Загружает изменения из ветки `main` удалённого репозитория `origin` и объединяет их с текущей веткой.
 
-#### Другие варианты использования
+## Удаление веток
 
+### Локальная ветка
 ```bash
-git pull --rebase
-```
-Вместо создания merge коммита, команда выполнит rebase (наложит ваши коммиты поверх удалённых изменений).
-
-```bash
-git pull --ff-only
-```
-Быстрое обновление только если это возможно (без создания merge коммита).
-
-```bash
-git pull --no-commit
-```
-Выполнит слияние, но не создаст автоматический коммит, позволив вам просмотреть изменения перед коммитом.
-
-#### Когда использовать
-
-- Перед началом работы над новой задачей
-- Перед отправкой своих изменений
-- Для синхронизации с удалённым репозиторием
-
-#### Что может пойти не так
-
-- **Конфликты слияния** - если ваши изменения конфликтуют с удалёнными изменениями
-- **Невозможен fast-forward** - если истории разошлись
-- **Отклонённое обновление** - если требуется очистка локальных изменений
-
-В таких случаях нужно разрешить конфликты вручную или использовать `git pull --rebase` для создания линейной истории.
-
-### Удаление веток
-
-#### Удаление локальной ветки
-
-**Безопасное удаление (рекомендуется):**
-
-```bash
-git branch -d branch_name
+git branch -d branch_name        # Безопасное удаление
+git branch -D branch_name        # Принудительное удаление
 ```
 
-Безопасное удаление ветки. Git не позволит удалить ветку, если в ней есть изменения, которые ещё не были включены в текущую ветку.
-
-**Принудительное удаление:**
-
-```bash
-git branch -D branch_name
-```
-
-Удаляет ветку даже если в ней есть неслитые изменения (используйте осторожно!).
-
-**Важно:** Нельзя удалить ветку, на которой вы сейчас находитесь. Сначала переключитесь на другую ветку:
-
-```bash
-git checkout main
-git branch -d old_branch
-```
-
-Или принудительно:
-
-```bash
-git checkout main
-git branch -D old_branch  # принудительное удаление
-```
-
-#### Удаление удалённой ветки
-
-**Через push:**
-
+### Удалённая ветка
 ```bash
 git push origin --delete branch_name
 ```
 
-Или сокращённый вариант:
-
-```bash
-git push origin :branch_name
-```
-
-#### Очистка удалённых веток
-
-После удаления ветки на сервере, удалите ссылки на неё локально:
-
+### Очистка ссылок
 ```bash
 git fetch --prune
-```
-
-Или:
-
-```bash
-git fetch -p
-```
-
-#### Полезные команды
-
-**Просмотр всех веток (локальных и удалённых):**
-
-```bash
-git branch -a
-```
-
-**Удаление нескольких веток:**
-
-```bash
-git branch -d branch1 branch2 branch3
-```
-
-**Удаление веток, которые уже были слиты:**
-
-```bash
-git branch --merged | grep -v "\*\|main\|master" | xargs -n 1 git branch -d
-```
-
-Эта команда удалит все локальные ветки, которые уже были слиты, кроме текущей ветки и веток main/master.
-
-#### Типичный сценарий удаления feature-ветки
-
-```bash
-# 1. Переключитесь на develop (или другую ветку)
-git checkout develop
-
-# 2. Удалите локальную ветку
-git branch -d feature/название-задачи
-
-# 3. Удалите удалённую ветку (если она существует)
-git push origin --delete feature/название-задачи
-
-# 4. Очистите локальные ссылки на удалённые ветки
-git fetch --prune
-```
-
-### Решение конфликтов
-```bash
-# Если при pull/merge возник конфликт:
-# 1. Git покажет файлы с конфликтами
-# 2. Открой файлы, найди маркеры <<<<<<< ======= >>>>>>>
-# 3. Выбери нужный код, удали маркеры
-# 4. Сохрани файл
-git add файл-с-конфликтом
-git commit -m "Resolve conflict"
 ```
 
 ## Правила работы
 
 ✅ **ОБЯЗАТЕЛЬНО:**
 - Всегда `git pull` перед началом работы
-- Создавай feature-ветку для каждой задачи
-- Коммить только рабочий код (без ошибок)
+- Использовать `sync_after_pull.bat` (Windows) или `sync_after_pull.sh` (Linux) после pull
+- Создавать feature-ветку для каждой задачи
+- Коммитить миграции вместе с изменениями моделей
+- Коммитить только рабочий код
 - Понятные сообщения коммитов
 
 ❌ **НЕ ДЕЛАЙ:**
 - Коммиты напрямую в `main` или `develop`
-- Начинать работу без `pull`
+- Начинать работу без `pull` и синхронизации
 - Коммитить сломанный код
+- Редактировать миграции вручную
 - Игнорировать конфликты
-
-## Типичные ситуации
-
-### Обновить свою ветку изменениями из develop
-```bash
-git switch feature/твоя-ветка
-git merge develop
-# или
-git rebase develop
-```
-
-### Отменить локальные изменения (если еще не закоммитил)
-```bash
-git checkout -- файл             # Отменить изменения в файле
-git reset --hard                 # Отменить ВСЕ изменения (ОСТОРОЖНО!)
-```
-
-### Посмотреть что изменилось перед коммитом
-```bash
-git diff                         # Изменения в файлах
-git diff --staged                # Изменения уже в staging
-```
 
 ## Быстрая шпаргалка
 
 ```
 Начало дня:
-  git switch develop → git pull → git switch -c feature/задача
+  git switch develop
+  git pull origin develop
+  .\sync_after_pull.bat (Windows) или ./sync_after_pull.sh (Linux)
+  git switch -c feature/задача
 
 Работа:
-  git add . → git commit -m "..." → git push
+  git add .
+  git commit -m "..."
+  git push origin feature/задача
 
 Завершение:
-  git switch develop → git pull → git merge feature/задача → git push
+  git switch develop
+  git pull origin develop
+  git merge feature/задача
+  git push origin develop
+  git branch -d feature/задача
 ```
 
+## Различия Windows/Linux
+
+| Действие | Windows | Linux |
+|----------|---------|-------|
+| Активация venv | `.\venv\Scripts\activate` | `source venv/bin/activate` |
+| Копирование файла | `copy file1 file2` | `cp file1 file2` |
+| Синхронизация | `.\sync_after_pull.bat` | `./sync_after_pull.sh` |
+| Запуск бэкенда | `.\start_backend.bat` | `./start_backend.sh` |
+| Запуск фронтенда | `.\start_frontend.bat` | `./start_frontend.sh` |
+| Узнать IP | `ipconfig` | `ifconfig` или `ip addr` |
+| Удалить файлы | `del path\*.py` | `rm path/*.py` |

@@ -378,11 +378,8 @@ class CartView(APIView):
                     'error': f'Этот курс предназначен для {course_type_display}, а ваш питомец - {pet_species_display}'
                 }, status=status.HTTP_400_BAD_REQUEST)
 
-        # Проверка согласия для платных курсов
-        if course.price > 0 and not disclaimer_accepted:
-            return Response({
-                'error': 'Необходимо согласиться с условиями использования для платного курса'
-            }, status=status.HTTP_400_BAD_REQUEST)
+        # Примечание: согласие с условиями (disclaimer_accepted) проверяется при оформлении заказа,
+        # а не при добавлении в корзину, чтобы пользователь мог добавить курс и прочитать условия позже
 
         # Проверка, что курс не добавлен в корзину
         existing_item = CartItem.objects.filter(

@@ -13,6 +13,7 @@
  *   /pets/:id/edit    - Редактирование питомца
  *   /shop             - Каталог товаров
  *   /cart             - Корзина покупок
+ *   /checkout         - Единый checkout (товары + курсы)
  *   /courses          - Каталог курсов
  *   /profile          - Профиль пользователя
  * 
@@ -37,11 +38,10 @@ import PetForm from './pages/PetProfile/PetForm'
 import PetProfile from './pages/PetProfile/PetProfile'
 import Shop from './pages/Shop/Shop'
 import ProductDetail from './pages/Shop/ProductDetail'
-import ProductCheckout from './pages/Shop/ProductCheckout'
 import Cart from './pages/Shop/Cart'
+import UnifiedCheckout from './pages/Checkout/UnifiedCheckout'
 import Courses from './pages/Training/Courses'
 import CourseDetail from './pages/Training/CourseDetail'
-import CourseCheckout from './pages/Training/CourseCheckout'
 import Payment from './pages/Payment/Payment'
 import Profile from './pages/Dashboard/Profile'
 import Settings from './pages/Dashboard/Settings'
@@ -96,10 +96,8 @@ function App() {
           {/* Корзина - Защищённая */}
           <Route path="/cart" element={<Cart />} />
           
-          {/* Оформление заказов - Защищённые */}
-          <Route path="/shop/checkout" element={<ProductCheckout />} />
-          <Route path="/courses/:id/checkout" element={<CourseCheckout />} />
-          <Route path="/courses/:id/payment" element={<Payment />} />
+          {/* Единый Checkout - Защищённый */}
+          <Route path="/checkout" element={<UnifiedCheckout />} />
           
           {/* Профиль */}
           <Route path="/profile" element={<Profile />} />

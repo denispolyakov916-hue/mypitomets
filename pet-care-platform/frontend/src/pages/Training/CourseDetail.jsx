@@ -10,8 +10,9 @@
 
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import { getCourse, purchaseCourse } from '../../api/courses'
+import { getCourse } from '../../api/courses'
 import { useAuthStore } from '../../store/authStore'
+import { useCartStore } from '../../store/cartStore'
 import { PageLoader, ButtonLoader } from '../../components/Loader'
 
 /**
@@ -43,12 +44,13 @@ function CourseDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
   const { isAuthenticated } = useAuthStore()
+  const { addCourse } = useCartStore()
   
   const [course, setCourse] = useState(null)
   const [isOwned, setIsOwned] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState(null)
-  const [isPurchasing, setIsPurchasing] = useState(false)
+  const [isAddingToCart, setIsAddingToCart] = useState(false)
   
   /**
    * Загрузка данных курса
@@ -76,11 +78,11 @@ function CourseDetail() {
   }
   
   /**
-   * Обработчик покупки курса
+   * Обработчик добавления курса в корзину и перехода к checkout
    */
-  const handlePurchase = async () => {
+  const handleAddToCart = async () => {
     if (!isAuthenticated) {
-      navigate('/login')
+      navigate('/login', { state: { from: `/courses/${id}` } })
       return
     }
     
@@ -88,19 +90,21 @@ function CourseDetail() {
       return
     }
     
-    setIsPurchasing(true)
+    setIsAddingToCart(true)
     try {
-      if (course.price > 0) {
-        // Для платных курсов переходим на страницу оформления заказа
-        navigate(`/courses/${course.id}/checkout`)
+      // Добавляем курс в корзину
+      const success = await addCourse(course.id, null, false)
+      
+      if (success) {
+        // Переходим к единому checkout
+        navigate('/checkout')
       } else {
-        // Для бесплатных курсов переходим на страницу оплаты (которая сразу подтвердит)
-        navigate(`/payment?course_id=${course.id}&type=free`)
+        alert('Не удалось добавить курс в корзину')
       }
     } catch (err) {
-      alert(err.message || 'Не удалось приобрести курс')
+      alert(err.message || 'Не удалось добавить курс в корзину')
     } finally {
-      setIsPurchasing(false)
+      setIsAddingToCart(false)
     }
   }
   
@@ -229,21 +233,21 @@ function CourseDetail() {
               </div>
             ) : (
               <button
-                onClick={handlePurchase}
-                disabled={isPurchasing}
+                onClick={handleAddToCart}
+                disabled={isAddingToCart}
                 className="w-full btn-primary py-3 flex items-center justify-center gap-2"
               >
-                {isPurchasing ? (
+                {isAddingToCart ? (
                   <>
                     <ButtonLoader />
-                    Обработка...
+                    Добавление...
                   </>
                 ) : course.price > 0 ? (
                   <>
                     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15l1-4 4 1M9 6l1 4 4-1" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
                     </svg>
-                    Купить курс
+                    В корзину
                   </>
                 ) : (
                   <>

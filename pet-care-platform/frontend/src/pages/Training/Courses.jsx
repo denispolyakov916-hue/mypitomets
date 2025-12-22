@@ -14,6 +14,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useNavigate, Link, useSearchParams } from 'react-router-dom'
 import { getCourses, getUserCourses } from '../../api/courses'
 import { useAuthStore } from '../../store/authStore'
+import { useCartStore } from '../../store/cartStore'
 import { usePets } from '../../hooks/usePets'
 import { PageLoader, ButtonLoader } from '../../components/Loader'
 
@@ -493,7 +494,6 @@ function Courses() {
   const [ownedCourseIds, setOwnedCourseIds] = useState(new Set())
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState(null)
-  const [purchasingId, setPurchasingId] = useState(null)
   
   // Фильтры из URL
   const filters = {
@@ -606,22 +606,35 @@ function Courses() {
     }
   }
   
+  const [addingCourseId, setAddingCourseId] = useState(null)
+
   /**
-   * Обработчик покупки курса
+   * Обработчик добавления курса в корзину
    */
-  const handlePurchase = async (course, e) => {
+  const handleAddToCart = async (course, e) => {
     e.preventDefault()
     e.stopPropagation()
+    
     if (!isAuthenticated) {
-      if (confirm('Для приобретения курса необходимо войти в аккаунт. Перейти на страницу входа?')) {
+      if (confirm('Для добавления курса в корзину необходимо войти в аккаунт. Перейти на страницу входа?')) {
         navigate('/login', { state: { from: { pathname: '/courses' } } })
       }
       return
     }
     
-    // Все курсы (платные и бесплатные) добавляются в корзину через страницу оформления
-    // Для платных курсов там можно согласиться с условиями
-    navigate(`/courses/${course.id}/checkout`)
+    setAddingCourseId(course.id)
+    try {
+      const success = await addCourse(course.id, null, false)
+      
+      if (success) {
+        // Переходим к единому checkout
+        navigate('/checkout')
+      }
+    } catch (err) {
+      alert(err.message || 'Не удалось добавить курс в корзину')
+    } finally {
+      setAddingCourseId(null)
+    }
   }
   
   return (
@@ -755,8 +768,8 @@ function Courses() {
                     key={course.id}
                     course={course}
                     isOwned={ownedCourseIds.has(course.id)}
-                    onPurchase={handlePurchase}
-                    isPurchasing={purchasingId === course.id}
+                    onPurchase={handleAddToCart}
+                    isPurchasing={addingCourseId === course.id}
                   />
                 ))}
               </div>

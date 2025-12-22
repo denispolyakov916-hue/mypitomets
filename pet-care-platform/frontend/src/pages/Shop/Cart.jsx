@@ -11,7 +11,7 @@
  */
 
 import { useState, useEffect } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useCartStore } from '../../store/cartStore'
 import { PageLoader, ButtonLoader } from '../../components/Loader'
 
@@ -33,6 +33,7 @@ const formatPrice = (price) => {
  */
 function Cart() {
   const navigate = useNavigate()
+  const location = useLocation()
   const { 
     items, 
     total, 
@@ -44,16 +45,24 @@ function Cart() {
     clearError 
   } = useCartStore()
   
-  // Состояние успешного заказа (оставлено для обратной совместимости, но не используется)
-  const [orderSuccess, setOrderSuccess] = useState(null)
+  // Сообщение из редиректа (например, при истечении времени checkout)
+  const [redirectMessage, setRedirectMessage] = useState(null)
   
   /**
-   * Загрузка корзины при монтировании
+   * Загрузка корзины при монтировании и обработка сообщений
    */
   useEffect(() => {
     loadCart()
+    
+    // Показываем сообщение из редиректа
+    if (location.state?.message) {
+      setRedirectMessage(location.state.message)
+      // Очищаем state чтобы сообщение не показывалось повторно
+      navigate(location.pathname, { replace: true, state: {} })
+    }
+    
     return () => clearError()
-  }, [loadCart, clearError])
+  }, [loadCart, clearError, location.state, navigate, location.pathname])
   
   /**
    * Обработчик изменения количества
@@ -83,38 +92,6 @@ function Cart() {
     return <PageLoader />
   }
   
-  // Состояние успешного заказа
-  if (orderSuccess) {
-    return (
-      <div className="page-container animate-fadeIn">
-        <div className="card text-center py-12 max-w-lg mx-auto">
-          <div className="text-6xl mb-4">✅</div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">
-            Заказ оформлен!
-          </h1>
-          <p className="text-gray-600 mb-2">
-            Номер заказа: <span className="font-semibold">#{orderSuccess.id}</span>
-          </p>
-          <p className="text-gray-600 mb-6">
-            Сумма: <span className="font-semibold">{formatPrice(orderSuccess.total_amount)}</span>
-          </p>
-          <p className="text-gray-500 text-sm mb-8">
-            Детали заказа отправлены на вашу почту. 
-            Мы свяжемся с вами для подтверждения доставки.
-          </p>
-          <div className="flex gap-4 justify-center">
-            <Link to="/shop" className="btn-primary">
-              Продолжить покупки
-            </Link>
-            <Link to="/profile" className="btn-secondary">
-              История заказов
-            </Link>
-          </div>
-        </div>
-      </div>
-    )
-  }
-  
   // Состояние пустой корзины
   if (items.length === 0) {
     return (
@@ -138,6 +115,24 @@ function Cart() {
   return (
     <div className="page-container animate-fadeIn">
       <h1 className="page-title">Корзина</h1>
+      
+      {/* Сообщение из редиректа */}
+      {redirectMessage && (
+        <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg text-amber-700 mb-6 flex items-center gap-2">
+          <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          </svg>
+          <span>{redirectMessage}</span>
+          <button 
+            onClick={() => setRedirectMessage(null)}
+            className="ml-auto text-amber-600 hover:text-amber-800"
+          >
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+      )}
       
       {error && (
         <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm mb-6">
@@ -280,7 +275,7 @@ function Cart() {
             {/* Кнопка оформления заказа */}
             <div className="pt-4">
               <Link
-                to="/shop/checkout"
+                to="/checkout"
                 className="block w-full btn-primary py-3 text-center"
               >
                 Оформить заказ
@@ -288,7 +283,7 @@ function Cart() {
             </div>
             
             <p className="text-xs text-gray-500 mt-4 text-center">
-              Нажимая кнопку, вы соглашаетесь с условиями доставки
+              Товары и курсы будут оформлены в одном заказе
             </p>
           </div>
         </div>

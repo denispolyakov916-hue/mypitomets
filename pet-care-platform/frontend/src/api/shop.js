@@ -244,6 +244,64 @@ export const searchAddresses = async (query) => {
 }
 
 // =============================================================================
+// ЕДИНЫЙ CHECKOUT
+// =============================================================================
+
+/**
+ * Получение данных для единого checkout
+ * 
+ * Загружает товары, курсы из корзины, адреса пользователя и варианты доставки.
+ * Автоматически резервирует товары на 10 минут.
+ * 
+ * @returns {Promise<Object>} Данные для checkout
+ * @example
+ * {
+ *   products: { items: [...], subtotal: 3500, delivery_options: [...] },
+ *   courses: { items: [...], subtotal: 5000 },
+ *   addresses: [...],
+ *   totals: { products: 3500, courses: 5000, delivery: 0, grand_total: 8500 },
+ *   reservation: { id: "uuid", expires_at: "2024-01-01T12:10:00Z" }
+ * }
+ */
+export const getUnifiedCheckout = async () => {
+  return await api.get('/checkout/')
+}
+
+/**
+ * Отправка единого заказа
+ * 
+ * Создаёт заказы для товаров и/или курсов одним запросом.
+ * 
+ * @param {Object} checkoutData - Данные оформления
+ * @param {string} [checkoutData.delivery_type] - Тип доставки (standard | express | pickup)
+ * @param {string} [checkoutData.address_id] - UUID сохранённого адреса
+ * @param {string} [checkoutData.shipping_address] - Текстовый адрес доставки
+ * @param {boolean} [checkoutData.courses_disclaimer_accepted] - Согласие с условиями курсов
+ * @returns {Promise<Object>} Данные созданных заказов и ссылка на оплату
+ * @example
+ * {
+ *   reservation_id: "uuid",
+ *   orders: { products_order: {...}, courses: [...] },
+ *   payment: { id: "uuid", amount: 8500, url: "https://..." }
+ * }
+ */
+export const submitUnifiedCheckout = async (checkoutData) => {
+  return await api.post('/checkout/', checkoutData)
+}
+
+/**
+ * Отмена резервирования
+ * 
+ * Освобождает зарезервированные товары раньше таймаута.
+ * 
+ * @param {string} reservationId - UUID резервирования
+ * @returns {Promise<Object>} Статус отмены
+ */
+export const cancelReservation = async (reservationId) => {
+  return await api.delete(`/checkout/reservation/${reservationId}/`)
+}
+
+// =============================================================================
 // ВАРИАНТЫ ФИЛЬТРОВ
 // =============================================================================
 
