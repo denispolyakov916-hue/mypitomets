@@ -142,24 +142,24 @@ function ProductsSection({
       {/* Список товаров */}
       <div className="divide-y divide-gray-100 mb-6">
         {products.items.map((item, idx) => (
-          <div key={idx} className="py-4 first:pt-0 last:pb-0 flex gap-4">
+          <div key={item.id || idx} className="py-4 first:pt-0 last:pb-0 flex gap-4">
             <div className="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden">
-              {item.product_image ? (
-                <img src={item.product_image} alt={item.product_name} className="w-full h-full object-cover" />
+              {item.product?.main_image ? (
+                <img src={item.product.main_image} alt={item.product?.name} className="w-full h-full object-cover" />
               ) : (
                 <span className="text-2xl opacity-50">
-                  {item.animal === 'dog' ? '🐕' : item.animal === 'cat' ? '🐱' : '🐾'}
+                  {item.product?.animal === 'dog' ? '🐕' : item.product?.animal === 'cat' ? '🐱' : '🐾'}
                 </span>
               )}
             </div>
             <div className="flex-1 min-w-0">
-              <h3 className="font-medium text-gray-900 truncate">{item.product_name}</h3>
+              <h3 className="font-medium text-gray-900 truncate">{item.product?.name}</h3>
               <p className="text-sm text-gray-500">
                 {formatPrice(item.price)} × {item.quantity}
               </p>
             </div>
             <div className="text-right font-semibold text-gray-900">
-              {formatPrice(item.item_total)}
+              {formatPrice(item.total)}
             </div>
           </div>
         ))}
@@ -303,19 +303,19 @@ function CoursesSection({ courses, formData, onFormChange }) {
       {/* Список курсов */}
       <div className="divide-y divide-gray-100 mb-6">
         {courses.items.map((item, idx) => (
-          <div key={idx} className="py-4 first:pt-0 last:pb-0 flex gap-4">
+          <div key={item.id || idx} className="py-4 first:pt-0 last:pb-0 flex gap-4">
             <div className="w-16 h-16 bg-blue-50 rounded-lg flex items-center justify-center flex-shrink-0">
               <span className="text-2xl">
-                {item.pet_type === 'dog' ? '🐕' : item.pet_type === 'cat' ? '🐱' : '📖'}
+                {item.course?.pet_type === 'dog' ? '🐕' : item.course?.pet_type === 'cat' ? '🐱' : '📖'}
               </span>
             </div>
             <div className="flex-1 min-w-0">
-              <h3 className="font-medium text-gray-900">{item.course_title || item.title}</h3>
-              {item.pet_name && (
-                <p className="text-sm text-primary-600">🐾 Для: {item.pet_name}</p>
+              <h3 className="font-medium text-gray-900">{item.course?.title}</h3>
+              {item.pet?.name && (
+                <p className="text-sm text-primary-600">🐾 Для: {item.pet.name}</p>
               )}
-              {item.level && (
-                <p className="text-sm text-gray-500">Уровень: {item.level}</p>
+              {item.course?.level && (
+                <p className="text-sm text-gray-500">Уровень: {item.course.level_display || item.course.level}</p>
               )}
             </div>
             <div className="text-right font-semibold text-gray-900">

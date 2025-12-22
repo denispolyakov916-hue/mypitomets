@@ -49,6 +49,7 @@ export const useCartStore = create((set, get) => ({
    * 
    * Получает текущее состояние корзины с сервера.
    * Вызывается после входа или при монтировании страницы корзины.
+   * Бэкенд возвращает: {products: [...], courses: [...], totals: {...}, items_count}
    * 
    * @returns {Promise<boolean>} True если загрузка успешна
    */
@@ -58,9 +59,14 @@ export const useCartStore = create((set, get) => ({
     try {
       const response = await shopApi.getCart()
       
+      // Объединяем products и courses в один массив items
+      const products = response.products || []
+      const courses = response.courses || []
+      const allItems = [...products, ...courses]
+      
       set({
-        items: response.cart || [],
-        total: response.total || 0,
+        items: allItems,
+        total: response.totals?.total || 0,
         itemsCount: response.items_count || 0,
         isLoading: false
       })
@@ -88,10 +94,13 @@ export const useCartStore = create((set, get) => ({
     try {
       const response = await shopApi.addToCart(productId, quantity)
       
+      // POST возвращает: {cart: [...], total, items_count}
+      const items = response.cart || []
+      
       set({
-        items: response.cart || [],
+        items: items,
         total: response.total || 0,
-        itemsCount: (response.cart || []).reduce((sum, item) => sum + item.quantity, 0),
+        itemsCount: response.items_count || items.reduce((sum, item) => sum + (item.quantity || 1), 0),
         isLoading: false
       })
       
@@ -119,10 +128,13 @@ export const useCartStore = create((set, get) => ({
     try {
       const response = await shopApi.addCourseToCart(courseId, petId, disclaimerAccepted)
       
+      // POST возвращает: {cart: [...], total, items_count}
+      const items = response.cart || []
+      
       set({
-        items: response.cart || [],
+        items: items,
         total: response.total || 0,
-        itemsCount: (response.cart || []).reduce((sum, item) => sum + (item.quantity || 1), 0),
+        itemsCount: response.items_count || items.reduce((sum, item) => sum + (item.quantity || 1), 0),
         isLoading: false
       })
       
@@ -149,10 +161,13 @@ export const useCartStore = create((set, get) => ({
     try {
       const response = await shopApi.updateCartItem(productId, quantity)
       
+      // PUT возвращает: {cart: [...], total}
+      const items = response.cart || []
+      
       set({
-        items: response.cart || [],
+        items: items,
         total: response.total || 0,
-        itemsCount: (response.cart || []).reduce((sum, item) => sum + item.quantity, 0),
+        itemsCount: items.reduce((sum, item) => sum + (item.quantity || 1), 0),
         isLoading: false
       })
       

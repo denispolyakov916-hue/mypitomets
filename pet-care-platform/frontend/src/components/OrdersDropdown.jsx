@@ -137,7 +137,7 @@ function OrdersDropdown() {
                 {orders.map(order => (
                   <Link
                     key={order.id}
-                    to={`/payment?order_id=${order.id}&type=product&amount=${order.total_amount}`}
+                    to={`/payment?order_id=${order.id}&type=shop_order&amount=${order.total_amount}`}
                     className="block p-4 hover:bg-gray-50 transition-colors"
                     onClick={() => setIsOpen(false)}
                   >
