@@ -502,3 +502,37 @@ class AddressCreateSerializer(serializers.Serializer):
     is_default = serializers.BooleanField(default=False, required=False)
     latitude = serializers.DecimalField(max_digits=9, decimal_places=6, required=False, allow_null=True)
     longitude = serializers.DecimalField(max_digits=9, decimal_places=6, required=False, allow_null=True)
+
+
+class UnifiedOrderSerializer(serializers.Serializer):
+    """Сериализатор для единого оформления заказа."""
+
+    # Для товаров (обязательны, если есть товары)
+    delivery_type = serializers.ChoiceField(
+        choices=['standard', 'express', 'pickup'],
+        required=False
+    )
+    address_id = serializers.CharField(required=False)
+    shipping_address = serializers.CharField(required=False)
+
+    # Для курсов (обязательны, если есть курсы)
+    courses_disclaimer_accepted = serializers.BooleanField(default=False)
+
+    def validate(self, data):
+        # Валидация в зависимости от содержимого корзины
+        from .models import Cart
+        cart = Cart.objects.prefetch_related('items__product', 'items__course').get(user=self.context['request'].user)
+
+        has_products = cart.items.filter(product__isnull=False).exists()
+        has_courses = cart.items.filter(course__isnull=False).exists()
+
+        if has_products:
+            if not data.get('delivery_type'):
+                raise serializers.ValidationError("Необходимо выбрать тип доставки для товаров")
+            if not data.get('address_id') and not data.get('shipping_address'):
+                raise serializers.ValidationError("Необходим адрес доставки для товаров")
+
+        if has_courses and not data.get('courses_disclaimer_accepted'):
+            raise serializers.ValidationError("Необходимо принять условия для курсов")
+
+        return data
