@@ -7,9 +7,10 @@
 
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import { getCourseCheckout, purchaseCourse } from '../../api/courses'
+import { getCourseCheckout } from '../../api/courses'
 import { useAuthStore } from '../../store/authStore'
-import { PageLoader } from '../../components/Loader'
+import { useCartStore } from '../../store/cartStore'
+import { PageLoader, ButtonLoader } from '../../components/Loader'
 
 /**
  * Форматирование цены
@@ -40,11 +41,15 @@ function CourseCheckout() {
   const { id } = useParams()
   const navigate = useNavigate()
   const { isAuthenticated } = useAuthStore()
+  const { addCourse } = useCartStore()
   
   const [checkoutData, setCheckoutData] = useState(null)
   const [course, setCourse] = useState(null)
+  const [userPets, setUserPets] = useState([])
+  const [selectedPetId, setSelectedPetId] = useState('')
   const [disclaimerAccepted, setDisclaimerAccepted] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
+  const [isAddingToCart, setIsAddingToCart] = useState(false)
   const [error, setError] = useState(null)
   
   /**
@@ -58,6 +63,11 @@ function CourseCheckout() {
       const response = await getCourseCheckout(id)
       setCheckoutData(response)
       setCourse(response.course)
+      
+      // Загружаем список питомцев из ответа checkout
+      if (response.user_pets && Array.isArray(response.user_pets)) {
+        setUserPets(response.user_pets)
+      }
     } catch (err) {
       setError(err.message || 'Не удалось загрузить данные')
     } finally {
@@ -77,19 +87,34 @@ function CourseCheckout() {
   }, [id, isAuthenticated])
   
   /**
-   * Обработчик покупки курса
+   * Обработчик добавления курса в корзину
    */
-  const handlePurchase = async () => {
+  const handleAddToCart = async () => {
+    // Для платных курсов требуется согласие с условиями
     if (checkoutData?.course.price > 0 && !disclaimerAccepted) {
-      alert('Необходимо согласиться с условиями использования')
+      setError('Необходимо согласиться с условиями использования')
       return
     }
     
+    setIsAddingToCart(true)
+    setError(null)
+    
     try {
-      await purchaseCourse(id, disclaimerAccepted)
-      navigate(`/payment?course_id=${id}&type=course&amount=${checkoutData.course.price}`)
+      const petId = selectedPetId || null
+      const success = await addCourse(id, petId, disclaimerAccepted)
+      
+      if (success) {
+        // Переходим в корзину
+        navigate('/shop/cart')
+      } else {
+        setError('Не удалось добавить курс в корзину')
+      }
     } catch (err) {
-      setError(err.message || 'Не удалось оформить заказ')
+      // Обработка ошибок валидации типа курса/питомца
+      const errorMessage = err.response?.data?.error || err.response?.data?.message || err.message || 'Не удалось добавить курс в корзину'
+      setError(errorMessage)
+    } finally {
+      setIsAddingToCart(false)
     }
   }
   
@@ -150,6 +175,42 @@ function CourseCheckout() {
             </div>
           </div>
         </div>
+        
+        {/* Выбор питомца (если есть доступные питомцы и курс не для всех) */}
+        {userPets.length > 0 && course.pet_type !== 'all' && (
+          <div className="card mb-6">
+            <h2 className="text-xl font-semibold text-gray-900 mb-4">
+              Выберите питомца (опционально)
+            </h2>
+            <p className="text-sm text-gray-600 mb-4">
+              Вы можете привязать этот курс к конкретному питомцу. Если не выберете питомца, курс будет доступен для всех ваших питомцев.
+            </p>
+            <select
+              value={selectedPetId}
+              onChange={(e) => setSelectedPetId(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-primary-500 focus:border-primary-500"
+            >
+              <option value="">Не привязывать к питомцу</option>
+              {userPets
+                .filter(pet => {
+                  // Фильтруем питомцев по типу курса
+                  if (course.pet_type === 'dog' && pet.species !== 'dog') return false
+                  if (course.pet_type === 'cat' && pet.species !== 'cat') return false
+                  return true
+                })
+                .map(pet => (
+                  <option key={pet.id} value={pet.id}>
+                    {pet.name} ({pet.species_label})
+                  </option>
+                ))}
+            </select>
+            {selectedPetId && (
+              <p className="text-sm text-primary-600 mt-2">
+                Курс будет привязан к выбранному питомцу
+              </p>
+            )}
+          </div>
+        )}
         
         {/* Детальная информация о курсе из checkoutData.summary */}
         {checkoutData && (
@@ -225,17 +286,28 @@ function CourseCheckout() {
           </div>
         )}
         
-        {/* Кнопка приобретения */}
+        {/* Кнопка добавления в корзину */}
         <button
-          onClick={handlePurchase}
-          disabled={checkoutData?.course.price > 0 && !disclaimerAccepted}
-          className="w-full btn-primary py-4 text-lg"
+          onClick={handleAddToCart}
+          disabled={(checkoutData?.course.price > 0 && !disclaimerAccepted) || isAddingToCart}
+          className="w-full btn-primary py-4 text-lg disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {course.price === 0 ? 'Получить бесплатно' : 'Перейти к оплате'}
+          {isAddingToCart ? (
+            <>
+              <ButtonLoader />
+              <span className="ml-2">Добавление в корзину...</span>
+            </>
+          ) : course.price === 0 ? (
+            'Добавить в корзину'
+          ) : (
+            'Добавить в корзину'
+          )}
         </button>
         
         <p className="text-sm text-gray-500 text-center mt-4">
-          Нажимая кнопку, вы соглашаетесь с условиями предоставления услуг
+          {course.price === 0 
+            ? 'Курс будет добавлен в корзину. После оформления заказа вы получите доступ к курсу.'
+            : 'Нажимая кнопку, вы соглашаетесь с условиями предоставления услуг. Курс будет добавлен в корзину для оформления заказа.'}
         </p>
       </div>
     </div>
