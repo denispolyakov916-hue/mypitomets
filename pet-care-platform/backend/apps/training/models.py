@@ -154,6 +154,65 @@ class Course(models.Model):
         db_index=True,
         verbose_name='Формат обучения'
     )
+    
+    # Дополнительные детали курса
+    detailed_description = models.TextField(blank=True, null=True, verbose_name='Подробное описание')
+    what_you_will_learn = models.TextField(
+        blank=True, 
+        null=True, 
+        verbose_name='Чему вы научитесь',
+        help_text='Список навыков и знаний, которые получит пользователь'
+    )
+    format_details = models.TextField(
+        blank=True,
+        null=True,
+        verbose_name='Детали формата',
+        help_text='Подробное описание формата обучения (количество видео, материалов и т.д.)'
+    )
+    completion_time = models.CharField(
+        max_length=100,
+        blank=True,
+        null=True,
+        verbose_name='Время прохождения',
+        help_text='Оценка времени для прохождения курса (например, "2-3 недели", "1 месяц")'
+    )
+    lessons_count = models.PositiveIntegerField(
+        default=0,
+        verbose_name='Количество уроков'
+    )
+    videos_count = models.PositiveIntegerField(
+        default=0,
+        verbose_name='Количество видео'
+    )
+    materials_count = models.PositiveIntegerField(
+        default=0,
+        verbose_name='Количество материалов'
+    )
+    instructor_name = models.CharField(
+        max_length=200,
+        blank=True,
+        null=True,
+        verbose_name='Имя инструктора'
+    )
+    instructor_bio = models.TextField(
+        blank=True,
+        null=True,
+        verbose_name='Биография инструктора'
+    )
+    requirements = models.TextField(
+        blank=True,
+        null=True,
+        verbose_name='Требования',
+        help_text='Что необходимо знать или иметь перед началом курса'
+    )
+    
+    # Дополнительные изображения
+    additional_images = models.JSONField(
+        default=list,
+        blank=True,
+        verbose_name='Дополнительные изображения',
+        help_text='Массив URL дополнительных изображений курса'
+    )
 
     is_active = models.BooleanField(default=True, verbose_name='Активен')
     
@@ -181,9 +240,21 @@ class Course(models.Model):
         """Является ли курс бесплатным."""
         return self.price == 0
     
-    def to_dict(self):
+    def get_category_display_name(self):
+        """Получить название категории."""
+        return dict(self.CATEGORY_CHOICES).get(self.category, self.category)
+    
+    def get_level_display_name(self):
+        """Получить название уровня."""
+        return dict(self.LEVEL_CHOICES).get(self.level, self.level)
+    
+    def get_format_display_name(self):
+        """Получить название формата."""
+        return dict(self.FORMAT_CHOICES).get(self.format_type, self.format_type)
+    
+    def to_dict(self, detailed=False):
         """Сериализация для API."""
-        return {
+        data = {
             'id': self.id,
             'title': self.title,
             'description': self.description,
@@ -192,11 +263,31 @@ class Course(models.Model):
             'image_url': self.image_url,
             'pet_type': self.pet_type,
             'category': self.category,
+            'category_display': self.get_category_display_name(),
             'subcategory': self.subcategory,
             'level': self.level,
+            'level_display': self.get_level_display_name(),
             'format_type': self.format_type,
+            'format_display': self.get_format_display_name(),
             'is_free': self.is_free
         }
+        
+        if detailed:
+            data.update({
+                'detailed_description': self.detailed_description,
+                'what_you_will_learn': self.what_you_will_learn,
+                'format_details': self.format_details,
+                'completion_time': self.completion_time,
+                'lessons_count': self.lessons_count,
+                'videos_count': self.videos_count,
+                'materials_count': self.materials_count,
+                'instructor_name': self.instructor_name,
+                'instructor_bio': self.instructor_bio,
+                'requirements': self.requirements,
+                'additional_images': self.additional_images,
+            })
+        
+        return data
 
 
 class UserCourse(models.Model):

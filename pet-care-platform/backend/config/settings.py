@@ -14,7 +14,10 @@ from datetime import timedelta
 # Загрузка переменных окружения из .env (опционально)
 try:
     from dotenv import load_dotenv
+    # Сначала загружаем .env (общие настройки из Git)
     load_dotenv()
+    # Затем .env.local (личные переопределения, если есть, не в Git)
+    load_dotenv('.env.local', override=True)
 except ImportError:
     pass  # python-dotenv не установлен, используем переменные окружения напрямую
 

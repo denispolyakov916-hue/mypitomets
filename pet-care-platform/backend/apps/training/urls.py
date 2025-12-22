@@ -14,6 +14,7 @@ from django.urls import path
 from .views import (
     CourseListView,
     CourseDetailView,
+    CourseCheckoutView,
     CoursePurchaseView,
     UserCoursesView
 )
@@ -30,6 +31,10 @@ urlpatterns = [
     # Детали курса
     # GET /api/courses/{id}/
     path('<int:course_id>/', CourseDetailView.as_view(), name='course-detail'),
+    
+    # Страница оформления курса
+    # GET /api/courses/{id}/checkout/
+    path('<int:course_id>/checkout/', CourseCheckoutView.as_view(), name='course-checkout'),
     
     # Покупка/запись на курс
     # POST /api/courses/{id}/purchase/

@@ -38,3 +38,5 @@ echo "Пользователь: pitomets"
 echo "Пароль: pitomets_password"
 echo "База данных: pitomets_db"
 
+
+

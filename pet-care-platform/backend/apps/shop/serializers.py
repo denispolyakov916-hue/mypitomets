@@ -148,24 +148,70 @@ class OrderCreateSerializer(serializers.Serializer):
     Валидирует данные, необходимые для создания заказа из корзины.
     
     Поля:
-        shipping_address (str): Адрес доставки - обязательное
+        shipping_address (str): Адрес доставки - обязательное (если не указан address_id)
+        address_id (str): ID сохраненного адреса - опционально
+        delivery_type (str): Тип доставки - опционально, по умолчанию 'standard'
+        delivery_cost (float): Стоимость доставки - опционально, по умолчанию 0
+        recipient_name (str): Имя получателя - опционально
+        recipient_phone (str): Телефон получателя - опционально
     
     Пример запроса:
         {
-            "shipping_address": "Москва, ул. Ленина, д. 1, кв. 5"
+            "shipping_address": "Москва, ул. Ленина, д. 1, кв. 5",
+            "delivery_type": "express",
+            "delivery_cost": 600.0
         }
-    
-    Правила валидации:
-        - shipping_address не может быть пустым
-        - Минимальная длина 10 символов
     """
     
     shipping_address = serializers.CharField(
-        required=True,
+        required=False,
         min_length=10,
         max_length=500,
-        help_text="Полный адрес доставки"
+        allow_blank=True,
+        help_text="Полный адрес доставки (если не указан address_id)"
     )
+    address_id = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        help_text="ID сохраненного адреса доставки"
+    )
+    delivery_type = serializers.ChoiceField(
+        choices=[('standard', 'Стандартная'), ('express', 'Экспресс'), ('pickup', 'Самовывоз')],
+        default='standard',
+        required=False,
+        help_text="Тип доставки"
+    )
+    delivery_cost = serializers.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0,
+        required=False,
+        help_text="Стоимость доставки"
+    )
+    recipient_name = serializers.CharField(
+        max_length=200,
+        required=False,
+        allow_blank=True,
+        help_text="Имя получателя"
+    )
+    recipient_phone = serializers.CharField(
+        max_length=20,
+        required=False,
+        allow_blank=True,
+        help_text="Телефон получателя"
+    )
+    
+    def validate(self, attrs):
+        """Валидация: должен быть указан либо shipping_address, либо address_id."""
+        shipping_address = attrs.get('shipping_address', '').strip()
+        address_id = attrs.get('address_id', '').strip()
+        
+        if not shipping_address and not address_id:
+            raise serializers.ValidationError(
+                "Необходимо указать либо shipping_address, либо address_id"
+            )
+        
+        return attrs
     
     def validate_shipping_address(self, value):
         """
@@ -225,8 +271,15 @@ class OrderSerializer(serializers.Serializer):
         id (int): Уникальный идентификатор заказа
         user_id (int): ID пользователя, оформившего заказ
         items (list): Список товаров в заказе
+        subtotal_amount (float): Сумма товаров
+        delivery_cost (float): Стоимость доставки
         total_amount (float): Общая стоимость заказа
         shipping_address (str): Адрес доставки
+        address (dict): Объект адреса доставки
+        delivery_type (str): Тип доставки
+        delivery_date (str): Дата доставки
+        recipient_name (str): Имя получателя
+        recipient_phone (str): Телефон получателя
         status (str): Текущий статус заказа
         created_at (str): Дата и время оформления
     
@@ -238,10 +291,34 @@ class OrderSerializer(serializers.Serializer):
         - cancelled: Отменён
     """
     
-    id = serializers.IntegerField(read_only=True)
-    user_id = serializers.IntegerField(read_only=True)
+    id = serializers.CharField(read_only=True)
+    user_id = serializers.CharField(read_only=True)
     items = serializers.ListField(read_only=True)
+    subtotal_amount = serializers.FloatField(read_only=True)
+    delivery_cost = serializers.FloatField(read_only=True)
     total_amount = serializers.FloatField(read_only=True)
     shipping_address = serializers.CharField(read_only=True)
+    address = serializers.DictField(read_only=True, allow_null=True)
+    delivery_type = serializers.CharField(read_only=True)
+    delivery_date = serializers.CharField(read_only=True, allow_null=True)
+    recipient_name = serializers.CharField(read_only=True, allow_null=True)
+    recipient_phone = serializers.CharField(read_only=True, allow_null=True)
     status = serializers.CharField(read_only=True)
     created_at = serializers.CharField(read_only=True)
+
+
+class AddressCreateSerializer(serializers.Serializer):
+    """
+    Сериализатор для создания адреса доставки.
+    """
+    country = serializers.CharField(max_length=100, default='Россия', required=False)
+    city = serializers.CharField(max_length=100, required=True)
+    street = serializers.CharField(max_length=200, required=True)
+    house = serializers.CharField(max_length=20, required=True)
+    building = serializers.CharField(max_length=20, required=False, allow_blank=True)
+    apartment = serializers.CharField(max_length=20, required=False, allow_blank=True)
+    postal_code = serializers.CharField(max_length=20, required=False, allow_blank=True)
+    comment = serializers.CharField(required=False, allow_blank=True)
+    is_default = serializers.BooleanField(default=False, required=False)
+    latitude = serializers.DecimalField(max_digits=9, decimal_places=6, required=False, allow_null=True)
+    longitude = serializers.DecimalField(max_digits=9, decimal_places=6, required=False, allow_null=True)

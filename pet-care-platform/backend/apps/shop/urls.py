@@ -21,9 +21,13 @@ from .views import (
     ProductDetailView,
     CartView,
     CartItemView,
+    CartRefreshView,
+    OrderCheckoutView,
     OrderCreateView,
     OrderHistoryView,
-    OrderConfirmPaymentView
+    OrderConfirmPaymentView,
+    AddressListView,
+    AddressSearchView
 )
 
 urlpatterns = [
@@ -39,9 +43,17 @@ urlpatterns = [
     # GET, POST /api/shop/cart/
     path('cart/', CartView.as_view(), name='cart'),
     
+    # Обновление корзины (для фронтенда)
+    # GET /api/shop/cart/refresh/
+    path('cart/refresh/', CartRefreshView.as_view(), name='cart-refresh'),
+    
     # Операции с элементами корзины
     # PUT, DELETE /api/shop/cart/item/
     path('cart/item/', CartItemView.as_view(), name='cart-item'),
+    
+    # Страница оформления заказа
+    # GET /api/shop/checkout/
+    path('checkout/', OrderCheckoutView.as_view(), name='order-checkout'),
     
     # Операции с заказами
     # POST /api/shop/orders/ - оформление заказа
@@ -52,4 +64,11 @@ urlpatterns = [
     
     # GET /api/shop/orders/history/ - история заказов
     path('orders/history/', OrderHistoryView.as_view(), name='order-history'),
+    
+    # Адреса доставки
+    # GET, POST /api/shop/addresses/ - список и создание адресов
+    path('addresses/', AddressListView.as_view(), name='address-list'),
+    
+    # GET /api/shop/addresses/search/ - поиск адресов
+    path('addresses/search/', AddressSearchView.as_view(), name='address-search'),
 ]

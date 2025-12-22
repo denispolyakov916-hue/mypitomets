@@ -58,16 +58,9 @@ class RegisterView(APIView):
             # Регистрация через сервис
             user_data = UserService.registration(email, password)
             
-            # Установка refresh токена в cookie (httpOnly, 30 дней)
+            # При регистрации токены не выдаются - пользователь должен сначала активировать аккаунт
+            # Токены будут выданы только после активации через login
             response = Response(user_data, status=status.HTTP_201_CREATED)
-            response.set_cookie(
-                'refreshToken',
-                user_data['refreshToken'],
-                max_age=30 * 24 * 60 * 60,  # 30 дней
-                httponly=True,
-                samesite='Lax',
-                secure=not settings.DEBUG  # HTTPS только в production
-            )
             
             logger.info(f"Пользователь зарегистрирован: {email}")
             
@@ -241,7 +234,7 @@ class ActivateView(APIView):
     
     GET /api/auth/activate/<activation_link>/
     
-    Перенаправляет на клиент после активации.
+    Активирует пользователя и перенаправляет на клиент с временным кодом для получения токенов.
     """
     
     permission_classes = [AllowAny]
@@ -249,17 +242,23 @@ class ActivateView(APIView):
     def get(self, request, activation_link):
         try:
             # Активация через сервис
-            UserService.activate(activation_link=activation_link)
+            result = UserService.activate(activation_link=activation_link)
             
-            # Перенаправление на клиент
+            # Перенаправление на клиент с временным кодом для обмена на токены
             client_url = getattr(settings, 'CLIENT_URL', 'http://localhost:5173')
-            return HttpResponseRedirect(client_url)
+            temp_code = result.get('temp_auth_code')
+            if temp_code:
+                return HttpResponseRedirect(f"{client_url}?activation_success=1&auth_code={temp_code}")
+            else:
+                # Если по какой-то причине кода нет, просто перенаправляем
+                return HttpResponseRedirect(f"{client_url}?activation_success=1")
             
         except ApiError as e:
             logger.error(f"Ошибка активации: {e.detail}")
             # Перенаправление на клиент с ошибкой
             client_url = getattr(settings, 'CLIENT_URL', 'http://localhost:5173')
-            return HttpResponseRedirect(f"{client_url}?activation_error=1")
+            error_msg = e.detail.replace(' ', '_')  # Заменяем пробелы для URL
+            return HttpResponseRedirect(f"{client_url}?activation_error=1&message={error_msg}")
         except Exception as e:
             logger.error(f"Ошибка при активации: {str(e)}")
             client_url = getattr(settings, 'CLIENT_URL', 'http://localhost:5173')
@@ -273,7 +272,7 @@ class ActivateByCodeView(APIView):
     POST /api/auth/activate-by-code/
     Тело: {"activation_code": "123456"}
     
-    Возвращает результат активации.
+    Возвращает токены и данные пользователя после успешной активации.
     """
     
     permission_classes = [AllowAny]
@@ -290,15 +289,23 @@ class ActivateByCodeView(APIView):
             
             activation_code = serializer.validated_data['activation_code']
             
-            # Активация через сервис
-            UserService.activate(activation_code=activation_code)
+            # Активация через сервис - возвращает токены и данные пользователя
+            user_data = UserService.activate(activation_code=activation_code)
             
             logger.info(f"Пользователь активирован по коду: {activation_code}")
             
-            return Response(
-                {'message': 'Аккаунт успешно активирован'},
-                status=status.HTTP_200_OK
+            # Установка refresh токена в cookie (httpOnly, 30 дней)
+            response = Response(user_data, status=status.HTTP_200_OK)
+            response.set_cookie(
+                'refreshToken',
+                user_data['refreshToken'],
+                max_age=30 * 24 * 60 * 60,  # 30 дней
+                httponly=True,
+                samesite='Lax',
+                secure=not settings.DEBUG  # HTTPS только в production
             )
+            
+            return response
             
         except ApiError as e:
             logger.error(f"Ошибка активации по коду: {e.detail}")
@@ -308,6 +315,69 @@ class ActivateByCodeView(APIView):
             )
         except Exception as e:
             logger.error(f"Ошибка при активации по коду: {str(e)}")
+            return Response(
+                {'error': 'Внутренняя ошибка сервера'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
+class ExchangeAuthCodeView(APIView):
+    """
+    Обмен временного кода активации на токены.
+    
+    POST /api/auth/exchange-auth-code/
+    Тело: {"auth_code": "123456"}
+    
+    Используется после активации по ссылке для получения токенов.
+    Возвращает токены и устанавливает refresh токен в cookie.
+    """
+    
+    permission_classes = [AllowAny]
+    
+    def post(self, request):
+        try:
+            # Используем ActivationCodeSerializer для валидации кода
+            # Переименовываем поле для совместимости
+            data = request.data.copy()
+            if 'auth_code' in data:
+                data['activation_code'] = data.pop('auth_code')
+            
+            serializer = ActivationCodeSerializer(data=data)
+            
+            if not serializer.is_valid():
+                return Response(
+                    {'error': 'Ошибка валидации', 'errors': serializer.errors},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            auth_code = serializer.validated_data['activation_code']
+            
+            # Обмен кода на токены через сервис
+            user_data = UserService.exchange_temp_code_for_tokens(auth_code)
+            
+            logger.info(f"Временный код обменян на токены")
+            
+            # Установка refresh токена в cookie (httpOnly, 30 дней)
+            response = Response(user_data, status=status.HTTP_200_OK)
+            response.set_cookie(
+                'refreshToken',
+                user_data['refreshToken'],
+                max_age=30 * 24 * 60 * 60,  # 30 дней
+                httponly=True,
+                samesite='Lax',
+                secure=not settings.DEBUG  # HTTPS только в production
+            )
+            
+            return response
+            
+        except ApiError as e:
+            logger.error(f"Ошибка обмена кода на токены: {e.detail}")
+            return Response(
+                {'error': e.detail},
+                status=e.status_code
+            )
+        except Exception as e:
+            logger.error(f"Ошибка при обмене кода на токены: {str(e)}")
             return Response(
                 {'error': 'Внутренняя ошибка сервера'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR

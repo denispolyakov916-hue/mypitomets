@@ -22,6 +22,7 @@ from .views import (
     RefreshView,
     ActivateView,
     ActivateByCodeView,
+    ExchangeAuthCodeView,
     GetUsersView,
 )
 
@@ -53,6 +54,10 @@ urlpatterns = [
     # Активация аккаунта по коду из email
     # POST /api/auth/activate-by-code/
     path('activate-by-code/', ActivateByCodeView.as_view(), name='auth-activate-by-code'),
+    
+    # Обмен временного кода активации на токены (после активации по ссылке)
+    # POST /api/auth/exchange-auth-code/
+    path('exchange-auth-code/', ExchangeAuthCodeView.as_view(), name='auth-exchange-code'),
     
     # Список пользователей (для тестирования, требует аутентификации)
     # GET /api/auth/users/

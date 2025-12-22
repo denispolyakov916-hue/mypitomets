@@ -176,7 +176,7 @@ function CourseCard({ course, isOwned, onPurchase, isPurchasing }) {
 /**
  * Компонент боковой панели фильтров
  */
-function FilterSidebar({ filters, pets, onFilterChange, onReset }) {
+function FilterSidebar({ filters, availableFilters, onFilterChange, onReset }) {
   const [priceRange, setPriceRange] = useState({
     min: filters.min_price || '',
     max: filters.max_price || ''
@@ -202,7 +202,7 @@ function FilterSidebar({ filters, pets, onFilterChange, onReset }) {
       </div>
       
       {/* Персональные подборки для питомцев */}
-      {pets && pets.length > 0 && (
+      {availableFilters.user_pets && availableFilters.user_pets.length > 0 && (
         <div className="mb-5 pb-5 border-b border-gray-200">
           <label className="block text-sm font-medium text-gray-900 mb-2 flex items-center gap-2">
             <span className="text-primary-600">⭐</span>
@@ -211,17 +211,49 @@ function FilterSidebar({ filters, pets, onFilterChange, onReset }) {
           <p className="text-xs text-gray-500 mb-3">
             Курсы специально для ваших питомцев
           </p>
-          <label className="flex items-center cursor-pointer group p-2 rounded-lg transition-colors hover:bg-gray-50">
-            <input
-              type="checkbox"
-              checked={filters.personal === 'true'}
-              onChange={(e) => onFilterChange('personal', e.target.checked ? 'true' : '')}
-              className="w-4 h-4 text-primary-600 focus:ring-primary-500 rounded"
-            />
-            <span className="ml-2 text-sm text-gray-700 group-hover:text-primary-600">
-              Для моих питомцев
-            </span>
-          </label>
+          <div className="space-y-2">
+            {availableFilters.user_pets.map(pet => {
+              const hasCourses = ['dog', 'cat'].includes(pet.species)
+              if (!hasCourses) return null
+              
+              const isSelected = filters.pet_id === pet.id
+              
+              return (
+                <label 
+                  key={pet.id} 
+                  className={`flex items-center cursor-pointer group p-2 rounded-lg transition-colors ${
+                    isSelected 
+                      ? 'bg-primary-50 border border-primary-200' 
+                      : 'hover:bg-gray-50'
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="pet_id"
+                    value={pet.id}
+                    checked={isSelected}
+                    onChange={(e) => onFilterChange('pet_id', e.target.value)}
+                    className="w-4 h-4 text-primary-600 focus:ring-primary-500"
+                  />
+                  <span className={`ml-2 text-sm ${
+                    isSelected 
+                      ? 'text-primary-700 font-medium' 
+                      : 'text-gray-700 group-hover:text-primary-600'
+                  }`}>
+                    {pet.name} <span className="text-gray-500">({pet.species_label})</span>
+                  </span>
+                </label>
+              )
+            })}
+            {filters.pet_id && (
+              <button
+                onClick={() => onFilterChange('pet_id', '')}
+                className="text-xs text-primary-600 hover:text-primary-700 font-medium mt-2"
+              >
+                Показать все курсы
+              </button>
+            )}
+          </div>
         </div>
       )}
       
@@ -231,7 +263,19 @@ function FilterSidebar({ filters, pets, onFilterChange, onReset }) {
           Для кого
         </label>
         <div className="space-y-2">
-          {PET_TYPE_OPTIONS.map(opt => (
+          {availableFilters.pet_types?.map(opt => (
+            <label key={opt.value} className="flex items-center cursor-pointer">
+              <input
+                type="radio"
+                name="pet_type"
+                value={opt.value}
+                checked={filters.pet_type === opt.value}
+                onChange={(e) => onFilterChange('pet_type', e.target.value)}
+                className="w-4 h-4 text-primary-600 focus:ring-primary-500"
+              />
+              <span className="ml-2 text-gray-700">{opt.label}</span>
+            </label>
+          )) || PET_TYPE_OPTIONS.map(opt => (
             <label key={opt.value} className="flex items-center cursor-pointer">
               <input
                 type="radio"
@@ -244,6 +288,14 @@ function FilterSidebar({ filters, pets, onFilterChange, onReset }) {
               <span className="ml-2 text-gray-700">{opt.label}</span>
             </label>
           ))}
+          {filters.pet_type && (
+            <button
+              onClick={() => onFilterChange('pet_type', '')}
+              className="text-xs text-gray-500 hover:text-gray-700"
+            >
+              Показать всех
+            </button>
+          )}
         </div>
       </div>
       
@@ -257,7 +309,8 @@ function FilterSidebar({ filters, pets, onFilterChange, onReset }) {
           onChange={(e) => onFilterChange('category', e.target.value)}
           className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-primary-500 focus:border-primary-500"
         >
-          {CATEGORY_OPTIONS.map(opt => (
+          <option value="">Все категории</option>
+          {(availableFilters.categories || CATEGORY_OPTIONS.filter(o => o.value)).map(opt => (
             <option key={opt.value} value={opt.value}>{opt.label}</option>
           ))}
         </select>
@@ -276,7 +329,8 @@ function FilterSidebar({ filters, pets, onFilterChange, onReset }) {
           onChange={(e) => onFilterChange('level', e.target.value)}
           className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-primary-500 focus:border-primary-500"
         >
-          {LEVEL_OPTIONS.map(opt => (
+          <option value="">Все уровни</option>
+          {(availableFilters.levels || LEVEL_OPTIONS.filter(o => o.value)).map(opt => (
             <option key={opt.value} value={opt.value}>{opt.label}</option>
           ))}
         </select>
@@ -292,11 +346,36 @@ function FilterSidebar({ filters, pets, onFilterChange, onReset }) {
           onChange={(e) => onFilterChange('format_type', e.target.value)}
           className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-primary-500 focus:border-primary-500"
         >
-          {FORMAT_OPTIONS.map(opt => (
+          <option value="">Все форматы</option>
+          {(availableFilters.formats || FORMAT_OPTIONS.filter(o => o.value)).map(opt => (
             <option key={opt.value} value={opt.value}>{opt.label}</option>
           ))}
         </select>
       </div>
+      
+      {/* Тип цены */}
+      {availableFilters.price_types && availableFilters.price_types.length > 0 && (
+        <div className="mb-5">
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Тип цены
+          </label>
+          <div className="space-y-2">
+            {availableFilters.price_types.map(opt => (
+              <label key={opt.value} className="flex items-center cursor-pointer">
+                <input
+                  type="radio"
+                  name="price_type"
+                  value={opt.value}
+                  checked={filters.price_type === opt.value}
+                  onChange={(e) => onFilterChange('price_type', e.target.value)}
+                  className="w-4 h-4 text-primary-600 focus:ring-primary-500"
+                />
+                <span className="ml-2 text-gray-700">{opt.label}</span>
+              </label>
+            ))}
+          </div>
+        </div>
+      )}
       
       {/* Цена */}
       <div className="mb-5">
@@ -326,7 +405,73 @@ function FilterSidebar({ filters, pets, onFilterChange, onReset }) {
         >
           Применить
         </button>
+        {availableFilters.price_range && (
+          <p className="mt-1 text-xs text-gray-500">
+            {Math.floor(availableFilters.price_range.min)} — {Math.ceil(availableFilters.price_range.max)} ₽
+          </p>
+        )}
       </div>
+    </div>
+  )
+}
+
+/**
+ * Компонент пагинации
+ */
+function Pagination({ pagination, onPageChange }) {
+  if (!pagination || pagination.total_pages <= 1) return null
+  
+  const { page, total_pages } = pagination
+  
+  // Генерация номеров страниц
+  const getPageNumbers = () => {
+    const pages = []
+    const showPages = 5
+    let start = Math.max(1, page - Math.floor(showPages / 2))
+    let end = Math.min(total_pages, start + showPages - 1)
+    
+    if (end - start < showPages - 1) {
+      start = Math.max(1, end - showPages + 1)
+    }
+    
+    for (let i = start; i <= end; i++) {
+      pages.push(i)
+    }
+    
+    return pages
+  }
+  
+  return (
+    <div className="flex justify-center items-center gap-1 mt-8">
+      <button
+        onClick={() => onPageChange(page - 1)}
+        disabled={page === 1}
+        className="px-3 py-2 rounded-lg bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        ←
+      </button>
+      
+      {getPageNumbers().map(num => (
+        <button
+          key={num}
+          onClick={() => onPageChange(num)}
+          className={`px-3 py-2 rounded-lg ${
+            num === page
+              ? 'bg-primary-600 text-white'
+              : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
+          }`}
+        >
+          {num}
+        </button>
+      ))}
+      
+      <button
+        onClick={() => onPageChange(page + 1)}
+        disabled={page === total_pages}
+        className="px-3 py-2 rounded-lg bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        →
+      </button>
     </div>
   )
 }
@@ -342,6 +487,8 @@ function Courses() {
   
   // Состояние
   const [courses, setCourses] = useState([])
+  const [pagination, setPagination] = useState(null)
+  const [availableFilters, setAvailableFilters] = useState({})
   const [ownedCourseIds, setOwnedCourseIds] = useState(new Set())
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -350,13 +497,17 @@ function Courses() {
   // Фильтры из URL
   const filters = {
     pet_type: searchParams.get('pet_type') || '',
+    pet_id: searchParams.get('pet_id') || '',
     personal: searchParams.get('personal') || '',
     category: searchParams.get('category') || '',
     subcategory: searchParams.get('subcategory') || '',
     level: searchParams.get('level') || '',
     format_type: searchParams.get('format_type') || '',
+    price_type: searchParams.get('price_type') || '',
     min_price: searchParams.get('min_price') || '',
     max_price: searchParams.get('max_price') || '',
+    search: searchParams.get('search') || '',
+    page: searchParams.get('page') || '1',
   }
   
   /**
@@ -371,19 +522,32 @@ function Courses() {
       newParams.delete(name)
     }
     
+    // Сбрасываем страницу при изменении фильтров
+    if (name !== 'page') {
+      newParams.set('page', '1')
+    }
+    
     // Сбрасываем подкатегорию при смене категории
     if (name === 'category') {
       newParams.delete('subcategory')
     }
     
+    // При выборе питомца сбрасываем фильтр по типу животного (будет установлен автоматически)
+    if (name === 'pet_id') {
+      newParams.delete('pet_type')
+      newParams.delete('personal')
+    }
+    
     // При выборе персональной подборки сбрасываем фильтр по типу животного
     if (name === 'personal' && value === 'true') {
       newParams.delete('pet_type')
+      newParams.delete('pet_id')
     }
     
     // При выборе типа животного сбрасываем персональную подборку
     if (name === 'pet_type') {
       newParams.delete('personal')
+      newParams.delete('pet_id')
     }
     
     setSearchParams(newParams)
@@ -407,6 +571,8 @@ function Courses() {
       try {
         const response = await getCourses(filters)
         setCourses(response.courses || [])
+        setPagination(response.pagination)
+        setAvailableFilters(response.filters || {})
       } catch (err) {
         setError(err.message || 'Не удалось загрузить курсы')
       } finally {
@@ -482,7 +648,7 @@ function Courses() {
         <aside className="w-64 flex-shrink-0 hidden lg:block">
           <FilterSidebar
             filters={filters}
-            pets={pets}
+            availableFilters={availableFilters}
             onFilterChange={handleFilterChange}
             onReset={handleReset}
           />
@@ -588,7 +754,7 @@ function Courses() {
           {!isLoading && !error && courses.length > 0 && (
             <>
               <p className="text-gray-600 mb-4">
-                Найдено курсов: {courses.length}
+                Найдено курсов: {pagination?.total || courses.length}
               </p>
               
               {/* Сетка курсов */}
@@ -603,6 +769,12 @@ function Courses() {
                   />
                 ))}
               </div>
+              
+              {/* Пагинация */}
+              <Pagination
+                pagination={pagination}
+                onPageChange={(page) => handleFilterChange('page', String(page))}
+              />
             </>
           )}
         </main>

@@ -11,7 +11,7 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 
 from .models import Payment
-from .serializers import PaymentCreateSerializer, PaymentSerializer, PaymentConfirmSerializer
+from .serializers import PaymentCreateSerializer, PaymentSerializer, PaymentConfirmSerializer, PaymentPageSerializer
 from .services import PaymentService
 
 logger = logging.getLogger('apps.payments')
@@ -238,3 +238,96 @@ class PaymentStatisticsView(APIView):
     def get(self, request):
         stats = PaymentService.get_payment_statistics(request.user)
         return Response({'statistics': stats}, status=status.HTTP_200_OK)
+
+
+class PaymentPageView(APIView):
+    """
+    Единая страница оплаты с полями для ввода карты.
+    
+    POST /api/payments/page/
+    Принимает данные карты и создает/обрабатывает платеж.
+    Любая карта принимается (заглушка для MVP).
+    """
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request):
+        """Обработка платежа с карты."""
+        from .serializers import PaymentPageSerializer
+        
+        serializer = PaymentPageSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        
+        payment_type = serializer.validated_data['payment_type']
+        object_id = serializer.validated_data['object_id']
+        
+        # Получение суммы платежа
+        amount = self._get_payment_amount(payment_type, object_id, request.user)
+        if amount is None:
+            return Response(
+                {'error': 'Связанный объект не найден или недоступен'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        if amount == 0:
+            return Response(
+                {'error': 'Оплата не требуется (бесплатно)'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Создание платежа
+        try:
+            payment = PaymentService.create_payment(
+                user=request.user,
+                payment_type=payment_type,
+                object_id=object_id,
+                amount=amount,
+                payment_method='card',
+                metadata={
+                    'card_last4': serializer.validated_data.get('card_number', '')[-4:] if serializer.validated_data.get('card_number') else None,
+                    'cardholder_name': serializer.validated_data.get('cardholder_name'),
+                }
+            )
+        except ValueError as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Обработка платежа (имитация - любая карта проходит)
+        success = PaymentService.process_payment(payment)
+        
+        if success:
+            serializer_response = PaymentSerializer(payment)
+            return Response({
+                'message': 'Платеж успешно обработан',
+                'payment': serializer_response.data,
+                'success': True
+            }, status=status.HTTP_200_OK)
+        else:
+            return Response(
+                {'error': 'Не удалось обработать платеж', 'success': False},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+    
+    def _get_payment_amount(self, payment_type, object_id, user):
+        """Получение суммы платежа для разных типов объектов."""
+        if payment_type == 'shop_order':
+            from apps.shop.models import Order
+            try:
+                order = Order.objects.get(id=object_id, user=user)
+                return order.total_amount
+            except Order.DoesNotExist:
+                return None
+        
+        elif payment_type == 'course':
+            from apps.training.models import Course, UserCourse
+            try:
+                course = Course.objects.get(id=object_id, is_active=True)
+                # Проверка, что курс ещё не куплен
+                if UserCourse.objects.filter(user=user, course=course).exists():
+                    return None
+                return course.price
+            except Course.DoesNotExist:
+                return None
+        
+        return None
+
+

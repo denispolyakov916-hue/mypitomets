@@ -108,6 +108,13 @@ class Product(models.Model):
     in_stock = models.BooleanField(default=False, verbose_name='В наличии')
     stock_count = models.PositiveIntegerField(default=0, verbose_name='Количество на складе')
     
+    # Скидка
+    discount_percent = models.PositiveIntegerField(
+        default=0,
+        verbose_name='Скидка (%)',
+        help_text='Процент скидки от 0 до 100'
+    )
+    
     # Дополнительные параметры
     params = models.JSONField(default=dict, blank=True, verbose_name='Параметры')
     
@@ -134,6 +141,13 @@ class Product(models.Model):
         """Главное изображение товара."""
         return self.images[0] if self.images else None
     
+    @property
+    def discounted_price(self):
+        """Цена со скидкой."""
+        if self.discount_percent > 0:
+            return float(self.price) * (100 - self.discount_percent) / 100
+        return float(self.price)
+    
     def to_dict(self):
         """Сериализация для API."""
         return {
@@ -142,6 +156,8 @@ class Product(models.Model):
             'name': self.name,
             'description': self.description,
             'price': float(self.price),
+            'discount_percent': self.discount_percent,
+            'discounted_price': round(self.discounted_price, 2),
             'vendor': self.vendor,
             'vendor_code': self.vendor_code,
             'weight': float(self.weight) if self.weight else None,
@@ -232,14 +248,92 @@ class CartItem(models.Model):
         return f"{self.product.name} x {self.quantity}"
     
     def get_total(self):
-        """Стоимость позиции."""
-        return self.product.price * self.quantity
+        """Стоимость позиции с учётом скидки."""
+        return self.product.discounted_price * self.quantity
     
     def to_dict(self):
         """Сериализация для API."""
         return {
             'product': self.product.to_dict(),
             'quantity': self.quantity
+        }
+
+
+class Address(models.Model):
+    """
+    Модель адреса доставки пользователя.
+    """
+    
+    id = models.CharField(
+        primary_key=True,
+        max_length=36,
+        default=generate_uuid7,
+        editable=False,
+        help_text="UUIDv7 идентификатор адреса"
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='addresses',
+        verbose_name='Пользователь'
+    )
+    
+    # Основные поля адреса
+    country = models.CharField(max_length=100, default='Россия', verbose_name='Страна')
+    city = models.CharField(max_length=100, verbose_name='Город')
+    street = models.CharField(max_length=200, verbose_name='Улица')
+    house = models.CharField(max_length=20, verbose_name='Дом')
+    building = models.CharField(max_length=20, blank=True, null=True, verbose_name='Корпус/Строение')
+    apartment = models.CharField(max_length=20, blank=True, null=True, verbose_name='Квартира')
+    postal_code = models.CharField(max_length=20, blank=True, null=True, verbose_name='Почтовый индекс')
+    
+    # Дополнительные поля
+    comment = models.TextField(blank=True, null=True, verbose_name='Комментарий к адресу')
+    is_default = models.BooleanField(default=False, verbose_name='Адрес по умолчанию')
+    
+    # Координаты для карты (если используется геокодирование)
+    latitude = models.DecimalField(max_digits=9, decimal_places=6, blank=True, null=True, verbose_name='Широта')
+    longitude = models.DecimalField(max_digits=9, decimal_places=6, blank=True, null=True, verbose_name='Долгота')
+    
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='Дата создания')
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        db_table = 'addresses'
+        verbose_name = 'Адрес'
+        verbose_name_plural = 'Адреса'
+        ordering = ['-is_default', '-created_at']
+    
+    def __str__(self):
+        return f"{self.city}, {self.street}, {self.house}"
+    
+    def get_full_address(self):
+        """Полный адрес в виде строки."""
+        parts = [self.country, self.city, self.street, self.house]
+        if self.building:
+            parts.append(f"к. {self.building}")
+        if self.apartment:
+            parts.append(f"кв. {self.apartment}")
+        if self.postal_code:
+            parts.append(self.postal_code)
+        return ", ".join(filter(None, parts))
+    
+    def to_dict(self):
+        """Сериализация для API."""
+        return {
+            'id': str(self.id),
+            'country': self.country,
+            'city': self.city,
+            'street': self.street,
+            'house': self.house,
+            'building': self.building,
+            'apartment': self.apartment,
+            'postal_code': self.postal_code,
+            'comment': self.comment,
+            'is_default': self.is_default,
+            'full_address': self.get_full_address(),
+            'latitude': float(self.latitude) if self.latitude else None,
+            'longitude': float(self.longitude) if self.longitude else None,
         }
 
 
@@ -258,6 +352,12 @@ class Order(models.Model):
         ('cancelled', 'Отменён'),
     ]
     
+    DELIVERY_TYPE_CHOICES = [
+        ('standard', 'Стандартная доставка'),
+        ('express', 'Экспресс доставка'),
+        ('pickup', 'Самовывоз'),
+    ]
+    
     id = models.CharField(
         primary_key=True,
         max_length=36,
@@ -272,8 +372,45 @@ class Order(models.Model):
         verbose_name='Пользователь'
     )
     
-    total_amount = models.DecimalField(max_digits=10, decimal_places=2, verbose_name='Сумма')
-    shipping_address = models.TextField(verbose_name='Адрес доставки')
+    # Финансовые поля
+    subtotal_amount = models.DecimalField(
+        max_digits=10, 
+        decimal_places=2,
+        default=0,
+        verbose_name='Сумма товаров'
+    )
+    delivery_cost = models.DecimalField(
+        max_digits=10, 
+        decimal_places=2, 
+        default=0,
+        verbose_name='Стоимость доставки'
+    )
+    total_amount = models.DecimalField(max_digits=10, decimal_places=2, verbose_name='Итоговая сумма')
+    
+    # Адрес доставки (может быть связан с Address или просто текст)
+    shipping_address = models.TextField(verbose_name='Адрес доставки (текст)')
+    address = models.ForeignKey(
+        'Address',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='orders',
+        verbose_name='Адрес доставки (объект)'
+    )
+    
+    # Доставка
+    delivery_type = models.CharField(
+        max_length=20,
+        choices=DELIVERY_TYPE_CHOICES,
+        default='standard',
+        verbose_name='Тип доставки'
+    )
+    delivery_date = models.DateField(blank=True, null=True, verbose_name='Дата доставки')
+    
+    # Контактная информация получателя
+    recipient_name = models.CharField(max_length=200, blank=True, null=True, verbose_name='Имя получателя')
+    recipient_phone = models.CharField(max_length=20, blank=True, null=True, verbose_name='Телефон получателя')
+    
     status = models.CharField(
         max_length=20,
         choices=STATUS_CHOICES,
@@ -293,14 +430,29 @@ class Order(models.Model):
     def __str__(self):
         return f"Заказ {self.id} от {self.user.email}"
     
+    def get_subtotal(self):
+        """Сумма товаров без доставки."""
+        return sum(item.get_total() for item in self.items.all())
+    
+    def get_total_with_delivery(self):
+        """Итоговая сумма с доставкой."""
+        return self.get_subtotal() + self.delivery_cost
+    
     def to_dict(self):
         """Сериализация для API."""
         return {
             'id': str(self.id),
             'user_id': str(self.user_id),
             'items': [item.to_dict() for item in self.items.all()],
+            'subtotal_amount': float(self.subtotal_amount),
+            'delivery_cost': float(self.delivery_cost),
             'total_amount': float(self.total_amount),
             'shipping_address': self.shipping_address,
+            'address': self.address.to_dict() if self.address else None,
+            'delivery_type': self.delivery_type,
+            'delivery_date': self.delivery_date.isoformat() if self.delivery_date else None,
+            'recipient_name': self.recipient_name,
+            'recipient_phone': self.recipient_phone,
             'status': self.status,
             'created_at': self.created_at.isoformat() if self.created_at else None
         }

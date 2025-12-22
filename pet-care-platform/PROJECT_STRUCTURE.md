@@ -168,13 +168,12 @@ pet-care-platform/
 │   │
 │   ├── manage.py                     # Django CLI
 │   ├── requirements.txt              # Python зависимости
-│   ├── Dockerfile                    # Docker образ backend
 │   ├── create_admin.py               # Скрипт создания админа
 │   ├── init_db.sql                   # Инициализация БД
 │   ├── setup_database.bat            # Настройка БД (Windows)
 │   ├── setup_db.sh                   # Настройка БД (Linux/Mac)
-│   ├── setup_venv.bat                # Настройка виртуального окружения (Windows)
-│   ├── install_dependencies.bat      # Установка зависимостей (Windows)
+│   ├── start_backend.bat             # Запуск бэкенда (Windows)
+│   ├── start_backend.sh              # Запуск бэкенда (Linux)
 │   └── bb8f34a4-9259-47cc-9a89-9ed0f740064e.xml  # XML каталог товаров
 │
 ├── .gitignore                        # Git ignore правила
@@ -1268,10 +1267,6 @@ python manage.py import_xml_catalog path/to/catalog.xml
 # Импорт каталога из CSV
 python manage.py import_catalog path/to/catalog.csv
 ```
-
-### Docker запуск
-
-Проект поддерживает запуск в Docker (конфигурация в разработке).
 
 ---
 

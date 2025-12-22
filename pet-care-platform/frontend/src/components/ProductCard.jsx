@@ -98,8 +98,15 @@ function ProductCard({ product, onAddToCart, isLoading = false }) {
           </div>
         )}
         
+        {/* Бейдж скидки */}
+        {product.discount_percent > 0 && (
+          <div className="absolute top-2 right-2 px-2 py-1 bg-red-500 text-white text-xs rounded-lg font-bold">
+            -{product.discount_percent}%
+          </div>
+        )}
+        
         {/* Бейдж наличия */}
-        {!product.in_stock && (
+        {product.stock_count <= 0 && (
           <div className="absolute top-2 right-2 px-2 py-1 bg-red-500 text-white text-xs rounded-lg">
             Нет в наличии
           </div>
@@ -142,14 +149,32 @@ function ProductCard({ product, onAddToCart, isLoading = false }) {
         
         {/* Цена и добавление в корзину */}
         <div className="flex items-center justify-between mt-auto pt-3 border-t border-gray-100">
-          <span className="text-lg font-bold text-gray-900">
-            {formatPrice(product.price)}
-          </span>
+          <div className="flex flex-col">
+            {product.discount_percent > 0 ? (
+              <>
+                <span className="text-xs text-gray-400 line-through">
+                  {formatPrice(product.price)}
+                </span>
+                <span className="text-lg font-bold text-red-600">
+                  {formatPrice(product.discounted_price)}
+                </span>
+              </>
+            ) : (
+              <span className="text-lg font-bold text-gray-900">
+                {formatPrice(product.price)}
+              </span>
+            )}
+            {product.stock_count > 0 && product.stock_count <= 5 && (
+              <span className="text-xs text-orange-600 font-medium">
+                Осталось {product.stock_count} шт.
+              </span>
+            )}
+          </div>
           <button
             onClick={handleAddToCart}
-            disabled={isAdding || isLoading || !product.in_stock}
+            disabled={isAdding || isLoading || product.stock_count <= 0}
             className={`text-sm py-2 px-3 rounded-lg flex items-center gap-1.5 transition-colors ${
-              !product.in_stock
+              product.stock_count <= 0
                 ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
                 : 'bg-primary-600 hover:bg-primary-700 text-white'
             }`}
@@ -159,7 +184,7 @@ function ProductCard({ product, onAddToCart, isLoading = false }) {
                 <ButtonLoader />
                 <span>...</span>
               </>
-            ) : !product.in_stock ? (
+            ) : product.stock_count <= 0 ? (
               'Нет'
             ) : (
               <>

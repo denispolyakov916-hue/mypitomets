@@ -1,60 +1,234 @@
-# Python
+# ============================================
+# Питомец+ - Единый .gitignore
+# ============================================
+# Учитывает специфику работы команды:
+# - .env файлы коммитятся для синхронизации
+# - Работа на Windows и Linux
+# - Django backend + React/Vite frontend
+# ============================================
+
+# ============================================
+# Python / Django Backend
+# ============================================
+
+# Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
 .Python
-env/
+
+# Virtual environments (не коммитим)
 venv/
 .venv/
+env/
 ENV/
-.env
-*.egg-info/
-dist/
-build/
+env.bak/
+venv.bak/
 
-# Django
+# Django specific
 *.log
 local_settings.py
 db.sqlite3
 *.sqlite3
+*.sqlite
 media/
 staticfiles/
+collectstatic/
 
-# Node
+# Python packaging
+*.egg
+*.egg-info/
+dist/
+build/
+*.egg-info
+.eggs/
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# ============================================
+# Node.js / React / Vite Frontend
+# ============================================
+
+# Dependencies
 node_modules/
-npm-debug.log
-yarn-debug.log
-yarn-error.log
-.pnpm-debug.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+.pnpm-debug.log*
 
 # Build outputs
 dist/
-build/
+dist-ssr/
 *.local
+.output/
+.nuxt/
+.next/
+out/
 
-# IDE
-.idea/
+# Vite
+.vite/
+vite.config.js.timestamp-*
+
+# ============================================
+# Environment Variables
+# ============================================
+# ВАЖНО: .env файлы коммитятся для синхронизации команды
+# Игнорируем только локальные переопределения и продакшн
+
+.env.local
+.env.*.local
+.env.production
+.env.prod
+.env.production.local
+.env.test.local
+
+# ============================================
+# IDE / Editors
+# ============================================
+
+# VSCode
 .vscode/
+*.code-workspace
+
+# IntelliJ IDEA / PyCharm
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# Sublime Text
+*.sublime-workspace
+*.sublime-project
+
+# Vim
+*.swp
+*.swo
+*~
+.netrwhist
+
+# Emacs
+*~
+\#*\#
+/.emacs.desktop
+/.emacs.desktop.lock
+*.elc
+
+# ============================================
+# Operating System Files
+# ============================================
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+*.stackdump
+[Dd]esktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+*.lnk
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+
+# Linux
+*~
+.directory
+.Trash-*
+.nfs*
+
+# ============================================
+# Docker
+# ============================================
+
+docker-compose.override.yml
+.dockerignore.local
+
+# ============================================
+# Temporary / Backup Files
+# ============================================
+
+*.tmp
+*.temp
+*.bak
+*.backup
+*.orig
+*.save
 *.swp
 *.swo
 *~
 
-# OS
-.DS_Store
-Thumbs.db
+# ============================================
+# Project Specific
+# ============================================
 
-# Environment
-.env
-.env.local
-.env.*.local
+# Большие XML файлы каталогов (если не нужны в Git)
+# Раскомментируйте если не хотите коммитить:
+# backend/*.xml
 
-# Testing
-.coverage
-htmlcov/
-.pytest_cache/
-.tox/
+# Локальные настройки разработки
+local_settings.py
+settings_local.py
 
-# Docker
-docker-compose.override.yml
+# ============================================
+# Logs
+# ============================================
 
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# ============================================
+# Database
+# ============================================
+
+# SQLite (если используется для тестов)
+*.db
+*.sqlite
+*.sqlite3
+
+# PostgreSQL dumps (если есть)
+*.sql.backup
+*.dump

@@ -37,7 +37,7 @@ function FilterSidebar({ filters, availableFilters, onFilterChange, onReset }) {
     <div className="bg-white rounded-xl shadow-sm p-5 sticky top-4">
       <div className="flex justify-between items-center mb-4">
         <h3 className="font-semibold text-gray-900">Фильтры</h3>
-        {(filters.animal || filters.pet_id || filters.category || filters.subcategory || filters.vendor || filters.min_price || filters.max_price || filters.in_stock || filters.search) && (
+        {(filters.animal || filters.pet_id || filters.category || filters.subcategory || filters.vendor || filters.min_price || filters.max_price || filters.in_stock || filters.has_discount || filters.search) && (
           <button
             onClick={onReset}
             className="text-sm text-primary-600 hover:text-primary-700"
@@ -253,6 +253,19 @@ function FilterSidebar({ filters, availableFilters, onFilterChange, onReset }) {
           <span className="ml-2 text-gray-700">Только в наличии</span>
         </label>
       </div>
+      
+      {/* Со скидкой */}
+      <div className="mb-5">
+        <label className="flex items-center cursor-pointer">
+          <input
+            type="checkbox"
+            checked={filters.has_discount === 'true'}
+            onChange={(e) => onFilterChange('has_discount', e.target.checked ? 'true' : '')}
+            className="w-4 h-4 text-red-500 focus:ring-red-500 rounded"
+          />
+          <span className="ml-2 text-gray-700">🔥 Со скидкой</span>
+        </label>
+      </div>
     </div>
   )
 }
@@ -345,6 +358,7 @@ function Shop() {
     min_price: searchParams.get('min_price') || '',
     max_price: searchParams.get('max_price') || '',
     in_stock: searchParams.get('in_stock') || '',
+    has_discount: searchParams.get('has_discount') || '',
     search: searchParams.get('search') || '',
     page: searchParams.get('page') || '1',
   }

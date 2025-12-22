@@ -64,5 +64,11 @@ class CustomJWTAuthentication(JWTAuthentication):
             logger.warning(f"Попытка входа неактивного пользователя: {user_id}")
             raise InvalidToken('Пользователь неактивен')
         
+        if not user.is_activated:
+            logger.warning(f"Попытка доступа неактивированного пользователя: {user_id}")
+            raise InvalidToken('Аккаунт не активирован. Проверьте email для активации.')
+        
         return user
+
+
 

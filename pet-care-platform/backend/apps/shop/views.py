@@ -11,7 +11,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated
 
-from .models import Product, Cart, CartItem, Order, OrderItem
+from .models import Product, Cart, CartItem, Order, OrderItem, Address
 from .serializers import (
     CartItemAddSerializer,
     CartItemUpdateSerializer,
@@ -44,8 +44,8 @@ class ProductListView(APIView):
     permission_classes = [AllowAny]
     
     def get(self, request):
-        # Базовый queryset - все товары с ценой > 0
-        products = Product.objects.filter(price__gt=0)
+        # Базовый queryset - все товары с ценой > 0 и положительным количеством на складе
+        products = Product.objects.filter(price__gt=0, stock_count__gt=0)
         
         # Фильтр по питомцу (персональная подборка)
         pet_id = request.query_params.get('pet_id')
@@ -104,6 +104,11 @@ class ProductListView(APIView):
         if in_stock == 'true':
             products = products.filter(in_stock=True)
         
+        # Фильтр по скидкам
+        has_discount = request.query_params.get('has_discount')
+        if has_discount == 'true':
+            products = products.filter(discount_percent__gt=0)
+        
         # Поиск по названию
         search = request.query_params.get('search')
         if search:
@@ -128,8 +133,8 @@ class ProductListView(APIView):
         # Получение доступных фильтров
         from django.db.models import Count, Min, Max
         
-        # Подкатегории для текущих фильтров
-        filter_query = Product.objects.filter(price__gt=0)
+        # Подкатегории для текущих фильтров (только товары в наличии)
+        filter_query = Product.objects.filter(price__gt=0, stock_count__gt=0)
         if animal:
             filter_query = filter_query.filter(animal=animal)
         if category:
@@ -256,8 +261,9 @@ class CartView(APIView):
             'items_count': items_count
         }, status=status.HTTP_200_OK)
     
+    
     def post(self, request):
-        """Добавление товара в корзину."""
+        """Добавление товара в корзину с валидацией наличия."""
         serializer = CartItemAddSerializer(data=request.data)
         
         if not serializer.is_valid():
@@ -278,18 +284,32 @@ class CartView(APIView):
                 status=status.HTTP_404_NOT_FOUND
             )
         
+        # Проверка наличия на складе
+        if product.stock_count <= 0:
+            return Response(
+                {'error': 'Товар закончился на складе'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
         cart = self._get_or_create_cart(request.user)
         
-        # Добавление или обновление количества
-        cart_item, created = CartItem.objects.get_or_create(
-            cart=cart,
-            product=product,
-            defaults={'quantity': quantity}
-        )
+        # Проверка текущего количества в корзине
+        existing_item = CartItem.objects.filter(cart=cart, product=product).first()
+        current_quantity = existing_item.quantity if existing_item else 0
+        new_total_quantity = current_quantity + quantity
         
-        if not created:
-            cart_item.quantity += quantity
-            cart_item.save()
+        # Проверка, что запрашиваемое количество доступно
+        if new_total_quantity > product.stock_count:
+            return Response({
+                'error': f'Недостаточно товара на складе. Доступно: {product.stock_count} шт., в корзине уже: {current_quantity} шт.'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Добавление или обновление количества
+        if existing_item:
+            existing_item.quantity = new_total_quantity
+            existing_item.save()
+        else:
+            CartItem.objects.create(cart=cart, product=product, quantity=quantity)
         
         # Возврат обновлённой корзины
         items = [item.to_dict() for item in cart.items.select_related('product').all()]
@@ -313,7 +333,7 @@ class CartItemView(APIView):
     permission_classes = [IsAuthenticated]
     
     def put(self, request):
-        """Обновление количества товара."""
+        """Обновление количества товара с валидацией наличия."""
         serializer = CartItemUpdateSerializer(data=request.data)
         
         if not serializer.is_valid():
@@ -327,7 +347,7 @@ class CartItemView(APIView):
         
         try:
             cart = Cart.objects.get(user=request.user)
-            cart_item = CartItem.objects.get(cart=cart, product_id=product_id)
+            cart_item = CartItem.objects.select_related('product').get(cart=cart, product_id=product_id)
         except (Cart.DoesNotExist, CartItem.DoesNotExist):
             return Response(
                 {'error': 'Товар не найден в корзине'},
@@ -337,6 +357,12 @@ class CartItemView(APIView):
         if quantity <= 0:
             cart_item.delete()
         else:
+            # Проверка доступного количества на складе
+            if quantity > cart_item.product.stock_count:
+                return Response({
+                    'error': f'Недостаточно товара на складе. Доступно: {cart_item.product.stock_count} шт.'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
             cart_item.quantity = quantity
             cart_item.save()
         
@@ -382,6 +408,115 @@ class CartItemView(APIView):
         }, status=status.HTTP_200_OK)
 
 
+class CartRefreshView(APIView):
+    """
+    Обновление корзины (для фронтенда).
+    
+    GET /api/shop/cart/refresh/
+    """
+    
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        """Обновление корзины - возвращает актуальное состояние."""
+        cart, _ = Cart.objects.get_or_create(user=request.user)
+        
+        items = [item.to_dict() for item in cart.items.select_related('product').all()]
+        total = float(cart.get_total())
+        items_count = cart.get_items_count()
+        
+        return Response({
+            'cart': items,
+            'total': total,
+            'items_count': items_count
+        }, status=status.HTTP_200_OK)
+
+
+class OrderCheckoutView(APIView):
+    """
+    Страница оформления заказа с детальной информацией.
+    
+    GET /api/shop/checkout/
+    Возвращает детальную информацию о составе заказа и ценах.
+    """
+    
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        """Получение информации для оформления заказа."""
+        try:
+            cart = Cart.objects.prefetch_related('items__product').get(user=request.user)
+        except Cart.DoesNotExist:
+            return Response(
+                {'error': 'Корзина пуста'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        cart_items = cart.items.all()
+        if not cart_items:
+            return Response(
+                {'error': 'Корзина пуста. Добавьте товары перед оформлением заказа.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Детальная информация о товарах
+        items_detail = []
+        for item in cart_items:
+            product = item.product
+            items_detail.append({
+                'product_id': product.id,
+                'product_name': product.name,
+                'product_image': product.main_image,
+                'vendor': product.vendor,
+                'price': float(product.price),
+                'quantity': item.quantity,
+                'item_total': float(item.get_total()),
+                'weight': float(product.weight) if product.weight else None,
+            })
+        
+        subtotal = float(cart.get_total())
+        
+        # Получение адресов пользователя
+        user_addresses = Address.objects.filter(user=request.user).order_by('-is_default', '-created_at')
+        addresses = [addr.to_dict() for addr in user_addresses]
+        
+        # Варианты доставки
+        delivery_options = [
+            {
+                'type': 'standard',
+                'name': 'Стандартная доставка',
+                'cost': 300.0,
+                'days': '3-5 дней',
+                'description': 'Доставка в пункт выдачи или курьером'
+            },
+            {
+                'type': 'express',
+                'name': 'Экспресс доставка',
+                'cost': 600.0,
+                'days': '1-2 дня',
+                'description': 'Быстрая доставка курьером'
+            },
+            {
+                'type': 'pickup',
+                'name': 'Самовывоз',
+                'cost': 0.0,
+                'days': 'Сегодня',
+                'description': 'Самовывоз из магазина'
+            }
+        ]
+        
+        return Response({
+            'items': items_detail,
+            'subtotal': subtotal,
+            'delivery_options': delivery_options,
+            'addresses': addresses,
+            'summary': {
+                'items_count': len(items_detail),
+                'subtotal': subtotal,
+            }
+        }, status=status.HTTP_200_OK)
+
+
 class OrderCreateView(APIView):
     """
     Оформление заказа.
@@ -418,25 +553,98 @@ class OrderCreateView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
         
-        # Создание заказа в транзакции
+        # Получение дополнительных данных
+        address_id = serializer.validated_data.get('address_id')
+        delivery_type = serializer.validated_data.get('delivery_type', 'standard')
+        delivery_cost = serializer.validated_data.get('delivery_cost', 0)
+        recipient_name = serializer.validated_data.get('recipient_name')
+        recipient_phone = serializer.validated_data.get('recipient_phone')
+        
+        # Получение объекта адреса если указан
+        address_obj = None
+        if address_id:
+            try:
+                address_obj = Address.objects.get(id=address_id, user=request.user)
+                if not shipping_address:
+                    shipping_address = address_obj.get_full_address()
+            except Address.DoesNotExist:
+                pass
+        
+        # Создание заказа в транзакции с блокировкой товаров
         with transaction.atomic():
-            total_amount = cart.get_total()
+            # Блокируем товары для обновления (предотвращение race condition)
+            product_ids = [item.product_id for item in cart_items]
+            products = {p.id: p for p in Product.objects.select_for_update().filter(id__in=product_ids)}
+            
+            # Валидация наличия всех товаров
+            unavailable_items = []
+            insufficient_items = []
+            
+            for item in cart_items:
+                product = products.get(item.product_id)
+                if not product:
+                    unavailable_items.append(item.product.name if item.product else f'ID {item.product_id}')
+                elif product.stock_count < item.quantity:
+                    insufficient_items.append({
+                        'name': product.name,
+                        'requested': item.quantity,
+                        'available': product.stock_count
+                    })
+            
+            # Возврат ошибок валидации
+            if unavailable_items:
+                return Response({
+                    'error': 'Некоторые товары больше недоступны',
+                    'unavailable_items': unavailable_items
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            if insufficient_items:
+                return Response({
+                    'error': 'Недостаточно товаров на складе',
+                    'insufficient_items': insufficient_items
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Расчёт суммы с учётом актуальных цен и скидок
+            subtotal = 0
+            for item in cart_items:
+                product = products[item.product_id]
+                # Используем цену со скидкой
+                item_price = product.discounted_price
+                subtotal += item_price * item.quantity
+            
+            total_amount = subtotal + delivery_cost
             
             order = Order.objects.create(
                 user=request.user,
+                subtotal_amount=subtotal,
+                delivery_cost=delivery_cost,
                 total_amount=total_amount,
-                shipping_address=shipping_address
+                shipping_address=shipping_address,
+                address=address_obj,
+                delivery_type=delivery_type,
+                recipient_name=recipient_name or request.user.first_name,
+                recipient_phone=recipient_phone or request.user.phone,
             )
             
-            # Создание элементов заказа
+            # Создание элементов заказа и уменьшение остатков
             for item in cart_items:
+                product = products[item.product_id]
+                # Сохраняем цену со скидкой
+                item_price = product.discounted_price
+                
                 OrderItem.objects.create(
                     order=order,
-                    product=item.product,
-                    product_name=item.product.name,
-                    price=item.product.price,
+                    product=product,
+                    product_name=product.name,
+                    price=item_price,
                     quantity=item.quantity
                 )
+                
+                # Уменьшаем количество на складе
+                product.stock_count -= item.quantity
+                if product.stock_count <= 0:
+                    product.in_stock = False
+                product.save(update_fields=['stock_count', 'in_stock'])
             
             # Очистка корзины
             cart_items.delete()
@@ -540,3 +748,97 @@ class OrderConfirmPaymentView(APIView):
 
         except ValueError as e:
             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class AddressListView(APIView):
+    """
+    Список адресов пользователя.
+    
+    GET  /api/shop/addresses/ - список адресов
+    POST /api/shop/addresses/ - создание адреса
+    """
+    
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        """Получение списка адресов пользователя."""
+        addresses = Address.objects.filter(user=request.user).order_by('-is_default', '-created_at')
+        return Response({
+            'addresses': [addr.to_dict() for addr in addresses]
+        }, status=status.HTTP_200_OK)
+    
+    def post(self, request):
+        """Создание нового адреса."""
+        from .serializers import AddressCreateSerializer
+        
+        serializer = AddressCreateSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(
+                {'errors': serializer.errors},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Если это первый адрес или указано is_default=True, делаем его адресом по умолчанию
+        is_default = serializer.validated_data.get('is_default', False)
+        if is_default or not Address.objects.filter(user=request.user).exists():
+            Address.objects.filter(user=request.user).update(is_default=False)
+            is_default = True
+        
+        address = Address.objects.create(
+            user=request.user,
+            country=serializer.validated_data.get('country', 'Россия'),
+            city=serializer.validated_data['city'],
+            street=serializer.validated_data['street'],
+            house=serializer.validated_data['house'],
+            building=serializer.validated_data.get('building'),
+            apartment=serializer.validated_data.get('apartment'),
+            postal_code=serializer.validated_data.get('postal_code'),
+            comment=serializer.validated_data.get('comment'),
+            is_default=is_default,
+            latitude=serializer.validated_data.get('latitude'),
+            longitude=serializer.validated_data.get('longitude'),
+        )
+        
+        return Response({
+            'message': 'Адрес успешно создан',
+            'address': address.to_dict()
+        }, status=status.HTTP_201_CREATED)
+
+
+class AddressSearchView(APIView):
+    """
+    Поиск адресов (заглушка для геокодинга).
+    
+    GET /api/shop/addresses/search/?query=Москва, Тверская
+    """
+    
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        """Поиск адресов через внешний сервис (заглушка)."""
+        query = request.query_params.get('query', '').strip()
+        
+        if not query or len(query) < 3:
+            return Response(
+                {'error': 'Минимум 3 символа для поиска'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Заглушка - в реальности здесь будет интеграция с Яндекс.Картами или DaData
+        # Пока возвращаем примеры
+        suggestions = [
+            {
+                'value': f"{query}, ул. Ленина, д. 1",
+                'city': query.split(',')[0] if ',' in query else query,
+                'street': 'ул. Ленина',
+                'house': '1',
+                'full_address': f"{query}, ул. Ленина, д. 1",
+                'latitude': 55.7558,
+                'longitude': 37.6173,
+            }
+        ]
+        
+        return Response({
+            'suggestions': suggestions,
+            'query': query
+        }, status=status.HTTP_200_OK)
