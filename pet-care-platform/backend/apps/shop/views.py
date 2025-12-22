@@ -15,6 +15,7 @@ from .models import Product, Cart, CartItem, Order, OrderItem, Address
 from .serializers import (
     CartItemAddSerializer,
     CartItemUpdateSerializer,
+    CartItemSerializer,
     OrderCreateSerializer
 )
 
@@ -250,31 +251,51 @@ class CartView(APIView):
     def get(self, request):
         """Просмотр корзины."""
         cart = self._get_or_create_cart(request.user)
-        
-        items = [item.to_dict() for item in cart.items.select_related('product').all()]
+
+        cart_serializer = CartItemSerializer(
+            cart.items.select_related('product', 'course', 'pet').all(),
+            many=True
+        )
         total = float(cart.get_total())
         items_count = cart.get_items_count()
-        
+
         return Response({
-            'cart': items,
+            'cart': cart_serializer.data,
             'total': total,
             'items_count': items_count
         }, status=status.HTTP_200_OK)
     
     
     def post(self, request):
-        """Добавление товара в корзину с валидацией наличия."""
+        """Добавление товара или курса в корзину с валидацией."""
         serializer = CartItemAddSerializer(data=request.data)
-        
+
         if not serializer.is_valid():
             return Response(
                 {'errors': serializer.errors},
                 status=status.HTTP_400_BAD_REQUEST
             )
-        
-        product_id = serializer.validated_data['product_id']
-        quantity = serializer.validated_data.get('quantity', 1)
-        
+
+        cart = self._get_or_create_cart(request.user)
+
+        # Обработка товара
+        if 'product_id' in serializer.validated_data:
+            return self._add_product_to_cart(cart, serializer.validated_data)
+
+        # Обработка курса
+        elif 'course_id' in serializer.validated_data:
+            return self._add_course_to_cart(request.user, cart, serializer.validated_data)
+
+        return Response(
+            {'error': 'Необходимо указать product_id или course_id'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    def _add_product_to_cart(self, cart, data):
+        """Добавление товара в корзину."""
+        product_id = data['product_id']
+        quantity = data.get('quantity', 1)
+
         # Проверка существования товара
         try:
             product = Product.objects.get(id=product_id)
@@ -283,42 +304,117 @@ class CartView(APIView):
                 {'error': 'Товар не найден'},
                 status=status.HTTP_404_NOT_FOUND
             )
-        
+
         # Проверка наличия на складе
         if product.stock_count <= 0:
             return Response(
                 {'error': 'Товар закончился на складе'},
                 status=status.HTTP_400_BAD_REQUEST
             )
-        
-        cart = self._get_or_create_cart(request.user)
-        
+
         # Проверка текущего количества в корзине
         existing_item = CartItem.objects.filter(cart=cart, product=product).first()
         current_quantity = existing_item.quantity if existing_item else 0
         new_total_quantity = current_quantity + quantity
-        
+
         # Проверка, что запрашиваемое количество доступно
         if new_total_quantity > product.stock_count:
             return Response({
                 'error': f'Недостаточно товара на складе. Доступно: {product.stock_count} шт., в корзине уже: {current_quantity} шт.'
             }, status=status.HTTP_400_BAD_REQUEST)
-        
+
         # Добавление или обновление количества
         if existing_item:
             existing_item.quantity = new_total_quantity
             existing_item.save()
         else:
             CartItem.objects.create(cart=cart, product=product, quantity=quantity)
-        
+
         # Возврат обновлённой корзины
-        items = [item.to_dict() for item in cart.items.select_related('product').all()]
+        cart_serializer = CartItemSerializer(cart.items.select_related('product', 'course', 'pet').all(), many=True)
         total = float(cart.get_total())
-        
+        items_count = cart.get_items_count()
+
         return Response({
             'message': 'Товар добавлен в корзину',
-            'cart': items,
-            'total': total
+            'cart': cart_serializer.data,
+            'total': total,
+            'items_count': items_count
+        }, status=status.HTTP_200_OK)
+
+    def _add_course_to_cart(self, user, cart, data):
+        """Добавление курса в корзину."""
+        course_id = data['course_id']
+        pet_id = data.get('pet_id')
+        disclaimer_accepted = data.get('disclaimer_accepted', False)
+
+        # Проверка существования курса
+        try:
+            from apps.training.models import Course
+            course = Course.objects.get(id=course_id, is_active=True)
+        except Course.DoesNotExist:
+            return Response(
+                {'error': 'Курс не найден или недоступен'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        # Проверка питомца если указан
+        pet = None
+        if pet_id:
+            try:
+                from apps.pets.models import Pet
+                pet = Pet.objects.get(id=pet_id, owner=user)
+            except Pet.DoesNotExist:
+                return Response(
+                    {'error': 'Питомец не найден'},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+
+            # Проверка совместимости типа курса и вида питомца
+            if course.pet_type != 'all' and course.pet_type != pet.species:
+                course_type_display = course.get_pet_type_display_name()
+                pet_species_display = pet.get_species_display()
+                return Response({
+                    'error': f'Этот курс предназначен для {course_type_display}, а ваш питомец - {pet_species_display}'
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+        # Проверка согласия для платных курсов
+        if course.price > 0 and not disclaimer_accepted:
+            return Response({
+                'error': 'Необходимо согласиться с условиями использования для платного курса'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # Проверка, что курс не добавлен в корзину
+        existing_item = CartItem.objects.filter(
+            cart=cart,
+            course=course,
+            pet=pet
+        ).first()
+
+        if existing_item:
+            return Response({
+                'error': 'Этот курс уже добавлен в корзину'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # Создание элемента корзины для курса
+        CartItem.objects.create(
+            cart=cart,
+            course=course,
+            pet=pet,
+            quantity=1,  # Курсы всегда quantity=1
+            disclaimer_accepted=disclaimer_accepted
+        )
+
+        # Возврат обновлённой корзины
+        cart_serializer = CartItemSerializer(cart.items.select_related('product', 'course', 'pet').all(), many=True)
+        total = float(cart.get_total())
+        items_count = cart.get_items_count()
+
+        return Response({
+            'message': 'Курс добавлен в корзину',
+            'cart': cart_serializer.data,
+            'total': total,
+            'items_count': items_count
         }, status=status.HTTP_200_OK)
 
 
@@ -628,24 +724,38 @@ class OrderCreateView(APIView):
             
             # Создание элементов заказа и уменьшение остатков
             for item in cart_items:
-                product = products[item.product_id]
-                # Сохраняем цену со скидкой
-                item_price = product.discounted_price
-                
-                OrderItem.objects.create(
-                    order=order,
-                    product=product,
-                    product_name=product.name,
-                    price=item_price,
-                    quantity=item.quantity
-                )
-                
-                # Уменьшаем количество на складе
-                product.stock_count -= item.quantity
-                if product.stock_count <= 0:
-                    product.in_stock = False
-                product.save(update_fields=['stock_count', 'in_stock'])
-            
+                if item.product:
+                    # Обработка товара
+                    product = products[item.product_id]
+                    # Сохраняем цену со скидкой
+                    item_price = product.discounted_price
+
+                    OrderItem.objects.create(
+                        order=order,
+                        product=product,
+                        product_name=product.name,
+                        price=item_price,
+                        quantity=item.quantity
+                    )
+
+                    # Уменьшаем количество на складе
+                    product.stock_count -= item.quantity
+                    if product.stock_count <= 0:
+                        product.in_stock = False
+                    product.save(update_fields=['stock_count', 'in_stock'])
+
+                elif item.course:
+                    # Обработка курса - создаем OrderItem
+                    OrderItem.objects.create(
+                        order=order,
+                        course=item.course,
+                        pet=item.pet,
+                        product_name=item.course.title,
+                        price=float(item.course.price),
+                        quantity=1,  # Курсы всегда quantity=1
+                        disclaimer_accepted=item.disclaimer_accepted
+                    )
+
             # Очистка корзины
             cart_items.delete()
         
@@ -735,6 +845,20 @@ class OrderConfirmPaymentView(APIView):
             success = PaymentService.process_payment(payment)
 
             if success:
+                # Обновляем статус заказа
+                order.status = 'processing'
+                order.save(update_fields=['status'])
+
+                # Для каждого курса в заказе создаем UserCourse
+                for item in order.items.filter(course__isnull=False):
+                    from apps.training.models import UserCourse
+                    UserCourse.objects.create(
+                        user=request.user,
+                        course=item.course,
+                        pet=item.pet,
+                        purchased_at=order.created_at
+                    )
+
                 return Response({
                     'message': 'Оплата успешно подтверждена',
                     'order': order.to_dict(),

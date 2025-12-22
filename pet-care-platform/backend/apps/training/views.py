@@ -284,6 +284,30 @@ class CourseCheckoutView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
         
+        # Получение питомцев пользователя для выбора
+        user_pets = []
+        if course.pet_type in ['dog', 'cat', 'all']:
+            pets = Pet.objects.filter(owner=request.user)
+            if course.pet_type != 'all':
+                species_to_pet_type = {
+                    'dog': 'dog',
+                    'cat': 'cat',
+                }
+                pets = pets.filter(species__in=[
+                    k for k, v in species_to_pet_type.items() 
+                    if v == course.pet_type
+                ])
+            
+            user_pets = [
+                {
+                    'id': str(pet.id),
+                    'name': pet.name,
+                    'species': pet.species,
+                    'species_label': pet.get_species_display(),
+                }
+                for pet in pets
+            ]
+        
         # Детальная информация о курсе
         course_data = course.to_dict(detailed=True)
         
@@ -304,6 +328,7 @@ class CourseCheckoutView(APIView):
             'duration_display': duration_display,
             'price': float(course.price),
             'is_free': course.is_free,
+            'user_pets': user_pets,
             'disclaimer': {
                 'text': disclaimer_text,
                 'required': True
@@ -332,25 +357,72 @@ class CoursePurchaseView(APIView):
     permission_classes = [IsAuthenticated]
     
     def post(self, request, course_id):
+        logger.info(f"Начало покупки курса: user={request.user.email}, course_id={course_id}")
+
         try:
             course = Course.objects.get(id=course_id, is_active=True)
+            logger.info(f"Курс найден: {course.title}, price={course.price}, pet_type={course.pet_type}")
         except Course.DoesNotExist:
+            logger.warning(f"Курс не найден: {course_id}")
             return Response(
                 {'error': 'Курс не найден'},
                 status=status.HTTP_404_NOT_FOUND
             )
-        
-        # Проверка, не куплен ли уже
-        if UserCourse.objects.filter(user=request.user, course=course).exists():
+
+        # Получение pet_id из запроса (опционально)
+        pet_id = request.data.get('pet_id')
+        logger.info(f"Получен pet_id: {pet_id}")
+        pet = None
+
+        if pet_id:
+            try:
+                pet = Pet.objects.get(id=pet_id, owner=request.user)
+                logger.info(f"Питомец найден: {pet.name}, species={pet.species}")
+
+                # Валидация соответствия типа курса и вида питомца
+                if course.pet_type != 'all':
+                    species_to_pet_type = {
+                        'dog': 'dog',
+                        'cat': 'cat',
+                    }
+                    pet_type = species_to_pet_type.get(pet.species)
+                    logger.info(f"Проверка типа: course.pet_type={course.pet_type}, pet_type={pet_type}")
+                    if pet_type != course.pet_type:
+                        logger.warning(f"Несоответствие типов: курс для {course.pet_type}, питомец {pet.species}")
+                        return Response(
+                            {
+                                'error': f'Этот курс предназначен для {course.get_pet_type_display_name()}, '
+                                       f'а ваш питомец - {pet.get_species_display()}'
+                            },
+                            status=status.HTTP_400_BAD_REQUEST
+                        )
+            except Pet.DoesNotExist:
+                logger.warning(f"Питомец не найден: {pet_id}")
+                return Response(
+                    {'error': 'Питомец не найден или не принадлежит вам'},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+
+        # Проверка, не куплен ли уже (с учетом питомца)
+        existing_query = UserCourse.objects.filter(user=request.user, course=course)
+        if pet:
+            existing_query = existing_query.filter(pet=pet)
+        else:
+            existing_query = existing_query.filter(pet__isnull=True)
+
+        if existing_query.exists():
+            logger.warning(f"Курс уже куплен: user={request.user.email}, course={course_id}")
             return Response(
-                {'error': 'Вы уже приобрели этот курс'},
+                {'error': 'Вы уже приобрели этот курс' + (f' для {pet.name}' if pet else '')},
                 status=status.HTTP_400_BAD_REQUEST
             )
-        
+
         # Проверка согласия с дисклеймером (требуется только для платных курсов)
         if course.price > 0:
             disclaimer_accepted = request.data.get('disclaimer_accepted', False)
+            logger.info(f"Проверка дисклеймера: price={course.price}, disclaimer_accepted={disclaimer_accepted}")
             if not disclaimer_accepted:
+                logger.warning(f"Дисклеймер не принят: user={request.user.email}, course={course_id}")
                 return Response(
                     {'error': 'Необходимо согласиться с условиями использования'},
                     status=status.HTTP_400_BAD_REQUEST
@@ -359,6 +431,7 @@ class CoursePurchaseView(APIView):
         # Оплата через единую систему платежей
         payment = None
         if course.price > 0:
+            logger.info(f"Создание платежа: amount={course.price}")
             from apps.payments.services import PaymentService
 
             try:
@@ -367,33 +440,50 @@ class CoursePurchaseView(APIView):
                     payment_type='course',
                     object_id=str(course.id),
                     amount=course.price,
-                    payment_method='card',  # Можно передать в request.data
-                    metadata={'course_id': str(course.id)}
+                    payment_method='card',
+                    metadata={
+                        'course_id': str(course.id),
+                        'pet_id': str(pet.id) if pet else None
+                    }
                 )
+                logger.info(f"Платеж создан: {payment.id}")
 
                 # Обработка платежа (имитация)
                 success = PaymentService.process_payment(payment)
+                logger.info(f"Обработка платежа: success={success}")
                 if not success:
+                    logger.error(f"Не удалось обработать платеж: {payment.id}")
                     return Response(
                         {'error': 'Не удалось обработать платеж'},
                         status=status.HTTP_500_INTERNAL_SERVER_ERROR
                     )
 
-                logger.info(f"Оплата курса: user={request.user.email}, course={course_id}, сумма={course.price}")
+                logger.info(
+                    f"Оплата курса успешна: user={request.user.email}, course={course_id}, "
+                    f"pet={pet.name if pet else 'None'}, сумма={course.price}"
+                )
 
             except ValueError as e:
+                logger.error(f"Ошибка при создании платежа: {str(e)}")
                 return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
         # Запись о покупке
-        UserCourse.objects.create(user=request.user, course=course)
+        UserCourse.objects.create(user=request.user, course=course, pet=pet)
 
         action = 'приобретён' if course.price > 0 else 'добавлен'
-        logger.info(f"Курс {action}: user={request.user.email}, course={course_id}")
+        pet_info = f" для {pet.name}" if pet else ""
+        logger.info(f"Курс {action}{pet_info}: user={request.user.email}, course={course_id}")
 
         response_data = {
-            'message': f'Курс успешно {action}',
+            'message': f'Курс успешно {action}' + pet_info,
             'course': course.to_dict()
         }
+        
+        if pet:
+            response_data['pet'] = {
+                'id': str(pet.id),
+                'name': pet.name
+            }
 
         if payment:
             response_data['payment_id'] = str(payment.id)
@@ -413,7 +503,19 @@ class UserCoursesView(APIView):
     def get(self, request):
         user_courses = UserCourse.objects.filter(
             user=request.user
-        ).select_related('course')
+        ).select_related('course', 'pet')
+        
+        # Фильтрация по питомцу (опционально)
+        pet_id = request.query_params.get('pet_id')
+        if pet_id:
+            try:
+                pet = Pet.objects.get(id=pet_id, owner=request.user)
+                user_courses = user_courses.filter(pet=pet)
+            except Pet.DoesNotExist:
+                return Response(
+                    {'error': 'Питомец не найден'},
+                    status=status.HTTP_404_NOT_FOUND
+                )
         
         courses_data = [uc.to_dict() for uc in user_courses]
         

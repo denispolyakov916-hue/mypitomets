@@ -47,50 +47,76 @@ class ProductSerializer(serializers.Serializer):
 
 class CartItemAddSerializer(serializers.Serializer):
     """
-    Сериализатор для запроса добавления товара в корзину.
-    
-    Валидирует данные при добавлении товара в корзину пользователя.
-    
+    Сериализатор для запроса добавления товара или курса в корзину.
+
+    Валидирует данные при добавлении товара или курса в корзину пользователя.
+
     Поля:
-        product_id (int): ID товара для добавления - обязательное
-        quantity (int): Количество - опционально, по умолчанию 1
-    
-    Пример запроса:
+        product_id (int): ID товара для добавления - опционально (если не указан course_id)
+        course_id (int): ID курса для добавления - опционально (если не указан product_id)
+        pet_id (str): ID питомца для привязки курса - опционально
+        disclaimer_accepted (bool): Согласие с условиями - опционально, по умолчанию False
+        quantity (int): Количество - опционально, по умолчанию 1 (только для товаров)
+
+    Пример запроса для товара:
         {
             "product_id": 5,
             "quantity": 2
         }
-    
+
+    Пример запроса для курса:
+        {
+            "course_id": 10,
+            "pet_id": "uuid-string",
+            "disclaimer_accepted": true
+        }
+
     Правила валидации:
-        - product_id должен быть положительным целым числом
-        - quantity должно быть положительным (минимум 1)
+        - Должен быть указан либо product_id, либо course_id, но не оба одновременно
+        - product_id и course_id должны быть положительными числами
+        - quantity должно быть положительным (минимум 1, только для товаров)
+        - Для платных курсов disclaimer_accepted должно быть true
+        - pet_id должен быть валидным UUID
     """
-    
+
     product_id = serializers.IntegerField(
-        required=True,
+        required=False,
         help_text="ID товара для добавления в корзину"
     )
-    
+    course_id = serializers.IntegerField(
+        required=False,
+        help_text="ID курса для добавления в корзину"
+    )
+    pet_id = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        help_text="ID питомца для привязки курса (UUID)"
+    )
+    disclaimer_accepted = serializers.BooleanField(
+        required=False,
+        default=False,
+        help_text="Согласие с условиями использования курса"
+    )
     quantity = serializers.IntegerField(
         required=False,
         default=1,
         min_value=1,
-        help_text="Количество товара (по умолчанию 1)"
+        help_text="Количество товара (по умолчанию 1, не используется для курсов)"
     )
-    
+
     def validate_product_id(self, value):
         """
         Валидация ID товара.
-        
+
         Проверяет, что ID является положительным целым числом.
         Проверка существования товара выполняется во view.
-        
+
         Аргументы:
             value (int): ID товара
-            
+
         Возвращает:
             int: Валидированный ID товара
-            
+
         Исключения:
             ValidationError: Если ID не положительный
         """
@@ -99,6 +125,101 @@ class CartItemAddSerializer(serializers.Serializer):
                 "ID товара должен быть положительным числом"
             )
         return value
+
+    def validate_course_id(self, value):
+        """
+        Валидация ID курса.
+
+        Проверяет, что ID является положительным целым числом.
+        Проверка существования курса выполняется во view.
+
+        Аргументы:
+            value (int): ID курса
+
+        Возвращает:
+            int: Валидированный ID курса
+
+        Исключения:
+            ValidationError: Если ID не положительный
+        """
+        if value <= 0:
+            raise serializers.ValidationError(
+                "ID курса должен быть положительным числом"
+            )
+        return value
+
+    def validate_pet_id(self, value):
+        """
+        Валидация ID питомца.
+
+        Проверяет, что ID является валидным UUID.
+        Проверка существования питомца выполняется во view.
+
+        Аргументы:
+            value (str): ID питомца
+
+        Возвращает:
+            str: Валидированный ID питомца
+
+        Исключения:
+            ValidationError: Если ID не валидный UUID
+        """
+        import uuid
+        try:
+            uuid.UUID(value)
+            return value
+        except ValueError:
+            raise serializers.ValidationError(
+                "ID питомца должен быть валидным UUID"
+            )
+
+    def validate(self, attrs):
+        """
+        Комплексная валидация данных.
+
+        Проверяет взаимосвязи между полями:
+        - Должен быть указан либо product_id, либо course_id
+        - Нельзя указывать оба одновременно
+        - Для курсов quantity игнорируется
+        - pet_id только для курсов
+
+        Аргументы:
+            attrs (dict): Валидируемые данные
+
+        Возвращает:
+            dict: Валидированные данные
+
+        Исключения:
+            ValidationError: При нарушении правил валидации
+        """
+        product_id = attrs.get('product_id')
+        course_id = attrs.get('course_id')
+        pet_id = attrs.get('pet_id')
+        quantity = attrs.get('quantity', 1)
+
+        # Проверка: должен быть указан либо product_id, либо course_id
+        if not product_id and not course_id:
+            raise serializers.ValidationError(
+                "Необходимо указать либо product_id, либо course_id"
+            )
+
+        # Проверка: нельзя указывать оба одновременно
+        if product_id and course_id:
+            raise serializers.ValidationError(
+                "Нельзя указывать одновременно product_id и course_id"
+            )
+
+        # Для курсов quantity всегда = 1
+        if course_id:
+            attrs['quantity'] = 1
+
+        # pet_id только для курсов
+        if pet_id and not course_id:
+            raise serializers.ValidationError(
+                "pet_id можно указывать только при добавлении курса"
+            )
+
+        return attrs
 
 
 class CartItemUpdateSerializer(serializers.Serializer):
@@ -139,6 +260,59 @@ class CartItemUpdateSerializer(serializers.Serializer):
                 "ID товара должен быть положительным числом"
             )
         return value
+
+
+class CartItemSerializer(serializers.Serializer):
+    """
+    Сериализатор для элемента корзины в ответе API.
+
+    Возвращает полную информацию о товаре или курсе в корзине.
+
+    Структура ответа:
+    {
+        "id": 1,
+        "product": {...} или null,
+        "course": {...} или null,
+        "pet": {...} или null,  // только для курсов
+        "quantity": 1,
+        "disclaimer_accepted": true,  // только для курсов
+        "price": 1000
+    }
+    """
+
+    id = serializers.IntegerField(read_only=True)
+    product = serializers.SerializerMethodField()
+    course = serializers.SerializerMethodField()
+    pet = serializers.SerializerMethodField()
+    quantity = serializers.IntegerField(read_only=True)
+    disclaimer_accepted = serializers.BooleanField(read_only=True)
+    price = serializers.FloatField(read_only=True)
+
+    def get_product(self, obj):
+        """Получить информацию о товаре."""
+        if obj.product:
+            return obj.product.to_dict()
+        return None
+
+    def get_course(self, obj):
+        """Получить информацию о курсе."""
+        if obj.course:
+            return obj.course.to_dict(detailed=True)
+        return None
+
+    def get_pet(self, obj):
+        """Получить информацию о питомце."""
+        if obj.pet:
+            return {
+                'id': str(obj.pet.id),
+                'name': obj.pet.name,
+                'species': obj.pet.species,
+                'species_display': obj.pet.get_species_display(),
+                'breed': obj.pet.breed,
+                'age': obj.pet.age,
+                'weight': float(obj.pet.weight) if obj.pet.weight else None,
+            }
+        return None
 
 
 class OrderCreateSerializer(serializers.Serializer):
@@ -241,23 +415,29 @@ class OrderCreateSerializer(serializers.Serializer):
 class OrderItemSerializer(serializers.Serializer):
     """
     Сериализатор для элемента заказа.
-    
-    Представляет один товар в составе заказа с фиксированной ценой
+
+    Представляет один товар или курс в составе заказа с фиксированной ценой
     на момент оформления.
-    
+
     Поля:
-        product_id (int): ID товара
-        product_name (str): Название товара
+        product_id (int): ID товара (опционально)
+        course_id (int): ID курса (опционально)
+        product_name (str): Название товара/курса
         quantity (int): Количество
         price (float): Цена за единицу на момент заказа
         total (float): Общая стоимость позиции
+        disclaimer_accepted (bool): Согласие с условиями (для курсов)
+        pet (dict): Информация о питомце (для курсов)
     """
-    
-    product_id = serializers.IntegerField(read_only=True)
+
+    product_id = serializers.IntegerField(read_only=True, allow_null=True)
+    course_id = serializers.IntegerField(read_only=True, allow_null=True)
     product_name = serializers.CharField(read_only=True)
     quantity = serializers.IntegerField(read_only=True)
     price = serializers.FloatField(read_only=True)
     total = serializers.FloatField(read_only=True)
+    disclaimer_accepted = serializers.BooleanField(read_only=True)
+    pet = serializers.DictField(read_only=True, allow_null=True)
 
 
 class OrderSerializer(serializers.Serializer):

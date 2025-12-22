@@ -217,10 +217,11 @@ class Cart(models.Model):
 class CartItem(models.Model):
     """
     Элемент корзины.
-    
-    Связывает товар с корзиной и хранит количество.
+
+    Может содержать либо товар (product), либо курс (course).
+    Курсы всегда имеют quantity = 1.
     """
-    
+
     id = models.AutoField(primary_key=True)
     cart = models.ForeignKey(
         Cart,
@@ -231,32 +232,95 @@ class CartItem(models.Model):
     product = models.ForeignKey(
         Product,
         on_delete=models.CASCADE,
+        null=True,
+        blank=True,
         verbose_name='Товар'
     )
+    course = models.ForeignKey(
+        'training.Course',
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        verbose_name='Курс'
+    )
+    pet = models.ForeignKey(
+        'pets.Pet',
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        verbose_name='Питомец',
+        help_text='Питомец, для которого приобретается курс (опционально)'
+    )
     quantity = models.PositiveIntegerField(default=1, verbose_name='Количество')
-    
+    disclaimer_accepted = models.BooleanField(
+        default=False,
+        verbose_name='Согласие с условиями',
+        help_text='Подтверждение согласия с условиями использования для курсов'
+    )
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    
+
     class Meta:
         db_table = 'cart_items'
         verbose_name = 'Элемент корзины'
         verbose_name_plural = 'Элементы корзины'
-        unique_together = ['cart', 'product']
-    
+        # Уникальность: один товар или курс в корзине
+        # Для курсов с питомцем - уникальность по курсу и питомцу
+        constraints = [
+            models.UniqueConstraint(
+                fields=['cart', 'product'],
+                name='unique_cart_product',
+                condition=models.Q(product__isnull=False)
+            ),
+            models.UniqueConstraint(
+                fields=['cart', 'course', 'pet'],
+                name='unique_cart_course_pet',
+                condition=models.Q(course__isnull=False)
+            ),
+        ]
+
     def __str__(self):
-        return f"{self.product.name} x {self.quantity}"
-    
+        if self.product:
+            return f"{self.product.name} x {self.quantity}"
+        elif self.course:
+            pet_name = f" ({self.pet.name})" if self.pet else ""
+            return f"{self.course.title}{pet_name}"
+        return f"CartItem {self.id}"
+
     def get_total(self):
         """Стоимость позиции с учётом скидки."""
-        return self.product.discounted_price * self.quantity
-    
+        if self.product:
+            return self.product.discounted_price * self.quantity
+        elif self.course:
+            return float(self.course.price)
+        return 0
+
     def to_dict(self):
         """Сериализация для API."""
-        return {
-            'product': self.product.to_dict(),
-            'quantity': self.quantity
-        }
+        if self.product:
+            return {
+                'id': self.id,
+                'product': self.product.to_dict(),
+                'quantity': self.quantity,
+                'price': self.get_total()
+            }
+        elif self.course:
+            data = {
+                'id': self.id,
+                'course': self.course.to_dict(),
+                'quantity': 1,  # Курсы всегда quantity=1
+                'disclaimer_accepted': self.disclaimer_accepted,
+                'price': self.get_total()
+            }
+            if self.pet:
+                data['pet'] = {
+                    'id': str(self.pet.id),
+                    'name': self.pet.name,
+                    'species': self.pet.species
+                }
+            return data
+        return {}
 
 
 class Address(models.Model):
@@ -461,10 +525,10 @@ class Order(models.Model):
 class OrderItem(models.Model):
     """
     Элемент заказа.
-    
-    Хранит снимок товара на момент оформления заказа.
+
+    Хранит снимок товара или курса на момент оформления заказа.
     """
-    
+
     id = models.AutoField(primary_key=True)
     order = models.ForeignKey(
         Order,
@@ -476,13 +540,34 @@ class OrderItem(models.Model):
         Product,
         on_delete=models.SET_NULL,
         null=True,
+        blank=True,
         verbose_name='Товар'
     )
-    
+    course = models.ForeignKey(
+        'training.Course',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        verbose_name='Курс'
+    )
+    pet = models.ForeignKey(
+        'pets.Pet',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        verbose_name='Питомец',
+        help_text='Питомец, для которого приобретается курс'
+    )
+
     # Снимок данных на момент заказа
-    product_name = models.CharField(max_length=200, verbose_name='Название товара')
+    product_name = models.CharField(max_length=200, verbose_name='Название товара/курса')
     price = models.DecimalField(max_digits=10, decimal_places=2, verbose_name='Цена')
     quantity = models.PositiveIntegerField(verbose_name='Количество')
+    disclaimer_accepted = models.BooleanField(
+        default=False,
+        verbose_name='Согласие с условиями',
+        help_text='Подтверждение согласия с условиями использования для курсов'
+    )
     
     class Meta:
         db_table = 'order_items'
@@ -490,6 +575,9 @@ class OrderItem(models.Model):
         verbose_name_plural = 'Элементы заказа'
     
     def __str__(self):
+        if self.course:
+            pet_name = f" ({self.pet.name})" if self.pet else ""
+            return f"{self.product_name}{pet_name}"
         return f"{self.product_name} x {self.quantity}"
     
     def get_total(self):
@@ -498,10 +586,27 @@ class OrderItem(models.Model):
     
     def to_dict(self):
         """Сериализация для API."""
-        return {
-            'product_id': self.product_id,
-            'product_name': self.product_name,
-            'price': float(self.price),
-            'quantity': self.quantity,
-            'total': float(self.get_total())
-        }
+        if self.course:
+            data = {
+                'course_id': self.course_id,
+                'course_name': self.product_name,  # product_name хранит название курса
+                'price': float(self.price),
+                'quantity': self.quantity,
+                'disclaimer_accepted': self.disclaimer_accepted,
+                'total': float(self.get_total())
+            }
+            if self.pet:
+                data['pet'] = {
+                    'id': str(self.pet.id),
+                    'name': self.pet.name,
+                    'species': self.pet.species
+                }
+            return data
+        else:
+            return {
+                'product_id': self.product_id,
+                'product_name': self.product_name,
+                'price': float(self.price),
+                'quantity': self.quantity,
+                'total': float(self.get_total())
+            }

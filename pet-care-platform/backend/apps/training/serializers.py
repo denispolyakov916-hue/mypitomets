@@ -53,34 +53,37 @@ class UserCourseSerializer(serializers.Serializer):
         course (dict): Данные курса (через CourseSerializer)
         purchased_at (str): Дата приобретения (ISO формат)
         progress (int): Прогресс прохождения в процентах (0-100)
+        pet (dict, optional): Информация о питомце, для которого приобретён курс
     """
     
     course = CourseSerializer(read_only=True)
     purchased_at = serializers.CharField(read_only=True)
     progress = serializers.IntegerField(read_only=True)
+    pet = serializers.DictField(read_only=True, required=False)
 
 
 class PurchaseCourseSerializer(serializers.Serializer):
     """
     Сериализатор для запросов покупки/записи на курс.
     
-    Для MVP просто валидирует формат запроса.
-    В продакшене будет включать данные для оплаты.
-    
-    Пример запроса:
-        {"course_id": 3}
-    
     Поля:
-        course_id (int): ID курса для покупки - обязательное
-    
-    Примечание:
-        Обычно course_id передаётся в URL, этот сериализатор
-        используется как запасной вариант для body-параметра.
+        course_id (int): ID курса для покупки - опционально (обычно передаётся в URL)
+        pet_id (str): ID питомца, для которого покупается курс - опционально
+        disclaimer_accepted (bool): Согласие с условиями - требуется для платных курсов
     """
     
     course_id = serializers.IntegerField(
-        required=True,
-        help_text="ID курса для покупки"
+        required=False,
+        help_text="ID курса для покупки (обычно передаётся в URL)"
+    )
+    pet_id = serializers.CharField(
+        required=False,
+        allow_null=True,
+        help_text="ID питомца, для которого покупается курс"
+    )
+    disclaimer_accepted = serializers.BooleanField(
+        required=False,
+        help_text="Согласие с условиями использования (требуется для платных курсов)"
     )
     
     def validate_course_id(self, value):
@@ -96,7 +99,7 @@ class PurchaseCourseSerializer(serializers.Serializer):
         Исключения:
             ValidationError: Если ID не положительный
         """
-        if value <= 0:
+        if value and value <= 0:
             raise serializers.ValidationError(
                 "ID курса должен быть положительным числом"
             )

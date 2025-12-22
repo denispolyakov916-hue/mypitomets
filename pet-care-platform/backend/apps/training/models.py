@@ -252,6 +252,10 @@ class Course(models.Model):
         """Получить название формата."""
         return dict(self.FORMAT_CHOICES).get(self.format_type, self.format_type)
     
+    def get_pet_type_display_name(self):
+        """Получить название типа животного."""
+        return dict(self.PET_TYPE_CHOICES).get(self.pet_type, self.pet_type)
+    
     def to_dict(self, detailed=False):
         """Сериализация для API."""
         data = {
@@ -295,6 +299,7 @@ class UserCourse(models.Model):
     Связь пользователя с курсом.
     
     Отслеживает приобретённые курсы и прогресс прохождения.
+    Может быть привязан к конкретному питомцу.
     """
     
     id = models.AutoField(primary_key=True)
@@ -310,6 +315,15 @@ class UserCourse(models.Model):
         related_name='user_courses',
         verbose_name='Курс'
     )
+    pet = models.ForeignKey(
+        'pets.Pet',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='courses',
+        verbose_name='Питомец',
+        help_text='Питомец, для которого приобретён курс (опционально)'
+    )
     
     purchased_at = models.DateTimeField(auto_now_add=True, verbose_name='Дата покупки')
     progress = models.PositiveIntegerField(
@@ -322,15 +336,24 @@ class UserCourse(models.Model):
         db_table = 'user_courses'
         verbose_name = 'Курс пользователя'
         verbose_name_plural = 'Курсы пользователей'
-        unique_together = ['user', 'course']
+        unique_together = [['user', 'course', 'pet']]
     
     def __str__(self):
+        if self.pet:
+            return f"{self.user.email} - {self.course.title} ({self.pet.name})"
         return f"{self.user.email} - {self.course.title}"
     
     def to_dict(self):
         """Сериализация для API."""
-        return {
+        data = {
             'course': self.course.to_dict(),
             'purchased_at': self.purchased_at.isoformat() if self.purchased_at else None,
             'progress': self.progress
         }
+        if self.pet:
+            data['pet'] = {
+                'id': str(self.pet.id),
+                'name': self.pet.name,
+                'species': self.pet.species
+            }
+        return data
