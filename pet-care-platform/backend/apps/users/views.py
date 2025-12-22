@@ -43,6 +43,9 @@ class RegisterView(APIView):
         try:
             # Логируем входящие данные для отладки
             logger.debug(f"Попытка регистрации, данные: {request.data}")
+            print(f"[REGISTRATION REQUEST] Попытка регистрации")
+            print(f"[REGISTRATION REQUEST] Данные запроса: {request.data}")
+            print(f"[REGISTRATION REQUEST] Метод: {request.method}, URL: {request.path}")
             
             serializer = UserRegistrationSerializer(data=request.data)
             
@@ -50,10 +53,13 @@ class RegisterView(APIView):
                 # Логируем ошибки валидации
                 logger.warning(f"Ошибка валидации при регистрации: {serializer.errors}")
                 logger.warning(f"Полученные данные: {request.data}")
+                print(f"[REGISTRATION ERROR] Ошибка валидации: {serializer.errors}")
                 raise ApiError.bad_request('Ошибка при валидации', serializer.errors)
             
             email = serializer.validated_data['email']
             password = serializer.validated_data['password']
+            
+            print(f"[REGISTRATION] Начало регистрации для email: {email}")
             
             # Регистрация через сервис
             user_data = UserService.registration(email, password)
@@ -63,6 +69,8 @@ class RegisterView(APIView):
             response = Response(user_data, status=status.HTTP_201_CREATED)
             
             logger.info(f"Пользователь зарегистрирован: {email}")
+            print(f"[REGISTRATION SUCCESS] Пользователь успешно зарегистрирован: {email}")
+            print(f"[REGISTRATION SUCCESS] Ответ: {user_data}")
             
             return response
             
@@ -97,6 +105,9 @@ class LoginView(APIView):
         try:
             # Логируем входящие данные для отладки
             logger.debug(f"Попытка входа, данные: {request.data}")
+            print(f"[LOGIN REQUEST] Попытка входа")
+            print(f"[LOGIN REQUEST] Данные запроса: {request.data}")
+            print(f"[LOGIN REQUEST] Метод: {request.method}, URL: {request.path}")
             
             serializer = UserLoginSerializer(data=request.data)
             
@@ -105,10 +116,13 @@ class LoginView(APIView):
                 logger.warning(f"Ошибка валидации при входе: {serializer.errors}")
                 logger.warning(f"Полученные данные: {request.data}")
                 logger.warning(f"Content-Type: {request.content_type}")
+                print(f"[LOGIN ERROR] Ошибка валидации: {serializer.errors}")
                 raise ApiError.bad_request('Ошибка при валидации', serializer.errors)
             
             email = serializer.validated_data['email']
             password = serializer.validated_data['password']
+            
+            print(f"[LOGIN] Начало входа для email: {email}")
             
             # Вход через сервис
             user_data = UserService.login(email, password)
@@ -125,6 +139,8 @@ class LoginView(APIView):
             )
             
             logger.info(f"Пользователь вошёл: {email}")
+            print(f"[LOGIN SUCCESS] Пользователь успешно вошёл: {email}")
+            print(f"[LOGIN SUCCESS] Access токен выдан")
             
             return response
             

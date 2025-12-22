@@ -103,6 +103,13 @@ class MailService:
                 logger.warning("EMAIL_HOST_USER и DEFAULT_FROM_EMAIL не настроены, используем fallback")
                 from_email = 'noreply@petcare-platform.com'
             
+            print(f"[EMAIL SERVICE] Отправка письма активации")
+            print(f"[EMAIL SERVICE] От: {from_email}")
+            print(f"[EMAIL SERVICE] Кому: {to_email}")
+            print(f"[EMAIL SERVICE] Тема: {subject}")
+            print(f"[EMAIL SERVICE] Код активации: {activation_code}")
+            print(f"[EMAIL SERVICE] Ссылка активации: {activation_link}")
+            
             send_mail(
                 subject=subject,
                 message=message,
@@ -113,6 +120,7 @@ class MailService:
             )
             
             logger.info(f"Письмо активации отправлено на {to_email}")
+            print(f"[EMAIL SERVICE SUCCESS] Письмо успешно отправлено на {to_email}")
             
         except Exception as e:
             logger.error(f"Ошибка при отправке письма активации на {to_email}: {str(e)}")

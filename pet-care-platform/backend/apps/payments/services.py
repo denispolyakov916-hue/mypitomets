@@ -248,6 +248,7 @@ class PaymentService:
     def _activate_course_access(payment: Payment):
         """Предоставление доступа к курсу после оплаты."""
         from apps.training.models import Course, UserCourse
+        from apps.pets.models import Pet
 
         if not payment.user:
             logger.warning(f"Невозможно предоставить доступ к курсу: пользователь удалён для платежа {payment.id}")
@@ -255,13 +256,24 @@ class PaymentService:
 
         try:
             course = Course.objects.get(id=payment.object_id)
+            
+            # Получение pet_id из metadata (если есть)
+            pet = None
+            if payment.metadata and payment.metadata.get('pet_id'):
+                try:
+                    pet = Pet.objects.get(id=payment.metadata['pet_id'], owner=payment.user)
+                except Pet.DoesNotExist:
+                    logger.warning(f"Питомец не найден для платежа {payment.id}, курс будет привязан без питомца")
+            
             # Создание связи пользователь-курс (если ещё не существует)
             UserCourse.objects.get_or_create(
                 user=payment.user,
                 course=course,
+                pet=pet,
                 defaults={'progress': 0}
             )
-            logger.info(f"Доступ к курсу предоставлен: user={payment.user.email}, course={course.title}")
+            pet_info = f" для {pet.name}" if pet else ""
+            logger.info(f"Доступ к курсу предоставлен: user={payment.user.email}, course={course.title}{pet_info}")
         except Course.DoesNotExist:
             logger.error(f"Курс не найден для платежа: {payment.id}")
 

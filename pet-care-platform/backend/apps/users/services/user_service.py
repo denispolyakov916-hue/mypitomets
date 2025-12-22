@@ -60,11 +60,19 @@ class UserService:
         api_url = getattr(settings, 'API_URL', 'http://localhost:8000')
         activation_url = f"{api_url}/api/auth/activate/{activation_link}"
         
+        print(f"[REGISTRATION] Пользователь создан: ID={user.id}, Email={email}")
+        print(f"[REGISTRATION] Код активации: {activation_code}")
+        print(f"[REGISTRATION] Ссылка активации: {activation_url}")
+        
         # Отправка письма активации с кодом и ссылкой
         try:
+            print(f"[EMAIL] Начало отправки письма активации на {email}")
             MailService.send_activation_mail(email, activation_url, activation_code)
+            print(f"[EMAIL SUCCESS] Письмо активации успешно отправлено на {email}")
+            print(f"[EMAIL SUCCESS] Код активации в письме: {activation_code}")
         except Exception as e:
             logger.error(f"Не удалось отправить письмо активации на {email}: {str(e)}")
+            print(f"[EMAIL ERROR] Ошибка отправки письма на {email}: {str(e)}")
             # Продолжаем регистрацию даже если email не отправился
             # В production можно использовать очередь задач (Celery)
         
