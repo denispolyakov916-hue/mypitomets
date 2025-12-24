@@ -7,6 +7,7 @@
  * Props:
  *   course: Объект курса с title, price, format_type и т.д.
  *   onAddToCart: Обработчик добавления в корзину
+ *   onEnrollFree: Обработчик записи на бесплатный курс (открывает модальное окно)
  *   isOwned: Курс уже приобретён пользователем
  *   isLoading: Состояние загрузки для добавления в корзину
  */
@@ -86,7 +87,7 @@ const formatDuration = (minutes) => {
 /**
  * Компонент CourseCard
  */
-function CourseCard({ course, onAddToCart, isOwned = false, isLoading = false }) {
+function CourseCard({ course, onAddToCart, onEnrollFree, isOwned = false, isLoading = false }) {
   const [isAdding, setIsAdding] = useState(false)
   const [imageError, setImageError] = useState(false)
   
@@ -105,6 +106,18 @@ function CourseCard({ course, onAddToCart, isOwned = false, isLoading = false })
     } finally {
       setIsAdding(false)
     }
+  }
+  
+  /**
+   * Обработчик клика по записи на бесплатный курс
+   */
+  const handleEnrollFree = (e) => {
+    e.preventDefault()
+    e.stopPropagation()
+    
+    if (isOwned) return
+    
+    onEnrollFree?.(course)
   }
   
   return (
@@ -207,16 +220,16 @@ function CourseCard({ course, onAddToCart, isOwned = false, isLoading = false })
               Открыть
             </Link>
           ) : course.price === 0 ? (
-            // Бесплатные курсы - переход на страницу курса для записи
-            <Link
-              to={`/courses/${course.id}?enroll=free`}
+            // Бесплатные курсы - открытие модального окна для записи
+            <button
+              onClick={handleEnrollFree}
               className="text-sm py-2 px-4 rounded-lg bg-green-600 hover:bg-green-700 text-white transition-colors flex items-center gap-1.5"
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
               </svg>
               Записаться
-            </Link>
+            </button>
           ) : (
             // Платные курсы - добавление в корзину
             <button

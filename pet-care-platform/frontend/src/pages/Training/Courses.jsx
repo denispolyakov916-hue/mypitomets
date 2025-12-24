@@ -12,13 +12,13 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate, Link, useSearchParams } from 'react-router-dom'
-import { getCourses, getUserCourses } from '../../api/courses'
+import { getCourses, getUserCourses, enrollFreeCourse } from '../../api/courses'
 import { useAuthStore } from '../../store/authStore'
 import { useCartStore } from '../../store/cartStore'
 import { useToastStore } from '../../store/toastStore'
 import { usePets } from '../../hooks/usePets'
 import CourseCard from '../../components/CourseCard'
-import { PageLoader } from '../../components/Loader'
+import { PageLoader, ButtonLoader } from '../../components/Loader'
 
 /**
  * Варианты фильтра по типу животного
@@ -421,6 +421,13 @@ function Courses() {
   const [error, setError] = useState(null)
   const [searchQuery, setSearchQuery] = useState(searchParams.get('search') || '')
   
+  // Состояние модального окна для бесплатных курсов
+  const [showFreeEnrollModal, setShowFreeEnrollModal] = useState(false)
+  const [selectedCourseForEnroll, setSelectedCourseForEnroll] = useState(null)
+  const [freeEnrollAccepted, setFreeEnrollAccepted] = useState(false)
+  const [isEnrolling, setIsEnrolling] = useState(false)
+  const [selectedPetForEnroll, setSelectedPetForEnroll] = useState(null)
+  
   /**
    * Обновление фильтра
    */
@@ -562,6 +569,67 @@ function Courses() {
       showError(errorMessage)
     } finally {
       setAddingCourseId(null)
+    }
+  }
+  
+  /**
+   * Обработчик открытия модального окна для записи на бесплатный курс
+   */
+  const handleEnrollFree = (course) => {
+    if (!isAuthenticated) {
+      navigate('/login', { state: { from: { pathname: '/courses' } } })
+      return
+    }
+    
+    if (ownedCourseIds.has(course.id)) {
+      return
+    }
+    
+    setSelectedCourseForEnroll(course)
+    setShowFreeEnrollModal(true)
+    setFreeEnrollAccepted(false)
+    setSelectedPetForEnroll(null)
+  }
+  
+  /**
+   * Запись на бесплатный курс
+   */
+  const handleFreeEnroll = async () => {
+    if (!freeEnrollAccepted) {
+      showError('Необходимо согласиться с условиями использования')
+      return
+    }
+    
+    if (!selectedCourseForEnroll) return
+    
+    setIsEnrolling(true)
+    try {
+      const response = await enrollFreeCourse(
+        selectedCourseForEnroll.id, 
+        true, 
+        selectedPetForEnroll
+      )
+      
+      // Обновляем список приобретённых курсов
+      setOwnedCourseIds(prev => new Set([...prev, selectedCourseForEnroll.id]))
+      
+      setShowFreeEnrollModal(false)
+      setSelectedCourseForEnroll(null)
+      setFreeEnrollAccepted(false)
+      setSelectedPetForEnroll(null)
+      
+      success(
+        `Вы успешно записались на курс "${selectedCourseForEnroll.title}"! Перейдите в профиль для начала обучения.`,
+        6000
+      )
+    } catch (err) {
+      const errorMessage = err.response?.data?.error || 
+                          err.response?.data?.message || 
+                          err.message || 
+                          'Не удалось записаться на курс'
+      showError(errorMessage)
+    } finally {
+      setIsEnrolling(false)
     }
   }
   
@@ -708,6 +776,7 @@ function Courses() {
                     course={course}
                     isOwned={ownedCourseIds.has(course.id)}
                     onAddToCart={handleAddToCart}
+                    onEnrollFree={handleEnrollFree}
                     isLoading={addingCourseId === course.id}
                   />
                 ))}
@@ -722,6 +791,135 @@ function Courses() {
           )}
         </main>
       </div>
+      
+      {/* Модальное окно для записи на бесплатный курс */}
+      {showFreeEnrollModal && selectedCourseForEnroll && (
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          <div className="flex min-h-full items-center justify-center p-4">
+            {/* Оверлей */}
+            <div 
+              className="fixed inset-0 bg-black/50 transition-opacity"
+              onClick={() => {
+                setShowFreeEnrollModal(false)
+                setSelectedCourseForEnroll(null)
+                setFreeEnrollAccepted(false)
+                setSelectedPetForEnroll(null)
+              }}
+            />
+            
+            {/* Модальное окно */}
+            <div className="relative bg-white rounded-2xl shadow-xl max-w-lg w-full p-6 animate-fadeIn">
+              {/* Заголовок */}
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
+                  <span className="text-2xl">📚</span>
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-gray-900">
+                    Записаться на курс
+                  </h3>
+                  <p className="text-sm text-gray-500">
+                    {selectedCourseForEnroll.title}
+                  </p>
+                </div>
+                <button
+                  onClick={() => {
+                    setShowFreeEnrollModal(false)
+                    setSelectedCourseForEnroll(null)
+                    setFreeEnrollAccepted(false)
+                    setSelectedPetForEnroll(null)
+                  }}
+                  className="ml-auto text-gray-400 hover:text-gray-600"
+                >
+                  <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              
+              {/* Выбор питомца (если есть совместимые) */}
+              {pets && pets.length > 0 && (
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Для какого питомца? (опционально)
+                  </label>
+                  <select
+                    value={selectedPetForEnroll || ''}
+                    onChange={(e) => setSelectedPetForEnroll(e.target.value || null)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  >
+                    <option value="">Не выбран</option>
+                    {pets
+                      .filter(pet => selectedCourseForEnroll.pet_type === 'all' || pet.species === selectedCourseForEnroll.pet_type)
+                      .map(pet => (
+                        <option key={pet.id} value={pet.id}>
+                          {pet.name} ({pet.species === 'dog' ? '🐕 Собака' : '🐱 Кошка'})
+                        </option>
+                      ))
+                    }
+                  </select>
+                </div>
+              )}
+              
+              {/* Условия использования */}
+              <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg mb-6">
+                <h4 className="font-medium text-amber-800 mb-2">Условия использования</h4>
+                <p className="text-sm text-amber-700 mb-4">
+                  Записываясь на курс, вы подтверждаете, что понимаете и соглашаетесь с тем, 
+                  что мы не гарантируем стопроцентного результата. Результаты обучения зависят от 
+                  индивидуальных особенностей питомца, усердия в выполнении рекомендаций и других факторов.
+                  Курс предназначен для личного использования и не подлежит передаче третьим лицам.
+                </p>
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={freeEnrollAccepted}
+                    onChange={(e) => setFreeEnrollAccepted(e.target.checked)}
+                    className="mt-0.5 w-5 h-5 text-green-600 border-gray-300 rounded focus:ring-green-500"
+                  />
+                  <span className="text-sm text-gray-700">
+                    Я принимаю условия использования и понимаю, что доступ предоставляется сразу после записи
+                  </span>
+                </label>
+              </div>
+              
+              {/* Кнопки */}
+              <div className="flex gap-3">
+                <button
+                  onClick={() => {
+                    setShowFreeEnrollModal(false)
+                    setSelectedCourseForEnroll(null)
+                    setFreeEnrollAccepted(false)
+                    setSelectedPetForEnroll(null)
+                  }}
+                  className="flex-1 py-3 px-4 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  Отмена
+                </button>
+                <button
+                  onClick={handleFreeEnroll}
+                  disabled={!freeEnrollAccepted || isEnrolling}
+                  className="flex-1 py-3 px-4 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  {isEnrolling ? (
+                    <>
+                      <ButtonLoader />
+                      Запись...
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                      Записаться
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
