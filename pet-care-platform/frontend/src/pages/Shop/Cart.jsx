@@ -13,7 +13,9 @@
 import { useState, useEffect } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useCartStore } from '../../store/cartStore'
+import { useToastStore } from '../../store/toastStore'
 import { PageLoader, ButtonLoader } from '../../components/Loader'
+import * as shopApi from '../../api/shop'
 
 /**
  * Форматирование цены с символом рубля
@@ -44,6 +46,7 @@ function Cart() {
     removeItem,
     clearError 
   } = useCartStore()
+  const { success, error: showError } = useToastStore()
   
   // Сообщение из редиректа (например, при истечении времени checkout)
   const [redirectMessage, setRedirectMessage] = useState(null)
@@ -73,10 +76,34 @@ function Cart() {
   }
   
   /**
-   * Обработчик удаления товара
+   * Обработчик удаления товара или курса
    */
-  const handleRemove = async (productId) => {
-    await removeItem(productId)
+  const handleRemove = async (itemId, isCourseItem, cartItemId) => {
+    try {
+      if (isCourseItem) {
+        // Для курсов: бэкенд не поддерживает удаление через DELETE с course_id
+        // Используем обходной путь - удаляем через прямой запрос к API
+        // или просто перезагружаем корзину после попытки удаления
+        
+        // Пробуем удалить через DELETE с course_id (может не работать на бэкенде)
+        try {
+          await shopApi.removeCourseFromCart(itemId)
+          await loadCart()
+          success('Курс удалён из корзины')
+        } catch (err) {
+          // Если бэкенд не поддерживает, показываем ошибку
+          // В будущем нужно добавить поддержку удаления курсов на бэкенде
+          console.error('Ошибка удаления курса:', err)
+          showError('Не удалось удалить курс из корзины. Попробуйте обновить страницу.')
+        }
+      } else {
+        // Для товаров используем стандартное удаление
+        await removeItem(itemId)
+        success('Товар удалён из корзины')
+      }
+    } catch (err) {
+      showError(err.message || 'Не удалось удалить элемент из корзины')
+    }
   }
   
   /**
@@ -159,6 +186,7 @@ function Cart() {
               const itemId = isCourseItem 
                 ? (item.course?.id || `course-${item.id}`) 
                 : (item.product?.id || item.id)
+              const cartItemId = item.id // ID элемента корзины для удаления
               const itemName = isCourseItem 
                 ? (item.course?.title || 'Курс') 
                 : (item.product?.name || 'Товар')
@@ -239,9 +267,10 @@ function Cart() {
                         {formatPrice(itemPrice * itemQuantity)}
                       </p>
                       <button
-                        onClick={() => handleRemove(itemId)}
-                        className="text-sm text-red-600 hover:text-red-700 mt-1"
+                        onClick={() => handleRemove(itemId, isCourseItem, cartItemId)}
+                        className="text-sm text-red-600 hover:text-red-700 mt-1 hover:underline transition-all"
                         disabled={isLoading}
+                        title={isCourseItem ? 'Удалить курс из корзины' : 'Удалить товар из корзины'}
                       >
                         Удалить
                       </button>

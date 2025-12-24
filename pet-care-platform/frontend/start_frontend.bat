@@ -19,6 +19,10 @@ if %errorlevel% neq 0 (
 )
 for /f "tokens=*" %%i in ('node --version') do set NODE_VERSION=%%i
 echo [OK] Node.js установлен: %NODE_VERSION%
+for /f "tokens=1 delims=v" %%i in ("%NODE_VERSION%") do set NODE_MAJOR=%%i
+if %NODE_MAJOR% LSS 18 (
+    echo [ПРЕДУПРЕЖДЕНИЕ] Рекомендуется Node.js 18 или выше. Текущая версия: %NODE_VERSION%
+)
 echo.
 
 :: Проверка npm
@@ -35,6 +39,12 @@ echo.
 
 :: Проверка и установка зависимостей
 echo [3/5] Проверка зависимостей...
+if not exist "package.json" (
+    echo [ОШИБКА] Файл package.json не найден!
+    echo Убедитесь, что вы запускаете скрипт из директории frontend
+    pause
+    exit /b 1
+)
 if not exist "node_modules" (
     echo [INFO] Зависимости не найдены. Устанавливаю...
     call npm install
@@ -65,6 +75,11 @@ if not exist ".env" (
         (
             echo VITE_API_URL=http://localhost:8000/api
         ) > .env
+        if %errorlevel% neq 0 (
+            echo [ОШИБКА] Не удалось создать файл .env
+            pause
+            exit /b 1
+        )
         echo [OK] Файл .env создан
     )
 ) else (

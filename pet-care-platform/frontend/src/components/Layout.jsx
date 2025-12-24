@@ -13,6 +13,8 @@
  */
 
 import Navbar from './Navbar'
+import { ToastContainer } from './Toast'
+import { useToastStore } from '../store/toastStore'
 
 /**
  * Компонент Layout, оборачивающий все страницы
@@ -21,6 +23,8 @@ import Navbar from './Navbar'
  * Использует min-h-screen для прижатия подвала к низу.
  */
 function Layout({ children }) {
+  const { toasts, removeToast } = useToastStore()
+  
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
       {/* Навигационная шапка */}
@@ -30,6 +34,9 @@ function Layout({ children }) {
       <main className="flex-1">
         {children}
       </main>
+      
+      {/* Toast уведомления */}
+      <ToastContainer toasts={toasts} removeToast={removeToast} />
       
       {/* Подвал */}
       <footer className="bg-white border-t border-gray-200 py-6 mt-auto">
