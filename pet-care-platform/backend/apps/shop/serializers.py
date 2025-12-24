@@ -225,34 +225,47 @@ class CartItemAddSerializer(serializers.Serializer):
 class CartItemUpdateSerializer(serializers.Serializer):
     """
     Сериализатор для запроса обновления количества в корзине.
-    
-    Валидирует данные при изменении количества товара в корзине.
-    
+
+    Валидирует данные при изменении количества товара или курса в корзине.
+
     Поля:
-        product_id (int): ID товара в корзине - обязательное
+        product_id (int): ID товара в корзине - опционально (если не указан course_id)
+        course_id (int): ID курса в корзине - опционально (если не указан product_id)
         quantity (int): Новое количество - обязательное (0 = удалить)
-    
-    Пример запроса:
+
+    Пример запроса для товара:
         {
             "product_id": 5,
             "quantity": 3
         }
-    
+
+    Пример запроса для курса:
+        {
+            "course_id": 10,
+            "quantity": 0
+        }
+
     Примечание:
-        При quantity=0 товар будет удалён из корзины.
+        При quantity=0 элемент будет удалён из корзины.
+        Для курсов quantity всегда должно быть 0 (удаление) или 1.
     """
-    
+
     product_id = serializers.IntegerField(
-        required=True,
+        required=False,
         help_text="ID товара в корзине"
     )
-    
+
+    course_id = serializers.IntegerField(
+        required=False,
+        help_text="ID курса в корзине"
+    )
+
     quantity = serializers.IntegerField(
         required=True,
         min_value=0,
         help_text="Новое количество (0 для удаления)"
     )
-    
+
     def validate_product_id(self, value):
         """Валидация ID товара."""
         if value <= 0:
@@ -260,6 +273,40 @@ class CartItemUpdateSerializer(serializers.Serializer):
                 "ID товара должен быть положительным числом"
             )
         return value
+
+    def validate_course_id(self, value):
+        """Валидация ID курса."""
+        if value <= 0:
+            raise serializers.ValidationError(
+                "ID курса должен быть положительным числом"
+            )
+        return value
+
+    def validate(self, attrs):
+        """Комплексная валидация."""
+        product_id = attrs.get('product_id')
+        course_id = attrs.get('course_id')
+        quantity = attrs.get('quantity', 0)
+
+        # Должен быть указан либо product_id, либо course_id
+        if not product_id and not course_id:
+            raise serializers.ValidationError(
+                "Необходимо указать либо product_id, либо course_id"
+            )
+
+        # Нельзя указывать оба одновременно
+        if product_id and course_id:
+            raise serializers.ValidationError(
+                "Нельзя указывать одновременно product_id и course_id"
+            )
+
+        # Для курсов quantity может быть только 0 или 1
+        if course_id and quantity not in [0, 1]:
+            raise serializers.ValidationError(
+                "Для курсов количество может быть только 0 (удалить) или 1"
+            )
+
+        return attrs
 
 
 class CartItemSerializer(serializers.Serializer):

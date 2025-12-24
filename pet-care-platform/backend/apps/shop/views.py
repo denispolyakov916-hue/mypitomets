@@ -436,78 +436,97 @@ class CartItemView(APIView):
     permission_classes = [IsAuthenticated]
     
     def put(self, request):
-        """Обновление количества товара с валидацией наличия."""
+        """Обновление количества товара или курса с валидацией."""
         serializer = CartItemUpdateSerializer(data=request.data)
-        
+
         if not serializer.is_valid():
             return Response(
                 {'errors': serializer.errors},
                 status=status.HTTP_400_BAD_REQUEST
             )
-        
-        product_id = serializer.validated_data['product_id']
+
+        product_id = serializer.validated_data.get('product_id')
+        course_id = serializer.validated_data.get('course_id')
         quantity = serializer.validated_data['quantity']
-        
+
         try:
             cart = Cart.objects.get(user=request.user)
-            cart_item = CartItem.objects.select_related('product').get(cart=cart, product_id=product_id)
+            if product_id:
+                cart_item = CartItem.objects.select_related('product').get(cart=cart, product_id=product_id)
+            else:
+                cart_item = CartItem.objects.select_related('course').get(cart=cart, course_id=course_id)
         except (Cart.DoesNotExist, CartItem.DoesNotExist):
             return Response(
-                {'error': 'Товар не найден в корзине'},
+                {'error': 'Элемент не найден в корзине'},
                 status=status.HTTP_404_NOT_FOUND
             )
-        
+
         if quantity <= 0:
+            # Удаление элемента
             cart_item.delete()
+            message = 'Элемент удалён из корзины'
         else:
-            # Проверка доступного количества на складе
-            if quantity > cart_item.product.stock_count:
-                return Response({
-                    'error': f'Недостаточно товара на складе. Доступно: {cart_item.product.stock_count} шт.'
-                }, status=status.HTTP_400_BAD_REQUEST)
-            
+            if product_id:
+                # Проверка доступного количества на складе для товаров
+                if quantity > cart_item.product.stock_count:
+                    return Response({
+                        'error': f'Недостаточно товара на складе. Доступно: {cart_item.product.stock_count} шт.'
+                    }, status=status.HTTP_400_BAD_REQUEST)
+
+            # Обновление количества
             cart_item.quantity = quantity
             cart_item.save()
-        
+            message = 'Корзина обновлена'
+
         # Возврат обновлённой корзины
-        items = [item.to_dict() for item in cart.items.select_related('product').all()]
+        # Важно: используем select_related для всех связанных объектов
+        items = [item.to_dict() for item in cart.items.select_related('product', 'course', 'pet').all()]
         total = float(cart.get_total())
-        
+        items_count = cart.get_items_count()
+
         return Response({
-            'message': 'Корзина обновлена',
+            'message': message,
             'cart': items,
-            'total': total
+            'total': total,
+            'items_count': items_count
         }, status=status.HTTP_200_OK)
     
     def delete(self, request):
-        """Удаление товара из корзины."""
+        """Удаление товара или курса из корзины."""
         product_id = request.data.get('product_id')
-        
-        if not product_id:
+        course_id = request.data.get('course_id')
+
+        if not product_id and not course_id:
             return Response(
-                {'error': 'Необходимо указать product_id'},
+                {'error': 'Необходимо указать product_id или course_id'},
                 status=status.HTTP_400_BAD_REQUEST
             )
-        
+
         try:
             cart = Cart.objects.get(user=request.user)
-            cart_item = CartItem.objects.get(cart=cart, product_id=product_id)
+            if product_id:
+                cart_item = CartItem.objects.get(cart=cart, product_id=product_id)
+            else:
+                cart_item = CartItem.objects.get(cart=cart, course_id=course_id)
         except (Cart.DoesNotExist, CartItem.DoesNotExist):
             return Response(
-                {'error': 'Товар не найден в корзине'},
+                {'error': 'Элемент не найден в корзине'},
                 status=status.HTTP_404_NOT_FOUND
             )
-        
+
         cart_item.delete()
-        
+
         # Возврат обновлённой корзины
-        items = [item.to_dict() for item in cart.items.select_related('product').all()]
+        # Важно: используем select_related для всех связанных объектов
+        items = [item.to_dict() for item in cart.items.select_related('product', 'course', 'pet').all()]
         total = float(cart.get_total())
-        
+        items_count = cart.get_items_count()
+
         return Response({
-            'message': 'Товар удалён из корзины',
+            'message': f'{item_type.capitalize()} удалён из корзины',
             'cart': items,
-            'total': total
+            'total': total,
+            'items_count': items_count
         }, status=status.HTTP_200_OK)
 
 
@@ -523,8 +542,9 @@ class CartRefreshView(APIView):
     def get(self, request):
         """Обновление корзины - возвращает актуальное состояние."""
         cart, _ = Cart.objects.get_or_create(user=request.user)
-        
-        items = [item.to_dict() for item in cart.items.select_related('product').all()]
+
+        # Важно: используем select_related для всех связанных объектов
+        items = [item.to_dict() for item in cart.items.select_related('product', 'course', 'pet').all()]
         total = float(cart.get_total())
         items_count = cart.get_items_count()
         
@@ -1057,7 +1077,7 @@ class UnifiedCheckoutView(APIView):
 
     def post(self, request):
         """Создать единый заказ и начать оплату."""
-        serializer = UnifiedOrderSerializer(data=request.data)
+        serializer = UnifiedOrderSerializer(data=request.data, context={'request': request})
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
