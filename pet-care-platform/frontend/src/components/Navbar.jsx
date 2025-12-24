@@ -89,6 +89,9 @@ function Navbar() {
                 <Link to="/pets" className={linkClass('/pets')}>
                   Мои питомцы
                 </Link>
+                <Link to="/orders" className={linkClass('/orders')}>
+                  Заказы
+                </Link>
                 <Link to="/health-diary" className={linkClass('/health-diary')}>
                   Дневник здоровья
                 </Link>
@@ -215,6 +218,13 @@ function Navbar() {
                   onClick={() => setMobileMenuOpen(false)}
                 >
                   Мои питомцы
+                </Link>
+                <Link 
+                  to="/orders" 
+                  className={`block ${linkClass('/orders')}`}
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Заказы
                 </Link>
                 <Link 
                   to="/health-diary" 

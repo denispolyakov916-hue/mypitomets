@@ -50,6 +50,10 @@ function Cart() {
     setItemSelection,
     selectAllItems,
     deselectAllItems,
+    selectAllProducts,
+    deselectAllProducts,
+    selectAllCourses,
+    deselectAllCourses,
     getSelectedTotal,
     getSelectedItemIds,
     removeSelectedItems
@@ -60,10 +64,20 @@ function Cart() {
   const [redirectMessage, setRedirectMessage] = useState(null)
   const [isDeletingSelected, setIsDeletingSelected] = useState(false)
   
+  // Разделение товаров и курсов
+  const products = items.filter(item => !isCourse(item))
+  const courses = items.filter(item => isCourse(item))
+  
   // Проверка "Выбрать все"
   const isAllSelected = items.length > 0 && selectedItems.size === items.length
   const selectedCount = selectedItems.size
   const selectedTotal = getSelectedTotal()
+  
+  // Проверка выбора товаров и курсов
+  const selectedProducts = products.filter(item => selectedItems.has(item.id))
+  const selectedCourses = courses.filter(item => selectedItems.has(item.id))
+  const isAllProductsSelected = products.length > 0 && selectedProducts.length === products.length
+  const isAllCoursesSelected = courses.length > 0 && selectedCourses.length === courses.length
   
   /**
    * Загрузка корзины при монтировании и обработка сообщений
@@ -96,6 +110,28 @@ function Cart() {
       selectAllItems()
     } else {
       deselectAllItems()
+    }
+  }
+  
+  /**
+   * Обработчик "Выбрать все товары"
+   */
+  const handleSelectAllProducts = (checked) => {
+    if (checked) {
+      selectAllProducts()
+    } else {
+      deselectAllProducts()
+    }
+  }
+  
+  /**
+   * Обработчик "Выбрать все курсы"
+   */
+  const handleSelectAllCourses = (checked) => {
+    if (checked) {
+      selectAllCourses()
+    } else {
+      deselectAllCourses()
     }
   }
   
@@ -220,9 +256,9 @@ function Cart() {
       
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Товары в корзине */}
-        <div className="lg:col-span-2">
+        <div className="lg:col-span-2 space-y-6">
           {/* Панель управления выбором */}
-          <div className="flex items-center justify-between mb-4 p-4 bg-gray-50 rounded-lg">
+          <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
             <label className="flex items-center gap-3 cursor-pointer">
               <input
                 type="checkbox"
@@ -263,8 +299,36 @@ function Cart() {
             </div>
           </div>
           
-          <div className="card divide-y divide-gray-100">
-            {items.map(item => {
+          {/* Блок товаров */}
+          {products.length > 0 && (
+            <div className="card">
+              <div className="flex items-center justify-between mb-4 pb-4 border-b border-gray-200">
+                <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                  <svg className="w-5 h-5 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                  </svg>
+                  Товары
+                </h2>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={isAllProductsSelected}
+                    onChange={(e) => handleSelectAllProducts(e.target.checked)}
+                    className="w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                  />
+                  <span className="text-sm font-medium text-gray-700">
+                    Выбрать все товары
+                  </span>
+                  {selectedProducts.length > 0 && (
+                    <span className="text-xs text-gray-500">
+                      ({selectedProducts.length}/{products.length})
+                    </span>
+                  )}
+                </label>
+              </div>
+              
+              <div className="divide-y divide-gray-100">
+                {products.map(item => {
               // Безопасная проверка структуры данных
               if (!item) return null
               
@@ -276,10 +340,12 @@ function Cart() {
                 return null
               }
               
+              // Используем ID элемента корзины как ключ - это стабильный уникальный идентификатор
+              // который не меняется при обновлении количества
+              const cartItemId = item.id // ID элемента корзины (стабильный ключ)
               const itemId = isCourseItem 
                 ? (item.course?.id || `course-${item.id}`) 
                 : (item.product?.id || item.id)
-              const cartItemId = item.id // ID элемента корзины для удаления
               const itemName = isCourseItem 
                 ? (item.course?.title || 'Курс') 
                 : (item.product?.name || 'Товар')
@@ -295,94 +361,189 @@ function Cart() {
                 ? (item.course?.pet_type || 'all') 
                 : (item.product?.animal || 'all')
               
-              return (
-                <div key={itemId} className="py-4 first:pt-0 last:pb-0">
-                  <div className="flex gap-4">
-                    {/* Чекбокс выбора */}
-                    <label className="flex items-center cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={selectedItems.has(item.id)}
-                        onChange={(e) => handleItemSelect(item.id, e.target.checked)}
-                        className="w-5 h-5 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-                      />
-                    </label>
-                    
-                    {/* Заглушка изображения товара/курса */}
-                    <div className="w-20 h-20 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                      <span className="text-3xl opacity-50">
-                        {itemPetType === 'dog' ? '🐕' : itemPetType === 'cat' ? '🐱' : isCourseItem ? '📚' : '🐾'}
-                      </span>
-                    </div>
-                    
-                    {/* Информация о товаре/курсе */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <h3 className="font-semibold text-gray-900 truncate">
-                          {itemName}
-                        </h3>
-                        {isCourseItem && (
-                          <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs font-medium rounded-full whitespace-nowrap">
-                            Курс
+                  return (
+                    <div key={cartItemId} className="py-4 first:pt-0 last:pb-0">
+                      <div className="flex gap-4">
+                        {/* Чекбокс выбора */}
+                        <label className="flex items-center cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={selectedItems.has(item.id)}
+                            onChange={(e) => handleItemSelect(item.id, e.target.checked)}
+                            className="w-5 h-5 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                          />
+                        </label>
+                        
+                        {/* Заглушка изображения товара */}
+                        <div className="w-20 h-20 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                          <span className="text-3xl opacity-50">
+                            {itemPetType === 'dog' ? '🐕' : itemPetType === 'cat' ? '🐱' : '🐾'}
                           </span>
-                        )}
+                        </div>
+                        
+                        {/* Информация о товаре */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <h3 className="font-semibold text-gray-900 truncate">
+                              {itemName}
+                            </h3>
+                          </div>
+                          <p className="text-sm text-gray-500 truncate">
+                            {itemDescription}
+                          </p>
+                          <p className="font-medium text-gray-900 mt-1">
+                            {formatPrice(itemPrice)}
+                          </p>
+                        </div>
+                        
+                        {/* Управление количеством */}
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => handleQuantityChange(item.product.id, itemQuantity - 1)}
+                            className="w-8 h-8 rounded-lg border border-gray-300 flex items-center justify-center hover:bg-gray-50 transition-colors"
+                            disabled={isLoading}
+                          >
+                            -
+                          </button>
+                          <span className="w-8 text-center font-medium">
+                            {itemQuantity}
+                          </span>
+                          <button
+                            onClick={() => handleQuantityChange(item.product.id, itemQuantity + 1)}
+                            className="w-8 h-8 rounded-lg border border-gray-300 flex items-center justify-center hover:bg-gray-50 transition-colors"
+                            disabled={isLoading}
+                          >
+                            +
+                          </button>
+                        </div>
+                        
+                        {/* Сумма и удаление */}
+                        <div className="text-right">
+                          <p className="font-semibold text-gray-900">
+                            {formatPrice(itemPrice * itemQuantity)}
+                          </p>
+                          <button
+                            onClick={() => handleRemove(itemId, false, cartItemId)}
+                            className="text-sm text-red-600 hover:text-red-700 mt-1 hover:underline transition-all"
+                            disabled={isLoading}
+                            title="Удалить товар из корзины"
+                          >
+                            Удалить
+                          </button>
+                        </div>
                       </div>
-                      <p className="text-sm text-gray-500 truncate">
-                        {itemDescription}
-                      </p>
-                      {/* Информация о питомце для курса */}
-                      {isCourseItem && item.pet && (
-                        <p className="text-xs text-primary-600 mt-1">
-                          🐾 Для: {item.pet.name}
-                        </p>
-                      )}
-                      <p className="font-medium text-gray-900 mt-1">
-                        {formatPrice(itemPrice)}
-                      </p>
                     </div>
-                    
-                    {/* Управление количеством (только для товаров) */}
-                    {!isCourseItem && (
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => handleQuantityChange(item.product.id, itemQuantity - 1)}
-                          className="w-8 h-8 rounded-lg border border-gray-300 flex items-center justify-center hover:bg-gray-50 transition-colors"
-                          disabled={isLoading}
-                        >
-                          -
-                        </button>
-                        <span className="w-8 text-center font-medium">
-                          {itemQuantity}
-                        </span>
-                        <button
-                          onClick={() => handleQuantityChange(item.product.id, itemQuantity + 1)}
-                          className="w-8 h-8 rounded-lg border border-gray-300 flex items-center justify-center hover:bg-gray-50 transition-colors"
-                          disabled={isLoading}
-                        >
-                          +
-                        </button>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+          
+          {/* Блок курсов */}
+          {courses.length > 0 && (
+            <div className="card">
+              <div className="flex items-center justify-between mb-4 pb-4 border-b border-gray-200">
+                <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                  <svg className="w-5 h-5 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                  </svg>
+                  Курсы
+                </h2>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={isAllCoursesSelected}
+                    onChange={(e) => handleSelectAllCourses(e.target.checked)}
+                    className="w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                  />
+                  <span className="text-sm font-medium text-gray-700">
+                    Выбрать все курсы
+                  </span>
+                  {selectedCourses.length > 0 && (
+                    <span className="text-xs text-gray-500">
+                      ({selectedCourses.length}/{courses.length})
+                    </span>
+                  )}
+                </label>
+              </div>
+              
+              <div className="divide-y divide-gray-100">
+                {courses.map(item => {
+                  // Безопасная проверка структуры данных
+                  if (!item) return null
+                  
+                  const cartItemId = item.id
+                  const itemId = item.course?.id || `course-${item.id}`
+                  const itemName = item.course?.title || 'Курс'
+                  const itemDescription = item.course?.description || ''
+                  const itemPrice = item.course?.price || 0
+                  const itemPetType = item.course?.pet_type || 'all'
+                  
+                  return (
+                    <div key={cartItemId} className="py-4 first:pt-0 last:pb-0">
+                      <div className="flex gap-4">
+                        {/* Чекбокс выбора */}
+                        <label className="flex items-center cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={selectedItems.has(item.id)}
+                            onChange={(e) => handleItemSelect(item.id, e.target.checked)}
+                            className="w-5 h-5 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                          />
+                        </label>
+                        
+                        {/* Заглушка изображения курса */}
+                        <div className="w-20 h-20 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                          <span className="text-3xl opacity-50">
+                            📚
+                          </span>
+                        </div>
+                        
+                        {/* Информация о курсе */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <h3 className="font-semibold text-gray-900 truncate">
+                              {itemName}
+                            </h3>
+                            <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs font-medium rounded-full whitespace-nowrap">
+                              Курс
+                            </span>
+                          </div>
+                          <p className="text-sm text-gray-500 truncate">
+                            {itemDescription}
+                          </p>
+                          {/* Информация о питомце для курса */}
+                          {item.pet && (
+                            <p className="text-xs text-primary-600 mt-1">
+                              🐾 Для: {item.pet.name}
+                            </p>
+                          )}
+                          <p className="font-medium text-gray-900 mt-1">
+                            {formatPrice(itemPrice)}
+                          </p>
+                        </div>
+                        
+                        {/* Сумма и удаление */}
+                        <div className="text-right">
+                          <p className="font-semibold text-gray-900">
+                            {formatPrice(itemPrice)}
+                          </p>
+                          <button
+                            onClick={() => handleRemove(itemId, true, cartItemId)}
+                            className="text-sm text-red-600 hover:text-red-700 mt-1 hover:underline transition-all"
+                            disabled={isLoading}
+                            title="Удалить курс из корзины"
+                          >
+                            Удалить
+                          </button>
+                        </div>
                       </div>
-                    )}
-                    
-                    {/* Сумма и удаление */}
-                    <div className="text-right">
-                      <p className="font-semibold text-gray-900">
-                        {formatPrice(itemPrice * itemQuantity)}
-                      </p>
-                      <button
-                        onClick={() => handleRemove(itemId, isCourseItem, cartItemId)}
-                        className="text-sm text-red-600 hover:text-red-700 mt-1 hover:underline transition-all"
-                        disabled={isLoading}
-                        title={isCourseItem ? 'Удалить курс из корзины' : 'Удалить товар из корзины'}
-                      >
-                        Удалить
-                      </button>
                     </div>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
         </div>
         
         {/* Итог и оформление заказа */}

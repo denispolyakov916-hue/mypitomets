@@ -1,8 +1,7 @@
 /**
  * Компонент выпадающего меню заказов
  * 
- * Отображает список неоплаченных заказов пользователя
- * с возможностью перехода к оплате
+ * Отображает последние заказы пользователя с возможностью перехода к деталям
  */
 
 import { useState, useEffect, useRef } from 'react'
@@ -33,10 +32,21 @@ const formatDate = (dateString) => {
 }
 
 /**
+ * Названия статусов заказов
+ */
+const statusLabels = {
+  pending: { label: 'Ожидает оплаты', class: 'text-amber-600' },
+  processing: { label: 'В обработке', class: 'text-blue-600' },
+  shipped: { label: 'Отправлен', class: 'text-purple-600' },
+  delivered: { label: 'Доставлен', class: 'text-green-600' },
+  cancelled: { label: 'Отменён', class: 'text-red-600' }
+}
+
+/**
  * Компонент OrdersDropdown
  */
 function OrdersDropdown() {
-  const [orders, setOrders] = useState([])
+  const [allOrders, setAllOrders] = useState([])
   const [isOpen, setIsOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const dropdownRef = useRef(null)
@@ -71,14 +81,14 @@ function OrdersDropdown() {
     setIsLoading(true)
     try {
       const response = await getOrders()
-      // Фильтруем только неоплаченные заказы (pending)
-      const pendingOrders = (response.orders || []).filter(
-        order => order.status === 'pending'
-      )
-      setOrders(pendingOrders)
+      // Берем последние 5 заказов, отсортированных по дате
+      const sortedOrders = (response.orders || [])
+        .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+        .slice(0, 5)
+      setAllOrders(sortedOrders)
     } catch (err) {
       console.error('Не удалось загрузить заказы:', err)
-      setOrders([])
+      setAllOrders([])
     } finally {
       setIsLoading(false)
     }
@@ -87,7 +97,7 @@ function OrdersDropdown() {
   /**
    * Подсчет неоплаченных заказов
    */
-  const pendingCount = orders.filter(order => order.status === 'pending').length
+  const pendingCount = allOrders.filter(order => order.status === 'pending').length
   
   return (
     <div className="relative" ref={dropdownRef}>
@@ -108,24 +118,25 @@ function OrdersDropdown() {
       
       {/* Выпадающее меню */}
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-lg border border-gray-200 z-50 max-h-96 overflow-hidden flex flex-col">
+        <div className="absolute right-0 mt-2 w-96 bg-white rounded-xl shadow-lg border border-gray-200 z-50 max-h-[500px] overflow-hidden flex flex-col">
           <div className="p-4 border-b border-gray-200">
             <h3 className="font-semibold text-gray-900">Мои заказы</h3>
             <p className="text-xs text-gray-500 mt-1">
-              Неоплаченные заказы
+              Последние заказы
             </p>
           </div>
           
           <div className="overflow-y-auto flex-1">
             {isLoading ? (
               <div className="p-4 text-center text-gray-500">
-                Загрузка...
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary-600 mx-auto"></div>
+                <p className="text-sm mt-2">Загрузка...</p>
               </div>
-            ) : orders.length === 0 ? (
+            ) : allOrders.length === 0 ? (
               <div className="p-4 text-center text-gray-500">
-                <p className="text-sm">Нет неоплаченных заказов</p>
+                <p className="text-sm">Нет заказов</p>
                 <Link
-                  to="/profile?tab=orders"
+                  to="/orders"
                   className="text-primary-600 hover:text-primary-700 text-sm mt-2 inline-block"
                   onClick={() => setIsOpen(false)}
                 >
@@ -134,41 +145,55 @@ function OrdersDropdown() {
               </div>
             ) : (
               <div className="divide-y divide-gray-100">
-                {orders.map(order => (
-                  <Link
-                    key={order.id}
-                    to={`/payment?order_id=${order.id}&type=shop_order&amount=${order.total_amount}`}
-                    className="block p-4 hover:bg-gray-50 transition-colors"
-                    onClick={() => setIsOpen(false)}
-                  >
-                    <div className="flex justify-between items-start mb-2">
-                      <div>
-                        <p className="font-medium text-gray-900 text-sm">
-                          Заказ #{order.id.slice(0, 8)}
-                        </p>
-                        <p className="text-xs text-gray-500 mt-1">
-                          {formatDate(order.created_at)}
-                        </p>
+                {allOrders.map(order => {
+                  const status = statusLabels[order.status] || statusLabels.pending
+                  const totalItems = order.items.reduce((sum, item) => sum + item.quantity, 0)
+                  
+                  return (
+                    <Link
+                      key={order.id}
+                      to={`/orders/${order.id}`}
+                      className="block p-4 hover:bg-gray-50 transition-colors"
+                      onClick={() => setIsOpen(false)}
+                    >
+                      <div className="flex justify-between items-start mb-2">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <p className="font-medium text-gray-900 text-sm">
+                              Заказ #{order.id.slice(0, 8).toUpperCase()}
+                            </p>
+                            <span className={`text-xs font-medium ${status.class}`}>
+                              {status.label}
+                            </span>
+                          </div>
+                          <p className="text-xs text-gray-500">
+                            {formatDate(order.created_at)}
+                          </p>
+                        </div>
+                        <span className="text-sm font-semibold text-gray-900 ml-2">
+                          {formatPrice(order.total_amount)}
+                        </span>
                       </div>
-                      <span className="text-sm font-semibold text-primary-600">
-                        {formatPrice(order.total_amount)}
-                      </span>
-                    </div>
-                    <p className="text-xs text-gray-500">
-                      {order.items.length} товар(ов)
-                    </p>
-                    <p className="text-xs text-red-600 mt-1">
-                      Требуется оплата
-                    </p>
-                  </Link>
-                ))}
+                      <div className="flex items-center justify-between">
+                        <p className="text-xs text-gray-500">
+                          {totalItems} {totalItems === 1 ? 'позиция' : totalItems < 5 ? 'позиции' : 'позиций'}
+                        </p>
+                        {order.status === 'pending' && (
+                          <span className="text-xs text-amber-600 font-medium">
+                            Требуется оплата
+                          </span>
+                        )}
+                      </div>
+                    </Link>
+                  )
+                })}
               </div>
             )}
           </div>
           
           <div className="p-3 border-t border-gray-200 bg-gray-50">
             <Link
-              to="/profile?tab=orders"
+              to="/orders"
               className="block text-center text-sm text-primary-600 hover:text-primary-700 font-medium"
               onClick={() => setIsOpen(false)}
             >

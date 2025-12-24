@@ -19,6 +19,8 @@ import { useCartStore } from '../../store/cartStore'
 import { useToastStore } from '../../store/toastStore'
 import { usePets } from '../../hooks/usePets'
 import { PageLoader, ButtonLoader } from '../../components/Loader'
+import Rating from '../../components/Rating'
+import ReviewsSection from '../../components/ReviewsSection'
 
 /**
  * Форматирование цены
@@ -380,6 +382,18 @@ function CourseDetail() {
             <h1 className="text-4xl font-bold text-gray-900 mb-3">
               {course.title}
             </h1>
+            
+            {/* Рейтинг */}
+            {(course.rating || course.reviews_count !== undefined) && (
+              <div className="mb-4">
+                <Rating
+                  rating={course.rating || 0}
+                  reviewsCount={course.reviews_count}
+                  readonly={true}
+                  size="md"
+                />
+              </div>
+            )}
             
             {/* Адаптивное описание под тип животного */}
             <p className="text-lg text-gray-600 mb-4">
@@ -837,6 +851,13 @@ function CourseDetail() {
           </div>
         </div>
       )}
+      
+      {/* Секция отзывов */}
+      <ReviewsSection 
+        type="course" 
+        itemId={course.id} 
+        isPurchased={isOwned}
+      />
     </div>
   )
 }
