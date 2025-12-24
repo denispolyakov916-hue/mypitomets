@@ -11,10 +11,10 @@
 
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import { getProduct } from '../../api/shop'
-import { addToCart } from '../../api/shop'
+import { getProduct, addToCart } from '../../api/shop'
 import { useAuthStore } from '../../store/authStore'
 import { useCartStore } from '../../store/cartStore'
+import { useToastStore } from '../../store/toastStore'
 import { PageLoader, ButtonLoader } from '../../components/Loader'
 
 /**
@@ -36,6 +36,7 @@ function ProductDetail() {
   const navigate = useNavigate()
   const { isAuthenticated } = useAuthStore()
   const { refreshCart } = useCartStore()
+  const { success, error: showError } = useToastStore()
   
   const [product, setProduct] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -80,9 +81,9 @@ function ProductDetail() {
     try {
       await addToCart(product.id, quantity)
       await refreshCart()
-      alert('Товар добавлен в корзину')
+      success('Товар добавлен в корзину. Перейдите в корзину для оформления заказа.', 5000)
     } catch (err) {
-      alert(err.message || 'Не удалось добавить товар в корзину')
+      showError(err.message || 'Не удалось добавить товар в корзину')
     } finally {
       setIsAddingToCart(false)
     }

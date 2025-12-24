@@ -154,6 +154,20 @@ export const removeFromCart = async (productId) => {
 }
 
 /**
+ * Удаление курса из корзины по course_id
+ * 
+ * @param {number} courseId - ID курса для удаления
+ * @returns {Promise<Object>} Обновлённые данные корзины
+ */
+export const removeCourseFromCart = async (courseId) => {
+  // Используем DELETE с course_id в data
+  // Бэкенд должен поддерживать удаление курсов
+  return await api.delete('/shop/cart/item/', {
+    data: { course_id: courseId }
+  })
+}
+
+/**
  * Обновление корзины (refreshCart)
  * 
  * @returns {Promise<Object>} Актуальное состояние корзины

@@ -15,8 +15,10 @@ import { useNavigate, Link, useSearchParams } from 'react-router-dom'
 import { getCourses, getUserCourses } from '../../api/courses'
 import { useAuthStore } from '../../store/authStore'
 import { useCartStore } from '../../store/cartStore'
+import { useToastStore } from '../../store/toastStore'
 import { usePets } from '../../hooks/usePets'
-import { PageLoader, ButtonLoader } from '../../components/Loader'
+import CourseCard from '../../components/CourseCard'
+import { PageLoader } from '../../components/Loader'
 
 /**
  * Варианты фильтра по типу животного
@@ -79,100 +81,6 @@ const formatPrice = (price) => {
   }).format(price)
 }
 
-/**
- * Форматирование продолжительности из минут
- */
-const formatDuration = (minutes) => {
-  if (minutes < 60) return `${minutes} мин`
-  const hours = Math.floor(minutes / 60)
-  const mins = minutes % 60
-  return mins > 0 ? `${hours} ч ${mins} мин` : `${hours} ч`
-}
-
-/**
- * Компонент CourseCard
- */
-function CourseCard({ course, isOwned, onPurchase, isPurchasing }) {
-  return (
-    <div className="card hover:shadow-lg transition-shadow flex flex-col h-full">
-      {/* Заглушка изображения курса - кликабельная */}
-      <Link to={`/courses/${course.id}`} className="aspect-video bg-gradient-to-br from-primary-100 to-primary-200 rounded-lg mb-4 flex items-center justify-center block">
-        {course.image_url ? (
-          <img src={course.image_url} alt={course.title} className="w-full h-full object-cover rounded-lg" />
-        ) : (
-          <span className="text-6xl">
-            {course.pet_type === 'dog' ? '🐕' : course.pet_type === 'cat' ? '🐱' : '📚'}
-          </span>
-        )}
-      </Link>
-      
-      {/* Бейджи */}
-      <div className="flex gap-2 mb-3 flex-wrap">
-        {course.is_free ? (
-          <span className="px-2 py-0.5 bg-green-100 text-green-700 text-xs font-medium rounded-full">
-            Бесплатно
-          </span>
-        ) : (
-          <span className="px-2 py-0.5 bg-primary-100 text-primary-700 text-xs font-medium rounded-full">
-            {formatPrice(course.price)}
-          </span>
-        )}
-        <span className="px-2 py-0.5 bg-gray-100 text-gray-600 text-xs rounded-full">
-          {formatDuration(course.duration)}
-        </span>
-        {course.level && (
-          <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs rounded-full">
-            {LEVEL_OPTIONS.find(l => l.value === course.level)?.label || course.level}
-          </span>
-        )}
-      </div>
-      
-      {/* Название и описание - кликабельные */}
-      <Link to={`/courses/${course.id}`}>
-        <h3 className="text-lg font-semibold text-gray-900 mb-2 line-clamp-2 hover:text-primary-600 transition-colors">
-          {course.title}
-        </h3>
-      </Link>
-      <Link to={`/courses/${course.id}`}>
-        <p className="text-sm text-gray-600 mb-4 line-clamp-3 flex-1 hover:text-gray-900 transition-colors">
-          {course.description}
-        </p>
-      </Link>
-      
-      {/* Кнопка действия */}
-      <div className="mt-auto pt-4 border-t border-gray-100">
-        {isOwned ? (
-          <Link
-            to={`/courses/${course.id}`}
-            className="block w-full btn-secondary py-2.5 flex items-center justify-center gap-2"
-          >
-            <svg className="w-5 h-5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-            </svg>
-            Уже приобретён
-          </Link>
-        ) : (
-          <button
-            onClick={(e) => onPurchase(course, e)}
-            disabled={isPurchasing}
-            className="w-full btn-primary py-2.5 flex items-center justify-center gap-2"
-          >
-            {isPurchasing ? (
-              <>
-                <ButtonLoader />
-                Оформление...
-              </>
-            ) : course.is_free ? (
-              'Начать бесплатно'
-            ) : (
-              `Купить за ${formatPrice(course.price)}`
-            )}
-          </button>
-        )}
-      </div>
-    </div>
-  )
-}
 
 /**
  * Компонент боковой панели фильтров
@@ -484,7 +392,8 @@ function Courses() {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const { isAuthenticated } = useAuthStore()
-  const { addCourse } = useCartStore()
+  const { addCourse, error: cartError } = useCartStore()
+  const { success, error: showError } = useToastStore()
   const { pets } = usePets()
   
   // Состояние
@@ -494,6 +403,7 @@ function Courses() {
   const [ownedCourseIds, setOwnedCourseIds] = useState(new Set())
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [searchQuery, setSearchQuery] = useState(filters.search || '')
   
   // Фильтры из URL
   const filters = {
@@ -559,7 +469,16 @@ function Courses() {
    */
   const handleReset = useCallback(() => {
     setSearchParams(new URLSearchParams())
+    setSearchQuery('')
   }, [setSearchParams])
+  
+  /**
+   * Поиск
+   */
+  const handleSearch = useCallback((e) => {
+    e.preventDefault()
+    handleFilterChange('search', searchQuery)
+  }, [searchQuery, handleFilterChange])
   
   /**
    * Загрузка курсов
@@ -611,10 +530,7 @@ function Courses() {
   /**
    * Обработчик добавления курса в корзину
    */
-  const handleAddToCart = async (course, e) => {
-    e.preventDefault()
-    e.stopPropagation()
-    
+  const handleAddToCart = async (course) => {
     if (!isAuthenticated) {
       if (confirm('Для добавления курса в корзину необходимо войти в аккаунт. Перейти на страницу входа?')) {
         navigate('/login', { state: { from: { pathname: '/courses' } } })
@@ -624,14 +540,26 @@ function Courses() {
     
     setAddingCourseId(course.id)
     try {
-      const success = await addCourse(course.id, null, false)
+      // Добавляем курс в корзину
+      const result = await addCourse(course.id, null, false)
       
-      if (success) {
-        // Переходим к единому checkout
-        navigate('/checkout')
+      if (result) {
+        // Показываем уведомление об успешном добавлении
+        success(
+          `Курс "${course.title}" добавлен в корзину. Перейдите в корзину для оформления заказа.`,
+          6000
+        )
+      } else {
+        // Ошибка уже установлена в cartStore
+        showError(cartError || 'Не удалось добавить курс в корзину')
       }
     } catch (err) {
-      alert(err.message || 'Не удалось добавить курс в корзину')
+      // Обработка неожиданных ошибок
+      const errorMessage = err.response?.data?.error || 
+                          err.response?.data?.message || 
+                          err.message || 
+                          'Не удалось добавить курс в корзину'
+      showError(errorMessage)
     } finally {
       setAddingCourseId(null)
     }
@@ -639,12 +567,23 @@ function Courses() {
   
   return (
     <div className="page-container animate-fadeIn">
-      {/* Заголовок */}
+      {/* Заголовок и поиск */}
       <div className="mb-6">
         <h1 className="page-title mb-4">Обучающие курсы</h1>
-        <p className="text-gray-600">
-          Курсы по уходу, дрессировке и воспитанию от профессионалов
-        </p>
+        
+        {/* Поиск */}
+        <form onSubmit={handleSearch} className="flex gap-2 max-w-xl">
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Поиск по названию курса..."
+            className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-primary-500 focus:border-primary-500"
+          />
+          <button type="submit" className="btn-primary px-6">
+            Найти
+          </button>
+        </form>
       </div>
       
       <div className="flex gap-6">
@@ -768,8 +707,8 @@ function Courses() {
                     key={course.id}
                     course={course}
                     isOwned={ownedCourseIds.has(course.id)}
-                    onPurchase={handleAddToCart}
-                    isPurchasing={addingCourseId === course.id}
+                    onAddToCart={handleAddToCart}
+                    isLoading={addingCourseId === course.id}
                   />
                 ))}
               </div>

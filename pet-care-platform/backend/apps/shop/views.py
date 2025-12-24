@@ -429,14 +429,14 @@ class CartItemView(APIView):
     """
     Управление элементами корзины.
     
-    PUT    /api/shop/cart/item/ - обновление количества
-    DELETE /api/shop/cart/item/ - удаление товара
+    PUT    /api/shop/cart/item/ - обновление количества товара или удаление курса
+    DELETE /api/shop/cart/item/ - удаление товара или курса
     """
     
     permission_classes = [IsAuthenticated]
     
     def put(self, request):
-        """Обновление количества товара с валидацией наличия."""
+        """Обновление количества товара или удаление курса с валидацией наличия."""
         serializer = CartItemUpdateSerializer(data=request.data)
         
         if not serializer.is_valid():
@@ -445,69 +445,146 @@ class CartItemView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
         
-        product_id = serializer.validated_data['product_id']
+        product_id = serializer.validated_data.get('product_id')
+        course_id = serializer.validated_data.get('course_id')
         quantity = serializer.validated_data['quantity']
         
         try:
             cart = Cart.objects.get(user=request.user)
-            cart_item = CartItem.objects.select_related('product').get(cart=cart, product_id=product_id)
-        except (Cart.DoesNotExist, CartItem.DoesNotExist):
+            
+            # Определяем, работаем ли с товаром или курсом
+            if product_id:
+                # Работа с товаром
+                cart_item = CartItem.objects.select_related('product').get(
+                    cart=cart, 
+                    product_id=product_id
+                )
+                
+                if quantity <= 0:
+                    cart_item.delete()
+                else:
+                    # Проверка доступного количества на складе
+                    if quantity > cart_item.product.stock_count:
+                        return Response({
+                            'error': f'Недостаточно товара на складе. Доступно: {cart_item.product.stock_count} шт.'
+                        }, status=status.HTTP_400_BAD_REQUEST)
+                    
+                    cart_item.quantity = quantity
+                    cart_item.save()
+                    
+            elif course_id:
+                # Работа с курсом
+                cart_item = CartItem.objects.select_related('course', 'pet').get(
+                    cart=cart,
+                    course_id=course_id
+                )
+                
+                # Для курсов quantity всегда = 1, но можно удалить (quantity=0)
+                if quantity <= 0:
+                    cart_item.delete()
+                else:
+                    # Курсы всегда имеют quantity=1, обновление не требуется
+                    # Но если quantity > 1, это ошибка (курсы нельзя добавлять в количестве > 1)
+                    if quantity > 1:
+                        return Response({
+                            'error': 'Курсы можно добавить только в количестве 1'
+                        }, status=status.HTTP_400_BAD_REQUEST)
+                    # Если quantity == 1, ничего не делаем (уже в корзине)
+                
+        except Cart.DoesNotExist:
             return Response(
-                {'error': 'Товар не найден в корзине'},
+                {'error': 'Корзина не найдена'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        except CartItem.DoesNotExist:
+            item_type = 'товар' if product_id else 'курс'
+            return Response(
+                {'error': f'{item_type.capitalize()} не найден в корзине'},
                 status=status.HTTP_404_NOT_FOUND
             )
         
-        if quantity <= 0:
-            cart_item.delete()
-        else:
-            # Проверка доступного количества на складе
-            if quantity > cart_item.product.stock_count:
-                return Response({
-                    'error': f'Недостаточно товара на складе. Доступно: {cart_item.product.stock_count} шт.'
-                }, status=status.HTTP_400_BAD_REQUEST)
-            
-            cart_item.quantity = quantity
-            cart_item.save()
-        
         # Возврат обновлённой корзины
-        items = [item.to_dict() for item in cart.items.select_related('product').all()]
+        # ВАЖНО: используем select_related для всех связанных объектов
+        items = [item.to_dict() for item in cart.items.select_related('product', 'course', 'pet').all()]
         total = float(cart.get_total())
+        items_count = cart.get_items_count()
         
         return Response({
             'message': 'Корзина обновлена',
             'cart': items,
-            'total': total
+            'total': total,
+            'items_count': items_count
         }, status=status.HTTP_200_OK)
     
     def delete(self, request):
-        """Удаление товара из корзины."""
+        """Удаление товара или курса из корзины."""
         product_id = request.data.get('product_id')
+        course_id = request.data.get('course_id')
         
-        if not product_id:
+        # Проверка: должен быть указан либо product_id, либо course_id
+        if not product_id and not course_id:
             return Response(
-                {'error': 'Необходимо указать product_id'},
+                {'error': 'Необходимо указать либо product_id, либо course_id'},
                 status=status.HTTP_400_BAD_REQUEST
             )
         
+        # Проверка: нельзя указывать оба одновременно
+        if product_id and course_id:
+            return Response(
+                {'error': 'Нельзя указывать одновременно product_id и course_id'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Определяем тип элемента для сообщений об ошибках
+        item_type = 'товар' if product_id else 'курс'
+        
         try:
             cart = Cart.objects.get(user=request.user)
-            cart_item = CartItem.objects.get(cart=cart, product_id=product_id)
-        except (Cart.DoesNotExist, CartItem.DoesNotExist):
+            
+            if product_id:
+                # Удаление товара
+                cart_item = CartItem.objects.select_related('product').get(
+                    cart=cart, 
+                    product_id=product_id
+                )
+            elif course_id:
+                # Удаление курса
+                # Используем .filter().first() для обработки случаев с привязкой к питомцу
+                cart_item = CartItem.objects.select_related('course', 'pet').filter(
+                    cart=cart,
+                    course_id=course_id
+                ).first()
+                
+                if not cart_item:
+                    return Response(
+                        {'error': 'Курс не найден в корзине'},
+                        status=status.HTTP_404_NOT_FOUND
+                    )
+                
+        except Cart.DoesNotExist:
             return Response(
-                {'error': 'Товар не найден в корзине'},
+                {'error': 'Корзина не найдена'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        except CartItem.DoesNotExist:
+            return Response(
+                {'error': f'{item_type.capitalize()} не найден в корзине'},
                 status=status.HTTP_404_NOT_FOUND
             )
         
         cart_item.delete()
         
         # Возврат обновлённой корзины
-        items = [item.to_dict() for item in cart.items.select_related('product').all()]
+        # ВАЖНО: используем select_related для всех связанных объектов
+        items = [item.to_dict() for item in cart.items.select_related('product', 'course', 'pet').all()]
         total = float(cart.get_total())
+        items_count = cart.get_items_count()
         
         return Response({
-            'message': 'Товар удалён из корзины',
+            'message': f'{item_type.capitalize()} удалён из корзины',
             'cart': items,
-            'total': total
+            'total': total,
+            'items_count': items_count
         }, status=status.HTTP_200_OK)
 
 

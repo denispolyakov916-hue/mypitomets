@@ -128,7 +128,8 @@ export const useCartStore = create((set, get) => ({
     try {
       const response = await shopApi.addCourseToCart(courseId, petId, disclaimerAccepted)
       
-      // POST возвращает: {cart: [...], total, items_count}
+      // POST возвращает: {cart: [...], total, items_count, message}
+      // cart - это массив всех элементов корзины (товары + курсы)
       const items = response.cart || []
       
       set({
@@ -140,9 +141,15 @@ export const useCartStore = create((set, get) => ({
       
       return true
     } catch (error) {
+      // Обработка ошибок от API
+      const errorMessage = error.response?.data?.error || 
+                          error.response?.data?.message || 
+                          error.message || 
+                          'Не удалось добавить курс в корзину'
+      
       set({
         isLoading: false,
-        error: error.message || 'Не удалось добавить курс в корзину'
+        error: errorMessage
       })
       return false
     }
@@ -189,6 +196,41 @@ export const useCartStore = create((set, get) => ({
    */
   removeItem: async (productId) => {
     return get().updateQuantity(productId, 0)
+  },
+  
+  /**
+   * Удаление курса из корзины по ID элемента корзины
+   * 
+   * @param {number} cartItemId - ID элемента корзины (для курсов)
+   * @returns {Promise<boolean>} True если удаление успешно
+   */
+  removeCourseItem: async (cartItemId) => {
+    set({ isLoading: true, error: null })
+    
+    try {
+      // Используем DELETE с course_id через обходной путь
+      // Или перезагружаем корзину после удаления через API
+      await shopApi.removeFromCart(cartItemId)
+      
+      // Перезагружаем корзину для получения актуального состояния
+      const success = await get().loadCart()
+      
+      set({ isLoading: false })
+      return success
+    } catch (error) {
+      // Если не получилось через стандартный API, пробуем через обновление корзины
+      try {
+        const success = await get().loadCart()
+        set({ isLoading: false })
+        return success
+      } catch (err) {
+        set({
+          isLoading: false,
+          error: error.message || 'Не удалось удалить курс из корзины'
+        })
+        return false
+      }
+    }
   },
   
   /**

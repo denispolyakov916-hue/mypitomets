@@ -16,6 +16,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { getProducts } from '../../api/shop'
 import { useCartStore } from '../../store/cartStore'
 import { useAuthStore } from '../../store/authStore'
+import { useToastStore } from '../../store/toastStore'
 import ProductCard from '../../components/ProductCard'
 import { PageLoader } from '../../components/Loader'
 
@@ -339,6 +340,7 @@ function Shop() {
   const [searchParams, setSearchParams] = useSearchParams()
   const { isAuthenticated } = useAuthStore()
   const { addItem } = useCartStore()
+  const { success } = useToastStore()
   
   // Состояние
   const [products, setProducts] = useState([])
@@ -448,9 +450,9 @@ function Shop() {
       return
     }
     
-    const success = await addItem(product.id)
-    if (success) {
-      alert('Товар добавлен в корзину')
+    const result = await addItem(product.id)
+    if (result) {
+      success('Товар добавлен в корзину. Перейдите в корзину для оформления заказа.', 5000)
     }
   }
   
