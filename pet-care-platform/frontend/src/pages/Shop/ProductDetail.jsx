@@ -16,6 +16,8 @@ import { useAuthStore } from '../../store/authStore'
 import { useCartStore } from '../../store/cartStore'
 import { useToastStore } from '../../store/toastStore'
 import { PageLoader, ButtonLoader } from '../../components/Loader'
+import Rating from '../../components/Rating'
+import ReviewsSection from '../../components/ReviewsSection'
 
 /**
  * Форматирование цены
@@ -43,6 +45,7 @@ function ProductDetail() {
   const [error, setError] = useState(null)
   const [isAddingToCart, setIsAddingToCart] = useState(false)
   const [quantity, setQuantity] = useState(1)
+  const [isPurchased, setIsPurchased] = useState(false)
   
   /**
    * Загрузка данных товара
@@ -61,6 +64,7 @@ function ProductDetail() {
     try {
       const response = await getProduct(id)
       setProduct(response.product)
+      setIsPurchased(response.is_purchased || false)
     } catch (err) {
       setError(err.message || 'Не удалось загрузить данные товара')
     } finally {
@@ -175,6 +179,17 @@ function ProductDetail() {
               <p className="text-lg text-gray-600">
                 Бренд: {product.vendor}
               </p>
+            )}
+            {/* Рейтинг */}
+            {(product.rating || product.reviews_count !== undefined) && (
+              <div className="mt-3">
+                <Rating
+                  rating={product.rating || 0}
+                  reviewsCount={product.reviews_count}
+                  readonly={true}
+                  size="md"
+                />
+              </div>
             )}
           </div>
           
@@ -318,6 +333,13 @@ function ProductDetail() {
           </div>
         </div>
       </div>
+      
+      {/* Секция отзывов */}
+      <ReviewsSection 
+        type="product" 
+        itemId={product.id} 
+        isPurchased={isPurchased}
+      />
     </div>
   )
 }

@@ -15,6 +15,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ButtonLoader } from './Loader'
+import Rating from './Rating'
 
 /**
  * Маппинг названий типов животных
@@ -178,9 +179,21 @@ function CourseCard({ course, onAddToCart, onEnrollFree, isOwned = false, isLoad
         
         {/* Описание (краткое) */}
         {course.description && (
-          <p className="text-sm text-gray-600 mb-3 line-clamp-2 flex-1">
+          <p className="text-sm text-gray-600 mb-2 line-clamp-2 flex-1">
             {course.description}
           </p>
+        )}
+        
+        {/* Рейтинг */}
+        {(course.rating || course.reviews_count !== undefined) && (
+          <div className="mb-3">
+            <Rating
+              rating={course.rating || 0}
+              reviewsCount={course.reviews_count}
+              readonly={true}
+              size="sm"
+            />
+          </div>
         )}
         
         {/* Метаданные */}
@@ -228,7 +241,7 @@ function CourseCard({ course, onAddToCart, onEnrollFree, isOwned = false, isLoad
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
               </svg>
-              Записаться
+              Получить курс
             </button>
           ) : (
             // Платные курсы - добавление в корзину

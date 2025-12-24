@@ -46,6 +46,8 @@ import Payment from './pages/Payment/Payment'
 import Profile from './pages/Dashboard/Profile'
 import Settings from './pages/Dashboard/Settings'
 import HealthDiary from './pages/HealthDiary/HealthDiary'
+import Orders from './pages/Orders/Orders'
+import OrderDetail from './pages/Orders/OrderDetail'
 
 // Хранилище для состояния аутентификации
 import { useAuthStore } from './store/authStore'
@@ -102,6 +104,10 @@ function App() {
           {/* Профиль */}
           <Route path="/profile" element={<Profile />} />
           <Route path="/settings" element={<Settings />} />
+          
+          {/* Заказы */}
+          <Route path="/orders" element={<Orders />} />
+          <Route path="/orders/:id" element={<OrderDetail />} />
           
           {/* Дневник здоровья */}
           <Route path="/health-diary" element={<HealthDiary />} />

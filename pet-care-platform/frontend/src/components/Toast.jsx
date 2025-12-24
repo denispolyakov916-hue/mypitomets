@@ -153,7 +153,7 @@ export function ToastContainer({ toasts, removeToast }) {
   
   return (
     <div
-      className="fixed top-4 right-4 z-50 flex flex-col items-end"
+      className="fixed top-20 right-4 z-50 flex flex-col items-end"
       aria-live="polite"
       aria-atomic="true"
     >

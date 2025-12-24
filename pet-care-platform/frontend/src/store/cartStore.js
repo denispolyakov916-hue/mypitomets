@@ -103,15 +103,33 @@ export const useCartStore = create((set, get) => ({
     set({ isLoading: true, error: null })
 
     try {
+      const { items: currentItems } = get()
       const response = await shopApi.addToCart(productId, quantity)
 
       // POST возвращает: {products: [...], courses: [...], totals: {...}, items_count}
       const products = response.products || []
       const courses = response.courses || []
-      const allItems = [...products, ...courses]
+      const newItems = [...products, ...courses]
+
+      // Сохраняем порядок элементов
+      const newItemsMap = new Map(newItems.map(item => [item.id, item]))
+      const orderedItems = []
+      
+      // Сначала добавляем существующие элементы в том же порядке
+      for (const currentItem of currentItems) {
+        if (newItemsMap.has(currentItem.id)) {
+          orderedItems.push(newItemsMap.get(currentItem.id))
+          newItemsMap.delete(currentItem.id)
+        }
+      }
+      
+      // Затем добавляем новые элементы (если есть)
+      for (const newItem of newItemsMap.values()) {
+        orderedItems.push(newItem)
+      }
 
       set({
-        items: allItems,
+        items: orderedItems,
         total: response.totals?.total || 0,
         itemsCount: response.items_count || 0,
         isLoading: false
@@ -139,15 +157,33 @@ export const useCartStore = create((set, get) => ({
     set({ isLoading: true, error: null })
 
     try {
+      const { items: currentItems } = get()
       const response = await shopApi.addCourseToCart(courseId, petId, disclaimerAccepted)
 
       // POST возвращает: {products: [...], courses: [...], totals: {...}, items_count}
       const products = response.products || []
       const courses = response.courses || []
-      const allItems = [...products, ...courses]
+      const newItems = [...products, ...courses]
+
+      // Сохраняем порядок элементов
+      const newItemsMap = new Map(newItems.map(item => [item.id, item]))
+      const orderedItems = []
+      
+      // Сначала добавляем существующие элементы в том же порядке
+      for (const currentItem of currentItems) {
+        if (newItemsMap.has(currentItem.id)) {
+          orderedItems.push(newItemsMap.get(currentItem.id))
+          newItemsMap.delete(currentItem.id)
+        }
+      }
+      
+      // Затем добавляем новые элементы (если есть)
+      for (const newItem of newItemsMap.values()) {
+        orderedItems.push(newItem)
+      }
 
       set({
-        items: allItems,
+        items: orderedItems,
         total: response.totals?.total || 0,
         itemsCount: response.items_count || 0,
         isLoading: false
@@ -180,15 +216,34 @@ export const useCartStore = create((set, get) => ({
     set({ isLoading: true, error: null })
 
     try {
+      const { items: currentItems } = get()
       const response = await shopApi.updateCartItem(productId, quantity)
 
       // PUT возвращает: {products: [...], courses: [...], totals: {...}, items_count}
       const products = response.products || []
       const courses = response.courses || []
-      const allItems = [...products, ...courses]
+      const newItems = [...products, ...courses]
+
+      // Сохраняем порядок элементов: обновляем существующие и добавляем новые в конец
+      // Создаем Map для быстрого поиска по ID элемента корзины
+      const newItemsMap = new Map(newItems.map(item => [item.id, item]))
+      const orderedItems = []
+      
+      // Сначала добавляем существующие элементы в том же порядке
+      for (const currentItem of currentItems) {
+        if (newItemsMap.has(currentItem.id)) {
+          orderedItems.push(newItemsMap.get(currentItem.id))
+          newItemsMap.delete(currentItem.id)
+        }
+      }
+      
+      // Затем добавляем новые элементы (если есть)
+      for (const newItem of newItemsMap.values()) {
+        orderedItems.push(newItem)
+      }
 
       set({
-        items: allItems,
+        items: orderedItems,
         total: response.totals?.total || 0,
         itemsCount: response.items_count || 0,
         isLoading: false
@@ -355,6 +410,66 @@ export const useCartStore = create((set, get) => ({
    */
   deselectAllItems: () => {
     set({ selectedItems: new Set() })
+  },
+
+  /**
+   * Выбрать все товары
+   */
+  selectAllProducts: () => {
+    const { items, selectedItems } = get()
+    const newSelected = new Set(selectedItems)
+    items.forEach(item => {
+      const isCourse = item.course !== undefined && item.course !== null
+      if (!isCourse) {
+        newSelected.add(item.id)
+      }
+    })
+    set({ selectedItems: newSelected })
+  },
+
+  /**
+   * Снять выбор со всех товаров
+   */
+  deselectAllProducts: () => {
+    const { items, selectedItems } = get()
+    const newSelected = new Set(selectedItems)
+    items.forEach(item => {
+      const isCourse = item.course !== undefined && item.course !== null
+      if (!isCourse) {
+        newSelected.delete(item.id)
+      }
+    })
+    set({ selectedItems: newSelected })
+  },
+
+  /**
+   * Выбрать все курсы
+   */
+  selectAllCourses: () => {
+    const { items, selectedItems } = get()
+    const newSelected = new Set(selectedItems)
+    items.forEach(item => {
+      const isCourse = item.course !== undefined && item.course !== null
+      if (isCourse) {
+        newSelected.add(item.id)
+      }
+    })
+    set({ selectedItems: newSelected })
+  },
+
+  /**
+   * Снять выбор со всех курсов
+   */
+  deselectAllCourses: () => {
+    const { items, selectedItems } = get()
+    const newSelected = new Set(selectedItems)
+    items.forEach(item => {
+      const isCourse = item.course !== undefined && item.course !== null
+      if (isCourse) {
+        newSelected.delete(item.id)
+      }
+    })
+    set({ selectedItems: newSelected })
   },
 
   /**

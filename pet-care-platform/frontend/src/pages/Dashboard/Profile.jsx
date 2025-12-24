@@ -273,48 +273,76 @@ function Profile() {
                 </Link>
               </div>
             ) : (
-              <div className="space-y-4">
-                {orders.map(order => {
-                  const status = statusLabels[order.status] || statusLabels.pending
-                  return (
-                    <div key={order.id} className="card">
-                      <div className="flex flex-col sm:flex-row justify-between items-start gap-4 mb-4">
-                        <div>
-                          <div className="flex items-center gap-3">
-                            <span className="font-semibold text-gray-900">
-                              Заказ #{order.id}
-                            </span>
-                            <span className={`px-2 py-0.5 text-xs rounded-full ${status.class}`}>
-                              {status.label}
-                            </span>
+              <div>
+                <div className="mb-6">
+                  <Link to="/orders" className="btn-primary inline-flex items-center gap-2">
+                    <span>Посмотреть все заказы</span>
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </Link>
+                </div>
+                <div className="space-y-4">
+                  {orders.slice(0, 5).map(order => {
+                    const status = statusLabels[order.status] || statusLabels.pending
+                    return (
+                      <Link 
+                        key={order.id} 
+                        to={`/orders/${order.id}`}
+                        className="card block hover:shadow-md transition-shadow"
+                      >
+                        <div className="flex flex-col sm:flex-row justify-between items-start gap-4 mb-4">
+                          <div>
+                            <div className="flex items-center gap-3">
+                              <span className="font-semibold text-gray-900">
+                                Заказ #{order.id.slice(0, 8).toUpperCase()}
+                              </span>
+                              <span className={`px-2 py-0.5 text-xs rounded-full ${status.class}`}>
+                                {status.label}
+                              </span>
+                            </div>
+                            <p className="text-sm text-gray-500 mt-1">
+                              {formatDate(order.created_at)}
+                            </p>
                           </div>
-                          <p className="text-sm text-gray-500 mt-1">
-                            {formatDate(order.created_at)}
-                          </p>
+                          <span className="font-semibold text-lg text-gray-900">
+                            {formatPrice(order.total_amount)}
+                          </span>
                         </div>
-                        <span className="font-semibold text-lg text-gray-900">
-                          {formatPrice(order.total_amount)}
-                        </span>
-                      </div>
-                      
-                      <div className="border-t border-gray-100 pt-4">
-                        <p className="text-sm text-gray-600 mb-2">
-                          Товары ({order.items.length}):
-                        </p>
-                        <ul className="space-y-1">
-                          {order.items.map((item, idx) => (
-                            <li key={idx} className="text-sm text-gray-700">
-                              {item.product_name} x {item.quantity} — {formatPrice(item.total)}
-                            </li>
-                          ))}
-                        </ul>
-                        <p className="text-sm text-gray-500 mt-3">
-                          Доставка: {order.shipping_address}
-                        </p>
-                      </div>
-                    </div>
-                  )
-                })}
+                        
+                        <div className="border-t border-gray-100 pt-4">
+                          <p className="text-sm text-gray-600 mb-2">
+                            Товары ({order.items.length}):
+                          </p>
+                          <ul className="space-y-1">
+                            {order.items.slice(0, 3).map((item, idx) => (
+                              <li key={idx} className="text-sm text-gray-700">
+                                {item.product_name || item.course_name} x {item.quantity} — {formatPrice(item.total)}
+                              </li>
+                            ))}
+                            {order.items.length > 3 && (
+                              <li className="text-sm text-gray-500">
+                                и ещё {order.items.length - 3}...
+                              </li>
+                            )}
+                          </ul>
+                          {order.shipping_address && (
+                            <p className="text-sm text-gray-500 mt-3">
+                              Доставка: {order.shipping_address}
+                            </p>
+                          )}
+                        </div>
+                      </Link>
+                    )
+                  })}
+                </div>
+                {orders.length > 5 && (
+                  <div className="mt-6 text-center">
+                    <Link to="/orders" className="btn-secondary">
+                      Показать все заказы ({orders.length})
+                    </Link>
+                  </div>
+                )}
               </div>
             )}
           </div>

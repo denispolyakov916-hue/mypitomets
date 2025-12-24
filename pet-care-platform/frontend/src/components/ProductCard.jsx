@@ -13,6 +13,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ButtonLoader } from './Loader'
+import Rating from './Rating'
 
 /**
  * Маппинг названий животных
@@ -135,10 +136,22 @@ function ProductCard({ product, onAddToCart, isLoading = false }) {
         </Link>
         
         {/* Категория */}
-        <p className="text-xs text-gray-500 mb-3">
+        <p className="text-xs text-gray-500 mb-2">
           {categoryLabels[product.category] || product.category}
           {product.category_name && ` • ${product.category_name}`}
         </p>
+        
+        {/* Рейтинг */}
+        {(product.rating || product.reviews_count !== undefined) && (
+          <div className="mb-2">
+            <Rating
+              rating={product.rating || 0}
+              reviewsCount={product.reviews_count}
+              readonly={true}
+              size="sm"
+            />
+          </div>
+        )}
         
         {/* Вес если есть */}
         {product.weight && (
