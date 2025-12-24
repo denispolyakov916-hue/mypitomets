@@ -236,7 +236,16 @@ class ProductDetailView(APIView):
                 status=status.HTTP_404_NOT_FOUND
             )
         
-        return Response({'product': product.to_dict()}, status=status.HTTP_200_OK)
+        product_data = product.to_dict()
+        
+        # Добавляем информацию о покупке (если пользователь авторизован)
+        if request.user.is_authenticated:
+            from apps.reviews.utils import can_user_review_product
+            product_data['is_purchased'] = can_user_review_product(request.user, product)
+        else:
+            product_data['is_purchased'] = False
+        
+        return Response({'product': product_data}, status=status.HTTP_200_OK)
 
 
 class CartView(APIView):
@@ -255,11 +264,25 @@ class CartView(APIView):
         return cart
     
     def get(self, request):
-        """Просмотр корзины с группировкой по типам."""
+        """
+        Просмотр корзины с группировкой по типам.
+        
+        Query параметры:
+            type (str): 'products', 'courses', 'all' (по умолчанию) - фильтрация по типу элементов
+        """
         cart = self._get_or_create_cart(request.user)
 
         # Оптимизация запросов: prefetch_related для загрузки связанных объектов
-        items = cart.items.prefetch_related('product', 'course', 'pet').order_by('id').all()
+        items = cart.items.select_related('product', 'course', 'pet').order_by('id').all()
+        
+        # Фильтрация по типу
+        filter_type = request.query_params.get('type', 'all')
+        
+        if filter_type == 'products':
+            items = items.filter(product__isnull=False)
+        elif filter_type == 'courses':
+            items = items.filter(course__isnull=False)
+        # Если 'all' или не указан - возвращаем все
 
         # Группировка
         products = [item for item in items if item.product]
@@ -271,7 +294,7 @@ class CartView(APIView):
             'totals': {
                 'products': sum(p.get_total() for p in products),
                 'courses': sum(c.get_total() for c in courses),
-                'total': cart.get_total()
+                'total': float(cart.get_total())
             },
             'items_count': len(products) + len(courses),
             'can_checkout': len(products) + len(courses) > 0
@@ -452,7 +475,7 @@ class CartItemView(APIView):
     permission_classes = [IsAuthenticated]
     
     def put(self, request):
-        """Обновление количества товара или курса с валидацией."""
+        """Обновление количества товара или удаление курса с валидацией наличия."""
         serializer = CartItemUpdateSerializer(data=request.data)
 
         if not serializer.is_valid():
@@ -468,38 +491,78 @@ class CartItemView(APIView):
 
         try:
             cart = Cart.objects.get(user=request.user)
+            
+            # Определяем, работаем ли с товаром или курсом
             if product_id:
-                cart_item = CartItem.objects.select_related('product').get(cart=cart, product_id=product_id)
-            else:
-                cart_item = CartItem.objects.select_related('course').get(cart=cart, course_id=course_id)
-        except (Cart.DoesNotExist, CartItem.DoesNotExist):
+                # Работа с товаром
+                cart_item = CartItem.objects.select_related('product').get(
+                    cart=cart, 
+                    product_id=product_id
+                )
+                
+                # Вычисление нового количества
+                if quantity is not None:
+                    new_quantity = quantity
+                else:
+                    new_quantity = cart_item.quantity + delta_quantity
+                
+                if new_quantity <= 0:
+                    cart_item.delete()
+                    message = 'Товар удалён из корзины'
+                else:
+                    # Проверка доступного количества на складе
+                    if new_quantity > cart_item.product.stock_count:
+                        return Response({
+                            'error': f'Недостаточно товара на складе. Доступно: {cart_item.product.stock_count} шт.'
+                        }, status=status.HTTP_400_BAD_REQUEST)
+                    
+                    cart_item.quantity = new_quantity
+                    cart_item.save()
+                    message = 'Корзина обновлена'
+                    
+            elif course_id:
+                # Работа с курсом
+                # Используем filter().first() для курсов, так как они могут быть привязаны к питомцу
+                cart_item = CartItem.objects.select_related('course', 'pet').filter(
+                    cart=cart,
+                    course_id=course_id
+                ).first()
+                
+                if not cart_item:
+                    raise CartItem.DoesNotExist
+                
+                # Вычисление нового количества
+                if quantity is not None:
+                    new_quantity = quantity
+                else:
+                    # Для курсов delta_quantity не используется (валидируется в сериализаторе)
+                    new_quantity = cart_item.quantity
+                
+                # Для курсов quantity всегда = 1, но можно удалить (quantity=0)
+                if new_quantity <= 0:
+                    cart_item.delete()
+                    message = 'Курс удалён из корзины'
+                else:
+                    # Курсы всегда имеют quantity=1, обновление не требуется
+                    # Но если quantity > 1, это ошибка (курсы нельзя добавлять в количестве > 1)
+                    if new_quantity > 1:
+                        return Response({
+                            'error': 'Курсы можно добавить только в количестве 1'
+                        }, status=status.HTTP_400_BAD_REQUEST)
+                    # Если quantity == 1, ничего не делаем (уже в корзине)
+                    message = 'Корзина обновлена'
+                    
+        except Cart.DoesNotExist:
             return Response(
-                {'error': 'Элемент не найден в корзине'},
+                {'error': 'Корзина не найдена'},
                 status=status.HTTP_404_NOT_FOUND
             )
-
-        # Вычисление нового количества
-        if quantity is not None:
-            new_quantity = quantity
-        else:
-            new_quantity = cart_item.quantity + delta_quantity
-
-        if new_quantity <= 0:
-            # Удаление элемента
-            cart_item.delete()
-            message = 'Элемент удалён из корзины'
-        else:
-            if product_id:
-                # Проверка доступного количества на складе для товаров
-                if new_quantity > cart_item.product.stock_count:
-                    return Response({
-                        'error': f'Недостаточно товара на складе. Доступно: {cart_item.product.stock_count} шт.'
-                    }, status=status.HTTP_400_BAD_REQUEST)
-
-            # Обновление количества
-            cart_item.quantity = new_quantity
-            cart_item.save()
-            message = 'Корзина обновлена'
+        except CartItem.DoesNotExist:
+            item_type = 'товар' if product_id else 'курс'
+            return Response(
+                {'error': f'{item_type.capitalize()} не найден в корзине'},
+                status=status.HTTP_404_NOT_FOUND
+            )
 
         # Возврат обновлённой корзины в правильной структуре (совместимой с фронтендом)
         items = cart.items.select_related('product', 'course', 'pet').all()
@@ -524,23 +587,49 @@ class CartItemView(APIView):
         """Удаление товара или курса из корзины."""
         product_id = request.data.get('product_id')
         course_id = request.data.get('course_id')
-
+        
+        # Проверка: должен быть указан либо product_id, либо course_id
         if not product_id and not course_id:
             return Response(
-                {'error': 'Необходимо указать product_id или course_id'},
+                {'error': 'Необходимо указать либо product_id, либо course_id'},
                 status=status.HTTP_400_BAD_REQUEST
             )
-
-        # Определение типа элемента для сообщения
-        item_type = 'товар' if product_id else 'курс'
-
+        
+        # Проверка: нельзя указывать оба одновременно
+        if product_id and course_id:
+            return Response(
+                {'error': 'Нельзя указывать одновременно product_id и course_id'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
         try:
             cart = Cart.objects.get(user=request.user)
+            
             if product_id:
-                cart_item = CartItem.objects.get(cart=cart, product_id=product_id)
-            else:
-                cart_item = CartItem.objects.get(cart=cart, course_id=course_id)
-        except (Cart.DoesNotExist, CartItem.DoesNotExist):
+                # Удаление товара
+                cart_item = CartItem.objects.select_related('product').get(
+                    cart=cart, 
+                    product_id=product_id
+                )
+                item_type = 'товар'
+            elif course_id:
+                # Удаление курса
+                # Используем filter().first() для курсов, так как они могут быть привязаны к питомцу
+                cart_item = CartItem.objects.select_related('course', 'pet').filter(
+                    cart=cart,
+                    course_id=course_id
+                ).first()
+                
+                if not cart_item:
+                    raise CartItem.DoesNotExist
+                item_type = 'курс'
+                
+        except Cart.DoesNotExist:
+            return Response(
+                {'error': 'Корзина не найдена'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        except CartItem.DoesNotExist:
             return Response(
                 {'error': f'{item_type.capitalize()} не найден в корзине'},
                 status=status.HTTP_404_NOT_FOUND
@@ -840,11 +929,46 @@ class OrderCreateView(APIView):
         }, status=status.HTTP_201_CREATED)
 
 
+class OrderDetailView(APIView):
+    """
+    Детали одного заказа.
+    
+    GET /api/shop/orders/{order_id}/
+    """
+    
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request, order_id):
+        try:
+            order = Order.objects.prefetch_related(
+                'items__product', 
+                'items__course', 
+                'items__pet'
+            ).select_related('address').get(
+                id=order_id,
+                user=request.user
+            )
+        except Order.DoesNotExist:
+            return Response(
+                {'error': 'Заказ не найден'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        return Response({
+            'order': order.to_dict()
+        }, status=status.HTTP_200_OK)
+
+
 class OrderHistoryView(APIView):
     """
     История заказов.
     
     GET /api/shop/orders/history/
+    
+    Параметры:
+        status: фильтрация по статусу (pending, processing, shipped, delivered, cancelled)
+        page: номер страницы (по умолчанию 1)
+        per_page: товаров на странице (по умолчанию 20)
     
     Автоматически отменяет неоплаченные заказы старше 10 минут.
     """
@@ -868,11 +992,38 @@ class OrderHistoryView(APIView):
             logger.info(f"Отменено {expired_orders.count()} неоплаченных заказов пользователя {request.user.email}")
         
         orders = Order.objects.filter(user=request.user).prefetch_related('items')
-        orders_data = [order.to_dict() for order in orders]
+        
+        # Фильтрация по статусу
+        status_filter = request.query_params.get('status')
+        if status_filter:
+            valid_statuses = [choice[0] for choice in Order.STATUS_CHOICES]
+            if status_filter in valid_statuses:
+                orders = orders.filter(status=status_filter)
+        
+        # Общее количество до пагинации
+        total = orders.count()
+        
+        # Пагинация
+        try:
+            page = max(1, int(request.query_params.get('page', 1)))
+            per_page = min(100, max(1, int(request.query_params.get('per_page', 20))))
+        except ValueError:
+            page = 1
+            per_page = 20
+        
+        start = (page - 1) * per_page
+        end = start + per_page
+        orders_page = orders[start:end]
+        
+        orders_data = [order.to_dict() for order in orders_page]
         
         return Response({
             'orders': orders_data,
-            'count': len(orders_data)
+            'count': len(orders_data),
+            'total': total,
+            'page': page,
+            'per_page': per_page,
+            'total_pages': (total + per_page - 1) // per_page if total > 0 else 0
         }, status=status.HTTP_200_OK)
 
 

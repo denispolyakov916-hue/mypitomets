@@ -106,6 +106,7 @@ INSTALLED_APPS = [
     'apps.shop',
     'apps.training',
     'apps.payments',
+    'apps.reviews',
 ]
 
 MIDDLEWARE = [

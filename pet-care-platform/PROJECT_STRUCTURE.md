@@ -176,6 +176,71 @@ pet-care-platform/
 │   ├── start_backend.sh              # Запуск бэкенда (Linux)
 │   └── bb8f34a4-9259-47cc-9a89-9ed0f740064e.xml  # XML каталог товаров
 │
+│
+├── frontend/                         # React Frontend
+│   ├── src/                          # Исходный код
+│   │   ├── api/                      # API клиенты
+│   │   │   ├── auth.js               # API авторизации
+│   │   │   ├── client.js             # Axios клиент с настройками
+│   │   │   ├── pets.js               # API питомцев
+│   │   │   ├── shop.js               # API магазина
+│   │   │   ├── courses.js            # API курсов
+│   │   │   ├── payments.js           # API платежей
+│   │   │   └── reviews.js            # API отзывов
+│   │   ├── components/               # React компоненты
+│   │   │   ├── Layout.jsx            # Основной layout
+│   │   │   ├── Navbar.jsx            # Навигация
+│   │   │   ├── PrivateRoute.jsx     # Защищённые маршруты
+│   │   │   ├── PetCard.jsx           # Карточка питомца
+│   │   │   ├── ProductCard.jsx       # Карточка товара
+│   │   │   ├── CourseCard.jsx        # Карточка курса
+│   │   │   └── ...                   # Другие компоненты
+│   │   ├── pages/                    # Страницы приложения
+│   │   │   ├── Auth/                 # Авторизация
+│   │   │   │   ├── Login.jsx
+│   │   │   │   ├── Register.jsx
+│   │   │   │   └── Activate.jsx
+│   │   │   ├── PetProfile/           # Профили питомцев
+│   │   │   │   ├── PetList.jsx
+│   │   │   │   ├── PetForm.jsx
+│   │   │   │   └── PetProfile.jsx
+│   │   │   ├── Shop/                 # Магазин
+│   │   │   │   ├── Shop.jsx
+│   │   │   │   ├── ProductDetail.jsx
+│   │   │   │   └── Cart.jsx
+│   │   │   ├── Training/             # Курсы
+│   │   │   │   ├── Courses.jsx
+│   │   │   │   └── CourseDetail.jsx
+│   │   │   ├── Checkout/             # Оформление заказа
+│   │   │   │   └── UnifiedCheckout.jsx
+│   │   │   ├── Orders/               # Заказы
+│   │   │   │   ├── Orders.jsx
+│   │   │   │   └── OrderDetail.jsx
+│   │   │   └── Dashboard/            # Личный кабинет
+│   │   │       ├── Profile.jsx
+│   │   │       └── Settings.jsx
+│   │   ├── store/                    # Zustand хранилища
+│   │   │   ├── authStore.js          # Состояние авторизации
+│   │   │   ├── cartStore.js          # Состояние корзины
+│   │   │   ├── petStore.js           # Состояние питомцев
+│   │   │   └── toastStore.js         # Уведомления
+│   │   ├── hooks/                    # React хуки
+│   │   │   ├── useAuth.js
+│   │   │   └── usePets.js
+│   │   ├── utils/                    # Утилиты
+│   │   │   └── format.js
+│   │   ├── App.jsx                   # Главный компонент
+│   │   ├── main.jsx                  # Точка входа
+│   │   └── index.css                 # Глобальные стили
+│   ├── public/                       # Статические файлы
+│   ├── index.html                    # HTML шаблон
+│   ├── package.json                   # Зависимости Node.js
+│   ├── vite.config.js                # Конфигурация Vite
+│   ├── tailwind.config.js            # Конфигурация Tailwind CSS
+│   ├── postcss.config.js             # Конфигурация PostCSS
+│   ├── start_frontend.bat            # Запуск фронтенда (Windows)
+│   └── start_frontend.sh             # Запуск фронтенда (Linux/Mac)
+│
 ├── .gitignore                        # Git ignore правила
 └── PROJECT_STRUCTURE.md              # Эта документация
 ```
@@ -184,10 +249,11 @@ pet-care-platform/
 
 ## API документация
 
-### Базовый URL
+### Базовые URL
 
 ```
-Разработка: http://localhost:8000/api
+Backend API:  http://localhost:8000/api
+Frontend:     http://localhost:5173
 ```
 
 ### Формат ответов
@@ -1151,23 +1217,61 @@ class Payment(models.Model):
 
 ## Frontend архитектура
 
+### Технологии
+
+Frontend построен на React 18 с использованием:
+- **Vite** — быстрый сборщик и dev-сервер
+- **React Router** — маршрутизация SPA
+- **Zustand** — легковесное управление состоянием
+- **Axios** — HTTP клиент с интерцепторами
+- **Tailwind CSS** — utility-first CSS фреймворк
+
+### Структура приложения
+
+**API клиент (`src/api/client.js`):**
+- Централизованная конфигурация Axios
+- Автоматическая инъекция JWT токенов
+- Обработка ошибок и обновление токенов
+- Проксирование запросов через Vite в разработке
+
+**State Management (Zustand):**
+- `authStore` — управление авторизацией и пользователем
+- `cartStore` — управление корзиной покупок
+- `petStore` — управление данными питомцев
+- `toastStore` — система уведомлений
+
+**Компоненты:**
+- Переиспользуемые UI компоненты в `components/`
+- Страницы приложения в `pages/`
+- Защищённые маршруты через `PrivateRoute`
+
 ### Маршрутизация
 
 | Путь | Компонент | Защита | Описание |
 |------|-----------|--------|----------|
-| `/` | Home | Нет | Главная страница |
+| `/` | Home | Нет | Главная страница (лендинг) |
 | `/login` | Login | Нет* | Страница входа |
 | `/register` | Register | Нет* | Страница регистрации |
+| `/activate` | Activate | Нет | Активация аккаунта |
 | `/shop` | Shop | Нет | Каталог товаров |
+| `/shop/products/:id` | ProductDetail | Нет | Детали товара |
 | `/courses` | Courses | Нет | Каталог курсов |
+| `/courses/:id` | CourseDetail | Нет | Детали курса |
 | `/pets` | PetList | Да | Список питомцев |
 | `/pets/new` | PetForm | Да | Создание питомца |
 | `/pets/:id` | PetProfile | Да | Профиль питомца |
 | `/pets/:id/edit` | PetForm | Да | Редактирование питомца |
-| `/cart` | Cart | Да | Корзина |
+| `/cart` | Cart | Да | Корзина покупок |
+| `/checkout` | UnifiedCheckout | Да | Единый checkout (товары + курсы) |
+| `/payment` | Payment | Нет** | Страница оплаты |
+| `/orders` | Orders | Да | История заказов |
+| `/orders/:id` | OrderDetail | Да | Детали заказа |
 | `/profile` | Profile | Да | Личный кабинет |
+| `/settings` | Settings | Да | Настройки аккаунта |
+| `/health-diary` | HealthDiary | Да | Дневник здоровья |
 
-*Авторизованные пользователи перенаправляются на `/pets`
+*Авторизованные пользователи перенаправляются на `/pets`  
+**Страница оплаты доступна публично, но требует аутентификации для выполнения платежа
 
 ### State Management (Zustand)
 
@@ -1203,15 +1307,46 @@ class Payment(models.Model):
 }
 ```
 
+**petStore** - управление питомцами:
+```javascript
+{
+  pets: Pet[],
+  currentPet: Pet | null,
+  isLoading: boolean,
+  error: string | null,
+  
+  loadPets(),
+  createPet(petData),
+  updatePet(id, petData),
+  deletePet(id),
+  setCurrentPet(pet)
+}
+```
+
+**toastStore** - система уведомлений:
+```javascript
+{
+  toasts: Toast[],
+  
+  showToast(message, type),
+  removeToast(id)
+}
+```
+
 ---
 
 ## Запуск проекта
 
 ### Требования
 
+**Backend:**
 - Python 3.10+
 - PostgreSQL 15+
 - pip (менеджер пакетов Python)
+
+**Frontend:**
+- Node.js 18+
+- npm (менеджер пакетов Node.js)
 
 ### Локальный запуск
 
@@ -1222,11 +1357,13 @@ createdb pet_care_db
 
 # Или используя скрипт настройки
 ./setup_db.sh
+# или для Windows
+.\setup_database.bat
 ```
 
 **Backend:**
 ```bash
-cd backend
+cd pet-care-platform/backend
 
 # Создание виртуального окружения
 python -m venv venv
@@ -1248,8 +1385,32 @@ python manage.py load_test_data
 
 # Запуск сервера
 python manage.py runserver
+# или используя скрипт
+.\start_backend.bat  # Windows
+./start_backend.sh   # Linux/Mac
 ```
-Backend доступен на: `http://localhost:8000`
+Backend доступен на: `http://localhost:8000`  
+API доступен на: `http://localhost:8000/api`
+
+**Frontend:**
+```bash
+cd pet-care-platform/frontend
+
+# Установка зависимостей
+npm install
+
+# Запуск dev-сервера
+npm run dev
+# или используя скрипт
+.\start_frontend.bat  # Windows
+./start_frontend.sh   # Linux/Mac
+```
+Frontend доступен на: `http://localhost:5173`
+
+**Важно:** 
+- Убедитесь, что бэкенд запущен перед запуском фронтенда
+- Фронтенд автоматически проксирует запросы к `/api` на бэкенд
+- Для настройки URL бэкенда создайте файл `.env` в директории `frontend` с переменной `VITE_API_URL=http://localhost:8000/api`
 
 ### Management команды
 
@@ -1289,13 +1450,17 @@ python manage.py import_catalog path/to/catalog.csv
 
 ### Сценарий тестирования
 
-1. Зарегистрировать аккаунт на `/register`
-2. Создать профиль питомца на `/pets/new`
-3. Просмотреть каталог товаров на `/shop`
-4. Добавить товары в корзину
-5. Оформить заказ на `/cart`
-6. Приобрести курс на `/courses`
-7. Проверить данные в профиле на `/profile`
+1. Запустить бэкенд: `cd backend && python manage.py runserver`
+2. Запустить фронтенд: `cd frontend && npm run dev`
+3. Открыть браузер: `http://localhost:5173`
+4. Зарегистрировать аккаунт на `/register`
+5. Создать профиль питомца на `/pets/new`
+6. Просмотреть каталог товаров на `/shop`
+7. Добавить товары в корзину
+8. Оформить заказ через `/checkout`
+9. Приобрести курс на `/courses`
+10. Проверить данные в профиле на `/profile`
+11. Просмотреть историю заказов на `/orders`
 
 ---
 
@@ -1363,28 +1528,14 @@ def my_function(arg1: str, arg2: int) -> bool:
 
 ### Рекомендуемые следующие шаги
 
-1. **Интеграция PostgreSQL** — замена in-memory хранилища на реальную БД
-2. **Добавление тестов** — unit и integration тесты для API
-3. **Модуль подписок** — регулярная доставка кормов
-4. **Умный календарь** — напоминания о прививках и ветеринаре
-5. **Интеграция оплаты** — подключение платёжного шлюза (ЮKassa, Stripe)
-6. **Push-уведомления** — напоминания через Firebase
-
-### Переход на PostgreSQL
-
-```python
-# config/settings.py
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.environ.get('DB_NAME', 'pitomets_db'),
-        'USER': os.environ.get('DB_USER', 'pitomets'),
-        'PASSWORD': os.environ.get('DB_PASSWORD', ''),
-        'HOST': os.environ.get('DB_HOST', 'localhost'),
-        'PORT': os.environ.get('DB_PORT', '5432'),
-    }
-}
-```
+1. **Добавление тестов** — unit и integration тесты для API и фронтенда
+2. **Модуль подписок** — регулярная доставка кормов
+3. **Умный календарь** — напоминания о прививках и ветеринаре (модуль в разработке)
+4. **Интеграция оплаты** — подключение платёжного шлюза (ЮKassa, Stripe)
+5. **Push-уведомления** — напоминания через Firebase
+6. **Отзывы и рейтинги** — система оценки товаров и курсов
+7. **Оптимизация производительности** — кэширование, lazy loading, code splitting
+8. **PWA поддержка** — превращение в Progressive Web App
 
 ---
 
