@@ -132,14 +132,32 @@ function CourseDetail() {
   const [freeEnrollAccepted, setFreeEnrollAccepted] = useState(false)
   const [isEnrolling, setIsEnrolling] = useState(false)
   const [selectedPetForEnroll, setSelectedPetForEnroll] = useState(null)
-  
+
+  /**
+   * Загрузка курса из API
+   */
+  const fetchCourse = async () => {
+    setIsLoading(true)
+    setError(null)
+    
+    try {
+      const response = await getCourse(id)
+      setCourse(response.course)
+      setIsOwned(response.is_owned || false)
+    } catch (err) {
+      setError(err.message || 'Не удалось загрузить данные курса')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
   /**
    * Загрузка данных курса
    */
   useEffect(() => {
     fetchCourse()
   }, [id])
-  
+
   /**
    * Автоматическое открытие модального окна записи для бесплатных курсов
    * при переходе с параметром ?enroll=free
@@ -158,25 +176,7 @@ function CourseDetail() {
       }
     }
   }, [course, isOwned, isAuthenticated, searchParams, setSearchParams, navigate, id])
-  
-  /**
-   * Загрузка курса из API
-   */
-  const fetchCourse = async () => {
-    setIsLoading(true)
-    setError(null)
-    
-    try {
-      const response = await getCourse(id)
-      setCourse(response.course)
-      setIsOwned(response.is_owned || false)
-    } catch (err) {
-      setError(err.message || 'Не удалось загрузить данные курса')
-    } finally {
-      setIsLoading(false)
-    }
-  }
-  
+
   /**
    * Обработчик добавления курса в корзину
    */

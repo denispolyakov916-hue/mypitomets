@@ -72,7 +72,33 @@ class User(AbstractBaseUser, PermissionsMixin):
         null=True,
         help_text="Код активации (6 цифр) для подтверждения email"
     )
-    
+
+    # Расширенные настройки профиля
+    avatar = models.ImageField(
+        upload_to='users/avatars/',
+        blank=True,
+        null=True,
+        verbose_name='Аватар'
+    )
+    bio = models.TextField(blank=True, verbose_name='О себе')
+    date_of_birth = models.DateField(blank=True, null=True, verbose_name='Дата рождения')
+    city = models.CharField(max_length=100, blank=True, verbose_name='Город')
+    website = models.URLField(blank=True, verbose_name='Сайт')
+
+    # Настройки уведомлений
+    email_notifications = models.BooleanField(default=True, verbose_name='Email уведомления')
+    push_notifications = models.BooleanField(default=True, verbose_name='Push уведомления')
+    order_notifications = models.BooleanField(default=True, verbose_name='Уведомления о заказах')
+    marketing_notifications = models.BooleanField(default=False, verbose_name='Маркетинговые уведомления')
+
+    # Предпочтения персонализации
+    preferred_pet_types = models.JSONField(
+        default=list,
+        blank=True,
+        verbose_name='Предпочитаемые типы питомцев',
+        help_text='Список предпочитаемых типов питомцев для персонализации'
+    )
+
     created_at = models.DateTimeField(default=timezone.now, verbose_name='Дата регистрации')
     updated_at = models.DateTimeField(auto_now=True, verbose_name='Дата обновления')
     
@@ -99,6 +125,14 @@ class User(AbstractBaseUser, PermissionsMixin):
     
     def to_dict_full(self):
         """Полная сериализация для API."""
+        # Обработка аватара
+        avatar_url = None
+        if self.avatar:
+            try:
+                avatar_url = self.avatar.url
+            except (ValueError, AttributeError):
+                avatar_url = None
+
         return {
             'id': str(self.id),
             'email': self.email,
@@ -106,6 +140,16 @@ class User(AbstractBaseUser, PermissionsMixin):
             'last_name': self.last_name,
             'phone': self.phone,
             'default_address': self.default_address,
+            'avatar': avatar_url,
+            'bio': self.bio,
+            'date_of_birth': self.date_of_birth.isoformat() if self.date_of_birth else None,
+            'city': self.city,
+            'website': self.website,
+            'email_notifications': self.email_notifications,
+            'push_notifications': self.push_notifications,
+            'order_notifications': self.order_notifications,
+            'marketing_notifications': self.marketing_notifications,
+            'preferred_pet_types': self.preferred_pet_types,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'isActivated': self.is_activated,
         }

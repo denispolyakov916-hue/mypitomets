@@ -206,6 +206,9 @@ class Course(models.Model):
         verbose_name='Требования',
         help_text='Что необходимо знать или иметь перед началом курса'
     )
+
+    # Популярность (количество покупок)
+    order_count = models.PositiveIntegerField(default=0, verbose_name='Количество покупок')
     
     # Дополнительные изображения
     additional_images = models.JSONField(

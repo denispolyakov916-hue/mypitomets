@@ -11,7 +11,7 @@
 
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import { getProduct, addToCart } from '../../api/shop'
+import { getProduct, addToCart, getFrequentlyBoughtTogether } from '../../api/shop'
 import { useAuthStore } from '../../store/authStore'
 import { useCartStore } from '../../store/cartStore'
 import { useToastStore } from '../../store/toastStore'
@@ -46,6 +46,8 @@ function ProductDetail() {
   const [isAddingToCart, setIsAddingToCart] = useState(false)
   const [quantity, setQuantity] = useState(1)
   const [isPurchased, setIsPurchased] = useState(false)
+  const [recommendations, setRecommendations] = useState([])
+  const [isLoadingRecommendations, setIsLoadingRecommendations] = useState(false)
   
   /**
    * Загрузка данных товара
@@ -60,15 +62,34 @@ function ProductDetail() {
   const fetchProduct = async () => {
     setIsLoading(true)
     setError(null)
-    
+
     try {
       const response = await getProduct(id)
       setProduct(response.product)
       setIsPurchased(response.is_purchased || false)
+
+      // Загружаем рекомендации
+      fetchRecommendations()
     } catch (err) {
       setError(err.message || 'Не удалось загрузить данные товара')
     } finally {
       setIsLoading(false)
+    }
+  }
+
+  /**
+   * Загрузка рекомендаций "Часто покупают вместе"
+   */
+  const fetchRecommendations = async () => {
+    setIsLoadingRecommendations(true)
+    try {
+      const response = await getFrequentlyBoughtTogether(id)
+      setRecommendations(response.recommendations || [])
+    } catch (err) {
+      // Не показываем ошибку для рекомендаций, просто оставляем пустой список
+      setRecommendations([])
+    } finally {
+      setIsLoadingRecommendations(false)
     }
   }
   
@@ -335,11 +356,87 @@ function ProductDetail() {
       </div>
       
       {/* Секция отзывов */}
-      <ReviewsSection 
-        type="product" 
-        itemId={product.id} 
+      <ReviewsSection
+        type="product"
+        itemId={product.id}
         isPurchased={isPurchased}
       />
+
+      {/* Рекомендации "Часто покупают вместе" */}
+      {recommendations.length > 0 && (
+        <div className="mt-12">
+          <h2 className="text-2xl font-bold text-gray-900 mb-6">Часто покупают вместе</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {recommendations.map((rec) => (
+              <div key={rec.id} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow">
+                <Link to={`/shop/product/${rec.id}`}>
+                  <div className="aspect-square bg-gray-100 overflow-hidden">
+                    {rec.main_image ? (
+                      <img
+                        src={rec.main_image}
+                        alt={rec.name}
+                        className="w-full h-full object-cover hover:scale-105 transition-transform"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <span className="text-4xl">📦</span>
+                      </div>
+                    )}
+                  </div>
+                </Link>
+                <div className="p-4">
+                  <Link to={`/shop/product/${rec.id}`}>
+                    <h3 className="font-medium text-gray-900 mb-2 line-clamp-2 hover:text-primary-600 transition-colors">
+                      {rec.name}
+                    </h3>
+                  </Link>
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex flex-col">
+                      {rec.discount_percent > 0 ? (
+                        <>
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm text-gray-400 line-through">
+                              {formatPrice(rec.price)}
+                            </span>
+                            <span className="px-2 py-1 bg-red-500 text-white text-xs rounded-lg font-bold">
+                              -{rec.discount_percent}%
+                            </span>
+                          </div>
+                          <span className="text-lg font-bold text-red-600">
+                            {formatPrice(rec.discounted_price)}
+                          </span>
+                        </>
+                      ) : (
+                        <span className="text-lg font-bold text-gray-900">
+                          {formatPrice(rec.price)}
+                        </span>
+                      )}
+                    </div>
+                    <span className={`px-2 py-1 text-xs rounded-full ${
+                      rec.animal === 'dog' ? 'bg-blue-100 text-blue-700' : 'bg-orange-100 text-orange-700'
+                    }`}>
+                      {rec.animal === 'dog' ? 'Собаки' : 'Кошки'}
+                    </span>
+                  </div>
+                  <p className="text-sm text-gray-500 mb-2 capitalize">{rec.category}</p>
+                  {rec.rating > 0 && (
+                    <div className="flex items-center gap-1 mb-3">
+                      <Rating rating={rec.rating} size="sm" readonly={true} />
+                      <span className="text-sm text-gray-500">({rec.reviews_count})</span>
+                    </div>
+                  )}
+                  <Link
+                    to={`/shop/product/${rec.id}`}
+                    className="w-full btn-secondary py-2 text-center block text-sm"
+                  >
+                    Посмотреть товар
+                  </Link>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

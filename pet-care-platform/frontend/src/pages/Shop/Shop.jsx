@@ -267,6 +267,61 @@ function FilterSidebar({ filters, availableFilters, onFilterChange, onReset }) {
           <span className="ml-2 text-gray-700">🔥 Со скидкой</span>
         </label>
       </div>
+
+      {/* Рейтинг */}
+      <div className="mb-5">
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          Минимальный рейтинг
+        </label>
+        <select
+          value={filters.min_rating}
+          onChange={(e) => onFilterChange('min_rating', e.target.value)}
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white"
+        >
+          <option value="">Любой рейтинг</option>
+          <option value="4">⭐⭐⭐⭐ и выше</option>
+          <option value="3">⭐⭐⭐ и выше</option>
+          <option value="2">⭐⭐ и выше</option>
+          <option value="1">⭐ и выше</option>
+        </select>
+      </div>
+
+      {/* Популярность */}
+      <div className="mb-5">
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          Количество заказов
+        </label>
+        <select
+          value={filters.min_orders}
+          onChange={(e) => onFilterChange('min_orders', e.target.value)}
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white"
+        >
+          <option value="">Любая популярность</option>
+          <option value="100">100+ заказов</option>
+          <option value="50">50+ заказов</option>
+          <option value="20">20+ заказов</option>
+          <option value="10">10+ заказов</option>
+          <option value="5">5+ заказов</option>
+        </select>
+      </div>
+
+      {/* Сортировка */}
+      <div className="mb-5">
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          Сортировка
+        </label>
+        <select
+          value={filters.sort_by}
+          onChange={(e) => onFilterChange('sort_by', e.target.value)}
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white"
+        >
+          <option value="">По умолчанию</option>
+          <option value="price_asc">Цена: по возрастанию</option>
+          <option value="price_desc">Цена: по убыванию</option>
+          <option value="rating">По рейтингу</option>
+          <option value="popularity">По популярности</option>
+        </select>
+      </div>
     </div>
   )
 }
@@ -361,6 +416,9 @@ function Shop() {
     max_price: searchParams.get('max_price') || '',
     in_stock: searchParams.get('in_stock') || '',
     has_discount: searchParams.get('has_discount') || '',
+    min_rating: searchParams.get('min_rating') || '',
+    min_orders: searchParams.get('min_orders') || '',
+    sort_by: searchParams.get('sort_by') || '',
     search: searchParams.get('search') || '',
     page: searchParams.get('page') || '1',
   }
@@ -442,17 +500,18 @@ function Shop() {
   /**
    * Обработчик добавления в корзину
    */
-  const handleAddToCart = async (product) => {
+  const handleAddToCart = async (product, quantity = 1) => {
     if (!isAuthenticated) {
       if (confirm('Для добавления в корзину необходимо войти в аккаунт. Перейти на страницу входа?')) {
         navigate('/login', { state: { from: { pathname: '/shop' } } })
       }
       return
     }
-    
-    const result = await addItem(product.id)
+
+    const result = await addItem(product.id, quantity)
     if (result) {
-      success('Товар добавлен в корзину. Перейдите в корзину для оформления заказа.', 5000)
+      const itemText = quantity === 1 ? 'Товар' : `${quantity} товара`
+      success(`${itemText} добавлен${quantity > 1 ? 'ы' : ''} в корзину. Перейдите в корзину для оформления заказа.`, 5000)
     }
   }
   

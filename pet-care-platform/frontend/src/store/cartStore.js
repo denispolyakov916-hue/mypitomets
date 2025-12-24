@@ -237,7 +237,7 @@ export const useCartStore = create((set, get) => ({
       // Создаем Map для быстрого поиска по ID элемента корзины
       const newItemsMap = new Map(newItems.map(item => [item.id, item]))
       const orderedItems = []
-      
+
       // Сначала добавляем существующие элементы в том же порядке
       for (const currentItem of currentItems) {
         if (newItemsMap.has(currentItem.id)) {
@@ -245,7 +245,7 @@ export const useCartStore = create((set, get) => ({
           newItemsMap.delete(currentItem.id)
         }
       }
-      
+
       // Затем добавляем новые элементы (если есть)
       for (const newItem of newItemsMap.values()) {
         orderedItems.push(newItem)
@@ -257,7 +257,6 @@ export const useCartStore = create((set, get) => ({
         itemsCount: response.items_count || 0,
         isLoading: false
       })
-
       return true
     } catch (error) {
       console.error('Ошибка обновления количества в корзине:', error)
@@ -502,8 +501,30 @@ export const useCartStore = create((set, get) => ({
   },
 
   /**
+   * Проверить, есть ли товар в корзине
+   *
+   * @param {number} productId - ID товара для проверки
+   * @returns {Object|null} Объект товара из корзины или null
+   */
+  getItemInCart: (productId) => {
+    const { items } = get()
+    return items.find(item => item.product?.id === productId) || null
+  },
+
+  /**
+   * Проверить, есть ли курс в корзине
+   *
+   * @param {number} courseId - ID курса для проверки
+   * @returns {Object|null} Объект курса из корзины или null
+   */
+  getCourseInCart: (courseId) => {
+    const { items } = get()
+    return items.find(item => item.course?.id === courseId) || null
+  },
+
+  /**
    * Получить массив ID выбранных элементов
-   * 
+   *
    * @returns {number[]} Массив ID
    */
   getSelectedItemIds: () => {

@@ -18,7 +18,8 @@ from .views import (
     PaymentConfirmView,
     PaymentCancelView,
     PaymentStatisticsView,
-    PaymentPageView
+    PaymentPageView,
+    PaymentByOrderView
 )
 
 urlpatterns = [
@@ -35,6 +36,10 @@ urlpatterns = [
     # Детали платежа
     # GET /api/payments/{id}/
     path('<str:payment_id>/', PaymentDetailView.as_view(), name='payment-detail'),
+    
+    # Получение платежа по заказу
+    # GET /api/payments/by-order/{order_id}/
+    path('by-order/<str:order_id>/', PaymentByOrderView.as_view(), name='payment-by-order'),
 
     # Действия с платежом
     # POST /api/payments/{id}/confirm/ - подтверждение платежа

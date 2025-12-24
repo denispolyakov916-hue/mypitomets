@@ -9,6 +9,7 @@
 
 import { Link } from 'react-router-dom'
 import { useAuthStore } from '../store/authStore'
+import PersonalRecommendations from '../components/PersonalRecommendations'
 
 /**
  * Данные карточек функций для лендинга
@@ -132,7 +133,16 @@ function Home() {
           </div>
         </div>
       </section>
-      
+
+      {/* Персональные рекомендации */}
+      {isAuthenticated && (
+        <section className="py-16 bg-gray-50">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <PersonalRecommendations />
+          </div>
+        </section>
+      )}
+
       {/* Секция CTA */}
       <section className="bg-gray-100 py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

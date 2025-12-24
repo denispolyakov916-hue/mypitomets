@@ -451,10 +451,15 @@ class ProfileView(APIView):
     def put(self, request):
         """Обновление данных профиля."""
         user = request.user
-        
+
         # Обновляемые поля
-        allowed_fields = ['email', 'first_name', 'last_name', 'phone', 'default_address']
-        
+        allowed_fields = [
+            'email', 'first_name', 'last_name', 'phone', 'default_address',
+            'avatar', 'bio', 'date_of_birth', 'city', 'website',
+            'email_notifications', 'push_notifications', 'order_notifications',
+            'marketing_notifications', 'preferred_pet_types'
+        ]
+
         for field in allowed_fields:
             if field in request.data:
                 if field == 'email':
@@ -465,12 +470,39 @@ class ProfileView(APIView):
                             {'error': 'Пользователь с таким email уже существует'},
                             status=status.HTTP_400_BAD_REQUEST
                         )
-                setattr(user, field, request.data[field])
-        
+                elif field == 'date_of_birth':
+                    # Преобразование строки в дату
+                    from datetime import datetime
+                    if request.data[field]:
+                        try:
+                            date_obj = datetime.strptime(request.data[field], '%Y-%m-%d').date()
+                            setattr(user, field, date_obj)
+                        except ValueError:
+                            return Response(
+                                {'error': 'Неверный формат даты рождения. Используйте YYYY-MM-DD'},
+                                status=status.HTTP_400_BAD_REQUEST
+                            )
+                    else:
+                        setattr(user, field, None)
+                elif field in ['email_notifications', 'push_notifications', 'order_notifications', 'marketing_notifications']:
+                    # Булевы поля
+                    setattr(user, field, bool(request.data[field]))
+                elif field == 'preferred_pet_types':
+                    # Список предпочитаемых типов питомцев
+                    if isinstance(request.data[field], list):
+                        setattr(user, field, request.data[field])
+                    else:
+                        return Response(
+                            {'error': 'preferred_pet_types должен быть списком'},
+                            status=status.HTTP_400_BAD_REQUEST
+                        )
+                else:
+                    setattr(user, field, request.data[field])
+
         user.save()
-        
+
         logger.info(f"Профиль обновлён: {user.email}")
-        
+
         return Response({
             'message': 'Профиль обновлён',
             'user': user.to_dict_full()

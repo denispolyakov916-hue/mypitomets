@@ -11,9 +11,10 @@
 
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import { getOrders } from '../../api/shop'
+import { getOrders, createReturn } from '../../api/shop'
 import { PageLoader } from '../../components/Loader'
 import { useToastStore } from '../../store/toastStore'
+import OrderTimer from '../../components/OrderTimer'
 
 /**
  * Форматирование цены
@@ -51,6 +52,15 @@ const statusConfig = {
     icon: (
       <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+    )
+  },
+  expired: {
+    label: 'Истёк срок оплаты',
+    class: 'bg-red-100 text-red-800 border-red-200',
+    icon: (
+      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
       </svg>
     )
   },
@@ -110,20 +120,29 @@ function OrderDetail() {
   const [order, setOrder] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState(null)
-  const { error: showError } = useToastStore()
-  
-  useEffect(() => {
-    fetchOrder()
-  }, [id])
-  
+  const { error: showError, success } = useToastStore()
+
+  // Модальное окно возврата
+  const [returnModal, setReturnModal] = useState({
+    isOpen: false,
+    orderItem: null,
+    maxQuantity: 0
+  })
+  const [returnForm, setReturnForm] = useState({
+    quantity: 1,
+    reason: 'not_satisfied',
+    description: ''
+  })
+  const [isSubmittingReturn, setIsSubmittingReturn] = useState(false)
+
   const fetchOrder = async () => {
     setIsLoading(true)
     setError(null)
-    
+
     try {
       const response = await getOrders()
       const foundOrder = response.orders?.find(o => o.id === id)
-      
+
       if (!foundOrder) {
         setError('Заказ не найден')
         showError('Заказ не найден')
@@ -138,7 +157,82 @@ function OrderDetail() {
       setIsLoading(false)
     }
   }
-  
+
+  /**
+   * Открыть модальное окно возврата
+   */
+  const openReturnModal = (orderItem) => {
+    setReturnModal({
+      isOpen: true,
+      orderItem,
+      maxQuantity: orderItem.quantity
+    })
+    setReturnForm({
+      quantity: orderItem.quantity,
+      reason: 'not_satisfied',
+      description: ''
+    })
+  }
+
+  /**
+   * Закрыть модальное окно возврата
+   */
+  const closeReturnModal = () => {
+    setReturnModal({
+      isOpen: false,
+      orderItem: null,
+      maxQuantity: 0
+    })
+    setReturnForm({
+      quantity: 1,
+      reason: 'not_satisfied',
+      description: ''
+    })
+  }
+
+  /**
+   * Создать запрос на возврат
+   */
+  const submitReturn = async () => {
+    if (!returnModal.orderItem) return
+
+    setIsSubmittingReturn(true)
+    try {
+      await createReturn({
+        order_item_id: returnModal.orderItem.id,
+        quantity: returnForm.quantity,
+        reason: returnForm.reason,
+        description: returnForm.description.trim() || undefined
+      })
+
+      success('Запрос на возврат успешно создан. Мы рассмотрим его в ближайшее время.')
+      closeReturnModal()
+      // Обновляем заказ, чтобы показать изменения
+      fetchOrder()
+    } catch (err) {
+      showError(err.message || 'Не удалось создать запрос на возврат')
+    } finally {
+      setIsSubmittingReturn(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchOrder()
+  }, [id])
+
+  // Автообновление заказа каждую минуту, если он в статусе pending
+  useEffect(() => {
+    if (!order || order.status !== 'pending') {
+      return
+    }
+
+    const interval = setInterval(() => {
+      fetchOrder()
+    }, 60000) // Каждую минуту
+
+    return () => clearInterval(interval)
+  }, [order?.status, order?.id])
+
   if (isLoading) {
     return <PageLoader />
   }
@@ -184,6 +278,26 @@ function OrderDetail() {
         <span className="font-medium">Вернуться к заказам</span>
       </button>
       
+      {/* Сообщение об истечении срока оплаты */}
+      {order.status === 'expired' && (
+        <div className="card mb-6 bg-red-50 border-red-200">
+          <div className="flex items-start gap-3">
+            <svg className="w-5 h-5 text-red-600 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <div>
+              <h3 className="text-lg font-semibold text-red-900 mb-1">
+                Истёк срок оплаты
+              </h3>
+              <p className="text-red-700">
+                К сожалению, оплата не была произведена в течение отведённого времени. 
+                Товары возвращены на склад. Вы можете попробовать оплатить заказ снова.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+      
       {/* Заголовок заказа */}
       <div className="card mb-6">
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
@@ -197,10 +311,22 @@ function OrderDetail() {
           </div>
           
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
-            <span className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border ${status.class}`}>
-              {status.icon}
-              {status.label}
-            </span>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
+              <span className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border ${status.class}`}>
+                {status.icon}
+                {status.label}
+              </span>
+              
+              {order.status === 'pending' && order.expires_at && (
+                <OrderTimer
+                  expiresAt={order.expires_at}
+                  onExpired={() => {
+                    // Обновляем статус заказа при истечении времени
+                    setOrder(prevOrder => prevOrder ? { ...prevOrder, status: 'expired' } : null)
+                  }}
+                />
+              )}
+            </div>
             
             {order.status === 'pending' && (
               <Link
@@ -208,6 +334,15 @@ function OrderDetail() {
                 className="btn-primary"
               >
                 Оплатить заказ
+              </Link>
+            )}
+            
+            {order.status === 'expired' && (
+              <Link
+                to={`/payment?order_id=${order.id}&type=shop_order&amount=${order.total_amount}`}
+                className="btn-primary"
+              >
+                Попробовать оплатить снова
               </Link>
             )}
           </div>
@@ -241,6 +376,15 @@ function OrderDetail() {
                         <span>Количество: {item.quantity}</span>
                         <span>Цена: {formatPrice(item.price)}</span>
                       </div>
+                      {/* Кнопка возврата для доставленных товаров */}
+                      {order.status === 'delivered' && item.product_id && (
+                        <button
+                          onClick={() => openReturnModal(item)}
+                          className="mt-2 text-sm text-primary-600 hover:text-primary-700 font-medium"
+                        >
+                          Оформить возврат
+                        </button>
+                      )}
                     </div>
                     <div className="text-right">
                       <div className="font-semibold text-gray-900">
@@ -418,6 +562,99 @@ function OrderDetail() {
           </div>
         </div>
       </div>
+
+      {/* Модальное окно возврата */}
+      {returnModal.isOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-xl max-w-md w-full p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">Оформить возврат</h3>
+              <button
+                onClick={closeReturnModal}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {returnModal.orderItem && (
+              <div className="mb-4">
+                <p className="text-sm text-gray-600 mb-2">Товар:</p>
+                <p className="font-medium text-gray-900">{returnModal.orderItem.product_name}</p>
+              </div>
+            )}
+
+            <form onSubmit={(e) => { e.preventDefault(); submitReturn(); }} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Количество для возврата
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  max={returnModal.maxQuantity}
+                  value={returnForm.quantity}
+                  onChange={(e) => setReturnForm(prev => ({ ...prev, quantity: parseInt(e.target.value) || 1 }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary-500 focus:border-primary-500"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Максимум: {returnModal.maxQuantity} шт.
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Причина возврата
+                </label>
+                <select
+                  value={returnForm.reason}
+                  onChange={(e) => setReturnForm(prev => ({ ...prev, reason: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary-500 focus:border-primary-500"
+                >
+                  <option value="not_satisfied">Не подошел</option>
+                  <option value="defective">Брак/Повреждение</option>
+                  <option value="wrong_item">Не тот товар</option>
+                  <option value="changed_mind">Передумал</option>
+                  <option value="other">Другое</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Описание (опционально)
+                </label>
+                <textarea
+                  value={returnForm.description}
+                  onChange={(e) => setReturnForm(prev => ({ ...prev, description: e.target.value }))}
+                  placeholder="Опишите причину возврата подробнее..."
+                  rows={3}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary-500 focus:border-primary-500"
+                />
+              </div>
+
+              <div className="flex gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={closeReturnModal}
+                  className="flex-1 btn-secondary"
+                  disabled={isSubmittingReturn}
+                >
+                  Отмена
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmittingReturn}
+                  className="flex-1 btn-primary"
+                >
+                  {isSubmittingReturn ? 'Отправка...' : 'Отправить запрос'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

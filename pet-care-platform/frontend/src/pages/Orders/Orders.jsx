@@ -10,6 +10,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { getOrders } from '../../api/shop'
 import { PageLoader } from '../../components/Loader'
 import { useToastStore } from '../../store/toastStore'
+import OrderTimer from '../../components/OrderTimer'
 
 /**
  * Форматирование цены
@@ -70,6 +71,15 @@ const statusConfig = {
       </svg>
     )
   },
+  expired: {
+    label: 'Истёк срок оплаты',
+    class: 'bg-red-100 text-red-800 border-red-200',
+    icon: (
+      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+      </svg>
+    )
+  },
   processing: {
     label: 'В обработке',
     class: 'bg-blue-100 text-blue-800 border-blue-200',
@@ -111,10 +121,10 @@ const statusConfig = {
 /**
  * Компонент карточки заказа
  */
-function OrderCard({ order }) {
+function OrderCard({ order, onOrderExpired }) {
   const navigate = useNavigate()
   const status = statusConfig[order.status] || statusConfig.pending
-  
+
   // Подсчет товаров и курсов
   const productsCount = order.items.filter(item => item.product_id).length
   const coursesCount = order.items.filter(item => item.course_id).length
@@ -146,11 +156,24 @@ function OrderCard({ order }) {
             </div>
           </div>
           
-          <div className="flex items-center gap-3">
-            <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border ${status.class}`}>
-              {status.icon}
-              {status.label}
-            </span>
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
+              <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border ${status.class}`}>
+                {status.icon}
+                {status.label}
+              </span>
+              {order.status === 'pending' && order.expires_at && (
+                <OrderTimer
+                  expiresAt={order.expires_at}
+                  onExpired={() => {
+                    // Заказ истек, обновим конкретный заказ
+                    if (onOrderExpired) {
+                      onOrderExpired(order.id)
+                    }
+                  }}
+                />
+              )}
+            </div>
             <span className="text-xl font-bold text-gray-900">
               {formatPrice(order.total_amount)}
             </span>
@@ -240,6 +263,15 @@ function OrderCard({ order }) {
               Оплатить заказ
             </Link>
           )}
+          {order.status === 'expired' && (
+            <Link
+              to={`/payment?order_id=${order.id}&type=shop_order&amount=${order.total_amount}`}
+              onClick={(e) => e.stopPropagation()}
+              className="btn-primary text-sm"
+            >
+              Попробовать оплатить снова
+            </Link>
+          )}
           <button
             onClick={(e) => {
               e.stopPropagation()
@@ -266,15 +298,11 @@ function Orders() {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState(null)
   const { error: showError } = useToastStore()
-  
-  useEffect(() => {
-    fetchOrders()
-  }, [])
-  
+
   const fetchOrders = async () => {
     setIsLoading(true)
     setError(null)
-    
+
     try {
       const response = await getOrders()
       setOrders(response.orders || [])
@@ -286,7 +314,29 @@ function Orders() {
       setIsLoading(false)
     }
   }
-  
+
+  const handleOrderExpired = (orderId) => {
+    // Обновляем статус заказа на 'expired' локально
+    setOrders(prevOrders =>
+      prevOrders.map(order =>
+        order.id === orderId
+          ? { ...order, status: 'expired' }
+          : order
+      )
+    )
+  }
+
+  useEffect(() => {
+    fetchOrders()
+
+    // Автообновление заказов каждые 5 минут (уменьшено для снижения нагрузки)
+    const interval = setInterval(() => {
+      fetchOrders()
+    }, 300000) // Каждые 5 минут
+
+    return () => clearInterval(interval)
+  }, [])
+
   if (isLoading) {
     return <PageLoader />
   }
@@ -357,7 +407,7 @@ function Orders() {
               </h2>
               <div className="space-y-4">
                 {dateOrders.map(order => (
-                  <OrderCard key={order.id} order={order} />
+                  <OrderCard key={order.id} order={order} onOrderExpired={handleOrderExpired} />
                 ))}
               </div>
             </div>

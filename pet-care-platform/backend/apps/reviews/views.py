@@ -259,7 +259,7 @@ class ProductReviewEligibilityView(APIView):
         if can_review:
             order_item = OrderItem.objects.filter(
                 order__user=request.user,
-                order__status__in=['delivered', 'shipped'],
+                order__status__in=['processing', 'shipped', 'delivered'],
                 product=product
             ).order_by('-order__created_at').first()
             
@@ -555,5 +555,129 @@ class CourseReviewEligibilityView(APIView):
                 else 'Вы уже оставили отзыв. Вы можете обновить его.' if has_review
                 else 'Для оставления отзыва необходимо приобрести курс'
             )
+        }, status=status.HTTP_200_OK)
+
+
+class RecentPurchasesForReviewView(APIView):
+    """
+    Получение недавно приобретенных товаров и курсов с предложением оставить отзыв.
+    
+    GET /api/reviews/recent-purchases/
+    
+    Возвращает список товаров и курсов, которые были приобретены недавно
+    и на которые пользователь еще не оставил отзыв.
+    """
+    
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        from apps.shop.models import Order, OrderItem
+        from apps.training.models import UserCourse
+        from datetime import timedelta
+        from django.utils import timezone
+        
+        # Период "недавно" - последние 90 дней
+        recent_date = timezone.now() - timedelta(days=90)
+        
+        # Получаем недавно приобретенные товары
+        recent_orders = Order.objects.filter(
+            user=request.user,
+            status__in=['processing', 'shipped', 'delivered'],
+            created_at__gte=recent_date
+        ).order_by('-created_at')
+        
+        recent_products = []
+        product_ids_seen = set()
+        
+        for order in recent_orders:
+            order_items = OrderItem.objects.filter(
+                order=order,
+                product__isnull=False
+            ).select_related('product')
+            
+            for item in order_items:
+                product = item.product
+                product_id = product.id
+                
+                # Пропускаем дубликаты
+                if product_id in product_ids_seen:
+                    continue
+                product_ids_seen.add(product_id)
+                
+                # Проверяем, может ли пользователь оставить отзыв
+                can_review = can_user_review_product(request.user, product)
+                
+                # Проверяем, есть ли уже отзыв
+                has_review = Review.objects.filter(
+                    product=product,
+                    user=request.user
+                ).exists()
+                
+                # Добавляем только если может оставить отзыв и еще не оставил
+                if can_review and not has_review:
+                    recent_products.append({
+                        'id': product.id,
+                        'name': product.name,
+                        'price': float(product.price),
+                        'image': product.main_image,
+                        'purchase_date': order.created_at.isoformat(),
+                        'type': 'product',
+                        'can_review': True,
+                        'has_review': False
+                    })
+        
+        # Получаем недавно приобретенные курсы
+        recent_user_courses = UserCourse.objects.filter(
+            user=request.user,
+            purchased_at__gte=recent_date
+        ).select_related('course').order_by('-purchased_at')
+        
+        recent_courses = []
+        course_ids_seen = set()
+        
+        for user_course in recent_user_courses:
+            course = user_course.course
+            course_id = course.id
+            
+            # Пропускаем дубликаты
+            if course_id in course_ids_seen:
+                continue
+            course_ids_seen.add(course_id)
+            
+            # Проверяем, может ли пользователь оставить отзыв
+            can_review = can_user_review_course(request.user, course)
+            
+            # Проверяем, есть ли уже отзыв
+            has_review = Review.objects.filter(
+                course=course,
+                user=request.user
+            ).exists()
+            
+            # Добавляем только если может оставить отзыв и еще не оставил
+            if can_review and not has_review:
+                recent_courses.append({
+                    'id': course.id,
+                    'title': course.title,
+                    'description': course.description,
+                    'price': float(course.price),
+                    'image': course.image_url,
+                    'purchase_date': user_course.purchased_at.isoformat() if user_course.purchased_at else None,
+                    'type': 'course',
+                    'can_review': True,
+                    'has_review': False
+                })
+        
+        # Сортируем по дате покупки (от новых к старым)
+        all_items = recent_products + recent_courses
+        all_items.sort(key=lambda x: x['purchase_date'], reverse=True)
+        
+        # Ограничиваем до последних 10
+        all_items = all_items[:10]
+        
+        return Response({
+            'recent_purchases': all_items,
+            'products_count': len(recent_products),
+            'courses_count': len(recent_courses),
+            'total_count': len(all_items)
         }, status=status.HTTP_200_OK)
 

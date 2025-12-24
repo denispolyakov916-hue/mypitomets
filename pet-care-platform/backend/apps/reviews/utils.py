@@ -8,16 +8,20 @@ def can_user_review_product(user, product):
     Проверка возможности оставить отзыв на товар.
     
     Пользователь может оставить отзыв, если:
-    1. Существует заказ (Order) с товаром в статусе 'delivered' или 'shipped'
+    1. Существует заказ (Order) с товаром в статусе 'processing', 'shipped' или 'delivered'
     2. Пользователь является владельцем заказа
     3. Товар присутствует в элементах заказа (OrderItem)
+    
+    Статус 'processing' включен, так как после оплаты заказ переходит в этот статус,
+    и пользователь уже приобрел товар, даже если он еще не доставлен.
     """
     from apps.shop.models import Order, OrderItem
     
-    # Проверяем наличие доставленных заказов с этим товаром
+    # Проверяем наличие оплаченных заказов с этим товаром
+    # Включаем 'processing', так как после оплаты товар считается приобретенным
     orders = Order.objects.filter(
         user=user,
-        status__in=['delivered', 'shipped']
+        status__in=['processing', 'shipped', 'delivered']
     )
     
     order_items = OrderItem.objects.filter(

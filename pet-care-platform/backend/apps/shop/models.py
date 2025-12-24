@@ -109,6 +109,9 @@ class Product(models.Model):
     # Наличие
     in_stock = models.BooleanField(default=False, verbose_name='В наличии')
     stock_count = models.PositiveIntegerField(default=0, verbose_name='Количество на складе')
+
+    # Популярность (количество заказов)
+    order_count = models.PositiveIntegerField(default=0, verbose_name='Количество заказов')
     
     # Скидка
     discount_percent = models.PositiveIntegerField(
@@ -255,21 +258,21 @@ class CartItem(models.Model):
     )
     product = models.ForeignKey(
         Product,
-        on_delete=models.CASCADE,
+        on_delete=models.SET_NULL,
         null=True,
         blank=True,
         verbose_name='Товар'
     )
     course = models.ForeignKey(
         'training.Course',
-        on_delete=models.CASCADE,
+        on_delete=models.SET_NULL,
         null=True,
         blank=True,
         verbose_name='Курс'
     )
     pet = models.ForeignKey(
         'pets.Pet',
-        on_delete=models.CASCADE,
+        on_delete=models.SET_NULL,
         null=True,
         blank=True,
         verbose_name='Питомец',
@@ -497,11 +500,12 @@ class Order(models.Model):
     """
     
     STATUS_CHOICES = [
-        ('pending', 'Ожидает обработки'),
+        ('pending', 'Ожидает оплаты'),
         ('processing', 'В обработке'),
         ('shipped', 'Отправлен'),
         ('delivered', 'Доставлен'),
         ('cancelled', 'Отменён'),
+        ('expired', 'Истёк срок оплаты'),
     ]
     
     DELIVERY_TYPE_CHOICES = [
@@ -573,6 +577,14 @@ class Order(models.Model):
     created_at = models.DateTimeField(default=timezone.now, verbose_name='Дата заказа')
     updated_at = models.DateTimeField(auto_now=True)
     
+    # Таймер оплаты для заказов со статусом 'pending'
+    expires_at = models.DateTimeField(
+        blank=True,
+        null=True,
+        verbose_name='Истекает (время оплаты)',
+        help_text='Время истечения срока оплаты заказа. Если оплата не произведена до этого времени, заказ будет отменен и товары возвращены на склад.'
+    )
+    
     class Meta:
         db_table = 'orders'
         verbose_name = 'Заказ'
@@ -590,6 +602,12 @@ class Order(models.Model):
         """Итоговая сумма с доставкой."""
         return self.get_subtotal() + self.delivery_cost
     
+    def is_expired(self):
+        """Проверка, истек ли срок оплаты заказа."""
+        if not self.expires_at:
+            return False
+        return timezone.now() > self.expires_at
+    
     def to_dict(self):
         """Сериализация для API."""
         return {
@@ -606,7 +624,9 @@ class Order(models.Model):
             'recipient_name': self.recipient_name,
             'recipient_phone': self.recipient_phone,
             'status': self.status,
-            'created_at': self.created_at.isoformat() if self.created_at else None
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'expires_at': self.expires_at.isoformat() if self.expires_at else None,
+            'is_expired': self.is_expired() if self.status == 'pending' else False
         }
 
 
@@ -698,3 +718,186 @@ class OrderItem(models.Model):
                 'quantity': self.quantity,
                 'total': float(self.get_total())
             }
+
+
+class Return(models.Model):
+    """
+    Модель возврата товара.
+
+    Позволяет пользователям возвращать товары с восстановлением количества на складе.
+    """
+
+    RETURN_STATUS_CHOICES = [
+        ('requested', 'Запрошено'),
+        ('approved', 'Одобрено'),
+        ('rejected', 'Отклонено'),
+        ('received', 'Получено'),
+        ('refunded', 'Возвращены средства'),
+    ]
+
+    RETURN_REASON_CHOICES = [
+        ('defective', 'Брак/Повреждение'),
+        ('wrong_item', 'Не тот товар'),
+        ('not_satisfied', 'Не подошел'),
+        ('changed_mind', 'Передумал'),
+        ('other', 'Другое'),
+    ]
+
+    id = models.CharField(
+        primary_key=True,
+        max_length=36,
+        default=generate_uuid7,
+        editable=False,
+        help_text="UUIDv7 идентификатор возврата"
+    )
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='returns',
+        verbose_name='Пользователь'
+    )
+
+    order = models.ForeignKey(
+        Order,
+        on_delete=models.CASCADE,
+        related_name='returns',
+        verbose_name='Заказ'
+    )
+
+    order_item = models.ForeignKey(
+        OrderItem,
+        on_delete=models.CASCADE,
+        related_name='returns',
+        verbose_name='Элемент заказа'
+    )
+
+    quantity = models.PositiveIntegerField(verbose_name='Количество для возврата')
+    reason = models.CharField(
+        max_length=20,
+        choices=RETURN_REASON_CHOICES,
+        verbose_name='Причина возврата'
+    )
+    description = models.TextField(blank=True, verbose_name='Описание')
+
+    status = models.CharField(
+        max_length=20,
+        choices=RETURN_STATUS_CHOICES,
+        default='requested',
+        verbose_name='Статус'
+    )
+
+    # Финансовые поля
+    refund_amount = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=Decimal('0.00'),
+        verbose_name='Сумма возврата'
+    )
+
+    # Даты
+    requested_at = models.DateTimeField(auto_now_add=True, verbose_name='Дата запроса')
+    approved_at = models.DateTimeField(blank=True, null=True, verbose_name='Дата одобрения')
+    received_at = models.DateTimeField(blank=True, null=True, verbose_name='Дата получения')
+    refunded_at = models.DateTimeField(blank=True, null=True, verbose_name='Дата возврата средств')
+
+    # Комментарии администратора
+    admin_comment = models.TextField(blank=True, verbose_name='Комментарий администратора')
+
+    class Meta:
+        db_table = 'returns'
+        verbose_name = 'Возврат'
+        verbose_name_plural = 'Возвраты'
+        ordering = ['-requested_at']
+        indexes = [
+            models.Index(fields=['user', 'status']),
+            models.Index(fields=['order', 'status']),
+            models.Index(fields=['status']),
+        ]
+
+    def __str__(self):
+        return f"Возврат {self.id} от {self.user.email}"
+
+    def can_approve(self):
+        """Проверка возможности одобрения возврата."""
+        return self.status == 'requested'
+
+    def can_reject(self):
+        """Проверка возможности отклонения возврата."""
+        return self.status in ['requested', 'approved']
+
+    def approve_return(self):
+        """Одобрить возврат."""
+        from django.utils import timezone
+        if not self.can_approve():
+            raise ValueError("Невозможно одобрить возврат в текущем статусе")
+
+        with transaction.atomic():
+            self.status = 'approved'
+            self.approved_at = timezone.now()
+
+            # Восстанавливаем товар на склад
+            if self.order_item.product:
+                product = self.order_item.product
+                product.stock_count += self.quantity
+                if product.stock_count > 0:
+                    product.in_stock = True
+                product.save(update_fields=['stock_count', 'in_stock'])
+
+            self.save()
+
+    def reject_return(self, admin_comment=None):
+        """Отклонить возврат."""
+        if not self.can_reject():
+            raise ValueError("Невозможно отклонить возврат в текущем статусе")
+
+        self.status = 'rejected'
+        if admin_comment:
+            self.admin_comment = admin_comment
+        self.save()
+
+    def mark_received(self):
+        """Отметить возврат как полученный."""
+        from django.utils import timezone
+        if self.status != 'approved':
+            raise ValueError("Можно отметить как полученный только одобренный возврат")
+
+        self.status = 'received'
+        self.received_at = timezone.now()
+        self.save()
+
+    def refund_payment(self):
+        """Вернуть средства."""
+        from django.utils import timezone
+        from apps.payments.services import PaymentService
+
+        if self.status != 'received':
+            raise ValueError("Можно вернуть средства только за полученный возврат")
+
+        # Здесь должна быть логика возврата средств через платежную систему
+        # Пока просто отмечаем как возвращенные
+        self.status = 'refunded'
+        self.refunded_at = timezone.now()
+        self.save()
+
+    def to_dict(self):
+        """Сериализация для API."""
+        return {
+            'id': str(self.id),
+            'user_id': str(self.user_id),
+            'order_id': str(self.order_id),
+            'order_item_id': self.order_item_id,
+            'quantity': self.quantity,
+            'reason': self.reason,
+            'reason_display': self.get_reason_display(),
+            'description': self.description,
+            'status': self.status,
+            'status_display': self.get_status_display(),
+            'refund_amount': float(self.refund_amount),
+            'requested_at': self.requested_at.isoformat() if self.requested_at else None,
+            'approved_at': self.approved_at.isoformat() if self.approved_at else None,
+            'received_at': self.received_at.isoformat() if self.received_at else None,
+            'refunded_at': self.refunded_at.isoformat() if self.refunded_at else None,
+            'admin_comment': self.admin_comment,
+            'order_item': self.order_item.to_dict() if self.order_item else None,
+        }

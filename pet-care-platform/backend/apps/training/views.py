@@ -127,6 +127,42 @@ class CourseListView(APIView):
         search = request.query_params.get('search')
         if search:
             courses = courses.filter(title__icontains=search)
+
+        # Фильтр по рейтингу
+        min_rating = request.query_params.get('min_rating')
+        if min_rating:
+            try:
+                min_rating_val = float(min_rating)
+                courses = courses.filter(id__in=[
+                    c.id for c in courses
+                    if c.get_average_rating() >= min_rating_val
+                ])
+            except ValueError:
+                pass
+
+        # Фильтр по популярности (количеству покупок)
+        min_orders = request.query_params.get('min_orders')
+        if min_orders:
+            try:
+                min_orders_val = int(min_orders)
+                courses = courses.filter(order_count__gte=min_orders_val)
+            except ValueError:
+                pass
+
+        # Сортировка по популярности или рейтингу
+        sort_by = request.query_params.get('sort_by')
+        if sort_by == 'rating':
+            # Сортировка по рейтингу (нужно реализовать отдельно, так как рейтинг вычисляется)
+            courses = sorted(courses, key=lambda c: c.get_average_rating(), reverse=True)
+        elif sort_by == 'popularity':
+            courses = courses.order_by('-order_count', '-id')
+        elif sort_by == 'price_asc':
+            courses = courses.order_by('price')
+        elif sort_by == 'price_desc':
+            courses = courses.order_by('-price')
+        else:
+            # По умолчанию сортировка по ID (новые курсы)
+            courses = courses.order_by('-id')
         
         # Общее количество до пагинации
         total_count = courses.count()

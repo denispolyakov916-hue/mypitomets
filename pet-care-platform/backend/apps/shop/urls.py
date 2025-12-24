@@ -20,6 +20,8 @@ from django.urls import path
 from .views import (
     ProductListView,
     ProductDetailView,
+    FrequentlyBoughtTogetherView,
+    PersonalRecommendationsView,
     CartView,
     CartItemView,
     CartRefreshView,
@@ -29,7 +31,10 @@ from .views import (
     OrderDetailView,
     OrderConfirmPaymentView,
     AddressListView,
-    AddressSearchView
+    AddressSearchView,
+    ReturnCreateView,
+    ReturnListView,
+    ReturnDetailView
 )
 
 urlpatterns = [
@@ -40,6 +45,14 @@ urlpatterns = [
     # Конкретный товар
     # GET /api/shop/products/{id}/
     path('products/<int:product_id>/', ProductDetailView.as_view(), name='product-detail'),
+
+    # Рекомендации "Часто покупают вместе"
+    # GET /api/shop/products/{id}/frequently-bought/
+    path('products/<int:product_id>/frequently-bought/', FrequentlyBoughtTogetherView.as_view(), name='frequently-bought-together'),
+
+    # Персональные рекомендации
+    # GET /api/shop/personal-recommendations/
+    path('personal-recommendations/', PersonalRecommendationsView.as_view(), name='personal-recommendations'),
     
     # Операции с корзиной
     # GET, POST /api/shop/cart/
@@ -76,4 +89,14 @@ urlpatterns = [
     
     # GET /api/shop/addresses/search/ - поиск адресов
     path('addresses/search/', AddressSearchView.as_view(), name='address-search'),
+
+    # Возвраты товаров
+    # POST /api/shop/returns/ - создание возврата
+    path('returns/', ReturnCreateView.as_view(), name='return-create'),
+
+    # GET /api/shop/returns/ - список возвратов
+    path('returns/list/', ReturnListView.as_view(), name='return-list'),
+
+    # GET /api/shop/returns/{return_id}/ - детали возврата
+    path('returns/<str:return_id>/', ReturnDetailView.as_view(), name='return-detail'),
 ]

@@ -9,6 +9,7 @@
  *   onAddToCart: Обработчик добавления в корзину
  *   onEnrollFree: Обработчик записи на бесплатный курс (открывает модальное окно)
  *   isOwned: Курс уже приобретён пользователем
+ *   isInCart: Курс уже находится в корзине
  *   isLoading: Состояние загрузки для добавления в корзину
  */
 
@@ -88,7 +89,7 @@ const formatDuration = (minutes) => {
 /**
  * Компонент CourseCard
  */
-function CourseCard({ course, onAddToCart, onEnrollFree, isOwned = false, isLoading = false }) {
+function CourseCard({ course, onAddToCart, onEnrollFree, isOwned = false, isLoading = false, isInCart = false }) {
   const [isAdding, setIsAdding] = useState(false)
   const [imageError, setImageError] = useState(false)
   
@@ -248,7 +249,11 @@ function CourseCard({ course, onAddToCart, onEnrollFree, isOwned = false, isLoad
             <button
               onClick={handleAddToCart}
               disabled={isAdding || isLoading}
-              className="text-sm py-2 px-4 rounded-lg bg-primary-600 hover:bg-primary-700 text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
+              className={`text-sm py-2 px-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 ${
+                isInCart
+                  ? 'bg-green-600 hover:bg-green-700 text-white'
+                  : 'bg-primary-600 hover:bg-primary-700 text-white'
+              }`}
             >
               {isAdding ? (
                 <>
@@ -260,7 +265,7 @@ function CourseCard({ course, onAddToCart, onEnrollFree, isOwned = false, isLoad
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
                   </svg>
-                  В корзину
+                  {isInCart ? 'В корзину' : 'Купить'}
                 </>
               )}
             </button>

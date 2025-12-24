@@ -12,6 +12,7 @@ from .views import (
     UpdateCourseReviewView,
     DeleteCourseReviewView,
     CourseReviewEligibilityView,
+    RecentPurchasesForReviewView,
 )
 
 urlpatterns = [
@@ -36,5 +37,9 @@ urlpatterns = [
     # PUT, DELETE /api/reviews/courses/{course_id}/reviews/{review_id}/
     path('courses/<int:course_id>/reviews/<int:review_id>/', UpdateCourseReviewView.as_view(), name='update-course-review'),
     path('courses/<int:course_id>/reviews/<int:review_id>/delete/', DeleteCourseReviewView.as_view(), name='delete-course-review'),
+    
+    # Недавно приобретенные товары и курсы для отзывов
+    # GET /api/reviews/recent-purchases/
+    path('recent-purchases/', RecentPurchasesForReviewView.as_view(), name='recent-purchases-for-review'),
 ]
 

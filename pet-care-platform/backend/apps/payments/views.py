@@ -82,8 +82,21 @@ class PaymentCreateView(APIView):
         """
         if payment_type == 'shop_order':
             from apps.shop.models import Order
+            from django.utils import timezone
+            from datetime import timedelta
+            import logging
+            logger = logging.getLogger('apps.payments')
+            
             try:
                 order = Order.objects.get(id=object_id, user=user)
+                
+                # Если заказ просрочен - восстанавливаем его и устанавливаем новый срок
+                if order.status == 'expired':
+                    order.status = 'pending'
+                    order.expires_at = timezone.now() + timedelta(minutes=10)
+                    order.save()
+                    logger.info(f"Просроченный заказ восстановлен для оплаты: {order.id}")
+                
                 return order.total_amount
             except Order.DoesNotExist:
                 return None
@@ -155,6 +168,42 @@ class PaymentListView(APIView):
             'payments': serializer.data,
             'count': payments.count()
         }, status=status.HTTP_200_OK)
+
+
+class PaymentByOrderView(APIView):
+    """
+    Получение платежа по ID заказа.
+
+    GET /api/payments/by-order/{order_id}/
+    
+    Возвращает существующий платеж для заказа, если он существует и не завершен.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, order_id):
+        try:
+            # Ищем платеж для этого заказа
+            payment = Payment.objects.filter(
+                user=request.user,
+                payment_type='shop_order',
+                object_id=order_id,
+                status__in=['pending', 'processing']
+            ).order_by('-created_at').first()
+
+            if payment:
+                serializer = PaymentSerializer(payment)
+                return Response({'payment': serializer.data}, status=status.HTTP_200_OK)
+            else:
+                return Response(
+                    {'error': 'Платеж не найден для этого заказа'},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+        except Exception as e:
+            logger.error(f"Ошибка при получении платежа по заказу: {str(e)}")
+            return Response(
+                {'error': 'Внутренняя ошибка сервера'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
 
 class PaymentConfirmView(APIView):

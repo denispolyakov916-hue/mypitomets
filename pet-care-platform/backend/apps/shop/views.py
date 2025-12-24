@@ -24,6 +24,8 @@ from .serializers import (
     UnifiedOrderSerializer
 )
 from .services.reservation_service import ReservationService
+from .services import process_expired_orders
+from django.db.models import Q
 
 logger = logging.getLogger('apps.shop')
 
@@ -120,6 +122,42 @@ class ProductListView(APIView):
         search = request.query_params.get('search')
         if search:
             products = products.filter(name__icontains=search)
+
+        # Фильтр по рейтингу
+        min_rating = request.query_params.get('min_rating')
+        if min_rating:
+            try:
+                min_rating_val = float(min_rating)
+                products = products.filter(id__in=[
+                    p.id for p in products
+                    if p.get_average_rating() >= min_rating_val
+                ])
+            except ValueError:
+                pass
+
+        # Фильтр по популярности (количеству заказов)
+        min_orders = request.query_params.get('min_orders')
+        if min_orders:
+            try:
+                min_orders_val = int(min_orders)
+                products = products.filter(order_count__gte=min_orders_val)
+            except ValueError:
+                pass
+
+        # Сортировка по популярности или рейтингу
+        sort_by = request.query_params.get('sort_by')
+        if sort_by == 'rating':
+            # Сортировка по рейтингу (нужно реализовать отдельно, так как рейтинг вычисляется)
+            products = sorted(products, key=lambda p: p.get_average_rating(), reverse=True)
+        elif sort_by == 'popularity':
+            products = products.order_by('-order_count', '-id')
+        elif sort_by == 'price_asc':
+            products = products.order_by('price')
+        elif sort_by == 'price_desc':
+            products = products.order_by('-price')
+        else:
+            # По умолчанию сортировка по ID (новые товары)
+            products = products.order_by('-id')
         
         # Общее количество до пагинации
         total_count = products.count()
@@ -183,8 +221,9 @@ class ProductListView(APIView):
                     }
                     for pet in pets
                 ]
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning(f"Ошибка при получении данных о питомцах для пользователя {request.user.email}: {e}")
+                pets = []
         
         return Response({
             'products': products_data,
@@ -872,6 +911,11 @@ class OrderCreateView(APIView):
 
             total_amount = subtotal + delivery_cost
             
+            # Устанавливаем время истечения оплаты - 10 минут с момента создания заказа
+            from django.utils import timezone
+            from datetime import timedelta
+            expires_at = timezone.now() + timedelta(minutes=10)
+            
             order = Order.objects.create(
                 user=request.user,
                 subtotal_amount=subtotal,
@@ -882,6 +926,7 @@ class OrderCreateView(APIView):
                 delivery_type=delivery_type,
                 recipient_name=recipient_name or request.user.first_name,
                 recipient_phone=recipient_phone or request.user.phone,
+                expires_at=expires_at,
             )
             
             # Создание элементов заказа и уменьшение остатков
@@ -939,6 +984,9 @@ class OrderDetailView(APIView):
     permission_classes = [IsAuthenticated]
     
     def get(self, request, order_id):
+        # Проверяем и обрабатываем просроченные заказы перед получением заказа
+        process_expired_orders()
+        
         try:
             order = Order.objects.prefetch_related(
                 'items__product', 
@@ -948,6 +996,9 @@ class OrderDetailView(APIView):
                 id=order_id,
                 user=request.user
             )
+            
+            # Обновляем заказ, если он был просрочен
+            order.refresh_from_db()
         except Order.DoesNotExist:
             return Response(
                 {'error': 'Заказ не найден'},
@@ -979,17 +1030,7 @@ class OrderHistoryView(APIView):
         from datetime import timedelta
         from django.utils import timezone
         
-        # Отмена неоплаченных заказов старше 10 минут
-        ten_minutes_ago = timezone.now() - timedelta(minutes=10)
-        expired_orders = Order.objects.filter(
-            user=request.user,
-            status='pending',
-            created_at__lt=ten_minutes_ago
-        )
-        
-        if expired_orders.exists():
-            expired_orders.update(status='cancelled')
-            logger.info(f"Отменено {expired_orders.count()} неоплаченных заказов пользователя {request.user.email}")
+        # Обработка просроченных заказов выполняется в process_expired_orders()
         
         orders = Order.objects.filter(user=request.user).prefetch_related('items')
         
@@ -1349,11 +1390,12 @@ class UnifiedCheckoutView(APIView):
 
         except Exception as e:
             # При ошибке отменить резервирования
+            logger.error(f"Ошибка при оформлении заказа для пользователя {request.user.email}: {e}")
             if 'reservations' in locals():
                 try:
                     ReservationService.cancel_reservations(reservations)
                 except Exception as cancel_error:
-                    logger.error(f"Ошибка при отмене резервирований: {cancel_error}")
+                    logger.error(f"Ошибка при отмене резервирований для пользователя {request.user.email}: {cancel_error}")
             
             # Логирование ошибки для отладки
             logger.error(f"Ошибка при создании заказа и платежа: {str(e)}", exc_info=True)
@@ -1392,12 +1434,18 @@ class UnifiedCheckoutView(APIView):
                 # Для других типов доставки адрес должен быть передан (проверено в валидации)
                 shipping_address = shipping_address or ''
             
+            # Устанавливаем время истечения оплаты - 10 минут с момента создания заказа
+            from django.utils import timezone
+            from datetime import timedelta
+            expires_at = timezone.now() + timedelta(minutes=10)
+            
             order = Order.objects.create(
                 user=cart.user,
                 delivery_type=delivery_type,
                 address_id=data.get('address_id'),
                 shipping_address=shipping_address,
-                total_amount=0  # Рассчитается ниже
+                total_amount=0,  # Рассчитается ниже
+                expires_at=expires_at,
             )
 
             # Добавить элементы заказа для товаров
@@ -1494,3 +1542,335 @@ class UnifiedCheckoutView(APIView):
         """Рассчитать стоимость доставки."""
         costs = {'standard': 300, 'express': 600, 'pickup': 0}
         return costs.get(delivery_type, 300)
+
+
+class FrequentlyBoughtTogetherView(APIView):
+    """
+    Рекомендации "Часто покупают вместе".
+
+    GET /api/shop/products/{product_id}/frequently-bought/
+
+    Возвращает товары, которые часто покупают вместе с указанным товаром.
+    """
+
+    permission_classes = [AllowAny]
+
+    def get(self, request, product_id):
+        try:
+            # Получить основной товар
+            product = Product.objects.get(id=product_id, in_stock=True)
+        except Product.DoesNotExist:
+            return Response(
+                {'error': 'Товар не найден'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        # Найти заказы, содержащие этот товар
+        from django.db.models import Count
+        orders_with_product = OrderItem.objects.filter(
+            product_id=product_id,
+            order__status__in=['processing', 'shipped', 'delivered']
+        ).values_list('order_id', flat=True)
+
+        if not orders_with_product:
+            return Response({
+                'product': product.to_dict(),
+                'recommendations': []
+            })
+
+        # Найти другие товары из этих заказов
+        related_products = OrderItem.objects.filter(
+            order_id__in=orders_with_product,
+            product__isnull=False
+        ).exclude(
+            product_id=product_id
+        ).values(
+            'product_id',
+            'product__name',
+            'product__price',
+            'product__discount_percent',
+            'product__main_image',
+            'product__animal',
+            'product__category'
+        ).annotate(
+            frequency=Count('product_id')
+        ).order_by('-frequency')[:6]  # Топ 6 рекомендаций
+
+        # Формируем данные рекомендаций
+        recommendations = []
+        for item in related_products:
+            discounted_price = float(item['product__price']) * (100 - item['product__discount_percent']) / 100
+
+            recommendations.append({
+                'id': item['product_id'],
+                'name': item['product__name'],
+                'price': float(item['product__price']),
+                'discount_percent': item['product__discount_percent'],
+                'discounted_price': round(discounted_price, 2),
+                'main_image': item['product__main_image'],
+                'animal': item['product__animal'],
+                'category': item['product__category'],
+                'frequency': item['frequency']  # Как часто покупают вместе
+            })
+
+        return Response({
+            'product': product.to_dict(),
+            'recommendations': recommendations
+        })
+
+
+class PersonalRecommendationsView(APIView):
+    """
+    Персональные рекомендации товаров на основе питомцев пользователя.
+
+    GET /api/shop/personal-recommendations/
+
+    Возвращает персонализированные рекомендации товаров на основе:
+    - Видов питомцев пользователя
+    - Любимых продуктов и аллергий
+    - Истории покупок
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+
+        # Получаем питомцев пользователя
+        try:
+            from apps.pets.models import Pet
+            user_pets = Pet.objects.filter(owner=user)
+        except:
+            user_pets = []
+
+        if not user_pets.exists():
+            return Response({
+                'recommendations': [],
+                'message': 'Добавьте профили питомцев для персональных рекомендаций'
+            })
+
+        recommendations = []
+        seen_product_ids = set()
+
+        # Для каждого питомца формируем рекомендации
+        for pet in user_pets:
+            pet_recommendations = self.get_recommendations_for_pet(pet, seen_product_ids)
+            recommendations.extend(pet_recommendations)
+            seen_product_ids.update([r['id'] for r in pet_recommendations])
+
+        # Ограничиваем количество рекомендаций
+        recommendations = recommendations[:12]
+
+        return Response({
+            'recommendations': recommendations,
+            'pets_count': user_pets.count()
+        })
+
+    def get_recommendations_for_pet(self, pet, seen_product_ids):
+        """Получить рекомендации для конкретного питомца."""
+        recommendations = []
+
+        # Маппинг видов питомцев на типы товаров
+        species_to_animal = {
+            'dog': 'dog',
+            'cat': 'cat',
+        }
+
+        animal = species_to_animal.get(pet.species)
+        if not animal:
+            return recommendations
+
+        # Базовый queryset товаров для этого вида животного
+        base_products = Product.objects.filter(
+            animal=animal,
+            price__gt=0,
+            stock_count__gt=0,
+            in_stock=True
+        ).exclude(id__in=seen_product_ids)
+
+        # 1. Рекомендации по любимым продуктам
+        favorite_based = self.get_favorite_based_recommendations(pet, base_products)
+        recommendations.extend(favorite_based)
+
+        # 2. Рекомендации по истории покупок пользователя
+        history_based = self.get_history_based_recommendations(pet.owner, animal, base_products.exclude(id__in=[r['id'] for r in recommendations]))
+        recommendations.extend(history_based)
+
+        # 3. Популярные товары для этого вида животного
+        popular_based = self.get_popular_recommendations(animal, base_products.exclude(id__in=[r['id'] for r in recommendations]))
+        recommendations.extend(popular_based)
+
+        return recommendations[:4]  # Максимум 4 рекомендации на питомца
+
+    def get_favorite_based_recommendations(self, pet, base_products):
+        """Рекомендации на основе любимых продуктов питомца."""
+        if not pet.favorite_foods:
+            return []
+
+        recommendations = []
+        favorite_keywords = [food.lower() for food in pet.favorite_foods]
+
+        for product in base_products:
+            product_text = (product.name + ' ' + (product.description or '')).lower()
+            if any(keyword in product_text for keyword in favorite_keywords):
+                recommendations.append(product.to_dict())
+                if len(recommendations) >= 2:  # Максимум 2 рекомендации по любимым продуктам
+                    break
+
+        return recommendations
+
+    def get_history_based_recommendations(self, user, animal, base_products):
+        """Рекомендации на основе истории покупок пользователя."""
+        # Получаем товары, которые пользователь уже покупал
+        user_orders = Order.objects.filter(
+            user=user,
+            status__in=['processing', 'shipped', 'delivered']
+        )
+
+        purchased_product_ids = set()
+        for order in user_orders:
+            for item in order.items.all():
+                if item.product_id:
+                    purchased_product_ids.add(item.product_id)
+
+        if not purchased_product_ids:
+            return []
+
+        # Ищем товары, похожие на купленные (по категории, бренду)
+        purchased_products = Product.objects.filter(id__in=purchased_product_ids)
+
+        similar_products = []
+        for purchased_product in purchased_products:
+            # Товары той же категории и бренда
+            similar = base_products.filter(
+                category=purchased_product.category,
+                vendor=purchased_product.vendor
+            ).exclude(id__in=purchased_product_ids)[:3]
+
+            for product in similar:
+                if product.id not in [p['id'] for p in similar_products]:
+                    similar_products.append(product.to_dict())
+                    if len(similar_products) >= 3:
+                        break
+            if len(similar_products) >= 3:
+                break
+
+        return similar_products[:2]  # Максимум 2 рекомендации по истории
+
+    def get_popular_recommendations(self, animal, base_products):
+        """Популярные товары для вида животного."""
+        popular_products = base_products.order_by('-order_count', '-id')[:4]
+        return [product.to_dict() for product in popular_products]
+
+
+class ReturnCreateView(APIView):
+    """
+    Создание запроса на возврат товара.
+
+    POST /api/shop/returns/
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        data = request.data
+
+        # Валидация данных
+        required_fields = ['order_item_id', 'quantity', 'reason']
+        for field in required_fields:
+            if field not in data:
+                return Response(
+                    {'error': f'Поле {field} обязательно'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+        try:
+            order_item = OrderItem.objects.get(
+                id=data['order_item_id'],
+                order__user=request.user,
+                product__isnull=False  # Только товары, не курсы
+            )
+        except OrderItem.DoesNotExist:
+            return Response(
+                {'error': 'Элемент заказа не найден'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        # Проверка статуса заказа - возврат возможен только для доставленных заказов
+        if order_item.order.status not in ['delivered']:
+            return Response(
+                {'error': 'Возврат возможен только для доставленных заказов'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Проверка количества
+        if data['quantity'] > order_item.quantity:
+            return Response(
+                {'error': 'Количество для возврата не может превышать купленное'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Проверка, что возврат еще не запрошен
+        existing_return = Return.objects.filter(
+            order_item=order_item,
+            status__in=['requested', 'approved', 'received']
+        ).exists()
+
+        if existing_return:
+            return Response(
+                {'error': 'Для этого товара уже запрошен возврат'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Создание возврата
+        return_obj = Return.objects.create(
+            user=request.user,
+            order=order_item.order,
+            order_item=order_item,
+            quantity=data['quantity'],
+            reason=data['reason'],
+            description=data.get('description', ''),
+            refund_amount=(order_item.price * data['quantity'])
+        )
+
+        return Response({
+            'return': return_obj.to_dict()
+        }, status=status.HTTP_201_CREATED)
+
+
+class ReturnListView(APIView):
+    """
+    Список возвратов пользователя.
+
+    GET /api/shop/returns/
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        returns = Return.objects.filter(user=request.user).order_by('-requested_at')
+        return Response({
+            'returns': [return_obj.to_dict() for return_obj in returns]
+        })
+
+
+class ReturnDetailView(APIView):
+    """
+    Детали возврата.
+
+    GET /api/shop/returns/{return_id}/
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, return_id):
+        try:
+            return_obj = Return.objects.get(id=return_id, user=request.user)
+            return Response({
+                'return': return_obj.to_dict()
+            })
+        except Return.DoesNotExist:
+            return Response(
+                {'error': 'Возврат не найден'},
+                status=status.HTTP_404_NOT_FOUND
+            )

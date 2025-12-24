@@ -31,7 +31,7 @@ SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'django-insecure-change-in-productio
 
 DEBUG = os.getenv('DEBUG', 'True').lower() == 'true'
 
-ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1,0.0.0.0,192.168.1.139').split(',')
+ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1,0.0.0.0,192.168.1.139,192.168.1.11').split(',')
 
 # URL клиентского приложения для редиректов
 CLIENT_URL = os.getenv('CLIENT_URL', 'http://localhost:5173')
@@ -94,12 +94,12 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    
+
     # Сторонние
     'rest_framework',
     'rest_framework_simplejwt',
     'corsheaders',
-    
+
     # Приложения проекта
     'apps.users',
     'apps.pets',
@@ -108,6 +108,15 @@ INSTALLED_APPS = [
     'apps.payments',
     'apps.reviews',
 ]
+
+# =============================================================================
+# НАСТРОЙКИ АДМИНКИ
+# =============================================================================
+
+# Заголовок админки
+ADMIN_SITE_HEADER = 'Питомец+ - Администрирование'
+ADMIN_SITE_TITLE = 'Питомец+ Admin'
+ADMIN_INDEX_TITLE = 'Добро пожаловать в админку Питомец+'
 
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
@@ -247,9 +256,30 @@ SIMPLE_JWT = {
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
-    "http://192.168.1.139:5173",
-    "http://localhost:3000",  # Альтернативный порт для React
+    "http://192.168.1.139:5173",  # Ваш текущий IP
+    "http://192.168.1.11:5173",   # Ваш реальный IP адрес
+    "http://localhost:3000",      # Альтернативный порт для React
     "http://127.0.0.1:3000",
+    "http://192.168.1.11:3000",   # Ваш IP + порт 3000
+    "http://localhost:8080",      # Дополнительный порт для фронтенда
+    "http://127.0.0.1:8080",
+    "http://192.168.1.11:8080",   # Ваш IP + порт 8080
+    "http://localhost:4000",      # Еще один распространенный порт
+    "http://127.0.0.1:4000",
+    "http://192.168.1.11:4000",   # Ваш IP + порт 4000
+    "http://localhost:5000",      # Python dev server
+    "http://127.0.0.1:5000",
+    "http://192.168.1.11:5000",   # Ваш IP + порт 5000
+    "http://localhost:8001",      # Альтернативный порт для бэкенда
+    "http://127.0.0.1:8001",
+    "http://192.168.1.11:8001",   # Ваш IP + порт 8001
+    # HTTPS версии для локальной разработки
+    "https://localhost:5173",
+    "https://127.0.0.1:5173",
+    "https://192.168.1.11:5173",   # Ваш IP + HTTPS
+    "https://localhost:3000",
+    "https://127.0.0.1:3000",
+    "https://192.168.1.11:3000",   # Ваш IP + HTTPS
     # Добавьте здесь домены продакшена:
     # "https://yourdomain.com",
     # "https://www.yourdomain.com",
@@ -269,6 +299,9 @@ CORS_ALLOW_HEADERS = [
     'user-agent',
     'x-csrftoken',
     'x-requested-with',
+    'x-xsrf-token',
+    'cache-control',
+    'pragma',
 ]
 
 # =============================================================================

@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Shop API Test</title>
+</head>
+<body>
+    <h1>Shop API Test</h1>
+    <button onclick="testShopAPI()">Test Shop API</button>
+    <div id="result"></div>
+
+    <script>
+        async function testShopAPI() {
+            const result = document.getElementById('result');
+            result.innerHTML = 'Loading...';
+
+            try {
+                console.log('Making request to /api/shop/products/');
+                const response = await fetch('/api/shop/products/', {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                console.log('Response:', response);
+                const data = await response.json();
+                console.log('Data:', data);
+
+                if (response.ok) {
+                    result.innerHTML = `<h2>✅ Success!</h2><p>Found ${data.results ? data.results.length : 'unknown'} products</p>`;
+                } else {
+                    result.innerHTML = `<h2>❌ API Error</h2><p>${response.status}: ${JSON.stringify(data)}</p>`;
+                }
+            } catch (error) {
+                console.error('Request failed:', error);
+                result.innerHTML = `<h2>❌ Network Error</h2><p>${error.message}</p>`;
+            }
+        }
+    </script>
+</body>
+</html>
+

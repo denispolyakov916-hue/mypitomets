@@ -1,19 +1,29 @@
 /**
  * Компонент карточки товара
- * 
+ *
  * Отображает информацию о товаре для каталога магазина.
- * Включает функцию добавления в корзину.
- * 
+ * Автоматически определяет, добавлен ли товар в корзину.
+ *
+ * Поведение кнопки:
+ * - Товар НЕ в корзине: Синяя кнопка "Купить" (добавляет 1 единицу)
+ * - Товар В корзине: Серый блок с счетчиком количества + зеленая кнопка "В корзину"
+ *
+ * Логика счетчика:
+ * - "+" добавляет 1 товар (макс. остаток на складе)
+ * - "-" уменьшает на 1 (мин. 0 - товар удаляется из корзины)
+ * - При количестве 0 появляется кнопка "Купить"
+ *
  * Props:
  *   product: Объект товара с name, price, images и т.д.
- *   onAddToCart: Обработчик добавления в корзину
+ *   onAddToCart: Обработчик добавления в корзину (принимает product и quantity)
  *   isLoading: Состояние загрузки для добавления в корзину
  */
 
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { ButtonLoader } from './Loader'
 import Rating from './Rating'
+import { useCartStore } from '../store/cartStore'
 
 /**
  * Маппинг названий животных
@@ -50,30 +60,65 @@ const formatPrice = (price) => {
 
 /**
  * Компонент ProductCard
- * 
+ *
  * Отображает товар с:
  * - Изображением товара
  * - Названием и брендом
  * - Ценой
  * - Бейджами категорий
- * - Кнопкой добавления в корзину
+ * - Динамическими элементами управления:
+ *   - Товар не в корзине: Синяя кнопка "Купить"
+ *   - Товар в корзине: Серый счетчик с +/- + зеленая кнопка "В корзину"
  */
 function ProductCard({ product, onAddToCart, isLoading = false }) {
   const [isAdding, setIsAdding] = useState(false)
   const [imageError, setImageError] = useState(false)
+  const navigate = useNavigate()
+  const { getItemInCart, addItem, updateQuantity } = useCartStore()
+
+  // Проверяем, есть ли товар уже в корзине
+  const cartItem = getItemInCart(product.id)
+  const isInCart = !!cartItem
+  const cartQuantity = cartItem?.quantity || 0
   
   /**
-   * Обработчик клика по добавлению в корзину
+   * Обработчик клика по добавлению в корзину (добавляет 1 товар)
    */
   const handleAddToCart = async () => {
     if (isAdding || isLoading) return
-    
+
     setIsAdding(true)
     try {
-      await onAddToCart?.(product)
+      await onAddToCart?.(product, 1)
+      // После добавления товар будет в корзине, isInCart автоматически обновится
     } finally {
       setIsAdding(false)
     }
+  }
+
+  /**
+   * Обработчик изменения количества товара в корзине
+   */
+  const handleQuantityChange = async (delta) => {
+    const newQuantity = cartQuantity + delta
+
+    // Проверяем ограничения
+    if (delta > 0 && newQuantity > (product.stock_count || 999)) {
+      return // Не добавляем больше чем есть на складе
+    }
+    if (newQuantity < 0) {
+      return // Не уменьшаем ниже 0
+    }
+
+    // Используем updateQuantity для изменения количества (включая удаление при 0)
+    await updateQuantity(product.id, newQuantity)
+  }
+
+  /**
+   * Обработчик клика по кнопке "К корзине"
+   */
+  const handleGoToCart = () => {
+    navigate('/cart')
   }
   
   // Главное изображение товара
@@ -183,31 +228,77 @@ function ProductCard({ product, onAddToCart, isLoading = false }) {
               </span>
             )}
           </div>
-          <button
-            onClick={handleAddToCart}
-            disabled={isAdding || isLoading || product.stock_count <= 0}
-            className={`text-sm py-2 px-3 rounded-lg flex items-center gap-1.5 transition-colors ${
-              product.stock_count <= 0
-                ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
-                : 'bg-primary-600 hover:bg-primary-700 text-white'
-            }`}
-          >
-            {isAdding ? (
-              <>
-                <ButtonLoader />
-                <span>...</span>
-              </>
-            ) : product.stock_count <= 0 ? (
-              'Нет'
-            ) : (
-              <>
+
+          {/* Управление количеством и кнопка корзины */}
+          {isInCart ? (
+            /* Товар в корзине - серый счетчик и зеленая кнопка */
+            <div className="flex items-center gap-2">
+              {/* Серый блок с управлением количеством */}
+              <div className="flex items-center bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors border border-gray-200">
+                <button
+                  onClick={() => handleQuantityChange(-1)}
+                  className="w-8 h-8 flex items-center justify-center hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed rounded-l-lg"
+                  title="Уменьшить количество"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
+                  </svg>
+                </button>
+                <span className="px-3 py-2 text-sm font-medium min-w-[2rem] text-center">
+                  {cartQuantity}
+                </span>
+                <button
+                  onClick={() => handleQuantityChange(1)}
+                  disabled={cartQuantity >= (product.stock_count || 999)}
+                  className="w-8 h-8 flex items-center justify-center hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed rounded-r-lg"
+                  title="Увеличить количество"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                </button>
+              </div>
+
+              {/* Зеленая кнопка "В корзину" */}
+              <button
+                onClick={handleGoToCart}
+                className="text-sm py-2 px-3 bg-green-600 hover:bg-green-700 text-white rounded-lg flex items-center gap-1.5 transition-colors"
+                title="Перейти в корзину"
+              >
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
                 </svg>
                 В корзину
-              </>
-            )}
-          </button>
+              </button>
+            </div>
+          ) : (
+            /* Товар не в корзине - синяя кнопка "Купить" */
+            <button
+              onClick={handleAddToCart}
+              disabled={isAdding || isLoading || product.stock_count <= 0}
+              className={`text-sm py-2 px-4 rounded-lg flex items-center gap-1.5 transition-colors ${
+                product.stock_count <= 0
+                  ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                  : 'bg-primary-600 hover:bg-primary-700 text-white'
+              }`}
+            >
+              {isAdding ? (
+                <>
+                  <ButtonLoader />
+                  <span>Добавление...</span>
+                </>
+              ) : product.stock_count <= 0 ? (
+                'Нет в наличии'
+              ) : (
+                <>
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+                  </svg>
+                  Купить
+                </>
+              )}
+            </button>
+          )}
         </div>
       </div>
     </div>

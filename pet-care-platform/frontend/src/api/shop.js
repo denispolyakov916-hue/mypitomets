@@ -40,7 +40,7 @@ export const getProducts = async (filters = {}) => {
   const params = new URLSearchParams()
   
   // Добавляем только непустые фильтры
-  const filterKeys = ['animal', 'pet_id', 'category', 'subcategory', 'vendor', 'min_price', 'max_price', 'in_stock', 'has_discount', 'search', 'page', 'per_page']
+  const filterKeys = ['animal', 'pet_id', 'category', 'subcategory', 'vendor', 'min_price', 'max_price', 'in_stock', 'has_discount', 'min_rating', 'min_orders', 'sort_by', 'search', 'page', 'per_page']
   
   filterKeys.forEach(key => {
     if (filters[key]) {
@@ -56,12 +56,31 @@ export const getProducts = async (filters = {}) => {
 
 /**
  * Получение деталей одного товара
- * 
+ *
  * @param {number} productId - Уникальный идентификатор товара
  * @returns {Promise<Object>} Данные товара
  */
 export const getProduct = async (productId) => {
   return await api.get(`/shop/products/${productId}/`)
+}
+
+/**
+ * Получение рекомендаций "Часто покупают вместе"
+ *
+ * @param {number} productId - Уникальный идентификатор товара
+ * @returns {Promise<Object>} Рекомендации товаров
+ */
+export const getFrequentlyBoughtTogether = async (productId) => {
+  return await api.get(`/shop/products/${productId}/frequently-bought/`)
+}
+
+/**
+ * Получение персональных рекомендаций товаров
+ *
+ * @returns {Promise<Object>} Персональные рекомендации на основе питомцев пользователя
+ */
+export const getPersonalRecommendations = async () => {
+  return await api.get('/shop/personal-recommendations/')
 }
 
 // =============================================================================
@@ -320,6 +339,43 @@ export const submitUnifiedCheckout = async (checkoutData) => {
  */
 export const cancelReservation = async (reservationId) => {
   return await api.delete(`/checkout/reservation/${reservationId}/`)
+}
+
+// =============================================================================
+// ВОЗВРАТЫ
+// =============================================================================
+
+/**
+ * Создание запроса на возврат товара
+ *
+ * @param {Object} returnData - Данные возврата
+ * @param {number} returnData.order_item_id - ID элемента заказа
+ * @param {number} returnData.quantity - Количество для возврата
+ * @param {string} returnData.reason - Причина возврата
+ * @param {string} [returnData.description] - Описание
+ * @returns {Promise<Object>} Данные созданного возврата
+ */
+export const createReturn = async (returnData) => {
+  return await api.post('/shop/returns/', returnData)
+}
+
+/**
+ * Получение списка возвратов пользователя
+ *
+ * @returns {Promise<Object>} Список возвратов
+ */
+export const getReturns = async () => {
+  return await api.get('/shop/returns/list/')
+}
+
+/**
+ * Получение деталей возврата
+ *
+ * @param {string} returnId - ID возврата
+ * @returns {Promise<Object>} Детали возврата
+ */
+export const getReturn = async (returnId) => {
+  return await api.get(`/shop/returns/${returnId}/`)
 }
 
 // =============================================================================

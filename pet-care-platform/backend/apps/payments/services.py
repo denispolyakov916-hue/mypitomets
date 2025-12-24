@@ -9,6 +9,7 @@ from decimal import Decimal
 from typing import Optional, Dict, Any
 from django.conf import settings
 from django.utils import timezone
+from django.db import transaction
 from django.db.models import Sum
 
 from .models import Payment
@@ -239,7 +240,9 @@ class PaymentService:
     @staticmethod
     def _activate_shop_order(payment: Payment):
         """Активация заказа товаров после оплаты."""
-        from apps.shop.models import Order
+        from apps.shop.models import Order, OrderItem, Product
+        from django.db import transaction
+        from datetime import timedelta
 
         if not payment.user:
             logger.warning(f"Невозможно активировать заказ: пользователь удалён для платежа {payment.id}")
@@ -247,9 +250,41 @@ class PaymentService:
 
         try:
             order = Order.objects.get(id=payment.object_id, user=payment.user)
-            order.status = 'processing'
-            order.save()
-            logger.info(f"Заказ активирован после оплаты: {order.id}")
+
+            # Используем транзакцию для атомарности операции
+            with transaction.atomic():
+                # Если заказ был просрочен - возвращаем его в pending и устанавливаем новый срок
+                if order.status == 'expired':
+                    order.status = 'pending'
+                    order.expires_at = timezone.now() + timedelta(minutes=10)
+                    logger.info(f"Просроченный заказ восстановлен: {order.id}")
+                
+                # Списываем товары со склада (только если еще не списаны)
+                # Для просроченных заказов товары уже возвращены на склад, так что списываем снова
+                for order_item in order.items.filter(product__isnull=False):
+                    product = order_item.product
+                    if product.stock_count >= order_item.quantity:
+                        product.stock_count -= order_item.quantity
+                        # Если товаров не осталось, устанавливаем in_stock=False
+                        if product.stock_count == 0:
+                            product.in_stock = False
+                        product.save()
+                        logger.info(f"Списан товар: {product.name}, количество: {order_item.quantity}, остаток: {product.stock_count}")
+                    else:
+                        # Это не должно происходить, если проверки были сделаны при создании заказа
+                        logger.error(f"Недостаточно товара на складе: {product.name}, требуется: {order_item.quantity}, доступно: {product.stock_count}")
+
+                # Обновляем счетчики популярности товаров
+                for order_item in order.items.filter(product__isnull=False):
+                    product = order_item.product
+                    product.order_count += order_item.quantity
+                    product.save(update_fields=['order_count'])
+
+                order.status = 'processing'
+                order.expires_at = None  # Убираем срок истечения после успешной оплаты
+                order.save()
+                logger.info(f"Заказ активирован после оплаты и товары списаны: {order.id}")
+
         except Order.DoesNotExist:
             logger.error(f"Заказ не найден для платежа: {payment.id}")
 
@@ -281,6 +316,11 @@ class PaymentService:
                 pet=pet,
                 defaults={'progress': 0}
             )
+
+            # Обновляем счетчик популярности курса
+            course.order_count += 1
+            course.save(update_fields=['order_count'])
+
             pet_info = f" для {pet.name}" if pet else ""
             logger.info(f"Доступ к курсу предоставлен: user={payment.user.email}, course={course.title}{pet_info}")
         except Course.DoesNotExist:
@@ -310,9 +350,26 @@ class PaymentService:
         if products_order_id:
             try:
                 order = Order.objects.get(id=products_order_id, user=payment.user)
-                order.status = 'processing'
-                order.save()
-                logger.info(f"Заказ товаров активирован в unified checkout: {order.id}")
+
+                # Используем транзакцию для атомарности операции
+                with transaction.atomic():
+                    # Списываем товары со склада
+                    for order_item in order.items.filter(product__isnull=False):
+                        product = order_item.product
+                        if product.stock_count >= order_item.quantity:
+                            product.stock_count -= order_item.quantity
+                            # Если товаров не осталось, устанавливаем in_stock=False
+                            if product.stock_count == 0:
+                                product.in_stock = False
+                            product.save()
+                            logger.info(f"Списан товар в unified checkout: {product.name}, количество: {order_item.quantity}, остаток: {product.stock_count}")
+                        else:
+                            # Это не должно происходить, если проверки были сделаны при создании заказа
+                            logger.error(f"Недостаточно товара на складе в unified checkout: {product.name}, требуется: {order_item.quantity}, доступно: {product.stock_count}")
+
+                    order.status = 'processing'
+                    order.save()
+                    logger.info(f"Заказ товаров активирован в unified checkout и товары списаны: {order.id}")
             except Order.DoesNotExist:
                 logger.error(f"Заказ товаров не найден для unified checkout платежа: {payment.id}")
 

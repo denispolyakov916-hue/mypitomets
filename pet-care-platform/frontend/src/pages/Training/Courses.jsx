@@ -392,7 +392,7 @@ function Courses() {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const { isAuthenticated } = useAuthStore()
-  const { addCourse, error: cartError } = useCartStore()
+  const { addCourse, error: cartError, getCourseInCart, loadCart } = useCartStore()
   const { success, error: showError } = useToastStore()
   const { pets } = usePets()
 
@@ -518,6 +518,13 @@ function Courses() {
       fetchUserCourses()
     }
   }, [isAuthenticated])
+
+  // Загрузка корзины при монтировании для определения состояния курсов
+  useEffect(() => {
+    if (isAuthenticated) {
+      loadCart()
+    }
+  }, [isAuthenticated, loadCart])
   
   /**
    * Загрузка приобретённых курсов пользователя
@@ -775,6 +782,7 @@ function Courses() {
                     key={course.id}
                     course={course}
                     isOwned={ownedCourseIds.has(course.id)}
+                    isInCart={!!getCourseInCart(course.id)}
                     onAddToCart={handleAddToCart}
                     onEnrollFree={handleEnrollFree}
                     isLoading={addingCourseId === course.id}

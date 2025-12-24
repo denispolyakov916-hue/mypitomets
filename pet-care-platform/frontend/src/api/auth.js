@@ -105,6 +105,16 @@ export const getProfile = async () => {
 }
 
 /**
+ * Обновление профиля пользователя
+ *
+ * @param {Object} profileData - Данные для обновления профиля
+ * @returns {Promise<Object>} Обновлённые данные профиля
+ */
+export const updateProfile = async (profileData) => {
+  return await api.put('/users/profile/', profileData)
+}
+
+/**
  * Обновление access токена используя refresh токен из cookie
  * 
  * Вызывается автоматически интерцептором при 401 ошибках.
