@@ -160,11 +160,15 @@ class CartItemAddSerializer(serializers.Serializer):
             value (str): ID питомца
 
         Возвращает:
-            str: Валидированный ID питомца
+            str: Валидированный ID питомца или None для пустых значений
 
         Исключения:
             ValidationError: Если ID не валидный UUID
         """
+        # Пустые значения разрешены (allow_blank=True)
+        if not value or not value.strip():
+            return None
+            
         import uuid
         try:
             uuid.UUID(value)
