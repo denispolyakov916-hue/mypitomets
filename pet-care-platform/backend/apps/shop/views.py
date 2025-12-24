@@ -840,11 +840,46 @@ class OrderCreateView(APIView):
         }, status=status.HTTP_201_CREATED)
 
 
+class OrderDetailView(APIView):
+    """
+    Детали одного заказа.
+    
+    GET /api/shop/orders/{order_id}/
+    """
+    
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request, order_id):
+        try:
+            order = Order.objects.prefetch_related(
+                'items__product', 
+                'items__course', 
+                'items__pet'
+            ).select_related('address').get(
+                id=order_id,
+                user=request.user
+            )
+        except Order.DoesNotExist:
+            return Response(
+                {'error': 'Заказ не найден'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        return Response({
+            'order': order.to_dict()
+        }, status=status.HTTP_200_OK)
+
+
 class OrderHistoryView(APIView):
     """
     История заказов.
     
     GET /api/shop/orders/history/
+    
+    Параметры:
+        status: фильтрация по статусу (pending, processing, shipped, delivered, cancelled)
+        page: номер страницы (по умолчанию 1)
+        per_page: товаров на странице (по умолчанию 20)
     
     Автоматически отменяет неоплаченные заказы старше 10 минут.
     """
@@ -868,11 +903,38 @@ class OrderHistoryView(APIView):
             logger.info(f"Отменено {expired_orders.count()} неоплаченных заказов пользователя {request.user.email}")
         
         orders = Order.objects.filter(user=request.user).prefetch_related('items')
-        orders_data = [order.to_dict() for order in orders]
+        
+        # Фильтрация по статусу
+        status_filter = request.query_params.get('status')
+        if status_filter:
+            valid_statuses = [choice[0] for choice in Order.STATUS_CHOICES]
+            if status_filter in valid_statuses:
+                orders = orders.filter(status=status_filter)
+        
+        # Общее количество до пагинации
+        total = orders.count()
+        
+        # Пагинация
+        try:
+            page = max(1, int(request.query_params.get('page', 1)))
+            per_page = min(100, max(1, int(request.query_params.get('per_page', 20))))
+        except ValueError:
+            page = 1
+            per_page = 20
+        
+        start = (page - 1) * per_page
+        end = start + per_page
+        orders_page = orders[start:end]
+        
+        orders_data = [order.to_dict() for order in orders_page]
         
         return Response({
             'orders': orders_data,
-            'count': len(orders_data)
+            'count': len(orders_data),
+            'total': total,
+            'page': page,
+            'per_page': per_page,
+            'total_pages': (total + per_page - 1) // per_page if total > 0 else 0
         }, status=status.HTTP_200_OK)
 
 
