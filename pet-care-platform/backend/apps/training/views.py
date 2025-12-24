@@ -244,14 +244,18 @@ class CourseDetailView(APIView):
             )
         
         # Используем detailed=True для полной информации
-        response_data = {'course': course.to_dict(detailed=True)}
+        course_data = course.to_dict(detailed=True)
+        response_data = {'course': course_data}
         
         # Проверка владения для авторизованных пользователей
         if request.user.is_authenticated:
-            response_data['is_owned'] = UserCourse.objects.filter(
+            is_owned = UserCourse.objects.filter(
                 user=request.user,
                 course=course
             ).exists()
+            response_data['is_owned'] = is_owned
+            # Добавляем is_purchased для совместимости с фронтендом
+            response_data['course']['is_purchased'] = is_owned
         
         return Response(response_data, status=status.HTTP_200_OK)
 

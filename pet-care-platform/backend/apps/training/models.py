@@ -257,6 +257,26 @@ class Course(models.Model):
         """Получить название типа животного."""
         return dict(self.PET_TYPE_CHOICES).get(self.pet_type, self.pet_type)
     
+    def get_average_rating(self):
+        """Средний рейтинг курса."""
+        from apps.reviews.models import Review
+        reviews = Review.objects.filter(
+            course=self,
+            is_approved=True
+        )
+        if not reviews.exists():
+            return 0.0
+        from django.db.models import Avg
+        return reviews.aggregate(Avg('rating'))['rating__avg'] or 0.0
+    
+    def get_reviews_count(self):
+        """Количество одобренных отзывов."""
+        from apps.reviews.models import Review
+        return Review.objects.filter(
+            course=self,
+            is_approved=True
+        ).count()
+    
     def to_dict(self, detailed=False):
         """Сериализация для API."""
         data = {
@@ -274,7 +294,9 @@ class Course(models.Model):
             'level_display': self.get_level_display_name(),
             'format_type': self.format_type,
             'format_display': self.get_format_display_name(),
-            'is_free': self.is_free
+            'is_free': self.is_free,
+            'rating': round(self.get_average_rating(), 1),
+            'reviews_count': self.get_reviews_count(),
         }
         
         if detailed:

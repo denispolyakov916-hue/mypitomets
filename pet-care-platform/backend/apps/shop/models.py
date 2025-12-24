@@ -150,6 +150,26 @@ class Product(models.Model):
             return self.price * (100 - self.discount_percent) / 100
         return self.price
     
+    def get_average_rating(self):
+        """Средний рейтинг товара."""
+        from apps.reviews.models import Review
+        reviews = Review.objects.filter(
+            product=self,
+            is_approved=True
+        )
+        if not reviews.exists():
+            return 0.0
+        from django.db.models import Avg
+        return reviews.aggregate(Avg('rating'))['rating__avg'] or 0.0
+    
+    def get_reviews_count(self):
+        """Количество одобренных отзывов."""
+        from apps.reviews.models import Review
+        return Review.objects.filter(
+            product=self,
+            is_approved=True
+        ).count()
+    
     def to_dict(self):
         """Сериализация для API."""
         return {
@@ -172,6 +192,8 @@ class Product(models.Model):
             'category_name': self.category_name,
             'in_stock': self.in_stock,
             'stock_count': self.stock_count,
+            'rating': round(self.get_average_rating(), 1),
+            'reviews_count': self.get_reviews_count(),
         }
 
 
