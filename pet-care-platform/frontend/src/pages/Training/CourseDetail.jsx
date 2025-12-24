@@ -12,8 +12,8 @@
  */
 
 import { useState, useEffect } from 'react'
-import { useParams, useNavigate, Link } from 'react-router-dom'
-import { getCourse } from '../../api/courses'
+import { useParams, useNavigate, Link, useSearchParams } from 'react-router-dom'
+import { getCourse, enrollFreeCourse } from '../../api/courses'
 import { useAuthStore } from '../../store/authStore'
 import { useCartStore } from '../../store/cartStore'
 import { useToastStore } from '../../store/toastStore'
@@ -112,6 +112,7 @@ const categoryLabels = {
 function CourseDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const { isAuthenticated } = useAuthStore()
   const { addCourse, error: cartError } = useCartStore()
   const { success, error: showError } = useToastStore()
@@ -124,12 +125,37 @@ function CourseDetail() {
   const [isAddingToCart, setIsAddingToCart] = useState(false)
   const [isTryingFree, setIsTryingFree] = useState(false)
   
+  // Состояние модального окна для бесплатных курсов
+  const [showFreeEnrollModal, setShowFreeEnrollModal] = useState(false)
+  const [freeEnrollAccepted, setFreeEnrollAccepted] = useState(false)
+  const [isEnrolling, setIsEnrolling] = useState(false)
+  const [selectedPetForEnroll, setSelectedPetForEnroll] = useState(null)
+  
   /**
    * Загрузка данных курса
    */
   useEffect(() => {
     fetchCourse()
   }, [id])
+  
+  /**
+   * Автоматическое открытие модального окна записи для бесплатных курсов
+   * при переходе с параметром ?enroll=free
+   */
+  useEffect(() => {
+    const enrollParam = searchParams.get('enroll')
+    if (enrollParam === 'free' && course && course.price === 0 && !isOwned) {
+      if (isAuthenticated) {
+        setShowFreeEnrollModal(true)
+        // Удаляем параметр из URL
+        searchParams.delete('enroll')
+        setSearchParams(searchParams, { replace: true })
+      } else {
+        // Перенаправляем на логин с сохранением URL для возврата
+        navigate('/login', { state: { from: `/courses/${id}?enroll=free` } })
+      }
+    }
+  }, [course, isOwned, isAuthenticated, searchParams, setSearchParams, navigate, id])
   
   /**
    * Загрузка курса из API
@@ -221,6 +247,53 @@ function CourseDetail() {
       showError(errorMessage)
     } finally {
       setIsTryingFree(false)
+    }
+  }
+  
+  /**
+   * Открыть модальное окно для записи на бесплатный курс
+   */
+  const handleOpenFreeEnrollModal = () => {
+    if (!isAuthenticated) {
+      navigate('/login', { state: { from: `/courses/${id}` } })
+      return
+    }
+    
+    if (isOwned) {
+      return
+    }
+    
+    setShowFreeEnrollModal(true)
+    setFreeEnrollAccepted(false)
+  }
+  
+  /**
+   * Запись на бесплатный курс
+   */
+  const handleFreeEnroll = async () => {
+    if (!freeEnrollAccepted) {
+      showError('Необходимо согласиться с условиями использования')
+      return
+    }
+    
+    setIsEnrolling(true)
+    try {
+      const response = await enrollFreeCourse(course.id, true, selectedPetForEnroll)
+      
+      setIsOwned(true)
+      setShowFreeEnrollModal(false)
+      success(
+        `Вы успешно записались на курс "${course.title}"! Перейдите в профиль для начала обучения.`,
+        6000
+      )
+    } catch (err) {
+      const errorMessage = err.response?.data?.error || 
+                          err.response?.data?.message || 
+                          err.message || 
+                          'Не удалось записаться на курс'
+      showError(errorMessage)
+    } finally {
+      setIsEnrolling(false)
     }
   }
   
@@ -580,36 +653,47 @@ function CourseDetail() {
                 )}
                 
                 {/* Основная кнопка покупки/записи */}
-                <button
-                  onClick={handleAddToCart}
-                  disabled={isAddingToCart || isTryingFree}
-                  className={`w-full py-3 px-4 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 ${
-                    course.price === 0
-                      ? 'bg-green-600 hover:bg-green-700 text-white'
-                      : 'bg-primary-600 hover:bg-primary-700 text-white'
-                  }`}
-                >
-                  {isAddingToCart ? (
-                    <>
-                      <ButtonLoader />
-                      Добавление...
-                    </>
-                  ) : course.price > 0 ? (
-                    <>
-                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
-                      </svg>
-                      В корзину
-                    </>
-                  ) : (
-                    <>
-                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                      </svg>
-                      Записаться бесплатно
-                    </>
-                  )}
-                </button>
+                {course.price > 0 ? (
+                  <button
+                    onClick={handleAddToCart}
+                    disabled={isAddingToCart || isTryingFree}
+                    className="w-full py-3 px-4 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 bg-primary-600 hover:bg-primary-700 text-white"
+                  >
+                    {isAddingToCart ? (
+                      <>
+                        <ButtonLoader />
+                        Добавление...
+                      </>
+                    ) : (
+                      <>
+                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+                        </svg>
+                        В корзину
+                      </>
+                    )}
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleOpenFreeEnrollModal}
+                    disabled={isEnrolling}
+                    className="w-full py-3 px-4 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white"
+                  >
+                    {isEnrolling ? (
+                      <>
+                        <ButtonLoader />
+                        Запись...
+                      </>
+                    ) : (
+                      <>
+                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                        </svg>
+                        Записаться бесплатно
+                      </>
+                    )}
+                  </button>
+                )}
                 
                 {/* Информация о гарантиях */}
                 <div className="pt-4 border-t border-gray-200">
@@ -639,6 +723,120 @@ function CourseDetail() {
           </div>
         </div>
       </div>
+      
+      {/* Модальное окно для записи на бесплатный курс */}
+      {showFreeEnrollModal && (
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          <div className="flex min-h-full items-center justify-center p-4">
+            {/* Оверлей */}
+            <div 
+              className="fixed inset-0 bg-black/50 transition-opacity"
+              onClick={() => setShowFreeEnrollModal(false)}
+            />
+            
+            {/* Модальное окно */}
+            <div className="relative bg-white rounded-2xl shadow-xl max-w-lg w-full p-6 animate-fadeIn">
+              {/* Заголовок */}
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
+                  <span className="text-2xl">📚</span>
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-gray-900">
+                    Записаться на курс
+                  </h3>
+                  <p className="text-sm text-gray-500">
+                    {course?.title}
+                  </p>
+                </div>
+                <button
+                  onClick={() => setShowFreeEnrollModal(false)}
+                  className="ml-auto text-gray-400 hover:text-gray-600"
+                >
+                  <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              
+              {/* Выбор питомца (если есть совместимые) */}
+              {pets && pets.length > 0 && (
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Для какого питомца? (опционально)
+                  </label>
+                  <select
+                    value={selectedPetForEnroll || ''}
+                    onChange={(e) => setSelectedPetForEnroll(e.target.value || null)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  >
+                    <option value="">Не выбран</option>
+                    {pets
+                      .filter(pet => course?.pet_type === 'all' || pet.species === course?.pet_type)
+                      .map(pet => (
+                        <option key={pet.id} value={pet.id}>
+                          {pet.name} ({pet.species === 'dog' ? '🐕 Собака' : '🐱 Кошка'})
+                        </option>
+                      ))
+                    }
+                  </select>
+                </div>
+              )}
+              
+              {/* Условия использования */}
+              <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg mb-6">
+                <h4 className="font-medium text-amber-800 mb-2">Условия использования</h4>
+                <p className="text-sm text-amber-700 mb-4">
+                  Записываясь на курс, вы подтверждаете, что понимаете и соглашаетесь с тем, 
+                  что мы не гарантируем стопроцентного результата. Результаты обучения зависят от 
+                  индивидуальных особенностей питомца, усердия в выполнении рекомендаций и других факторов.
+                  Курс предназначен для личного использования и не подлежит передаче третьим лицам.
+                </p>
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={freeEnrollAccepted}
+                    onChange={(e) => setFreeEnrollAccepted(e.target.checked)}
+                    className="mt-0.5 w-5 h-5 text-green-600 border-gray-300 rounded focus:ring-green-500"
+                  />
+                  <span className="text-sm text-gray-700">
+                    Я принимаю условия использования и понимаю, что доступ предоставляется сразу после записи
+                  </span>
+                </label>
+              </div>
+              
+              {/* Кнопки */}
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowFreeEnrollModal(false)}
+                  className="flex-1 py-3 px-4 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  Отмена
+                </button>
+                <button
+                  onClick={handleFreeEnroll}
+                  disabled={!freeEnrollAccepted || isEnrolling}
+                  className="flex-1 py-3 px-4 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  {isEnrolling ? (
+                    <>
+                      <ButtonLoader />
+                      Запись...
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                      Записаться
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

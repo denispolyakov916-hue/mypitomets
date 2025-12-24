@@ -63,7 +63,7 @@ api.interceptors.request.use(
 
 /**
  * Интерцептор ответов
- * 
+ *
  * Обрабатывает:
  * - Успешные ответы: возвращает данные напрямую
  * - 401 ошибки: очищает состояние авторизации и перенаправляет на страницу входа
@@ -136,11 +136,11 @@ api.interceptors.response.use(
     }
     
     // Извлекаем сообщение об ошибке из ответа
-    const errorMessage = data?.error 
-      || data?.message 
-      || data?.detail 
+    const errorMessage = data?.error
+      || data?.message
+      || data?.detail
       || 'Произошла ошибка. Попробуйте позже.'
-    
+
     return Promise.reject({
       status,
       message: errorMessage,

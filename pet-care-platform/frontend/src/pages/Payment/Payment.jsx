@@ -8,7 +8,7 @@
 import { useState, useEffect } from 'react'
 import { useSearchParams, useNavigate, Link } from 'react-router-dom'
 import { useAuthStore } from '../../store/authStore'
-import { processPayment } from '../../api/payments'
+import { processPayment, confirmPayment, getPayment } from '../../api/payments'
 import { PageLoader, ButtonLoader } from '../../components/Loader'
 
 /**
@@ -31,8 +31,10 @@ function Payment() {
   const { isAuthenticated } = useAuthStore()
   
   const [isProcessing, setIsProcessing] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
   const [isPaid, setIsPaid] = useState(false)
   const [error, setError] = useState(null)
+  const [paymentInfo, setPaymentInfo] = useState(null)
   const [cardData, setCardData] = useState({
     card_number: '',
     cardholder_name: '',
@@ -41,20 +43,50 @@ function Payment() {
     cvv: ''
   })
   
+  const paymentId = searchParams.get('payment_id')
   const orderId = searchParams.get('order_id')
   const courseId = searchParams.get('course_id')
-  const type = searchParams.get('type') // 'shop_order', 'course'
-  const amount = parseFloat(searchParams.get('amount') || '0')
+  const type = searchParams.get('type') // 'shop_order', 'course', 'unified_checkout'
+  const amountParam = parseFloat(searchParams.get('amount') || '0')
+  
+  // Используем сумму из параметров или из загруженного платежа
+  const amount = paymentInfo?.amount || amountParam
   const isFree = amount === 0
   
   /**
-   * Проверка аутентификации
+   * Проверка аутентификации и загрузка информации о платеже
    */
   useEffect(() => {
     if (!isAuthenticated) {
       navigate('/login')
+      return
     }
-  }, [isAuthenticated])
+    
+    // Загружаем информацию о платеже, если передан payment_id
+    if (paymentId) {
+      loadPaymentInfo()
+    }
+  }, [isAuthenticated, paymentId])
+  
+  /**
+   * Загрузка информации о платеже
+   */
+  const loadPaymentInfo = async () => {
+    setIsLoading(true)
+    try {
+      const response = await getPayment(paymentId)
+      setPaymentInfo(response.payment)
+      
+      // Если платёж уже завершён, показываем успех
+      if (response.payment?.status === 'completed') {
+        setIsPaid(true)
+      }
+    } catch (err) {
+      setError('Не удалось загрузить информацию о платеже')
+    } finally {
+      setIsLoading(false)
+    }
+  }
   
   /**
    * Обработчик оплаты
@@ -64,14 +96,6 @@ function Payment() {
     setError(null)
     
     try {
-      // Определяем тип платежа и ID объекта
-      const paymentType = type === 'shop_order' ? 'shop_order' : 'course'
-      const objectId = orderId || courseId
-      
-      if (!objectId) {
-        throw new Error('Не указан ID заказа или курса')
-      }
-      
       // Для бесплатных заказов/курсов просто подтверждаем
       if (isFree) {
         setIsPaid(true)
@@ -79,35 +103,50 @@ function Payment() {
         
         // Через 3 секунды перенаправляем
         setTimeout(() => {
-          if (type === 'shop_order') {
-            navigate('/profile?tab=orders')
-          } else {
-            navigate('/profile?tab=courses')
-          }
+          navigateAfterPayment()
         }, 3000)
         return
       }
       
-      const paymentData = {
-        payment_type: paymentType,
-        object_id: objectId,
-        ...cardData
-      }
+      let response
       
-      const response = await processPayment(paymentData)
-      
-      if (response.success) {
-        setIsPaid(true)
-        // Перенаправление через 3 секунды
-        setTimeout(() => {
-          if (type === 'shop_order') {
-            navigate('/profile?tab=orders')
-          } else {
-            navigate('/profile?tab=courses')
-          }
-        }, 3000)
+      // Если есть payment_id - подтверждаем существующий платёж
+      if (paymentId) {
+        response = await confirmPayment(paymentId)
+        
+        if (response.payment?.status === 'completed' || response.message) {
+          setIsPaid(true)
+          setTimeout(() => {
+            navigateAfterPayment()
+          }, 3000)
+        } else {
+          setError('Платеж не прошел')
+        }
       } else {
-        setError('Платеж не прошел')
+        // Создаём новый платёж для order_id или course_id
+        const paymentType = type === 'shop_order' ? 'shop_order' : 'course'
+        const objectId = orderId || courseId
+        
+        if (!objectId) {
+          throw new Error('Не указан ID заказа или курса')
+        }
+        
+        const paymentData = {
+          payment_type: paymentType,
+          object_id: objectId,
+          ...cardData
+        }
+        
+        response = await processPayment(paymentData)
+        
+        if (response.success) {
+          setIsPaid(true)
+          setTimeout(() => {
+            navigateAfterPayment()
+          }, 3000)
+        } else {
+          setError('Платеж не прошел')
+        }
       }
     } catch (err) {
       setError(err.response?.data?.error || err.message || 'Ошибка при обработке платежа')
@@ -116,8 +155,26 @@ function Payment() {
     }
   }
   
+  /**
+   * Перенаправление после успешной оплаты
+   */
+  const navigateAfterPayment = () => {
+    // Для unified_checkout или если есть payment_id - всегда в заказы
+    if (paymentId || paymentInfo?.payment_type === 'unified_checkout') {
+      navigate('/profile?tab=orders')
+    } else if (type === 'shop_order') {
+      navigate('/profile?tab=orders')
+    } else {
+      navigate('/profile?tab=courses')
+    }
+  }
+  
   if (!isAuthenticated) {
     return null
+  }
+  
+  if (isLoading) {
+    return <PageLoader />
   }
   
   return (
@@ -157,6 +214,12 @@ function Payment() {
               </h2>
               
               <div className="space-y-3">
+                {paymentId && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Номер платежа:</span>
+                    <span className="text-gray-900 font-medium text-sm">#{paymentId.slice(0, 8)}...</span>
+                  </div>
+                )}
                 {orderId && (
                   <div className="flex justify-between">
                     <span className="text-gray-600">Номер заказа:</span>
@@ -166,7 +229,13 @@ function Payment() {
                 <div className="flex justify-between">
                   <span className="text-gray-600">Тип заказа:</span>
                   <span className="text-gray-900 font-medium">
-                    {type === 'shop_order' ? 'Товары' : courseId ? 'Курс' : 'Заказ'}
+                    {paymentInfo?.payment_type === 'unified_checkout' 
+                      ? 'Единый заказ' 
+                      : type === 'shop_order' 
+                        ? 'Товары' 
+                        : courseId 
+                          ? 'Курс' 
+                          : 'Заказ'}
                   </span>
                 </div>
                 {courseId && (
@@ -184,8 +253,19 @@ function Payment() {
               </div>
             </div>
             
+            {/* Информация о демо-режиме для payment_id */}
+            {!isFree && paymentId && (
+              <div className="card mb-6">
+                <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                  <p className="text-sm text-blue-800">
+                    💳 В демо-режиме платёж будет автоматически подтверждён
+                  </p>
+                </div>
+              </div>
+            )}
+            
             {/* Форма оплаты */}
-            {!isFree && (
+            {!isFree && !paymentId && (
               <div className="card mb-6">
                 <h2 className="text-xl font-semibold mb-4">Данные карты</h2>
                 
@@ -279,7 +359,7 @@ function Payment() {
             {/* Кнопка оплаты */}
             <button
               onClick={handlePayment}
-              disabled={isProcessing || (!isFree && (!cardData.card_number || !cardData.cardholder_name || !cardData.expiry_month || !cardData.expiry_year || !cardData.cvv))}
+              disabled={isProcessing || (!isFree && !paymentId && (!cardData.card_number || !cardData.cardholder_name || !cardData.expiry_month || !cardData.expiry_year || !cardData.cvv))}
               className="w-full btn-primary py-4 text-lg flex items-center justify-center gap-2"
             >
               {isProcessing ? (
@@ -300,7 +380,7 @@ function Payment() {
             </button>
             
             <Link
-              to={type === 'shop_order' ? '/cart' : courseId ? `/courses/${courseId}` : '/courses'}
+              to={paymentId ? '/cart' : type === 'shop_order' ? '/cart' : courseId ? `/courses/${courseId}` : '/courses'}
               className="block text-center text-sm text-gray-500 hover:text-gray-700 mt-4"
             >
               Отменить

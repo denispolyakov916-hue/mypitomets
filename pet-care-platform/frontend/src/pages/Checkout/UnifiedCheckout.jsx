@@ -2,11 +2,12 @@
  * Единый Checkout - страница оформления заказа
  * 
  * Позволяет оформить товары и курсы из корзины одним заказом.
+ * Поддерживает выборочное оформление через selected_items.
  * Включает резервирование товаров, выбор доставки и подтверждение условий.
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import { useNavigate, useLocation, Link } from 'react-router-dom'
 import { getUnifiedCheckout, submitUnifiedCheckout, cancelReservation } from '../../api/shop'
 import { useAuthStore } from '../../store/authStore'
 import { useCartStore } from '../../store/cartStore'
@@ -448,8 +449,12 @@ function SummarySection({
  */
 function UnifiedCheckout() {
   const navigate = useNavigate()
+  const location = useLocation()
   const { isAuthenticated } = useAuthStore()
-  const { clearCart } = useCartStore()
+  const { clearCart, loadCart } = useCartStore()
+  
+  // Получаем выбранные элементы из state (переданы из Cart)
+  const selectedItemsFromCart = location.state?.selectedItems || []
   
   const [checkoutData, setCheckoutData] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -474,7 +479,8 @@ function UnifiedCheckout() {
     setError(null)
 
     try {
-      const response = await getUnifiedCheckout()
+      // Передаём выбранные элементы в API
+      const response = await getUnifiedCheckout(selectedItemsFromCart)
       setCheckoutData(response)
       reservationIdRef.current = response.reservation?.id
 
@@ -484,13 +490,13 @@ function UnifiedCheckout() {
         setFormData(prev => ({ ...prev, address_id: defaultAddress.id }))
       }
 
-      // Редирект если корзина пуста
+      // Редирект если нет выбранных элементов
       const hasProducts = response.products?.items?.length > 0
       const hasCourses = response.courses?.items?.length > 0
       
       if (!hasProducts && !hasCourses) {
         navigate('/cart', { 
-          state: { message: 'Ваша корзина пуста' }
+          state: { message: 'Не выбрано ни одного товара или курса для оформления' }
         })
         return
       }
@@ -505,7 +511,7 @@ function UnifiedCheckout() {
     } finally {
       setIsLoading(false)
     }
-  }, [navigate])
+  }, [navigate, selectedItemsFromCart])
 
   /**
    * Проверка авторизации и загрузка данных
@@ -566,6 +572,11 @@ function UnifiedCheckout() {
     try {
       const submitData = {}
       
+      // Добавляем выбранные элементы
+      if (selectedItemsFromCart.length > 0) {
+        submitData.selected_items = selectedItemsFromCart
+      }
+      
       if (hasProducts) {
         submitData.delivery_type = formData.delivery_type
         if (formData.address_id) {
@@ -589,9 +600,10 @@ function UnifiedCheckout() {
 
       const response = await submitUnifiedCheckout(submitData)
       
-      // Очищаем корзину и резервирование
+      // Очищаем резервирование и обновляем корзину
       reservationIdRef.current = null
-      clearCart()
+      // Перезагружаем корзину (удалены только выбранные элементы)
+      await loadCart()
 
       // Переход на страницу оплаты
       if (response.payment?.url) {

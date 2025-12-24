@@ -135,7 +135,14 @@ class PaymentService:
             logger.error(f"Платеж не найден: {payment_id}")
             return False
 
-        if payment.status != 'processing':
+        # Если платёж в статусе pending - сначала обрабатываем его
+        if payment.status == 'pending':
+            payment.status = 'processing'
+            payment.payment_gateway = 'mock_gateway'
+            payment.external_payment_id = external_payment_id or f"mock_{payment.id}"
+            payment.save()
+            logger.info(f"Платеж переведён в processing: {payment.id}")
+        elif payment.status != 'processing':
             logger.warning(f"Попытка подтвердить платеж в статусе {payment.status}: {payment.id}")
             return False
 
@@ -226,6 +233,8 @@ class PaymentService:
             PaymentService._activate_course_access(payment)
         elif payment.payment_type == 'subscription':
             PaymentService._activate_subscription(payment)
+        elif payment.payment_type == 'unified_checkout':
+            PaymentService._activate_unified_checkout(payment)
 
     @staticmethod
     def _activate_shop_order(payment: Payment):
@@ -282,6 +291,42 @@ class PaymentService:
         """Активация подписки после оплаты."""
         # Будущая функциональность
         logger.info(f"Подписка активирована: {payment.id}")
+
+    @staticmethod
+    def _activate_unified_checkout(payment: Payment):
+        """Активация единого чекаута после оплаты (товары + курсы)."""
+        from apps.shop.models import Order
+        from apps.training.models import Course, UserCourse
+        from apps.pets.models import Pet
+
+        if not payment.user:
+            logger.warning(f"Невозможно активировать unified checkout: пользователь удалён для платежа {payment.id}")
+            return
+
+        metadata = payment.metadata or {}
+
+        # Активация заказа товаров
+        products_order_id = metadata.get('products_order_id')
+        if products_order_id:
+            try:
+                order = Order.objects.get(id=products_order_id, user=payment.user)
+                order.status = 'processing'
+                order.save()
+                logger.info(f"Заказ товаров активирован в unified checkout: {order.id}")
+            except Order.DoesNotExist:
+                logger.error(f"Заказ товаров не найден для unified checkout платежа: {payment.id}")
+
+        # Активация доступа к курсам
+        course_ids = metadata.get('course_ids', [])
+        for user_course_id in course_ids:
+            try:
+                user_course = UserCourse.objects.get(id=user_course_id, user=payment.user)
+                # Доступ к курсу уже предоставлен при создании UserCourse
+                logger.info(f"Доступ к курсу подтверждён в unified checkout: user={payment.user.email}, course={user_course.course.title}")
+            except UserCourse.DoesNotExist:
+                logger.error(f"UserCourse не найден для unified checkout платежа: {payment.id}, course_id={user_course_id}")
+
+        logger.info(f"Unified checkout активирован: {payment.id}")
 
     @staticmethod
     def get_payment_statistics(user=None):

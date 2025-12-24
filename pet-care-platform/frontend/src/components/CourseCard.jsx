@@ -206,7 +206,19 @@ function CourseCard({ course, onAddToCart, isOwned = false, isLoading = false })
             >
               Открыть
             </Link>
+          ) : course.price === 0 ? (
+            // Бесплатные курсы - переход на страницу курса для записи
+            <Link
+              to={`/courses/${course.id}?enroll=free`}
+              className="text-sm py-2 px-4 rounded-lg bg-green-600 hover:bg-green-700 text-white transition-colors flex items-center gap-1.5"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              Записаться
+            </Link>
           ) : (
+            // Платные курсы - добавление в корзину
             <button
               onClick={handleAddToCart}
               disabled={isAdding || isLoading}
@@ -216,13 +228,6 @@ function CourseCard({ course, onAddToCart, isOwned = false, isLoading = false })
                 <>
                   <ButtonLoader />
                   <span>...</span>
-                </>
-              ) : course.price === 0 ? (
-                <>
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                  </svg>
-                  Записаться
                 </>
               ) : (
                 <>

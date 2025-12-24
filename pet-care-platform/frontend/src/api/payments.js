@@ -23,3 +23,23 @@ export const processPayment = async (paymentData) => {
   return await api.post('/payments/page/', paymentData)
 }
 
+/**
+ * Подтверждение существующего платежа
+ * 
+ * @param {string} paymentId - ID платежа
+ * @returns {Promise<Object>} Результат подтверждения
+ */
+export const confirmPayment = async (paymentId) => {
+  return await api.post(`/payments/${paymentId}/confirm/`, {})
+}
+
+/**
+ * Получение информации о платеже
+ * 
+ * @param {string} paymentId - ID платежа
+ * @returns {Promise<Object>} Данные платежа
+ */
+export const getPayment = async (paymentId) => {
+  return await api.get(`/payments/${paymentId}/`)
+}
+

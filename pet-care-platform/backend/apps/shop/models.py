@@ -8,6 +8,7 @@ from django.db import models
 from django.conf import settings
 from django.utils import timezone
 from datetime import timedelta
+from decimal import Decimal
 from core.utils import generate_uuid7
 
 
@@ -66,7 +67,7 @@ class Product(models.Model):
     
     name = models.CharField(max_length=500, verbose_name='Название')
     description = models.TextField(blank=True, null=True, verbose_name='Описание')
-    price = models.DecimalField(max_digits=10, decimal_places=2, default=0, verbose_name='Цена')
+    price = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'), verbose_name='Цена')
     
     # Производитель
     vendor = models.CharField(max_length=200, blank=True, null=True, verbose_name='Бренд')
@@ -146,8 +147,8 @@ class Product(models.Model):
     def discounted_price(self):
         """Цена со скидкой."""
         if self.discount_percent > 0:
-            return float(self.price) * (100 - self.discount_percent) / 100
-        return float(self.price)
+            return self.price * (100 - self.discount_percent) / 100
+        return self.price
     
     def to_dict(self):
         """Сериализация для API."""
@@ -294,8 +295,8 @@ class CartItem(models.Model):
         if self.product:
             return self.product.discounted_price * self.quantity
         elif self.course:
-            return float(self.course.price)
-        return 0
+            return self.course.price
+        return Decimal('0.00')
 
     def to_dict(self):
         """Сериализация для API."""
@@ -503,18 +504,18 @@ class Order(models.Model):
     
     # Финансовые поля
     subtotal_amount = models.DecimalField(
-        max_digits=10, 
+        max_digits=15,
         decimal_places=2,
-        default=0,
+        default=Decimal('0.00'),
         verbose_name='Сумма товаров'
     )
     delivery_cost = models.DecimalField(
-        max_digits=10, 
-        decimal_places=2, 
-        default=0,
+        max_digits=10,
+        decimal_places=2,
+        default=Decimal('0.00'),
         verbose_name='Стоимость доставки'
     )
-    total_amount = models.DecimalField(max_digits=10, decimal_places=2, verbose_name='Итоговая сумма')
+    total_amount = models.DecimalField(max_digits=15, decimal_places=2, verbose_name='Итоговая сумма')
     
     # Адрес доставки (может быть связан с Address или просто текст)
     shipping_address = models.TextField(verbose_name='Адрес доставки (текст)')

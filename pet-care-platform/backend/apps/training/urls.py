@@ -5,6 +5,7 @@ URL маршруты для эндпоинтов обучения (Курсы).
     GET  /api/courses/               - Каталог курсов
     GET  /api/courses/{id}/          - Детали курса
     POST /api/courses/{id}/purchase/ - Покупка/запись на курс
+    POST /api/courses/{id}/enroll/   - Прямая запись на бесплатный курс
     GET  /api/courses/my/            - Курсы пользователя
 
 Все пути имеют префикс /api/courses/ в главном urls.py
@@ -16,6 +17,7 @@ from .views import (
     CourseDetailView,
     CourseCheckoutView,
     CoursePurchaseView,
+    FreeCourseEnrollView,
     UserCoursesView
 )
 
@@ -39,4 +41,8 @@ urlpatterns = [
     # Покупка/запись на курс
     # POST /api/courses/{id}/purchase/
     path('<int:course_id>/purchase/', CoursePurchaseView.as_view(), name='course-purchase'),
+    
+    # Прямая запись на бесплатный курс (без корзины)
+    # POST /api/courses/{id}/enroll/
+    path('<int:course_id>/enroll/', FreeCourseEnrollView.as_view(), name='course-enroll'),
 ]

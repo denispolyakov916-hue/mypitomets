@@ -267,6 +267,7 @@ export const searchAddresses = async (query) => {
  * Загружает товары, курсы из корзины, адреса пользователя и варианты доставки.
  * Автоматически резервирует товары на 10 минут.
  * 
+ * @param {number[]} [selectedItems] - Массив ID элементов корзины (опционально)
  * @returns {Promise<Object>} Данные для checkout
  * @example
  * {
@@ -274,19 +275,25 @@ export const searchAddresses = async (query) => {
  *   courses: { items: [...], subtotal: 5000 },
  *   addresses: [...],
  *   totals: { products: 3500, courses: 5000, delivery: 0, grand_total: 8500 },
- *   reservation: { id: "uuid", expires_at: "2024-01-01T12:10:00Z" }
+ *   reservation: { id: "uuid", expires_at: "2024-01-01T12:10:00Z" },
+ *   selected_items: [1, 2, 3]
  * }
  */
-export const getUnifiedCheckout = async () => {
-  return await api.get('/checkout/')
+export const getUnifiedCheckout = async (selectedItems = []) => {
+  const params = selectedItems.length > 0
+    ? `?selected_items=${selectedItems.join(',')}`
+    : ''
+  return await api.get(`/checkout/${params}`)
 }
 
 /**
  * Отправка единого заказа
  * 
  * Создаёт заказы для товаров и/или курсов одним запросом.
+ * Поддерживает выборочное оформление через selected_items.
  * 
  * @param {Object} checkoutData - Данные оформления
+ * @param {number[]} [checkoutData.selected_items] - Массив ID элементов корзины для оформления
  * @param {string} [checkoutData.delivery_type] - Тип доставки (standard | express | pickup)
  * @param {string} [checkoutData.address_id] - UUID сохранённого адреса
  * @param {string} [checkoutData.shipping_address] - Текстовый адрес доставки

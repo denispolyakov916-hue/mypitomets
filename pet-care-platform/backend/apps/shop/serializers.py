@@ -15,6 +15,7 @@
 """
 
 from rest_framework import serializers
+from decimal import Decimal
 
 
 class ProductSerializer(serializers.Serializer):
@@ -231,12 +232,19 @@ class CartItemUpdateSerializer(serializers.Serializer):
     Поля:
         product_id (int): ID товара в корзине - опционально (если не указан course_id)
         course_id (int): ID курса в корзине - опционально (если не указан product_id)
-        quantity (int): Новое количество - обязательное (0 = удалить)
+        quantity (int): Новое количество - опционально (0 = удалить)
+        delta_quantity (int): Изменение количества (+1, -1) - опционально
 
-    Пример запроса для товара:
+    Пример запроса для товара (абсолютное значение):
         {
             "product_id": 5,
             "quantity": 3
+        }
+
+    Пример запроса для товара (относительное изменение):
+        {
+            "product_id": 5,
+            "delta_quantity": 1
         }
 
     Пример запроса для курса:
@@ -246,8 +254,9 @@ class CartItemUpdateSerializer(serializers.Serializer):
         }
 
     Примечание:
-        При quantity=0 элемент будет удалён из корзины.
+        При quantity=0 или delta_quantity, приводящем к quantity<=0, элемент будет удалён из корзины.
         Для курсов quantity всегда должно быть 0 (удаление) или 1.
+        Нельзя указывать одновременно quantity и delta_quantity.
     """
 
     product_id = serializers.IntegerField(
@@ -261,9 +270,14 @@ class CartItemUpdateSerializer(serializers.Serializer):
     )
 
     quantity = serializers.IntegerField(
-        required=True,
+        required=False,
         min_value=0,
         help_text="Новое количество (0 для удаления)"
+    )
+
+    delta_quantity = serializers.IntegerField(
+        required=False,
+        help_text="Изменение количества (+1, -1 и т.д.)"
     )
 
     def validate_product_id(self, value):
@@ -286,7 +300,8 @@ class CartItemUpdateSerializer(serializers.Serializer):
         """Комплексная валидация."""
         product_id = attrs.get('product_id')
         course_id = attrs.get('course_id')
-        quantity = attrs.get('quantity', 0)
+        quantity = attrs.get('quantity')
+        delta_quantity = attrs.get('delta_quantity')
 
         # Должен быть указан либо product_id, либо course_id
         if not product_id and not course_id:
@@ -300,8 +315,26 @@ class CartItemUpdateSerializer(serializers.Serializer):
                 "Нельзя указывать одновременно product_id и course_id"
             )
 
+        # Должен быть указан либо quantity, либо delta_quantity
+        if quantity is None and delta_quantity is None:
+            raise serializers.ValidationError(
+                "Необходимо указать либо quantity, либо delta_quantity"
+            )
+
+        # Нельзя указывать оба одновременно
+        if quantity is not None and delta_quantity is not None:
+            raise serializers.ValidationError(
+                "Нельзя указывать одновременно quantity и delta_quantity"
+            )
+
+        # Для курсов можно использовать только quantity (не delta_quantity)
+        if course_id and delta_quantity is not None:
+            raise serializers.ValidationError(
+                "Для курсов можно использовать только quantity"
+            )
+
         # Для курсов quantity может быть только 0 или 1
-        if course_id and quantity not in [0, 1]:
+        if course_id and quantity is not None and quantity not in [0, 1]:
             raise serializers.ValidationError(
                 "Для курсов количество может быть только 0 (удалить) или 1"
             )
@@ -403,9 +436,9 @@ class OrderCreateSerializer(serializers.Serializer):
         help_text="Тип доставки"
     )
     delivery_cost = serializers.DecimalField(
-        max_digits=10,
+        max_digits=15,
         decimal_places=2,
-        default=0,
+        default=Decimal('0.00'),
         required=False,
         help_text="Стоимость доставки"
     )
@@ -552,7 +585,15 @@ class AddressCreateSerializer(serializers.Serializer):
 
 
 class UnifiedOrderSerializer(serializers.Serializer):
-    """Сериализатор для единого оформления заказа."""
+    """Сериализатор для единого оформления заказа с поддержкой выборочного оформления."""
+
+    # Выбранные элементы корзины (опционально)
+    selected_items = serializers.ListField(
+        child=serializers.IntegerField(),
+        required=False,
+        allow_empty=True,
+        help_text="Список ID элементов корзины для оформления. Если не указан - все элементы."
+    )
 
     # Для товаров (обязательны, если есть товары)
     delivery_type = serializers.ChoiceField(
@@ -568,18 +609,55 @@ class UnifiedOrderSerializer(serializers.Serializer):
     def validate(self, data):
         # Валидация в зависимости от содержимого корзины
         from .models import Cart
-        cart = Cart.objects.prefetch_related('items__product', 'items__course').get(user=self.context['request'].user)
+        
+        try:
+            cart = Cart.objects.prefetch_related('items__product', 'items__course').get(user=self.context['request'].user)
+        except Cart.DoesNotExist:
+            raise serializers.ValidationError("Корзина пуста. Добавьте товары или курсы перед оформлением заказа.")
 
-        has_products = cart.items.filter(product__isnull=False).exists()
-        has_courses = cart.items.filter(course__isnull=False).exists()
+        # Получаем элементы корзины (с учётом selected_items)
+        selected_items = data.get('selected_items', [])
+        if selected_items:
+            cart_items = cart.items.filter(id__in=selected_items)
+        else:
+            cart_items = cart.items.all()
+        
+        if not cart_items.exists():
+            raise serializers.ValidationError("Не выбрано ни одного товара или курса для оформления.")
 
+        # Проверяем наличие товаров и курсов среди выбранных
+        has_products = cart_items.filter(product__isnull=False).exists()
+        has_courses = cart_items.filter(course__isnull=False).exists()
+
+        errors = {}
+        
         if has_products:
-            if not data.get('delivery_type'):
-                raise serializers.ValidationError("Необходимо выбрать тип доставки для товаров")
-            if not data.get('address_id') and not data.get('shipping_address'):
-                raise serializers.ValidationError("Необходим адрес доставки для товаров")
+            delivery_type = data.get('delivery_type')
+            if not delivery_type or (isinstance(delivery_type, str) and not delivery_type.strip()):
+                errors['delivery_type'] = ["Необходимо выбрать тип доставки для товаров"]
+            else:
+                # Для самовывоза адрес не требуется
+                if delivery_type != 'pickup':
+                    address_id = data.get('address_id')
+                    shipping_address = data.get('shipping_address')
+                    # Проверяем, что хотя бы один адрес указан и не пустой
+                    has_address_id = address_id and (not isinstance(address_id, str) or address_id.strip())
+                    has_shipping_address = shipping_address and (not isinstance(shipping_address, str) or shipping_address.strip())
+                    
+                    if not has_address_id and not has_shipping_address:
+                        errors['address'] = ["Необходим адрес доставки для товаров (address_id или shipping_address)"]
 
-        if has_courses and not data.get('courses_disclaimer_accepted'):
-            raise serializers.ValidationError("Необходимо принять условия для курсов")
+        if has_courses:
+            courses_disclaimer_accepted = data.get('courses_disclaimer_accepted')
+            if not courses_disclaimer_accepted:
+                errors['courses_disclaimer_accepted'] = ["Необходимо принять условия для курсов"]
+        
+        if errors:
+            raise serializers.ValidationError(errors)
+
+        # Сохраняем информацию о выбранных элементах для использования в view
+        data['_has_products'] = has_products
+        data['_has_courses'] = has_courses
+        data['_selected_cart_items'] = list(cart_items)
 
         return data

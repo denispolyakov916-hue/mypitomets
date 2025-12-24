@@ -31,19 +31,19 @@ import api from './client'
  */
 export const getCourses = async (filters = {}) => {
   const params = new URLSearchParams()
-  
+
   // Добавляем только непустые фильтры
   const filterKeys = ['pet_type', 'pet_id', 'category', 'subcategory', 'level', 'format_type', 'personal', 'price_type', 'min_price', 'max_price', 'search', 'page', 'per_page']
-  
+
   filterKeys.forEach(key => {
     if (filters[key]) {
       params.append(key, filters[key])
     }
   })
-  
+
   const queryString = params.toString()
   const url = queryString ? `/courses/?${queryString}` : '/courses/'
-  
+
   return await api.get(url)
 }
 
@@ -105,4 +105,28 @@ export const purchaseCourse = async (courseId, disclaimerAccepted = false, petId
 export const getUserCourses = async (petId = null) => {
   const url = petId ? `/courses/my/?pet_id=${petId}` : '/courses/my/'
   return await api.get(url)
+}
+
+/**
+ * Прямая запись на бесплатный курс (без добавления в корзину)
+ * 
+ * Работает только для бесплатных курсов (price=0).
+ * Требует согласия с условиями использования.
+ * 
+ * @param {number} courseId - ID курса для записи
+ * @param {boolean} disclaimerAccepted - Согласие с условиями (обязательно true)
+ * @param {string} [petId] - ID питомца для привязки курса (опционально)
+ * @returns {Promise<Object>} Данные о записи
+ * @throws {Object} Ошибка если курс платный или условия не приняты
+ */
+export const enrollFreeCourse = async (courseId, disclaimerAccepted = false, petId = null) => {
+  const body = {
+    disclaimer_accepted: Boolean(disclaimerAccepted)
+  }
+  
+  if (petId) {
+    body.pet_id = petId
+  }
+  
+  return await api.post(`/courses/${courseId}/enroll/`, body)
 }

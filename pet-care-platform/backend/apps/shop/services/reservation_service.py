@@ -10,33 +10,52 @@ class ReservationService:
     @staticmethod
     def create_reservations_from_cart(cart):
         """Создать резервирования для всех элементов корзины."""
+        return ReservationService.create_reservations_from_items(
+            cart.user, list(cart.items.all())
+        )
+
+    @staticmethod
+    def create_reservations_from_items(user, items):
+        """Создать резервирования для выбранных элементов корзины."""
         reservations = []
         expires_at = timezone.now() + timedelta(minutes=10)
 
         with transaction.atomic():
-            for item in cart.items.all():
+            for item in items:
                 if item.product:
+                    # Блокировать строку товара для предотвращения race condition
+                    # Это гарантирует, что между проверкой и обновлением никто другой не изменит количество
+                    product = Product.objects.select_for_update().get(id=item.product.id)
+                    
                     # Проверить доступность товара
-                    if not item.product.in_stock or item.product.stock_count < item.quantity:
-                        raise ValueError(f"Товар {item.product.name} недоступен")
+                    # stock_count уже учитывает все активные резервирования (они уменьшают stock_count)
+                    if product.stock_count < item.quantity:
+                        raise ValueError(
+                            f"Товар {product.name} недоступен. "
+                            f"Запрошено: {item.quantity} шт., доступно: {product.stock_count} шт."
+                        )
 
                     # Создать резервирование товара
                     reservation = Reservation.objects.create(
-                        user=cart.user,
+                        user=user,
                         reservation_type='product',
-                        object_id=str(item.product.id),
+                        object_id=str(product.id),
                         quantity=item.quantity,
                         expires_at=expires_at
                     )
 
                     # Уменьшить доступное количество
-                    item.product.stock_count -= item.quantity
-                    item.product.save()
+                    product.stock_count -= item.quantity
+                    # Обновить флаг in_stock на основе stock_count
+                    product.in_stock = product.stock_count > 0
+                    product.save()
+
+                    reservations.append(reservation)
 
                 elif item.course:
                     # Создать резервирование курса
                     reservation = Reservation.objects.create(
-                        user=cart.user,
+                        user=user,
                         reservation_type='course',
                         object_id=str(item.course.id),
                         pet_id=str(item.pet.id) if item.pet else None,
@@ -44,7 +63,7 @@ class ReservationService:
                         expires_at=expires_at
                     )
 
-                reservations.append(reservation)
+                    reservations.append(reservation)
 
         return reservations
 
@@ -55,8 +74,11 @@ class ReservationService:
             for reservation in reservations:
                 if reservation.reservation_type == 'product':
                     try:
-                        product = Product.objects.get(id=reservation.object_id)
+                        # Блокировать строку товара для предотвращения race condition
+                        product = Product.objects.select_for_update().get(id=reservation.object_id)
                         product.stock_count += reservation.quantity
+                        # Обновить флаг in_stock на основе stock_count
+                        product.in_stock = product.stock_count > 0
                         product.save()
                     except Product.DoesNotExist:
                         pass  # Товар уже удалён
@@ -68,13 +90,17 @@ class ReservationService:
         """Очистить истёкшие резервирования (запускается по cron)."""
         expired = Reservation.objects.filter(expires_at__lt=timezone.now())
 
-        for reservation in expired:
-            if reservation.reservation_type == 'product':
-                try:
-                    product = Product.objects.get(id=reservation.object_id)
-                    product.stock_count += reservation.quantity
-                    product.save()
-                except Product.DoesNotExist:
-                    pass
+        with transaction.atomic():
+            for reservation in expired:
+                if reservation.reservation_type == 'product':
+                    try:
+                        # Блокировать строку товара для предотвращения race condition
+                        product = Product.objects.select_for_update().get(id=reservation.object_id)
+                        product.stock_count += reservation.quantity
+                        # Обновить флаг in_stock на основе stock_count
+                        product.in_stock = product.stock_count > 0
+                        product.save()
+                    except Product.DoesNotExist:
+                        pass  # Товар уже удалён
 
-        expired.delete()
+            expired.delete()

@@ -395,16 +395,7 @@ function Courses() {
   const { addCourse, error: cartError } = useCartStore()
   const { success, error: showError } = useToastStore()
   const { pets } = usePets()
-  
-  // Состояние
-  const [courses, setCourses] = useState([])
-  const [pagination, setPagination] = useState(null)
-  const [availableFilters, setAvailableFilters] = useState({})
-  const [ownedCourseIds, setOwnedCourseIds] = useState(new Set())
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState(null)
-  const [searchQuery, setSearchQuery] = useState(filters.search || '')
-  
+
   // Фильтры из URL
   const filters = {
     pet_type: searchParams.get('pet_type') || '',
@@ -420,6 +411,15 @@ function Courses() {
     search: searchParams.get('search') || '',
     page: searchParams.get('page') || '1',
   }
+
+  // Состояние
+  const [courses, setCourses] = useState([])
+  const [pagination, setPagination] = useState(null)
+  const [availableFilters, setAvailableFilters] = useState({})
+  const [ownedCourseIds, setOwnedCourseIds] = useState(new Set())
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState(null)
+  const [searchQuery, setSearchQuery] = useState(searchParams.get('search') || '')
   
   /**
    * Обновление фильтра
@@ -487,7 +487,7 @@ function Courses() {
     const fetchCourses = async () => {
       setIsLoading(true)
       setError(null)
-      
+
       try {
         const response = await getCourses(filters)
         setCourses(response.courses || [])
@@ -499,7 +499,7 @@ function Courses() {
         setIsLoading(false)
       }
     }
-    
+
     fetchCourses()
   }, [searchParams])
   

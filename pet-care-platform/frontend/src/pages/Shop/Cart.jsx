@@ -2,10 +2,11 @@
  * Компонент страницы корзины
  * 
  * Корзина покупок с:
+ * - Чекбоксами для выбора товаров/курсов
  * - Списком товаров в корзине
  * - Редактированием количества
  * - Удалением товаров
- * - Расчётом итого
+ * - Расчётом итого для выбранных
  * - Формой оформления заказа
  * - Оформлением заказа
  */
@@ -31,7 +32,7 @@ const formatPrice = (price) => {
 /**
  * Компонент страницы корзины
  * 
- * Отображает содержимое корзины и форму оформления заказа.
+ * Отображает содержимое корзины с возможностью выборочного оформления.
  */
 function Cart() {
   const navigate = useNavigate()
@@ -44,12 +45,25 @@ function Cart() {
     loadCart, 
     updateQuantity, 
     removeItem,
-    clearError 
+    clearError,
+    selectedItems,
+    setItemSelection,
+    selectAllItems,
+    deselectAllItems,
+    getSelectedTotal,
+    getSelectedItemIds,
+    removeSelectedItems
   } = useCartStore()
   const { success, error: showError } = useToastStore()
   
   // Сообщение из редиректа (например, при истечении времени checkout)
   const [redirectMessage, setRedirectMessage] = useState(null)
+  const [isDeletingSelected, setIsDeletingSelected] = useState(false)
+  
+  // Проверка "Выбрать все"
+  const isAllSelected = items.length > 0 && selectedItems.size === items.length
+  const selectedCount = selectedItems.size
+  const selectedTotal = getSelectedTotal()
   
   /**
    * Загрузка корзины при монтировании и обработка сообщений
@@ -66,6 +80,43 @@ function Cart() {
     
     return () => clearError()
   }, [loadCart, clearError, location.state, navigate, location.pathname])
+  
+  /**
+   * Обработчик выбора/снятия элемента
+   */
+  const handleItemSelect = (itemId, checked) => {
+    setItemSelection(itemId, checked)
+  }
+  
+  /**
+   * Обработчик "Выбрать все"
+   */
+  const handleSelectAll = (checked) => {
+    if (checked) {
+      selectAllItems()
+    } else {
+      deselectAllItems()
+    }
+  }
+  
+  /**
+   * Обработчик удаления выбранных элементов
+   */
+  const handleDeleteSelected = async () => {
+    if (selectedCount === 0) return
+    
+    setIsDeletingSelected(true)
+    try {
+      const result = await removeSelectedItems()
+      if (result) {
+        success(`Удалено ${selectedCount} элементов из корзины`)
+      }
+    } catch (err) {
+      showError(err.message || 'Не удалось удалить выбранные элементы')
+    } finally {
+      setIsDeletingSelected(false)
+    }
+  }
   
   /**
    * Обработчик изменения количества
@@ -170,6 +221,48 @@ function Cart() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Товары в корзине */}
         <div className="lg:col-span-2">
+          {/* Панель управления выбором */}
+          <div className="flex items-center justify-between mb-4 p-4 bg-gray-50 rounded-lg">
+            <label className="flex items-center gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={isAllSelected}
+                onChange={(e) => handleSelectAll(e.target.checked)}
+                className="w-5 h-5 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+              />
+              <span className="font-medium text-gray-900">Выбрать все</span>
+              {selectedCount > 0 && (
+                <span className="text-sm text-gray-500">
+                  (выбрано {selectedCount} из {items.length})
+                </span>
+              )}
+            </label>
+            
+            <div className="flex gap-2">
+              {selectedCount > 0 && (
+                <button
+                  onClick={handleDeleteSelected}
+                  disabled={isDeletingSelected}
+                  className="text-sm text-red-600 hover:text-red-700 px-3 py-1.5 border border-red-200 rounded-lg hover:bg-red-50 transition-colors disabled:opacity-50 flex items-center gap-1"
+                >
+                  {isDeletingSelected ? (
+                    <>
+                      <ButtonLoader />
+                      Удаление...
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                      Удалить выбранное ({selectedCount})
+                    </>
+                  )}
+                </button>
+              )}
+            </div>
+          </div>
+          
           <div className="card divide-y divide-gray-100">
             {items.map(item => {
               // Безопасная проверка структуры данных
@@ -205,6 +298,16 @@ function Cart() {
               return (
                 <div key={itemId} className="py-4 first:pt-0 last:pb-0">
                   <div className="flex gap-4">
+                    {/* Чекбокс выбора */}
+                    <label className="flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={selectedItems.has(item.id)}
+                        onChange={(e) => handleItemSelect(item.id, e.target.checked)}
+                        className="w-5 h-5 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                      />
+                    </label>
+                    
                     {/* Заглушка изображения товара/курса */}
                     <div className="w-20 h-20 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
                       <span className="text-3xl opacity-50">
@@ -292,12 +395,18 @@ function Cart() {
             {/* Итог заказа */}
             <div className="space-y-2 pb-4 border-b border-gray-100">
               <div className="flex justify-between text-gray-600">
-                <span>Позиций:</span>
+                <span>Всего в корзине:</span>
                 <span>{items.length} шт.</span>
               </div>
+              <div className="flex justify-between text-gray-600">
+                <span>Выбрано:</span>
+                <span className="font-medium text-primary-600">{selectedCount} шт.</span>
+              </div>
               <div className="flex justify-between text-lg font-semibold text-gray-900">
-                <span>Итого:</span>
-                <span>{formatPrice(total)}</span>
+                <span>К оплате:</span>
+                <span className={selectedCount > 0 ? 'text-primary-600' : 'text-gray-400'}>
+                  {formatPrice(selectedTotal)}
+                </span>
               </div>
             </div>
             
@@ -305,14 +414,29 @@ function Cart() {
             <div className="pt-4">
               <Link
                 to="/checkout"
-                className="block w-full btn-primary py-3 text-center"
+                state={{ selectedItems: getSelectedItemIds() }}
+                className={`block w-full btn-primary py-3 text-center ${
+                  selectedCount === 0 ? 'opacity-50 cursor-not-allowed pointer-events-none' : ''
+                }`}
               >
-                Оформить заказ
+                {selectedCount > 0 
+                  ? `Оформить заказ (${selectedCount})`
+                  : 'Выберите товары'
+                }
               </Link>
             </div>
             
+            {selectedCount === 0 && (
+              <p className="text-xs text-amber-600 mt-3 text-center">
+                Выберите товары или курсы для оформления
+              </p>
+            )}
+            
             <p className="text-xs text-gray-500 mt-4 text-center">
-              Товары и курсы будут оформлены в одном заказе
+              {selectedCount > 0 
+                ? 'Только выбранные товары будут оформлены'
+                : 'Товары и курсы будут оформлены в одном заказе'
+              }
             </p>
           </div>
         </div>

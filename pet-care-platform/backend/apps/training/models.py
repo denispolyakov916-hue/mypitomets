@@ -21,6 +21,7 @@
 
 from django.db import models
 from django.conf import settings
+from decimal import Decimal
 
 
 class Course(models.Model):
@@ -110,7 +111,7 @@ class Course(models.Model):
     price = models.DecimalField(
         max_digits=10,
         decimal_places=2,
-        default=0,
+        default=Decimal('0.00'),
         verbose_name='Цена'
     )
     image_url = models.URLField(blank=True, null=True, verbose_name='URL обложки')

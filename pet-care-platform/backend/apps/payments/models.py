@@ -42,6 +42,7 @@ class Payment(models.Model):
         ('shop_order', 'Заказ товаров'),
         ('course', 'Покупка курса'),
         ('subscription', 'Подписка'),
+        ('unified_checkout', 'Единый чек аут (товары + курсы)'),
     ]
 
     STATUS_CHOICES = [
@@ -94,7 +95,7 @@ class Payment(models.Model):
 
     # Финансовая информация
     amount = models.DecimalField(
-        max_digits=10,
+        max_digits=15,
         decimal_places=2,
         verbose_name='Сумма платежа'
     )
