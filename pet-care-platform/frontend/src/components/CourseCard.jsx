@@ -14,9 +14,10 @@
  */
 
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { ButtonLoader } from './Loader'
 import Rating from './Rating'
+import FavoriteButton from './FavoriteButton'
 
 /**
  * Маппинг названий типов животных
@@ -92,6 +93,7 @@ const formatDuration = (minutes) => {
 function CourseCard({ course, onAddToCart, onEnrollFree, isOwned = false, isLoading = false, isInCart = false }) {
   const [isAdding, setIsAdding] = useState(false)
   const [imageError, setImageError] = useState(false)
+  const navigate = useNavigate()
   
   /**
    * Обработчик клика по добавлению в корзину
@@ -99,15 +101,26 @@ function CourseCard({ course, onAddToCart, onEnrollFree, isOwned = false, isLoad
   const handleAddToCart = async (e) => {
     e.preventDefault()
     e.stopPropagation()
-    
-    if (isAdding || isLoading || isOwned) return
-    
+
+    if (isAdding || isLoading || isOwned || isInCart) return
+
     setIsAdding(true)
     try {
-      await onAddToCart?.(course)
+      const result = await onAddToCart?.(course)
+      // После успешного добавления кнопка изменится на "В корзину"
+      // Навигация происходит только при клике на зелёную кнопку
     } finally {
       setIsAdding(false)
     }
+  }
+
+  /**
+   * Обработчик клика по кнопке "В корзину" (уже добавленные курсы)
+   */
+  const handleGoToCart = (e) => {
+    e.preventDefault()
+    e.stopPropagation()
+    navigate('/cart')
   }
   
   /**
@@ -160,6 +173,11 @@ function CourseCard({ course, onAddToCart, onEnrollFree, isOwned = false, isLoad
             {formatLabels[course.format_type] || course.format_type}
           </div>
         )}
+        
+        {/* Кнопка избранного */}
+        <div className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+          <FavoriteButton itemId={course.id} type="course" size="sm" />
+        </div>
       </Link>
       
       {/* Информация о курсе */}
@@ -247,7 +265,7 @@ function CourseCard({ course, onAddToCart, onEnrollFree, isOwned = false, isLoad
           ) : (
             // Платные курсы - добавление в корзину
             <button
-              onClick={handleAddToCart}
+              onClick={isInCart ? handleGoToCart : handleAddToCart}
               disabled={isAdding || isLoading}
               className={`text-sm py-2 px-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 ${
                 isInCart

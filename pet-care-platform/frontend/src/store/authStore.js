@@ -28,7 +28,18 @@ import * as authApi from '../api/auth'
  * @returns {boolean} True если access токен существует
  */
 const getInitialAuthState = () => {
-  return !!localStorage.getItem('access_token')
+  // Проверяем, что мы в браузере (не SSR)
+  if (typeof window === 'undefined') {
+    return false
+  }
+  
+  try {
+    return !!localStorage.getItem('access_token')
+  } catch (error) {
+    // Если localStorage недоступен (например, в приватном режиме)
+    console.warn('Не удалось прочитать localStorage:', error)
+    return false
+  }
 }
 
 /**
@@ -54,6 +65,7 @@ export const useAuthStore = create((set, get) => ({
   isAuthenticated: getInitialAuthState(),
   isLoading: false,
   error: null,
+  tokenValidationInterval: null,
   
   /**
    * Вход по email и паролю
@@ -69,14 +81,17 @@ export const useAuthStore = create((set, get) => ({
     
     try {
       const response = await authApi.login(email, password)
-      
+
       set({
         user: response.user,
         isAuthenticated: true,
         isLoading: false,
         error: null
       })
-      
+
+      // Запускаем периодическую проверку токена
+      get().startTokenValidation()
+
       return true
     } catch (error) {
       // Обработка ошибок валидации
@@ -156,12 +171,15 @@ export const useAuthStore = create((set, get) => ({
   
   /**
    * Выход текущего пользователя
-   * 
+   *
    * Очищает токены и сбрасывает состояние авторизации.
    */
   logout: async () => {
     await authApi.logout()
-    
+
+    // Останавливаем периодическую проверку токена
+    get().stopTokenValidation()
+
     set({
       user: null,
       isAuthenticated: false,
@@ -186,32 +204,122 @@ export const useAuthStore = create((set, get) => ({
   },
   
   /**
-   * Загрузка профиля пользователя из API
-   * 
-   * Вызывается после входа или при загрузке приложения для получения полного профиля.
-   * 
-   * @returns {Promise<Object|null>} Данные профиля или null при ошибке
+   * Проверка валидности токена и профиля
+   *
+   * Вызывается при загрузке приложения для проверки актуальности токена.
+   * Если токен невалиден или пользователь удален, выполняет выход.
+   *
+   * @returns {Promise<boolean>} True если токен валиден
    */
-  loadProfile: async () => {
-    if (!get().isAuthenticated) return null
-    
-    set({ isLoading: true })
-    
+  validateToken: async () => {
+    if (!get().isAuthenticated) return false
+
     try {
       const profile = await authApi.getProfile()
-      
       set({
         user: profile.user,
         isLoading: false
       })
-      
+      return true
+    } catch (error) {
+      // Токен невалиден или пользователь удален - выходим
+      console.warn('Token validation failed:', error.message)
+      get().logout()
+      return false
+    }
+  },
+
+  /**
+   * Принудительный выход с перенаправлением на логин
+   * Используется когда обнаруживается, что пользователь не аутентифицирован
+   */
+  forceLogout: () => {
+    console.warn('Force logout triggered')
+
+    // Останавливаем периодическую проверку токена
+    get().stopTokenValidation()
+
+    // Очищаем состояние
+    set({
+      user: null,
+      isAuthenticated: false,
+      error: null
+    })
+
+    // Очищаем токены
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('access_token')
+      localStorage.removeItem('refresh_token')
+    }
+
+    // Перенаправление на логин с текущего пути
+    if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
+      const redirectUrl = encodeURIComponent(window.location.pathname + window.location.search)
+      window.location.href = `/login?redirect=${redirectUrl}`
+    }
+  },
+
+  /**
+   * Периодическая проверка токена (каждые 5 минут)
+   * Запускается автоматически при аутентификации
+   */
+  startTokenValidation: () => {
+    if (get().tokenValidationInterval) {
+      clearInterval(get().tokenValidationInterval)
+    }
+
+    const interval = setInterval(async () => {
+      if (get().isAuthenticated) {
+        const isValid = await get().validateToken()
+        if (!isValid) {
+          console.warn('Periodic token validation failed')
+          get().forceLogout()
+        }
+      } else {
+        clearInterval(interval)
+      }
+    }, 5 * 60 * 1000) // 5 минут
+
+    set({ tokenValidationInterval: interval })
+  },
+
+  /**
+   * Остановка периодической проверки токена
+   */
+  stopTokenValidation: () => {
+    if (get().tokenValidationInterval) {
+      clearInterval(get().tokenValidationInterval)
+      set({ tokenValidationInterval: null })
+    }
+  },
+
+  /**
+   * Загрузка профиля пользователя из API
+   *
+   * Вызывается после входа или при загрузке приложения для получения полного профиля.
+   *
+   * @returns {Promise<Object|null>} Данные профиля или null при ошибке
+   */
+  loadProfile: async () => {
+    if (!get().isAuthenticated) return null
+
+    set({ isLoading: true })
+
+    try {
+      const profile = await authApi.getProfile()
+
+      set({
+        user: profile.user,
+        isLoading: false
+      })
+
       return profile
     } catch (error) {
       // Если загрузка профиля не удалась, возможно токен истёк
       if (error.status === 401) {
         get().logout()
       }
-      
+
       set({ isLoading: false })
       return null
     }

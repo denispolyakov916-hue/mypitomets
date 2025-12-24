@@ -53,8 +53,11 @@ class ProductListView(APIView):
     permission_classes = [AllowAny]
     
     def get(self, request):
-        # Базовый queryset - все товары с ценой > 0 и положительным количеством на складе
-        products = Product.objects.filter(price__gt=0, stock_count__gt=0)
+        from apps.pets.models import Pet
+        
+        # Используем оптимизированный каталог с предзагруженными рейтингами
+        # Это устраняет N+1 проблему при вызове to_dict()
+        products = Product.objects.catalog()
         
         # Фильтр по питомцу (персональная подборка)
         pet_id = request.query_params.get('pet_id')
@@ -63,50 +66,34 @@ class ProductListView(APIView):
         # Если указан pet_id, получаем вид питомца и фильтруем по нему
         if pet_id and request.user.is_authenticated:
             try:
-                from apps.pets.models import Pet
                 pet = Pet.objects.get(id=pet_id, owner=request.user)
                 # Маппинг видов питомцев на типы животных в товарах
-                species_to_animal = {
-                    'dog': 'dog',
-                    'cat': 'cat',
-                }
-                if pet.species in species_to_animal:
-                    animal = species_to_animal[pet.species]
+                if pet.species in ['dog', 'cat']:
+                    animal = pet.species
             except (Pet.DoesNotExist, ValueError):
                 pass
         
         # Фильтр по животному
-        if animal and animal in ['dog', 'cat']:
-            products = products.filter(animal=animal)
+        products = products.for_animal(animal)
         
-        # Фильтр по категории
+        # Фильтр по категории и подкатегории
         category = request.query_params.get('category')
-        if category:
-            products = products.filter(category=category)
-        
-        # Фильтр по подкатегории
         subcategory = request.query_params.get('subcategory')
-        if subcategory:
-            products = products.filter(subcategory=subcategory)
+        products = products.in_category(category, subcategory)
         
         # Фильтр по бренду
         vendor = request.query_params.get('vendor')
-        if vendor:
-            products = products.filter(vendor__icontains=vendor)
+        products = products.by_vendor(vendor)
         
         # Фильтр по цене
         min_price = request.query_params.get('min_price')
         max_price = request.query_params.get('max_price')
-        if min_price:
-            try:
-                products = products.filter(price__gte=float(min_price))
-            except ValueError:
-                pass
-        if max_price:
-            try:
-                products = products.filter(price__lte=float(max_price))
-            except ValueError:
-                pass
+        try:
+            min_price_val = float(min_price) if min_price else None
+            max_price_val = float(max_price) if max_price else None
+            products = products.by_price_range(min_price_val, max_price_val)
+        except ValueError:
+            pass
         
         # Фильтр по наличию
         in_stock = request.query_params.get('in_stock')
@@ -116,22 +103,18 @@ class ProductListView(APIView):
         # Фильтр по скидкам
         has_discount = request.query_params.get('has_discount')
         if has_discount == 'true':
-            products = products.filter(discount_percent__gt=0)
+            products = products.with_discount()
         
         # Поиск по названию
         search = request.query_params.get('search')
-        if search:
-            products = products.filter(name__icontains=search)
+        products = products.search(search)
 
-        # Фильтр по рейтингу
+        # Фильтр по рейтингу (оптимизировано - используем SQL аннотацию)
         min_rating = request.query_params.get('min_rating')
         if min_rating:
             try:
                 min_rating_val = float(min_rating)
-                products = products.filter(id__in=[
-                    p.id for p in products
-                    if p.get_average_rating() >= min_rating_val
-                ])
+                products = products.with_min_rating(min_rating_val)
             except ValueError:
                 pass
 
@@ -144,13 +127,12 @@ class ProductListView(APIView):
             except ValueError:
                 pass
 
-        # Сортировка по популярности или рейтингу
+        # Сортировка (оптимизировано - сортировка по рейтингу теперь через SQL)
         sort_by = request.query_params.get('sort_by')
         if sort_by == 'rating':
-            # Сортировка по рейтингу (нужно реализовать отдельно, так как рейтинг вычисляется)
-            products = sorted(products, key=lambda p: p.get_average_rating(), reverse=True)
+            products = products.order_by_rating()
         elif sort_by == 'popularity':
-            products = products.order_by('-order_count', '-id')
+            products = products.order_by_popularity()
         elif sort_by == 'price_asc':
             products = products.order_by('price')
         elif sort_by == 'price_desc':
@@ -1032,7 +1014,12 @@ class OrderHistoryView(APIView):
         
         # Обработка просроченных заказов выполняется в process_expired_orders()
         
-        orders = Order.objects.filter(user=request.user).prefetch_related('items')
+        # Оптимизация: предзагружаем items вместе с product, course, pet
+        orders = Order.objects.filter(user=request.user).prefetch_related(
+            'items__product', 
+            'items__course', 
+            'items__pet'
+        ).select_related('address').order_by('-created_at')
         
         # Фильтрация по статусу
         status_filter = request.query_params.get('status')
@@ -1372,20 +1359,15 @@ class UnifiedCheckoutView(APIView):
                 reservations
             )
 
-            # Создать единый платёж
-            payment = self._create_unified_payment(orders_data, request.user)
-
+            # НЕ создаем платеж сразу - он будет создан при попытке оплаты
             # Удалить выбранные элементы из корзины
             selected_item_ids = [item.id for item in selected_cart_items]
             CartItem.objects.filter(id__in=selected_item_ids).delete()
 
             return Response({
                 'reservation_id': str(reservations[0].id) if reservations else None,
-                'orders': orders_data,
-                'payment': {
-                    'id': str(payment.id),
-                    'amount': float(payment.amount)
-                }
+                'orders': orders_data
+                # Убираем payment из ответа - платеж будет создан позже
             })
 
         except Exception as e:
@@ -1550,220 +1532,248 @@ class FrequentlyBoughtTogetherView(APIView):
 
     GET /api/shop/products/{product_id}/frequently-bought/
 
-    Возвращает товары, которые часто покупают вместе с указанным товаром.
+    Использует RecommendationEngine для формирования интеллектуальных рекомендаций
+    на основе:
+    - Анализа истории покупок
+    - Правил связывания категорий
+    - Персонализации по PetID (для авторизованных пользователей)
+    
+    Query параметры:
+        limit (int): Максимальное количество рекомендаций (по умолчанию 6)
     """
 
     permission_classes = [AllowAny]
 
     def get(self, request, product_id):
+        from apps.shop.services import RecommendationEngine
+        
         try:
             # Получить основной товар
-            product = Product.objects.get(id=product_id, in_stock=True)
+            product = Product.objects.get(id=product_id)
         except Product.DoesNotExist:
             return Response(
                 {'error': 'Товар не найден'},
                 status=status.HTTP_404_NOT_FOUND
             )
-
-        # Найти заказы, содержащие этот товар
-        from django.db.models import Count
-        orders_with_product = OrderItem.objects.filter(
+        
+        # Параметры
+        try:
+            limit = int(request.query_params.get('limit', 6))
+            limit = min(max(1, limit), 12)  # От 1 до 12
+        except ValueError:
+            limit = 6
+        
+        # Получаем рекомендации через движок
+        user = request.user if request.user.is_authenticated else None
+        result = RecommendationEngine.get_frequently_bought_together(
             product_id=product_id,
-            order__status__in=['processing', 'shipped', 'delivered']
-        ).values_list('order_id', flat=True)
-
-        if not orders_with_product:
-            return Response({
-                'product': product.to_dict(),
-                'recommendations': []
-            })
-
-        # Найти другие товары из этих заказов
-        related_products = OrderItem.objects.filter(
-            order_id__in=orders_with_product,
-            product__isnull=False
-        ).exclude(
-            product_id=product_id
-        ).values(
-            'product_id',
-            'product__name',
-            'product__price',
-            'product__discount_percent',
-            'product__main_image',
-            'product__animal',
-            'product__category'
-        ).annotate(
-            frequency=Count('product_id')
-        ).order_by('-frequency')[:6]  # Топ 6 рекомендаций
-
-        # Формируем данные рекомендаций
-        recommendations = []
-        for item in related_products:
-            discounted_price = float(item['product__price']) * (100 - item['product__discount_percent']) / 100
-
-            recommendations.append({
-                'id': item['product_id'],
-                'name': item['product__name'],
-                'price': float(item['product__price']),
-                'discount_percent': item['product__discount_percent'],
-                'discounted_price': round(discounted_price, 2),
-                'main_image': item['product__main_image'],
-                'animal': item['product__animal'],
-                'category': item['product__category'],
-                'frequency': item['frequency']  # Как часто покупают вместе
-            })
-
+            limit=limit,
+            user=user
+        )
+        
         return Response({
             'product': product.to_dict(),
-            'recommendations': recommendations
+            'recommendations': result.to_list(),
+            'total_analyzed_orders': result.total_analyzed_orders,
+            'has_purchase_data': result.total_analyzed_orders > 0
         })
 
 
-class PersonalRecommendationsView(APIView):
+class CartRecommendationsView(APIView):
     """
-    Персональные рекомендации товаров на основе питомцев пользователя.
+    Рекомендации товаров для корзины.
 
-    GET /api/shop/personal-recommendations/
+    GET /api/shop/cart/recommendations/
 
-    Возвращает персонализированные рекомендации товаров на основе:
-    - Видов питомцев пользователя
-    - Любимых продуктов и аллергий
-    - Истории покупок
+    Анализирует товары в корзине и предлагает дополнения.
     """
 
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        user = request.user
-
-        # Получаем питомцев пользователя
+        from apps.shop.services import RecommendationEngine
+        
         try:
-            from apps.pets.models import Pet
-            user_pets = Pet.objects.filter(owner=user)
-        except:
-            user_pets = []
-
-        if not user_pets.exists():
-            return Response({
-                'recommendations': [],
-                'message': 'Добавьте профили питомцев для персональных рекомендаций'
-            })
-
-        recommendations = []
-        seen_product_ids = set()
-
-        # Для каждого питомца формируем рекомендации
-        for pet in user_pets:
-            pet_recommendations = self.get_recommendations_for_pet(pet, seen_product_ids)
-            recommendations.extend(pet_recommendations)
-            seen_product_ids.update([r['id'] for r in pet_recommendations])
-
-        # Ограничиваем количество рекомендаций
-        recommendations = recommendations[:12]
-
+            limit = int(request.query_params.get('limit', 6))
+            limit = min(max(1, limit), 12)
+        except ValueError:
+            limit = 6
+        
+        recommendations = RecommendationEngine.get_cart_recommendations(
+            user=request.user,
+            limit=limit
+        )
+        
         return Response({
             'recommendations': recommendations,
-            'pets_count': user_pets.count()
+            'count': len(recommendations)
         })
 
-    def get_recommendations_for_pet(self, pet, seen_product_ids):
-        """Получить рекомендации для конкретного питомца."""
-        recommendations = []
 
-        # Маппинг видов питомцев на типы товаров
-        species_to_animal = {
-            'dog': 'dog',
-            'cat': 'cat',
+class PersonalRecommendationsView(APIView):
+    """
+    Персональные рекомендации товаров и курсов на основе PetID.
+
+    GET /api/shop/personal-recommendations/
+
+    Использует PersonalizationService для формирования персонализированных
+    рекомендаций на основе:
+    - Видов и характеристик питомцев пользователя
+    - Любимых продуктов и аллергий
+    - Возраста и особенностей питомцев
+    - Истории покупок
+    
+    Query параметры:
+        products_limit (int): Лимит товаров (по умолчанию 8)
+        courses_limit (int): Лимит курсов (по умолчанию 4)
+        type (str): 'all', 'products', 'courses'
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        from apps.pets.services import PersonalizationService
+        
+        user = request.user
+        
+        # Параметры
+        try:
+            products_limit = int(request.query_params.get('products_limit', 8))
+            courses_limit = int(request.query_params.get('courses_limit', 4))
+        except ValueError:
+            products_limit = 8
+            courses_limit = 4
+        
+        rec_type = request.query_params.get('type', 'all')
+        
+        # Получаем контекст персонализации
+        context = PersonalizationService.get_context(user)
+        
+        if context.is_empty:
+            return Response({
+                'recommendations': {
+                    'products': [],
+                    'courses': [],
+                },
+                'context': {
+                    'has_pets': False,
+                    'pets_count': 0,
+                },
+                'message': 'Добавьте профили питомцев для персональных рекомендаций'
+            })
+        
+        # Формируем рекомендации
+        result = {
+            'context': {
+                'has_pets': True,
+                'pets_count': len(context.pets),
+                'animal_types': list(context.animal_types),
+                'has_senior_pets': context.has_senior_pets,
+                'has_young_pets': context.has_young_pets,
+            }
         }
+        
+        if rec_type in ['all', 'products']:
+            result['products'] = PersonalizationService.get_product_recommendations(
+                user, products_limit
+            )
+        else:
+            result['products'] = []
+        
+        if rec_type in ['all', 'courses']:
+            result['courses'] = PersonalizationService.get_course_recommendations(
+                user, courses_limit
+            )
+        else:
+            result['courses'] = []
+        
+        return Response(result)
 
-        animal = species_to_animal.get(pet.species)
-        if not animal:
-            return recommendations
 
-        # Базовый queryset товаров для этого вида животного
-        base_products = Product.objects.filter(
-            animal=animal,
-            price__gt=0,
-            stock_count__gt=0,
-            in_stock=True
-        ).exclude(id__in=seen_product_ids)
+class HealthFilteredProductsView(APIView):
+    """
+    Товары, отфильтрованные по проблемам здоровья питомца.
 
-        # 1. Рекомендации по любимым продуктам
-        favorite_based = self.get_favorite_based_recommendations(pet, base_products)
-        recommendations.extend(favorite_based)
+    GET /api/shop/products/health-filter/
+    
+    Query параметры:
+        health_issue (str): Код проблемы здоровья
+        limit (int): Лимит товаров (по умолчанию 12)
+    
+    Доступные проблемы здоровья:
+        - overweight: Для контроля веса
+        - sensitive_digestion: Для чувствительного пищеварения
+        - skin_issues: Для здоровья кожи и шерсти
+        - joint_problems: Для здоровья суставов
+        - dental_issues: Для здоровья зубов
+        - allergies: Гипоаллергенный
+        - kidney_issues: Для здоровья почек
+        - heart_issues: Для здоровья сердца
+    """
 
-        # 2. Рекомендации по истории покупок пользователя
-        history_based = self.get_history_based_recommendations(pet.owner, animal, base_products.exclude(id__in=[r['id'] for r in recommendations]))
-        recommendations.extend(history_based)
+    permission_classes = [AllowAny]
 
-        # 3. Популярные товары для этого вида животного
-        popular_based = self.get_popular_recommendations(animal, base_products.exclude(id__in=[r['id'] for r in recommendations]))
-        recommendations.extend(popular_based)
-
-        return recommendations[:4]  # Максимум 4 рекомендации на питомца
-
-    def get_favorite_based_recommendations(self, pet, base_products):
-        """Рекомендации на основе любимых продуктов питомца."""
-        if not pet.favorite_foods:
-            return []
-
-        recommendations = []
-        favorite_keywords = [food.lower() for food in pet.favorite_foods]
-
-        for product in base_products:
-            product_text = (product.name + ' ' + (product.description or '')).lower()
-            if any(keyword in product_text for keyword in favorite_keywords):
-                recommendations.append(product.to_dict())
-                if len(recommendations) >= 2:  # Максимум 2 рекомендации по любимым продуктам
-                    break
-
-        return recommendations
-
-    def get_history_based_recommendations(self, user, animal, base_products):
-        """Рекомендации на основе истории покупок пользователя."""
-        # Получаем товары, которые пользователь уже покупал
-        user_orders = Order.objects.filter(
-            user=user,
-            status__in=['processing', 'shipped', 'delivered']
+    def get(self, request):
+        from apps.pets.services import PersonalizationService
+        
+        health_issue = request.query_params.get('health_issue')
+        
+        if not health_issue:
+            # Возвращаем список доступных фильтров
+            filters = PersonalizationService.get_available_health_filters()
+            return Response({
+                'available_filters': filters,
+                'message': 'Укажите параметр health_issue для фильтрации'
+            })
+        
+        try:
+            limit = int(request.query_params.get('limit', 12))
+            limit = min(max(1, limit), 24)
+        except ValueError:
+            limit = 12
+        
+        # Получаем рекомендации
+        user = request.user if request.user.is_authenticated else None
+        recommendations = PersonalizationService.get_health_based_recommendations(
+            user, health_issue, limit
         )
-
-        purchased_product_ids = set()
-        for order in user_orders:
-            for item in order.items.all():
-                if item.product_id:
-                    purchased_product_ids.add(item.product_id)
-
-        if not purchased_product_ids:
-            return []
-
-        # Ищем товары, похожие на купленные (по категории, бренду)
-        purchased_products = Product.objects.filter(id__in=purchased_product_ids)
-
-        similar_products = []
-        for purchased_product in purchased_products:
-            # Товары той же категории и бренда
-            similar = base_products.filter(
-                category=purchased_product.category,
-                vendor=purchased_product.vendor
-            ).exclude(id__in=purchased_product_ids)[:3]
-
-            for product in similar:
-                if product.id not in [p['id'] for p in similar_products]:
-                    similar_products.append(product.to_dict())
-                    if len(similar_products) >= 3:
-                        break
-            if len(similar_products) >= 3:
-                break
-
-        return similar_products[:2]  # Максимум 2 рекомендации по истории
-
-    def get_popular_recommendations(self, animal, base_products):
-        """Популярные товары для вида животного."""
-        popular_products = base_products.order_by('-order_count', '-id')[:4]
-        return [product.to_dict() for product in popular_products]
+        
+        return Response({
+            'health_issue': health_issue,
+            'products': recommendations,
+            'count': len(recommendations)
+        })
 
 
-class ReturnCreateView(APIView):
+class LegacyPersonalRecommendationsView(APIView):
+    """
+    [DEPRECATED] Старый API рекомендаций. Используйте PersonalRecommendationsView.
+    
+    Сохранён для обратной совместимости.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        from apps.pets.services import PersonalizationService
+        
+        user = request.user
+        
+        # Получаем рекомендации через сервис
+        recommendations = PersonalizationService.get_product_recommendations(user, 12)
+        
+        # Преобразуем в старый формат
+        legacy_recommendations = [
+            rec['product'] for rec in recommendations
+        ]
+        
+        return Response({
+            'recommendations': legacy_recommendations,
+            'pets_count': len(PersonalizationService.get_context(user).pets)
+        })
+
+
+class ReturnCreateView(APIView):  # noqa: E302
     """
     Создание запроса на возврат товара.
 

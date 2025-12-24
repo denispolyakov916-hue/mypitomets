@@ -1,22 +1,35 @@
 """
-URL маршруты для эндпоинтов питомцев (PetID).
+URL маршруты для эндпоинтов питомцев (PetID) и напоминаний.
 
-Эндпоинты:
+Эндпоинты питомцев:
     GET    /api/pets/              - Список питомцев пользователя
     POST   /api/pets/              - Создание нового питомца
     GET    /api/pets/{uuid}/       - Детали питомца
     PUT    /api/pets/{uuid}/       - Обновление питомца
     DELETE /api/pets/{uuid}/       - Удаление питомца
 
-Все пути имеют префикс /api/pets/ в главном urls.py
+Эндпоинты напоминаний:
+    GET    /api/pets/reminders/              - Список напоминаний
+    POST   /api/pets/reminders/              - Создание напоминания
+    GET    /api/pets/reminders/categories/   - Категории напоминаний
+    GET    /api/pets/reminders/upcoming/     - Предстоящие напоминания
+    GET    /api/pets/reminders/{uuid}/       - Детали напоминания
+    PUT    /api/pets/reminders/{uuid}/       - Обновление напоминания
+    DELETE /api/pets/reminders/{uuid}/       - Удаление напоминания
+    POST   /api/pets/reminders/{uuid}/complete/ - Отметить выполненным
 
-Идентификаторы:
-    Используется UUIDv7 для идентификации питомцев.
-    Формат: 018d3e5f-8c7b-7abc-9def-1234567890ab
+Все пути имеют префикс /api/pets/ в главном urls.py
 """
 
 from django.urls import path
 from .views import PetListCreateView, PetDetailView
+from .reminder_views import (
+    ReminderListView,
+    ReminderDetailView,
+    ReminderCompleteView,
+    ReminderCategoriesView,
+    UpcomingRemindersView,
+)
 
 urlpatterns = [
     # Список всех питомцев / Создание нового питомца
@@ -25,6 +38,21 @@ urlpatterns = [
     
     # Операции с конкретным питомцем
     # GET, PUT, DELETE /api/pets/{uuid}/
-    # Используем uuid конвертер для валидации UUIDv7
     path('<uuid:pet_id>/', PetDetailView.as_view(), name='pet-detail'),
+    
+    # ===== Напоминания =====
+    # Список / Создание напоминаний
+    path('reminders/', ReminderListView.as_view(), name='reminder-list-create'),
+    
+    # Категории и частоты напоминаний
+    path('reminders/categories/', ReminderCategoriesView.as_view(), name='reminder-categories'),
+    
+    # Предстоящие напоминания (для дашборда)
+    path('reminders/upcoming/', UpcomingRemindersView.as_view(), name='reminder-upcoming'),
+    
+    # Операции с конкретным напоминанием
+    path('reminders/<uuid:reminder_id>/', ReminderDetailView.as_view(), name='reminder-detail'),
+    
+    # Отметить напоминание выполненным
+    path('reminders/<uuid:reminder_id>/complete/', ReminderCompleteView.as_view(), name='reminder-complete'),
 ]

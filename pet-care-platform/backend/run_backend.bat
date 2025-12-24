@@ -1,292 +1,140 @@
 @echo off
-setlocal enabledelayedexpansion
-chcp 65001 >nul
+chcp 65001 >nul 2>&1
+setlocal
+
 echo ================================================
-echo      PetCare+ - Backend Auto Start
+echo      Pitomets+ - Backend Launcher (Windows)
 echo ================================================
 echo.
 
-:: Переход в директорию скрипта
 cd /d "%~dp0"
-echo [INFO] Рабочая директория: %CD%
+echo [INFO] Working directory: %CD%
 echo.
 
-:: =============================================================================
-:: ШАГ 1: Проверка Python
-:: =============================================================================
-echo [1/7] Checking Python...
+:: Step 1: Check Python
+echo [1/6] Checking Python...
 python --version >nul 2>&1
-if %errorlevel% neq 0 (
-echo [ERROR] Python not installed or not found in PATH!
-echo.
-echo Solution:
-echo   1. Install Python 3.10+ from https://www.python.org/
-echo   2. Check "Add Python to PATH" during installation
-echo   3. Restart command prompt after installation
-echo.
+if errorlevel 1 (
+    echo [ERROR] Python is not installed or not in PATH!
+    echo Install Python 3.10+ from https://www.python.org/
     pause
     exit /b 1
 )
-for /f "tokens=*" %%i in ('python --version') do set PYTHON_VERSION=%%i
-echo [OK] Python installed: %PYTHON_VERSION%
+python --version
+echo [OK] Python found
 echo.
 
-:: =============================================================================
-:: ШАГ 2: Проверка виртуального окружения
-:: =============================================================================
-echo [2/7] Checking virtual environment...
-
-:: Проверяем и пересоздаем виртуальное окружение если нужно
-if exist ".venv\Scripts\activate.bat" (
-    echo [OK] Found virtual environment .venv
-) else if exist ".venv\bin\python" (
-    echo [WARNING] Found Linux virtual environment version
-    echo [INFO] Recreating for Windows...
-    if exist ".venv" (
-        rmdir /s /q ".venv" >nul 2>&1
-    )
-    echo Создание виртуального окружения...
-    python -m venv .venv
-    if %errorlevel% neq 0 (
-        echo [ОШИБКА] Не удалось создать виртуальное окружение!
-        pause
-        exit /b 1
-    )
+:: Step 2: Virtual environment
+echo [2/6] Checking virtual environment...
+if exist ".venv\Scripts\python.exe" (
+    echo [OK] Virtual environment found
 ) else (
-    echo Создание виртуального окружения...
+    echo [INFO] Creating virtual environment...
+    if exist ".venv" rmdir /s /q ".venv" 2>nul
     python -m venv .venv
-    if %errorlevel% neq 0 (
-        echo [ОШИБКА] Не удалось создать виртуальное окружение!
+    if errorlevel 1 (
+        echo [ERROR] Failed to create virtual environment!
         pause
         exit /b 1
     )
+    echo [OK] Virtual environment created
 )
-
-:: Проверяем что виртуальное окружение создано
-if not exist ".venv\Scripts\python.exe" (
-    echo [ERROR] Virtual environment is corrupted!
-    pause
-    exit /b 1
-)
-echo [OK] Virtual environment ready
 echo.
 
-:: =============================================================================
-:: ШАГ 3: Установка зависимостей
-:: =============================================================================
-echo [3/7] Installing dependencies...
-
-echo Обновление pip...
-.venv\Scripts\python.exe -m pip install --upgrade pip --quiet
-if %errorlevel% neq 0 (
-    echo [ERROR] Failed to update pip!
+:: Step 3: Install dependencies
+echo [3/6] Installing dependencies...
+if not exist "requirements.txt" (
+    echo [ERROR] requirements.txt not found!
     pause
     exit /b 1
 )
 
-echo Installing dependencies (this may take several minutes)...
-.venv\Scripts\python.exe -m pip install -r requirements.txt
-if %errorlevel% neq 0 (
-echo [ERROR] Failed to install dependencies!
-echo.
-echo Check:
-echo   1. requirements.txt file exists
-echo   2. Internet connection available
-echo.
-    pause
-    exit /b 1
+echo [INFO] Upgrading pip...
+.venv\Scripts\python.exe -m pip install --upgrade pip -q
+
+echo [INFO] Installing packages...
+.venv\Scripts\python.exe -m pip install -r requirements.txt -q
+if errorlevel 1 (
+    echo [WARNING] Some packages failed, retrying...
+    .venv\Scripts\python.exe -m pip install -r requirements.txt --no-cache-dir
 )
 
-echo Installing setuptools (required for some packages)...
-.venv\Scripts\python.exe -m pip install setuptools
-if %errorlevel% neq 0 (
-    echo [WARNING] Failed to install setuptools
-    echo Some features may work incorrectly
-)
-
+.venv\Scripts\python.exe -m pip install setuptools -q 2>nul
 echo [OK] Dependencies installed
 echo.
 
-:: =============================================================================
-:: ШАГ 4: Активация виртуального окружения
-:: =============================================================================
-echo [4/7] Activating virtual environment...
-if exist ".venv\Scripts\activate.bat" (
-    call .venv\Scripts\activate.bat
-    echo [OK] Virtual environment activated
-) else (
-    echo [ERROR] Could not find activate.bat!
-    pause
-    exit /b 1
-)
-echo.
-
-:: =============================================================================
-:: ШАГ 5: Проверка файла конфигурации
-:: =============================================================================
-echo [5/7] Checking configuration...
-
+:: Step 4: Check .env file
+echo [4/6] Checking configuration...
 if not exist ".env" (
-    if exist ".env.example" (
-        echo Copying .env.example to .env...
-        copy ".env.example" ".env" >nul
-        echo [OK] .env file created
-        echo.
-        echo [IMPORTANT] Check settings in .env file
-        echo Press any key to continue...
-        pause >nul
-    ) else (
-        echo [WARNING] .env.example not found
-        echo Creating basic .env file...
-        (
-            echo # Настройки базы данных
-            echo DB_NAME=pitomets_db
-            echo DB_USER=pitomets
-            echo DB_PASSWORD=pitomets_password
-            echo DB_HOST=localhost
-            echo DB_PORT=5432
-            echo.
-            echo # Настройки Django
-            echo DEBUG=True
-            echo DJANGO_SECRET_KEY=django-insecure-change-in-production
-        ) > .env
-        echo [OK] Basic .env file created
-    )
+    echo [INFO] Creating .env file...
+    echo DB_NAME=pitomets_db> .env
+    echo DB_USER=pitomets>> .env
+    echo DB_PASSWORD=pitomets_password>> .env
+    echo DB_HOST=localhost>> .env
+    echo DB_PORT=5432>> .env
+    echo DEBUG=True>> .env
+    echo DJANGO_SECRET_KEY=django-insecure-change-in-production>> .env
+    echo CLIENT_URL=http://localhost:5173>> .env
+    echo API_URL=http://localhost:8000>> .env
+    echo [OK] .env file created
+    echo [IMPORTANT] Check database settings in .env file!
 ) else (
     echo [OK] .env file found
 )
 echo.
 
-:: =============================================================================
-:: ШАГ 6: Работа с базой данных и миграциями
-:: =============================================================================
-echo [6/7] Работа с базой данных...
-
-:: Проверяем подключение к БД
-echo Проверка подключения к базе данных...
-python manage.py check --database default >nul 2>&1
-if %errorlevel% neq 0 (
-    echo [ОШИБКА] Не удается подключиться к базе данных!
-    echo.
-    echo Возможные причины:
-    echo   1. PostgreSQL не запущен
-    echo   2. Неправильные настройки в .env файле
-    echo   3. База данных не создана
-    echo.
-    echo Текущие настройки БД в .env:
-    if exist ".env" (
-        findstr "DB_" .env
-    ) else (
-        echo Файл .env не найден!
-    )
-    echo.
-    echo Решение:
-    echo   1. Убедитесь что PostgreSQL запущен
-    echo   2. Проверьте настройки в .env файле
-    echo   3. Если БД не создана, запустите setup_database.bat
-    echo.
+:: Step 5: Database and migrations
+echo [5/6] Checking database...
+if not exist "manage.py" (
+    echo [ERROR] manage.py not found!
     pause
     exit /b 1
-) else (
-    echo [OK] Подключение к базе данных успешно
 )
 
-:: Работаем с миграциями для старой базы данных
-echo.
-echo Работа с миграциями...
-
-:: Показываем статус миграций
-echo Проверка статуса миграций...
-python manage.py showmigrations
-
-:: Пытаемся применить миграции
-echo.
-echo Применение миграций...
-python manage.py migrate
-if %errorlevel% neq 0 (
-    echo [ПРЕДУПРЕЖДЕНИЕ] Возникли конфликты миграций
-    echo Пытаюсь исправить автоматически...
-
-    :: Для старой базы данных - помечаем проблемные миграции как фейковые
-    echo Помечаю проблемные миграции как выполненные...
-
-    :: Автоматически помечаем все миграции training как фейковые
-    python manage.py migrate --fake training
-    if %errorlevel% neq 0 (
-        echo [ПРЕДУПРЕЖДЕНИЕ] Не удалось пометить training миграции
-    )
-
-    :: Автоматически помечаем все миграции shop как фейковые
-    python manage.py migrate --fake shop
-    if %errorlevel% neq 0 (
-        echo [ПРЕДУПРЕЖДЕНИЕ] Не удалось пометить shop миграции
-    )
-
-    :: Автоматически помечаем все миграции users как фейковые
-    python manage.py migrate --fake users
-    if %errorlevel% neq 0 (
-        echo [ПРЕДУПРЕЖДЕНИЕ] Не удалось пометить users миграции
-    )
-
-    :: Повторная попытка применить оставшиеся миграции
-    echo.
-    echo Повторное применение миграций...
-    python manage.py migrate
-
-    if %errorlevel% neq 0 (
-        echo [ПРЕДУПРЕЖДЕНИЕ] Всё еще есть проблемы с миграциями
-        echo Пытаюсь принудительно применить все миграции...
-
-        :: Последняя попытка - применяем все миграции как фейковые
-        python manage.py migrate --fake
-
-        if %errorlevel% neq 0 (
-            echo [ОШИБКА] Критическая ошибка миграций!
-            echo.
-            echo Решения:
-            echo   1. Удалите базу данных и пересоздайте с setup_database.bat
-            echo   2. Или обратитесь к администратору БД
-            echo.
-            pause
-            exit /b 1
-        ) else (
-            echo [OK] Все миграции помечены как выполненные
-        )
-    ) else (
-        echo [OK] Миграции успешно применены после исправления конфликтов
-    )
-) else (
-    echo [OK] Миграции применены успешно
+.venv\Scripts\python.exe manage.py check --database default >nul 2>&1
+if errorlevel 1 (
+    echo [ERROR] Cannot connect to database!
+    echo Check PostgreSQL is running and .env settings are correct
+    if exist ".env" findstr "DB_" .env
+    pause
+    exit /b 1
 )
+echo [OK] Database connection successful
 
-:: Создаем суперпользователя, если его нет
-echo.
-echo Creating superuser if needed...
-python manage.py createsuperuser --noinput --username admin --email admin@example.com 2>nul || echo Superuser already exists or creation failed
+echo [INFO] Applying migrations...
+.venv\Scripts\python.exe manage.py migrate --noinput >nul 2>&1
+if errorlevel 1 (
+    echo [WARNING] Migration issues, trying to fix...
+    .venv\Scripts\python.exe manage.py migrate --fake-initial --noinput >nul 2>&1
+    .venv\Scripts\python.exe manage.py migrate --noinput >nul 2>&1
+)
+echo [OK] Migrations applied
 echo.
 
-:: =============================================================================
-:: ШАГ 7: Запуск сервера
-:: =============================================================================
-echo [7/7] Запуск Django сервера...
+:: Step 6: Check port
+echo [6/6] Checking port 8000...
+netstat -an 2>nul | findstr ":8000.*LISTEN" >nul 2>&1
+if not errorlevel 1 (
+    echo [WARNING] Port 8000 is already in use!
+)
+echo.
+
+:: Start server
 echo ================================================
-echo      Сервер запущен!
+echo      Starting Django server...
 echo ================================================
 echo.
-echo Бэкенд доступен по адресам:
+echo Backend available at:
 echo   http://localhost:8000
-echo   http://127.0.0.1:8000
-echo.
-echo API эндпоинты:
 echo   http://localhost:8000/api/
 echo   http://localhost:8000/admin/
 echo.
-echo Для остановки нажмите Ctrl+C
-echo.
+echo Press Ctrl+C to stop
 echo ================================================
 echo.
 
-python manage.py runserver 0.0.0.0:8000
+.venv\Scripts\python.exe manage.py runserver 0.0.0.0:8000
 
+echo.
+echo Server stopped.
 pause
-

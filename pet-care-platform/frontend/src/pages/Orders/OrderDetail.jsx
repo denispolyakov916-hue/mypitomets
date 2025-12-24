@@ -12,6 +12,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { getOrders, createReturn } from '../../api/shop'
+import { createPayment } from '../../api/payments'
 import { PageLoader } from '../../components/Loader'
 import { useToastStore } from '../../store/toastStore'
 import OrderTimer from '../../components/OrderTimer'
@@ -109,6 +110,31 @@ const deliveryTypeLabels = {
   standard: 'Стандартная доставка',
   express: 'Экспресс доставка',
   pickup: 'Самовывоз'
+}
+
+/**
+ * Обработчик оплаты заказа
+ */
+const handlePayOrder = async (orderId, amount) => {
+  try {
+    // Создаем платеж для существующего заказа
+    const response = await createPayment({
+      payment_type: 'shop_order',
+      object_id: orderId,
+      amount: amount
+    })
+
+    if (response.payment) {
+      // Перенаправляем на страницу оплаты с payment_id
+      window.location.href = `/payment?payment_id=${response.payment.id}&amount=${response.payment.amount}`
+    } else {
+      throw new Error('Не удалось создать платеж')
+    }
+  } catch (error) {
+    console.error('Ошибка создания платежа:', error)
+    // Показываем ошибку пользователю
+    alert('Не удалось создать платеж. Попробуйте позже.')
+  }
 }
 
 /**
@@ -328,22 +354,13 @@ function OrderDetail() {
               )}
             </div>
             
-            {order.status === 'pending' && (
-              <Link
-                to={`/payment?order_id=${order.id}&type=shop_order&amount=${order.total_amount}`}
+            {(order.status === 'pending' || order.status === 'expired') && (
+              <button
+                onClick={() => handlePayOrder(order.id, order.total_amount)}
                 className="btn-primary"
               >
-                Оплатить заказ
-              </Link>
-            )}
-            
-            {order.status === 'expired' && (
-              <Link
-                to={`/payment?order_id=${order.id}&type=shop_order&amount=${order.total_amount}`}
-                className="btn-primary"
-              >
-                Попробовать оплатить снова
-              </Link>
+                {order.status === 'pending' ? 'Оплатить заказ' : 'Попробовать оплатить снова'}
+              </button>
             )}
           </div>
         </div>

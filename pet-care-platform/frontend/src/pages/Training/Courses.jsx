@@ -549,31 +549,34 @@ function Courses() {
       if (confirm('Для добавления курса в корзину необходимо войти в аккаунт. Перейти на страницу входа?')) {
         navigate('/login', { state: { from: { pathname: '/courses' } } })
       }
-      return
+      return false
     }
-    
+
     setAddingCourseId(course.id)
     try {
       // Добавляем курс в корзину
       const result = await addCourse(course.id, null, false)
-      
+
       if (result) {
         // Показываем уведомление об успешном добавлении
         success(
           `Курс "${course.title}" добавлен в корзину. Перейдите в корзину для оформления заказа.`,
           6000
         )
+        return true
       } else {
         // Ошибка уже установлена в cartStore
         showError(cartError || 'Не удалось добавить курс в корзину')
+        return false
       }
     } catch (err) {
       // Обработка неожиданных ошибок
-      const errorMessage = err.response?.data?.error || 
-                          err.response?.data?.message || 
-                          err.message || 
+      const errorMessage = err.response?.data?.error ||
+                          err.response?.data?.message ||
+                          err.message ||
                           'Не удалось добавить курс в корзину'
       showError(errorMessage)
+      return false
     } finally {
       setAddingCourseId(null)
     }

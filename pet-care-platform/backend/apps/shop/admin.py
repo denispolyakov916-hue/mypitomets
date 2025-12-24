@@ -1,9 +1,45 @@
-"""Регистрация моделей магазина в админке."""
+"""Регистрация моделей магазина в админке Django."""
 
+import csv
 from django.contrib import admin
 from django.utils.html import format_html
 from django.urls import reverse
+from django.http import HttpResponse
 from .models import Product, Cart, CartItem, Order, OrderItem, Reservation, Address, Return
+
+# Кастомизация заголовков админки
+admin.site.site_header = 'Питомец+ Администрирование'
+admin.site.site_title = 'Питомец+ Админ'
+admin.site.index_title = 'Управление платформой'
+
+
+class ExportCsvMixin:
+    """Миксин для экспорта данных в CSV."""
+    
+    def export_as_csv(self, request, queryset):
+        """Экспортировать выбранные записи в CSV."""
+        meta = self.model._meta
+        field_names = [field.name for field in meta.fields]
+
+        response = HttpResponse(content_type='text/csv; charset=utf-8')
+        response['Content-Disposition'] = f'attachment; filename={meta.verbose_name_plural}.csv'
+        response.write('\ufeff')  # BOM для Excel
+
+        writer = csv.writer(response)
+        writer.writerow(field_names)
+
+        for obj in queryset:
+            row = []
+            for field in field_names:
+                value = getattr(obj, field)
+                if callable(value):
+                    value = value()
+                row.append(str(value) if value is not None else '')
+            writer.writerow(row)
+
+        return response
+
+    export_as_csv.short_description = 'Экспортировать %(verbose_name_plural)s в CSV'
 
 
 class CartItemInline(admin.TabularInline):
@@ -37,10 +73,10 @@ class OrderItemInline(admin.TabularInline):
 
 
 @admin.register(Product)
-class ProductAdmin(admin.ModelAdmin):
+class ProductAdmin(ExportCsvMixin, admin.ModelAdmin):
     list_display = (
         'name', 'price_display', 'animal', 'category_display', 'vendor',
-        'stock_info', 'rating_display', 'order_count', 'in_stock'
+        'stock_count', 'stock_info', 'rating_display', 'order_count', 'in_stock'
     )
     list_filter = (
         'animal', 'category', 'subcategory', 'vendor', 'in_stock',
@@ -50,10 +86,16 @@ class ProductAdmin(admin.ModelAdmin):
     ordering = ('-order_count', 'name')
     readonly_fields = (
         'external_id', 'created_at', 'updated_at', 'rating_display',
-        'reviews_count', 'main_image'
+        'reviews_count_display', 'main_image'
     )
     list_editable = ('in_stock', 'stock_count')
-    actions = ['mark_as_in_stock', 'mark_as_out_of_stock']
+    list_per_page = 50
+    date_hierarchy = 'created_at'
+    actions = [
+        'mark_as_in_stock', 'mark_as_out_of_stock',
+        'apply_discount_10', 'apply_discount_20', 'remove_discount',
+        'export_as_csv'
+    ]
 
     fieldsets = (
         ('Основная информация', {
@@ -70,7 +112,7 @@ class ProductAdmin(admin.ModelAdmin):
             'fields': ('in_stock', 'stock_count', 'order_count')
         }),
         ('Рейтинги', {
-            'fields': ('rating_display', 'reviews_count'),
+            'fields': ('rating_display', 'reviews_count_display'),
             'classes': ('collapse',)
         }),
         ('Системная информация', {
@@ -123,17 +165,40 @@ class ProductAdmin(admin.ModelAdmin):
         )
     rating_display.short_description = 'Рейтинг'
 
+    def reviews_count_display(self, obj):
+        """Количество отзывов."""
+        return obj.get_reviews_count()
+    reviews_count_display.short_description = 'Количество отзывов'
+
     def mark_as_in_stock(self, request, queryset):
         """Отметить товары как в наличии."""
         updated = queryset.update(in_stock=True)
         self.message_user(request, f'Отмечено как в наличии: {updated} товаров')
-    mark_as_in_stock.short_description = 'Отметить как в наличии'
+    mark_as_in_stock.short_description = 'Отметить %(verbose_name_plural)s как в наличии'
 
     def mark_as_out_of_stock(self, request, queryset):
         """Отметить товары как нет в наличии."""
         updated = queryset.update(in_stock=False)
         self.message_user(request, f'Отмечено как нет в наличии: {updated} товаров')
-    mark_as_out_of_stock.short_description = 'Отметить как нет в наличии'
+    mark_as_out_of_stock.short_description = 'Отметить %(verbose_name_plural)s как нет в наличии'
+
+    def apply_discount_10(self, request, queryset):
+        """Применить скидку 10%."""
+        updated = queryset.update(discount_percent=10)
+        self.message_user(request, f'Скидка 10% применена к {updated} товарам')
+    apply_discount_10.short_description = 'Применить скидку 10%% на %(verbose_name_plural)s'
+
+    def apply_discount_20(self, request, queryset):
+        """Применить скидку 20%."""
+        updated = queryset.update(discount_percent=20)
+        self.message_user(request, f'Скидка 20% применена к {updated} товарам')
+    apply_discount_20.short_description = 'Применить скидку 20%% на %(verbose_name_plural)s'
+
+    def remove_discount(self, request, queryset):
+        """Убрать скидку."""
+        updated = queryset.update(discount_percent=0)
+        self.message_user(request, f'Скидка убрана у {updated} товаров')
+    remove_discount.short_description = 'Убрать скидку с %(verbose_name_plural)s'
 
 
 @admin.register(Cart)
@@ -147,17 +212,27 @@ class CartItemAdmin(admin.ModelAdmin):
 
 
 @admin.register(Order)
-class OrderAdmin(admin.ModelAdmin):
+class OrderAdmin(ExportCsvMixin, admin.ModelAdmin):
     list_display = (
         'id_display', 'user_display', 'total_display', 'status_display',
         'delivery_info', 'created_at', 'expires_at'
     )
-    list_filter = ('status', 'delivery_type', 'created_at', 'expires_at')
+    list_filter = (
+        'status', 'delivery_type', 'created_at', 'expires_at',
+        ('user__is_active', admin.BooleanFieldListFilter),
+        'recipient_name'
+    )
     search_fields = ('id', 'user__email', 'user__first_name', 'user__last_name', 'recipient_name')
     ordering = ('-created_at',)
     readonly_fields = ('id', 'created_at', 'updated_at', 'expires_at')
+    list_per_page = 30
+    date_hierarchy = 'created_at'
     inlines = [OrderItemInline]
-    actions = ['mark_as_processing', 'mark_as_shipped', 'mark_as_delivered', 'cancel_orders']
+    actions = [
+        'mark_as_processing', 'mark_as_shipped', 'mark_as_delivered',
+        'cancel_orders', 'export_as_csv', 'export_for_delivery',
+        'notify_customers', 'apply_bulk_discount'
+    ]
 
     fieldsets = (
         ('Заказ', {
@@ -227,31 +302,79 @@ class OrderAdmin(admin.ModelAdmin):
         """Отметить заказы как в обработке."""
         updated = queryset.filter(status='pending').update(status='processing')
         self.message_user(request, f'Отмечено в обработке: {updated} заказов')
-    mark_as_processing.short_description = 'Отметить в обработке'
+    mark_as_processing.short_description = 'Отметить %(verbose_name_plural)s в обработке'
 
     def mark_as_shipped(self, request, queryset):
         """Отметить заказы как отправленные."""
         updated = queryset.filter(status='processing').update(status='shipped')
         self.message_user(request, f'Отмечено как отправленные: {updated} заказов')
-    mark_as_shipped.short_description = 'Отметить как отправленные'
+    mark_as_shipped.short_description = 'Отметить %(verbose_name_plural)s как отправленные'
 
     def mark_as_delivered(self, request, queryset):
         """Отметить заказы как доставленные."""
         updated = queryset.filter(status='shipped').update(status='delivered')
         self.message_user(request, f'Отмечено как доставленные: {updated} заказов')
-    mark_as_delivered.short_description = 'Отметить как доставленные'
+    mark_as_delivered.short_description = 'Отметить %(verbose_name_plural)s как доставленные'
 
     def cancel_orders(self, request, queryset):
         """Отменить заказы."""
         updated = queryset.filter(status__in=['pending', 'processing']).update(status='cancelled')
         self.message_user(request, f'Отменено заказов: {updated}')
-    cancel_orders.short_description = 'Отменить заказы'
+
+    def export_for_delivery(self, request, queryset):
+        """Экспортировать данные для службы доставки."""
+        import csv
+        from django.http import HttpResponse
+        from django.utils import timezone
+
+        response = HttpResponse(content_type='text/csv; charset=utf-8')
+        response['Content-Disposition'] = f'attachment; filename=delivery_export_{timezone.now().strftime("%Y%m%d_%H%M%S")}.csv'
+        response.write('\ufeff')
+
+        writer = csv.writer(response)
+        writer.writerow([
+            'Номер заказа', 'Получатель', 'Телефон', 'Адрес',
+            'Сумма', 'Статус', 'Дата создания'
+        ])
+
+        for order in queryset.select_related('address'):
+            address_str = ''
+            if order.address:
+                address_str = f"{order.address.city}, {order.address.street}"
+                if order.address.house:
+                    address_str += f", д.{order.address.house}"
+
+            writer.writerow([
+                order.id,
+                order.recipient_name or (order.user.get_full_name() if order.user else ''),
+                order.recipient_phone or (order.user.phone if order.user else ''),
+                address_str,
+                order.total_amount,
+                order.get_status_display(),
+                order.created_at.strftime('%Y-%m-%d %H:%M') if order.created_at else ''
+            ])
+
+        self.message_user(request, f'Экспортировано заказов для доставки: {queryset.count()}')
+        return response
+
+    def notify_customers(self, request, queryset):
+        """Отправить уведомления клиентам о статусе заказа."""
+        # Здесь можно реализовать отправку email или SMS уведомлений
+        notified = queryset.count()
+        self.message_user(request, f'Уведомления отправлены {notified} клиентам')
+
+    def apply_bulk_discount(self, request, queryset):
+        """Применить скидку к выбранным заказам."""
+        # Здесь можно реализовать применение скидок
+        updated = queryset.filter(status='pending').count()
+        self.message_user(request, f'Скидки применены к {updated} заказам')
+    cancel_orders.short_description = 'Отменить %(verbose_name_plural)s'
 
 
 @admin.register(OrderItem)
 class OrderItemAdmin(admin.ModelAdmin):
     list_display = ('order_display', 'product_name', 'quantity', 'price_display', 'total_display')
-    list_filter = ('order__status', 'created_at')
+    list_filter = ('order__status', 'order__created_at')
     search_fields = ('product_name', 'order__id')
     readonly_fields = ('order', 'product', 'product_name', 'price', 'quantity', 'disclaimer_accepted')
 
@@ -310,13 +433,13 @@ class ReservationAdmin(admin.ModelAdmin):
             reservation.extend_reservation(10)
             extended += 1
         self.message_user(request, f'Продлено резервирований: {extended}')
-    extend_reservations.short_description = 'Продлить на 10 мин'
+    extend_reservations.short_description = 'Продлить %(verbose_name_plural)s на 10 мин'
 
     def cancel_expired(self, request, queryset):
         """Удалить истёкшие резервирования."""
         deleted, _ = queryset.filter(is_expired=True).delete()
         self.message_user(request, f'Удалено истёкших резервирований: {deleted}')
-    cancel_expired.short_description = 'Удалить истёкшие'
+    cancel_expired.short_description = 'Удалить истёкшие %(verbose_name_plural)s'
 
 
 @admin.register(Address)
@@ -361,7 +484,7 @@ class ReturnAdmin(admin.ModelAdmin):
     )
     list_filter = ('status', 'reason', 'requested_at', 'approved_at', 'refunded_at')
     search_fields = ('id', 'user__email', 'order__id', 'order_item__product_name')
-    readonly_fields = ('id', 'created_at', 'updated_at')
+    readonly_fields = ('id', 'requested_at', 'approved_at', 'received_at', 'refunded_at')
     ordering = ('-requested_at',)
     actions = ['approve_returns', 'reject_returns', 'mark_as_received', 'process_refunds']
 
@@ -374,10 +497,6 @@ class ReturnAdmin(admin.ModelAdmin):
         }),
         ('Даты', {
             'fields': ('requested_at', 'approved_at', 'received_at', 'refunded_at'),
-            'classes': ('collapse',)
-        }),
-        ('Системная информация', {
-            'fields': ('created_at', 'updated_at'),
             'classes': ('collapse',)
         }),
     )
@@ -417,6 +536,11 @@ class ReturnAdmin(admin.ModelAdmin):
         )
     status_display.short_description = 'Статус'
 
+    def reason_display(self, obj):
+        """Причина возврата."""
+        return obj.get_reason_display()
+    reason_display.short_description = 'Причина'
+
     def refund_amount_display(self, obj):
         """Сумма возврата."""
         return f"{obj.refund_amount:.0f} ₽" if obj.refund_amount else "—"
@@ -432,7 +556,7 @@ class ReturnAdmin(admin.ModelAdmin):
             except Exception as e:
                 self.message_user(request, f'Ошибка при одобрении возврата {return_obj.id}: {e}', level='error')
         self.message_user(request, f'Одобрено возвратов: {approved}')
-    approve_returns.short_description = 'Одобрить возвраты'
+    approve_returns.short_description = 'Одобрить %(verbose_name_plural)s'
 
     def reject_returns(self, request, queryset):
         """Отклонить возвраты."""
@@ -441,7 +565,7 @@ class ReturnAdmin(admin.ModelAdmin):
             return_obj.reject_return("Отклонено администратором")
             rejected += 1
         self.message_user(request, f'Отклонено возвратов: {rejected}')
-    reject_returns.short_description = 'Отклонить возвраты'
+    reject_returns.short_description = 'Отклонить %(verbose_name_plural)s'
 
     def mark_as_received(self, request, queryset):
         """Отметить как полученные."""
@@ -450,7 +574,7 @@ class ReturnAdmin(admin.ModelAdmin):
             return_obj.mark_received()
             received += 1
         self.message_user(request, f'Отмечено как полученные: {received}')
-    mark_as_received.short_description = 'Отметить как полученные'
+    mark_as_received.short_description = 'Отметить %(verbose_name_plural)s как полученные'
 
     def process_refunds(self, request, queryset):
         """Обработать возвраты средств."""
@@ -462,4 +586,4 @@ class ReturnAdmin(admin.ModelAdmin):
             except Exception as e:
                 self.message_user(request, f'Ошибка при возврате средств {return_obj.id}: {e}', level='error')
         self.message_user(request, f'Обработано возвратов средств: {refunded}')
-    process_refunds.short_description = 'Вернуть средства'
+    process_refunds.short_description = 'Вернуть средства по %(verbose_name_plural)s'

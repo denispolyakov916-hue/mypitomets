@@ -48,7 +48,7 @@ class PaymentCreateView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        # Создание платежа
+        # Создание платежа (только создание, без автоматической обработки)
         try:
             payment = PaymentService.create_payment(
                 user=request.user,
@@ -61,20 +61,11 @@ class PaymentCreateView(APIView):
         except ValueError as e:
             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Автоматическая обработка платежа (имитация)
-        success = PaymentService.process_payment(payment)
-
-        if success:
-            serializer = PaymentSerializer(payment)
-            return Response({
-                'message': 'Платеж создан и обрабатывается',
-                'payment': serializer.data
-            }, status=status.HTTP_201_CREATED)
-        else:
-            return Response(
-                {'error': 'Не удалось создать платеж'},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
+        serializer = PaymentSerializer(payment)
+        return Response({
+            'message': 'Платеж создан',
+            'payment': serializer.data
+        }, status=status.HTTP_201_CREATED)
 
     def _get_payment_amount(self, payment_type, object_id, user):
         """
@@ -182,10 +173,9 @@ class PaymentByOrderView(APIView):
 
     def get(self, request, order_id):
         try:
-            # Ищем платеж для этого заказа
+            # Ищем платеж для этого заказа (любой тип платежа)
             payment = Payment.objects.filter(
                 user=request.user,
-                payment_type='shop_order',
                 object_id=order_id,
                 status__in=['pending', 'processing']
             ).order_by('-created_at').first()

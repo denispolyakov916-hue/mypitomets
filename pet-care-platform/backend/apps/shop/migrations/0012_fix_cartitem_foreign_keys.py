@@ -8,7 +8,7 @@ class Migration(migrations.Migration):
 
     dependencies = [
         ('pets', '0003_alter_pet_breed_alter_pet_created_at_and_more'),
-        ('training', '0005_auto_20251224_1835'),
+        ('training', '0004_alter_usercourse_unique_together_usercourse_pet_and_more'),
         ('shop', '0011_order_expires_at_alter_order_status'),
     ]
 

@@ -9,9 +9,11 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate, useLocation, Link } from 'react-router-dom'
 import { getUnifiedCheckout, submitUnifiedCheckout, cancelReservation } from '../../api/shop'
+import { createPayment } from '../../api/payments'
 import { useAuthStore } from '../../store/authStore'
 import { useCartStore } from '../../store/cartStore'
 import { PageLoader, ButtonLoader } from '../../components/Loader'
+import AuthGuard from '../../components/AuthGuard'
 
 /**
  * Форматирование цены с символом рубля
@@ -101,32 +103,8 @@ function ReservationTimer({ expiresAt, onExpired }) {
  * 
  * Отображает товары из корзины, выбор типа доставки и адреса.
  */
-function ProductsSection({ 
-  products, 
-  addresses, 
-  deliveryOptions,
-  formData, 
-  onFormChange 
-}) {
+function ProductsSection({ products }) {
   if (!products?.items?.length) return null
-
-  const handleDeliveryChange = (type) => {
-    onFormChange({ delivery_type: type })
-  }
-
-  const handleAddressChange = (addressId) => {
-    onFormChange({ 
-      address_id: addressId,
-      shipping_address: addressId ? '' : formData.shipping_address
-    })
-  }
-
-  const handleShippingAddressChange = (value) => {
-    onFormChange({ 
-      shipping_address: value,
-      address_id: value.trim() ? '' : formData.address_id
-    })
-  }
 
   return (
     <div className="card">
@@ -165,104 +143,6 @@ function ProductsSection({
           </div>
         ))}
       </div>
-
-      {/* Выбор типа доставки */}
-      {deliveryOptions?.length > 0 && (
-        <div className="mb-6">
-          <h3 className="text-lg font-medium text-gray-900 mb-3">Способ доставки</h3>
-          <div className="space-y-2">
-            {deliveryOptions.map(option => (
-              <label 
-                key={option.type}
-                className={`
-                  flex items-start gap-3 p-4 border rounded-lg cursor-pointer transition-colors
-                  ${formData.delivery_type === option.type 
-                    ? 'border-primary-500 bg-primary-50' 
-                    : 'border-gray-200 hover:bg-gray-50'
-                  }
-                `}
-              >
-                <input
-                  type="radio"
-                  name="delivery_type"
-                  value={option.type}
-                  checked={formData.delivery_type === option.type}
-                  onChange={() => handleDeliveryChange(option.type)}
-                  className="mt-1"
-                />
-                <div className="flex-1">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <p className="font-medium text-gray-900">{option.name}</p>
-                      <p className="text-sm text-gray-500">{option.description}</p>
-                      {option.days && (
-                        <p className="text-sm text-gray-500">Срок: {option.days}</p>
-                      )}
-                    </div>
-                    <span className="font-semibold text-gray-900">
-                      {option.cost === 0 ? 'Бесплатно' : formatPrice(option.cost)}
-                    </span>
-                  </div>
-                </div>
-              </label>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Выбор адреса */}
-      {formData.delivery_type !== 'pickup' && (
-        <div>
-          <h3 className="text-lg font-medium text-gray-900 mb-3">Адрес доставки</h3>
-          
-          {/* Сохранённые адреса */}
-          {addresses?.length > 0 && (
-            <div className="space-y-2 mb-4">
-              {addresses.map(addr => (
-                <label 
-                  key={addr.id}
-                  className={`
-                    flex items-start gap-3 p-3 border rounded-lg cursor-pointer transition-colors
-                    ${formData.address_id === addr.id 
-                      ? 'border-primary-500 bg-primary-50' 
-                      : 'border-gray-200 hover:bg-gray-50'
-                    }
-                  `}
-                >
-                  <input
-                    type="radio"
-                    name="address"
-                    value={addr.id}
-                    checked={formData.address_id === addr.id}
-                    onChange={() => handleAddressChange(addr.id)}
-                    className="mt-1"
-                  />
-                  <div className="flex-1">
-                    <p className="font-medium text-gray-900">{addr.full_address}</p>
-                    {addr.is_default && (
-                      <span className="text-xs text-primary-600">По умолчанию</span>
-                    )}
-                  </div>
-                </label>
-              ))}
-            </div>
-          )}
-
-          {/* Новый адрес */}
-          <div>
-            <label className="label">
-              {addresses?.length > 0 ? 'Или введите новый адрес' : 'Введите адрес доставки'}
-            </label>
-            <textarea
-              value={formData.shipping_address}
-              onChange={(e) => handleShippingAddressChange(e.target.value)}
-              className="input min-h-[80px]"
-              placeholder="Город, улица, дом, квартира"
-              disabled={!!formData.address_id}
-            />
-          </div>
-        </div>
-      )}
 
       {/* Подытог товаров */}
       <div className="mt-6 pt-4 border-t border-gray-100 flex justify-between items-center">
@@ -358,6 +238,436 @@ function CoursesSection({ courses, formData, onFormChange }) {
 }
 
 // =============================================================================
+// КОМПОНЕНТ: AddressSection
+// =============================================================================
+
+/**
+ * Секция адреса доставки
+ */
+function AddressSection({ addresses, formData, onFormChange }) {
+  // Не показываем секцию при самовывозе
+  if (formData.delivery_type === 'pickup') return null
+
+  const handleAddressChange = (addressId) => {
+    onFormChange({ 
+      address_id: addressId,
+      shipping_address: addressId ? '' : formData.shipping_address
+    })
+  }
+
+  const handleShippingAddressChange = (value) => {
+    onFormChange({ 
+      shipping_address: value,
+      address_id: value.trim() ? '' : formData.address_id
+    })
+  }
+
+  return (
+    <div className="card mb-6">
+      <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
+        <svg className="w-5 h-5 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+            d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+            d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+        </svg>
+        Адрес доставки
+      </h2>
+
+      {/* Сохранённые адреса */}
+      {addresses?.length > 0 && (
+        <div className="space-y-3 mb-4">
+          {addresses.map(addr => (
+            <label
+              key={addr.id}
+              className={`flex items-center gap-4 p-4 rounded-lg border-2 cursor-pointer transition-all ${
+                formData.address_id === addr.id
+                  ? 'border-primary-500 bg-primary-50'
+                  : 'border-gray-200 hover:border-gray-300'
+              }`}
+            >
+              <input
+                type="radio"
+                name="address"
+                value={addr.id}
+                checked={formData.address_id === addr.id}
+                onChange={() => handleAddressChange(addr.id)}
+                className="sr-only"
+              />
+              <div className={`p-2 rounded-lg ${
+                formData.address_id === addr.id
+                  ? 'bg-primary-100 text-primary-600'
+                  : 'bg-gray-100 text-gray-600'
+              }`}>
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                </svg>
+              </div>
+              <div className="flex-1">
+                <div className="font-medium text-gray-900">{addr.full_address}</div>
+                {addr.is_default && (
+                  <span className="text-xs text-primary-600 font-medium">По умолчанию</span>
+                )}
+              </div>
+              <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                formData.address_id === addr.id
+                  ? 'border-primary-500 bg-primary-500'
+                  : 'border-gray-300'
+              }`}>
+                {formData.address_id === addr.id && (
+                  <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                )}
+              </div>
+            </label>
+          ))}
+        </div>
+      )}
+
+      {/* Новый адрес */}
+      <div>
+        <label className="label flex items-center gap-2">
+          <svg className="w-4 h-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+          </svg>
+          {addresses?.length > 0 ? 'Или введите новый адрес' : 'Введите адрес доставки'}
+        </label>
+        <textarea
+          value={formData.shipping_address}
+          onChange={(e) => handleShippingAddressChange(e.target.value)}
+          className="input min-h-[100px]"
+          placeholder="Город, улица, дом, квартира, подъезд, этаж, домофон..."
+          disabled={!!formData.address_id}
+        />
+        {formData.address_id && (
+          <button
+            type="button"
+            onClick={() => handleAddressChange('')}
+            className="mt-2 text-sm text-primary-600 hover:text-primary-700 flex items-center gap-1"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+            </svg>
+            Ввести другой адрес
+          </button>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// =============================================================================
+// КОМПОНЕНТ: DeliverySection
+// =============================================================================
+
+/**
+ * Секция выбора способа доставки
+ * 
+ * TODO: Пункты самовывоза - заглушка
+ * В будущем заменить pickupLocations на реальные данные из API:
+ * - GET /api/shop/pickup-locations/ - список пунктов самовывоза
+ * - Поля: id, name, address, working_hours, phone, coordinates
+ * - Добавить карту с отображением пунктов
+ * - Добавить фильтрацию по городу/району
+ */
+function DeliverySection({ deliveryOptions, formData, onFormChange }) {
+  if (!deliveryOptions?.length) return null
+
+  const handleDeliveryChange = (type) => {
+    onFormChange({ delivery_type: type })
+  }
+
+  const handlePickupLocationChange = (locationId) => {
+    onFormChange({ pickup_location_id: locationId })
+  }
+
+  // TODO: Заглушка - заменить на реальные данные из API
+  // GET /api/shop/pickup-locations/
+  const pickupLocations = [
+    {
+      id: 'loc_1',
+      name: 'ПетКаре - ТЦ "Европейский"',
+      address: 'г. Москва, пл. Киевского Вокзала, 2, ТЦ "Европейский", 1 этаж',
+      workingHours: 'Пн-Вс: 10:00 - 22:00',
+      phone: '+7 (495) 123-45-67'
+    },
+    {
+      id: 'loc_2',
+      name: 'ПетКаре - ТЦ "Авиапарк"',
+      address: 'г. Москва, Ходынский бульвар, 4, ТЦ "Авиапарк", 2 этаж',
+      workingHours: 'Пн-Вс: 10:00 - 22:00',
+      phone: '+7 (495) 234-56-78'
+    },
+    {
+      id: 'loc_3',
+      name: 'ПетКаре - ТЦ "Метрополис"',
+      address: 'г. Москва, Ленинградское ш., 16А, стр. 4, ТЦ "Метрополис", 1 этаж',
+      workingHours: 'Пн-Вс: 10:00 - 22:00',
+      phone: '+7 (495) 345-67-89'
+    }
+  ]
+
+  return (
+    <div className="card mb-6">
+      <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
+        <svg className="w-5 h-5 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+            d="M8 4H6a2 2 0 00-2 2v12a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-2m-4-1v8m0 0l3-3m-3 3L9 8m-5 5h2.586a1 1 0 01.707.293l2.414 2.414a1 1 0 00.707.293h3.172a1 1 0 00.707-.293l2.414-2.414a1 1 0 01.707-.293H20" />
+        </svg>
+        Способ доставки
+      </h2>
+
+      <div className="space-y-3">
+        {deliveryOptions.map(option => (
+          <label
+            key={option.type}
+            className={`flex items-center gap-4 p-4 rounded-lg border-2 cursor-pointer transition-all ${
+              formData.delivery_type === option.type
+                ? 'border-primary-500 bg-primary-50'
+                : 'border-gray-200 hover:border-gray-300'
+            }`}
+          >
+            <input
+              type="radio"
+              name="delivery_type"
+              value={option.type}
+              checked={formData.delivery_type === option.type}
+              onChange={() => handleDeliveryChange(option.type)}
+              className="sr-only"
+            />
+            <div className={`p-2 rounded-lg ${
+              formData.delivery_type === option.type
+                ? 'bg-primary-100 text-primary-600'
+                : 'bg-gray-100 text-gray-600'
+            }`}>
+              {option.type === 'pickup' ? (
+                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                </svg>
+              ) : option.type === 'express' ? (
+                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+              ) : (
+                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 001 1h1M5 17a2 2 0 104 0m-4 0a2 2 0 114 0m6 0a2 2 0 104 0m-4 0a2 2 0 114 0" />
+                </svg>
+              )}
+            </div>
+            <div className="flex-1">
+              <div className="font-medium text-gray-900">{option.name}</div>
+              <div className="text-sm text-gray-500">{option.description}</div>
+              {option.days && (
+                <div className="text-xs text-gray-400 mt-1">Срок: {option.days}</div>
+              )}
+            </div>
+            <div className="text-right">
+              <span className={`font-semibold ${option.cost === 0 ? 'text-green-600' : 'text-gray-900'}`}>
+                {option.cost === 0 ? 'Бесплатно' : formatPrice(option.cost)}
+              </span>
+            </div>
+            <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+              formData.delivery_type === option.type
+                ? 'border-primary-500 bg-primary-500'
+                : 'border-gray-300'
+            }`}>
+              {formData.delivery_type === option.type && (
+                <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                </svg>
+              )}
+            </div>
+          </label>
+        ))}
+      </div>
+
+      {/* Пункты самовывоза - показываем при выборе самовывоза */}
+      {formData.delivery_type === 'pickup' && (
+        <div className="mt-6 pt-6 border-t border-gray-200">
+          <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center gap-2">
+            <svg className="w-5 h-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+            Выберите пункт самовывоза
+          </h3>
+
+          <div className="space-y-3">
+            {pickupLocations.map(location => (
+              <label
+                key={location.id}
+                className={`flex items-start gap-4 p-4 rounded-lg border-2 cursor-pointer transition-all ${
+                  formData.pickup_location_id === location.id
+                    ? 'border-primary-500 bg-primary-50'
+                    : 'border-gray-200 hover:border-gray-300'
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="pickup_location"
+                  value={location.id}
+                  checked={formData.pickup_location_id === location.id}
+                  onChange={() => handlePickupLocationChange(location.id)}
+                  className="sr-only"
+                />
+                <div className={`p-2 rounded-lg flex-shrink-0 ${
+                  formData.pickup_location_id === location.id
+                    ? 'bg-primary-100 text-primary-600'
+                    : 'bg-gray-100 text-gray-600'
+                }`}>
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                  </svg>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="font-medium text-gray-900">{location.name}</div>
+                  <div className="text-sm text-gray-600 mt-1">{location.address}</div>
+                  <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-xs text-gray-500">
+                    <span className="flex items-center gap-1">
+                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      {location.workingHours}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                      </svg>
+                      {location.phone}
+                    </span>
+                  </div>
+                </div>
+                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-1 ${
+                  formData.pickup_location_id === location.id
+                    ? 'border-primary-500 bg-primary-500'
+                    : 'border-gray-300'
+                }`}>
+                  {formData.pickup_location_id === location.id && (
+                    <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                  )}
+                </div>
+              </label>
+            ))}
+          </div>
+
+          {/* Информация о заглушке - убрать в продакшене */}
+          <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+            <p className="text-xs text-amber-700 flex items-center gap-2">
+              <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              Демо-режим: пункты самовывоза являются заглушкой. В будущем будут загружаться из API.
+            </p>
+          </div>
+        </div>
+      )}
+
+    </div>
+  )
+}
+
+// =============================================================================
+// КОМПОНЕНТ: PaymentMethodSection
+// =============================================================================
+
+/**
+ * Секция выбора способа оплаты
+ */
+function PaymentMethodSection({ paymentMethod, onPaymentMethodChange }) {
+  const paymentMethods = [
+    {
+      id: 'card',
+      title: 'Банковская карта',
+      description: 'Visa, Mastercard, Мир',
+      icon: (
+        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+            d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+        </svg>
+      )
+    },
+    {
+      id: 'sbp',
+      title: 'Система Быстрых Платежей (СПБ)',
+      description: 'Оплата по QR-коду через приложение банка',
+      icon: (
+        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+            d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M12 15h4.01M12 18h4.01M12 21h4.01M8 7v4m0 0h.01M8 15h4.01M8 18h4.01M8 21h4.01M2 7h4m0 0v4m0 0h.01M4 15h4.01M4 18h4.01M4 21h4.01" />
+        </svg>
+      )
+    }
+  ]
+
+  return (
+    <div className="card mb-6">
+      <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
+        <svg className="w-5 h-5 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+            d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+        </svg>
+        Способ оплаты
+      </h2>
+
+      <div className="space-y-3">
+        {paymentMethods.map((method) => (
+          <label
+            key={method.id}
+            className={`flex items-center gap-4 p-4 rounded-lg border-2 cursor-pointer transition-all ${
+              paymentMethod === method.id
+                ? 'border-primary-500 bg-primary-50'
+                : 'border-gray-200 hover:border-gray-300'
+            }`}
+          >
+            <input
+              type="radio"
+              name="payment_method"
+              value={method.id}
+              checked={paymentMethod === method.id}
+              onChange={(e) => onPaymentMethodChange(e.target.value)}
+              className="sr-only"
+            />
+            <div className={`p-2 rounded-lg ${
+              paymentMethod === method.id
+                ? 'bg-primary-100 text-primary-600'
+                : 'bg-gray-100 text-gray-600'
+            }`}>
+              {method.icon}
+            </div>
+            <div className="flex-1">
+              <div className="font-medium text-gray-900">{method.title}</div>
+              <div className="text-sm text-gray-500">{method.description}</div>
+            </div>
+            <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+              paymentMethod === method.id
+                ? 'border-primary-500 bg-primary-500'
+                : 'border-gray-300'
+            }`}>
+              {paymentMethod === method.id && (
+                <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                </svg>
+              )}
+            </div>
+          </label>
+        ))}
+      </div>
+
+      <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg flex items-center gap-2">
+        <svg className="w-5 h-5 text-green-600 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        <span className="text-sm text-green-700">Безопасная оплата с шифрованием данных</span>
+      </div>
+    </div>
+  )
+}
+
+// =============================================================================
 // КОМПОНЕНТ: SummarySection
 // =============================================================================
 
@@ -371,7 +681,8 @@ function SummarySection({
   hasCourses,
   canSubmit, 
   isSubmitting, 
-  onSubmit 
+  onSubmit,
+  paymentMethod
 }) {
   const grandTotal = (totals?.products || 0) + (totals?.courses || 0) + deliveryCost
 
@@ -398,6 +709,15 @@ function SummarySection({
             <span>{formatPrice(totals?.courses || 0)}</span>
           </div>
         )}
+
+        {/* Выбранный способ оплаты */}
+        <div className="flex justify-between text-gray-600">
+          <span>Оплата:</span>
+          <span className="font-medium text-gray-900">
+            {paymentMethod === 'card' ? '💳 Картой' : '📱 СПБ'}
+          </span>
+        </div>
+
         <div className="pt-3 border-t border-gray-100">
           <div className="flex justify-between text-lg font-bold text-gray-900">
             <span>Итого:</span>
@@ -418,10 +738,17 @@ function SummarySection({
           </>
         ) : (
           <>
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
-                d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-            </svg>
+            {paymentMethod === 'card' ? (
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                  d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+              </svg>
+            ) : (
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                  d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M12 15h4.01M12 18h4.01M12 21h4.01M8 7v4m0 0h.01M8 15h4.01M8 18h4.01M8 21h4.01M2 7h4m0 0v4m0 0h.01M4 15h4.01M4 18h4.01M4 21h4.01" />
+              </svg>
+            )}
             <span>Оплатить {formatPrice(grandTotal)}</span>
           </>
         )}
@@ -468,7 +795,9 @@ function UnifiedCheckout() {
     delivery_type: 'standard',
     address_id: '',
     shipping_address: '',
-    courses_disclaimer_accepted: false
+    pickup_location_id: '', // ID пункта самовывоза
+    courses_disclaimer_accepted: false,
+    payment_method: 'card' // 'card' или 'sbp'
   })
 
   /**
@@ -549,10 +878,12 @@ function UnifiedCheckout() {
    * Отправка заказа
    */
   const handleSubmit = async () => {
+    console.log('=== handleSubmit STARTED ===')
     setError(null)
-    
+
     const hasProducts = checkoutData?.products?.items?.length > 0
     const hasCourses = checkoutData?.courses?.items?.length > 0
+    console.log('hasProducts:', hasProducts, 'hasCourses:', hasCourses)
 
     // Валидация
     if (hasProducts && formData.delivery_type !== 'pickup') {
@@ -571,12 +902,12 @@ function UnifiedCheckout() {
 
     try {
       const submitData = {}
-      
+
       // Добавляем выбранные элементы
       if (selectedItemsFromCart.length > 0) {
         submitData.selected_items = selectedItemsFromCart
       }
-      
+
       if (hasProducts) {
         submitData.delivery_type = formData.delivery_type
         if (formData.address_id) {
@@ -584,7 +915,7 @@ function UnifiedCheckout() {
         } else if (formData.shipping_address.trim()) {
           submitData.shipping_address = formData.shipping_address.trim()
         }
-        
+
         // Добавляем стоимость доставки
         const selectedDelivery = checkoutData.products?.delivery_options?.find(
           opt => opt.type === formData.delivery_type
@@ -599,25 +930,27 @@ function UnifiedCheckout() {
       }
 
       const response = await submitUnifiedCheckout(submitData)
-      
+      console.log('submitUnifiedCheckout response:', response)
+
       // Очищаем резервирование и обновляем корзину
       reservationIdRef.current = null
       // Перезагружаем корзину (удалены только выбранные элементы)
       await loadCart()
 
-      // Переход на страницу оплаты
-      if (response.payment?.url) {
-        window.location.href = response.payment.url
-      } else if (response.payment?.id) {
-        navigate(`/payment?payment_id=${response.payment.id}&amount=${response.payment.amount}`)
-      } else if (response.orders?.products_order?.id) {
-        navigate(`/payment?order_id=${response.orders.products_order.id}&type=shop_order&amount=${response.orders.products_order.total_amount}`)
-      } else {
-        // Если нет платежа (бесплатные курсы)
-        navigate('/profile', { 
-          state: { message: 'Заказ успешно оформлен!' }
-        })
-      }
+      // ВРЕМЕННАЯ ЗАГЛУШКА: всегда перенаправляем на страницу оплаты
+      console.log('TEMP: Always redirecting to payment page')
+      const params = new URLSearchParams({
+        amount: '2480', // демо-сумма
+        type: 'demo',
+        method: formData.payment_method || 'card'
+      })
+
+      const paymentUrl = `/payment?${params.toString()}`
+      console.log('Redirecting to payment page:', paymentUrl)
+      console.log('About to call navigate...')
+      navigate(paymentUrl)
+      console.log('navigate called, should redirect now')
+      return
 
     } catch (err) {
       if (err.message?.includes('резерв') || err.message?.includes('истекло')) {
@@ -675,70 +1008,89 @@ function UnifiedCheckout() {
 
   return (
     <div className="page-container animate-fadeIn">
-      {/* Breadcrumb */}
-      <nav className="flex items-center gap-2 text-sm text-gray-500 mb-6">
-        <Link to="/cart" className="hover:text-primary-600">Корзина</Link>
-        <span>/</span>
-        <span className="text-gray-900">Оформление заказа</span>
-      </nav>
+        {/* Breadcrumb */}
+        <nav className="flex items-center gap-2 text-sm text-gray-500 mb-6">
+          <Link to="/cart" className="hover:text-primary-600">Корзина</Link>
+          <span>/</span>
+          <span className="text-gray-900">Оформление заказа</span>
+        </nav>
 
-      <h1 className="page-title">Оформление заказа</h1>
+        <h1 className="page-title">Оформление заказа</h1>
 
-      {/* Таймер резервирования */}
-      {checkoutData?.reservation?.expires_at && (
-        <div className="mb-6">
-          <ReservationTimer 
-            expiresAt={checkoutData.reservation.expires_at}
-            onExpired={handleReservationExpired}
-          />
-        </div>
-      )}
+        {/* Таймер резервирования */}
+        {checkoutData?.reservation?.expires_at && (
+          <div className="mb-6">
+            <ReservationTimer
+              expiresAt={checkoutData.reservation.expires_at}
+              onExpired={handleReservationExpired}
+            />
+          </div>
+        )}
 
-      {/* Ошибка */}
-      {error && (
-        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-600 flex items-center gap-2">
-          <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
-              d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          <span>{error}</span>
-        </div>
-      )}
+        {/* Ошибка */}
+        {error && (
+          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-600 flex items-center gap-2">
+            <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span>{error}</span>
+          </div>
+        )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Левая колонка: товары и курсы */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Секция товаров */}
-          <ProductsSection
-            products={checkoutData?.products}
-            addresses={checkoutData?.addresses}
-            deliveryOptions={checkoutData?.products?.delivery_options}
-            formData={formData}
-            onFormChange={handleFormChange}
-          />
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Левая колонка: товары и курсы */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* Секция выбора способа оплаты */}
+            <PaymentMethodSection
+              paymentMethod={formData.payment_method}
+              onPaymentMethodChange={(method) => handleFormChange('payment_method', method)}
+            />
 
-          {/* Секция курсов */}
-          <CoursesSection
-            courses={checkoutData?.courses}
-            formData={formData}
-            onFormChange={handleFormChange}
-          />
-        </div>
+            {/* Секция выбора способа доставки */}
+            {hasProducts && (
+              <DeliverySection
+                deliveryOptions={checkoutData?.products?.delivery_options}
+                formData={formData}
+                onFormChange={handleFormChange}
+              />
+            )}
 
-        {/* Правая колонка: итого */}
-        <div className="lg:col-span-1">
-          <SummarySection
-            totals={checkoutData?.totals}
-            deliveryCost={deliveryCost}
-            hasProducts={hasProducts}
-            hasCourses={hasCourses}
-            canSubmit={canSubmit}
-            isSubmitting={isSubmitting}
-            onSubmit={handleSubmit}
-          />
+            {/* Секция адреса доставки */}
+            {hasProducts && formData.delivery_type !== 'pickup' && (
+              <AddressSection
+                addresses={checkoutData?.addresses}
+                formData={formData}
+                onFormChange={handleFormChange}
+              />
+            )}
+
+            {/* Секция товаров */}
+            <ProductsSection products={checkoutData?.products} />
+
+            {/* Секция курсов */}
+            <CoursesSection
+              courses={checkoutData?.courses}
+              formData={formData}
+              onFormChange={handleFormChange}
+            />
+          </div>
+
+          {/* Правая колонка: итого */}
+          <div className="lg:col-span-1">
+            <SummarySection
+              totals={checkoutData?.totals}
+              deliveryCost={deliveryCost}
+              hasProducts={hasProducts}
+              hasCourses={hasCourses}
+              canSubmit={canSubmit}
+              isSubmitting={isSubmitting}
+              onSubmit={handleSubmit}
+              paymentMethod={formData.payment_method}
+            />
+          </div>
         </div>
       </div>
-    </div>
   )
 }
 

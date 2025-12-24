@@ -436,10 +436,30 @@ class ProfileView(APIView):
     def get(self, request):
         user = request.user
         
-        # Получение связанных данных
-        pets = [pet.to_dict() for pet in user.pets.all()]
-        orders = [order.to_dict() for order in user.orders.all()]
-        courses = [uc.to_dict() for uc in user.user_courses.all()]
+        # Оптимизированное получение связанных данных с prefetch_related
+        # Это устраняет N+1 проблему при загрузке связанных объектов
+        from django.db.models import Prefetch
+        from apps.pets.models import Pet
+        from apps.shop.models import Order, OrderItem
+        from apps.training.models import UserCourse
+        
+        pets = [pet.to_dict() for pet in Pet.objects.filter(owner=user)]
+        
+        # Предзагружаем items с продуктами и курсами для заказов
+        orders_qs = Order.objects.filter(user=user).prefetch_related(
+            Prefetch(
+                'items',
+                queryset=OrderItem.objects.select_related('product', 'course', 'pet')
+            ),
+            'address'
+        ).order_by('-created_at')
+        orders = [order.to_dict() for order in orders_qs]
+        
+        # Предзагружаем курс и питомца для UserCourse
+        courses_qs = UserCourse.objects.filter(user=user).select_related(
+            'course', 'pet'
+        ).order_by('-purchased_at')
+        courses = [uc.to_dict() for uc in courses_qs]
         
         return Response({
             'user': user.to_dict_full(),

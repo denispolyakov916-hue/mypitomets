@@ -149,25 +149,25 @@ class UserAdmin(BaseUserAdmin):
         """Активировать выбранных пользователей."""
         updated = queryset.update(is_active=True, is_activated=True)
         self.message_user(request, f'Активировано пользователей: {updated}')
-    activate_users.short_description = 'Активировать выбранных пользователей'
+    activate_users.short_description = 'Активировать выбранных %(verbose_name_plural)s'
     
     def deactivate_users(self, request, queryset):
         """Деактивировать выбранных пользователей."""
         updated = queryset.update(is_active=False)
         self.message_user(request, f'Деактивировано пользователей: {updated}')
-    deactivate_users.short_description = 'Деактивировать выбранных пользователей'
-    
+    deactivate_users.short_description = 'Деактивировать выбранных %(verbose_name_plural)s'
+
     def make_staff(self, request, queryset):
         """Назначить выбранных пользователей администраторами."""
         updated = queryset.update(is_staff=True)
         self.message_user(request, f'Назначено администраторами: {updated}')
-    make_staff.short_description = 'Назначить администраторами'
-    
+    make_staff.short_description = 'Назначить %(verbose_name_plural)s администраторами'
+
     def remove_staff(self, request, queryset):
         """Убрать права администратора у выбранных пользователей."""
         updated = queryset.exclude(is_superuser=True).update(is_staff=False)
         self.message_user(request, f'Убрано прав администратора: {updated}')
-    remove_staff.short_description = 'Убрать права администратора'
+    remove_staff.short_description = 'Убрать права администратора у %(verbose_name_plural)s'
 
 
 @admin.register(Token)

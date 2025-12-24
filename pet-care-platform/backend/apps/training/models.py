@@ -22,6 +22,7 @@
 from django.db import models
 from django.conf import settings
 from decimal import Decimal
+from .managers import CourseManager
 
 
 class Course(models.Model):
@@ -223,6 +224,9 @@ class Course(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
+    # Используем кастомный менеджер с оптимизированными запросами
+    objects = CourseManager()
+    
     class Meta:
         db_table = 'courses'
         verbose_name = 'Курс'
@@ -261,19 +265,37 @@ class Course(models.Model):
         return dict(self.PET_TYPE_CHOICES).get(self.pet_type, self.pet_type)
     
     def get_average_rating(self):
-        """Средний рейтинг курса."""
+        """
+        Средний рейтинг курса.
+        
+        Оптимизация: если объект имеет аннотированное поле _avg_rating,
+        используем его вместо дополнительного запроса к БД.
+        """
+        # Используем предзагруженное значение если доступно
+        if hasattr(self, '_avg_rating') and self._avg_rating is not None:
+            return float(self._avg_rating)
+        
+        # Fallback на запрос к БД (для единичных объектов)
         from apps.reviews.models import Review
-        reviews = Review.objects.filter(
+        from django.db.models import Avg
+        result = Review.objects.filter(
             course=self,
             is_approved=True
-        )
-        if not reviews.exists():
-            return 0.0
-        from django.db.models import Avg
-        return reviews.aggregate(Avg('rating'))['rating__avg'] or 0.0
+        ).aggregate(avg=Avg('rating'))
+        return result['avg'] or 0.0
     
     def get_reviews_count(self):
-        """Количество одобренных отзывов."""
+        """
+        Количество одобренных отзывов.
+        
+        Оптимизация: если объект имеет аннотированное поле _reviews_count,
+        используем его вместо дополнительного запроса к БД.
+        """
+        # Используем предзагруженное значение если доступно
+        if hasattr(self, '_reviews_count') and self._reviews_count is not None:
+            return self._reviews_count
+        
+        # Fallback на запрос к БД (для единичных объектов)
         from apps.reviews.models import Review
         return Review.objects.filter(
             course=self,

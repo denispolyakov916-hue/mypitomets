@@ -1,125 +1,108 @@
 @echo off
-chcp 65001 >nul
+setlocal
+
 echo ================================================
-echo      Питомец+ - Запуск фронтенда (Windows)
+echo      Pitomets+ - Frontend Launcher (Windows)
 echo ================================================
 echo.
 
-:: Переход в директорию скрипта
 cd /d "%~dp0"
+echo [INFO] Working directory: %CD%
+echo.
 
-:: Проверка Node.js
-echo [1/5] Проверка Node.js...
-where node >nul 2>&1
+:: Step 1: Check Node.js
+echo [1/5] Checking Node.js...
+node --version >nul 2>&1
 if %errorlevel% neq 0 (
-    echo [ОШИБКА] Node.js не установлен!
-    echo Скачайте и установите Node.js 18+ с https://nodejs.org/
+    echo [ERROR] Node.js is not installed!
+    echo Install Node.js 18+ from https://nodejs.org/
     pause
     exit /b 1
 )
-for /f "tokens=*" %%i in ('node --version') do set NODE_VERSION=%%i
-echo [OK] Node.js установлен: %NODE_VERSION%
-for /f "tokens=1 delims=v" %%i in ("%NODE_VERSION%") do set NODE_MAJOR=%%i
-if %NODE_MAJOR% LSS 18 (
-    echo [ПРЕДУПРЕЖДЕНИЕ] Рекомендуется Node.js 18 или выше. Текущая версия: %NODE_VERSION%
-)
+for /f "tokens=*" %%i in ('node --version') do echo [OK] Node.js %%i found
 echo.
 
-:: Проверка npm
-echo [2/5] Проверка npm...
-where npm >nul 2>&1
+:: Step 2: Check npm
+echo [2/5] Checking npm...
+call npm --version >nul 2>&1
 if %errorlevel% neq 0 (
-    echo [ОШИБКА] npm не найден!
+    echo [ERROR] npm not found!
     pause
     exit /b 1
 )
-for /f "tokens=*" %%i in ('npm --version') do set NPM_VERSION=%%i
-echo [OK] npm установлен: %NPM_VERSION%
+for /f "tokens=*" %%i in ('npm --version') do echo [OK] npm %%i found
 echo.
 
-:: Проверка и установка зависимостей
-echo [3/5] Проверка зависимостей...
+:: Step 3: Check project files
+echo [3/5] Checking project files...
 if not exist "package.json" (
-    echo [ОШИБКА] Файл package.json не найден!
-    echo Убедитесь, что вы запускаете скрипт из директории frontend
+    echo [ERROR] package.json not found!
     pause
     exit /b 1
 )
+echo [OK] package.json found
+
+if not exist "vite.config.js" (
+    echo [ERROR] vite.config.js not found!
+    pause
+    exit /b 1
+)
+echo [OK] vite.config.js found
+echo.
+
+:: Step 4: Install dependencies
+echo [4/5] Installing dependencies...
 if not exist "node_modules" (
-    echo [INFO] Зависимости не найдены. Устанавливаю...
+    echo [INFO] node_modules not found. Installing...
     call npm install
     if %errorlevel% neq 0 (
-        echo [ОШИБКА] Ошибка при установке зависимостей!
+        echo [ERROR] Failed to install dependencies!
         pause
         exit /b 1
     )
-    echo [OK] Зависимости установлены
+    echo [OK] Dependencies installed
 ) else (
-    echo [OK] Зависимости найдены
-    echo [INFO] Проверка обновлений...
-    call npm install
+    echo [OK] node_modules found
 )
+
+if not exist "node_modules\react" (
+    echo [ERROR] React not installed! Run: npm install
+    pause
+    exit /b 1
+)
+if not exist "node_modules\vite" (
+    echo [ERROR] Vite not installed! Run: npm install
+    pause
+    exit /b 1
+)
+echo [OK] Critical packages verified
 echo.
 
-:: Проверка .env файла
-echo [4/5] Проверка конфигурации...
+:: Step 5: Check .env
+echo [5/5] Checking configuration...
 if not exist ".env" (
-    echo [INFO] Файл .env не найден. Создаю из .env.example...
-    if exist ".env.example" (
-        copy ".env.example" ".env" >nul
-        echo [OK] Файл .env создан с настройками по умолчанию
-        echo [INFO] Отредактируйте .env, указав правильный URL бэкенда
-    ) else (
-        echo [ПРЕДУПРЕЖДЕНИЕ] .env.example не найден
-        echo [INFO] Создаю базовый .env файл...
-        (
-            echo VITE_API_URL=http://localhost:8000/api
-        ) > .env
-        if %errorlevel% neq 0 (
-            echo [ОШИБКА] Не удалось создать файл .env
-            pause
-            exit /b 1
-        )
-        echo [OK] Файл .env создан
-    )
+    echo [INFO] Creating .env file...
+    echo VITE_API_URL=http://localhost:8000/api> .env
+    echo [OK] .env file created
 ) else (
-    echo [OK] Файл .env найден
+    echo [OK] .env file found
 )
 echo.
 
-:: Предупреждение о бэкенде
-echo [5/5] Проверка готовности...
-echo.
-echo ⚠️  ВАЖНО: Убедитесь, что бэкенд запущен!
-echo.
-echo Если бэкенд не запущен, выполните в другом терминале:
-echo   cd ..\backend
-echo   .\start_backend.bat
-echo.
-echo Или вручную:
-echo   cd ..\backend
-echo   venv\Scripts\activate
-echo   python manage.py runserver 0.0.0.0:8000
-echo.
-echo Нажмите любую клавишу для запуска фронтенда...
-pause >nul
-echo.
-
-:: Запуск dev сервера
+:: Start server
 echo ================================================
-echo      Запуск Vite dev-сервера...
+echo      Starting Vite dev server...
 echo ================================================
 echo.
-echo Фронтенд будет доступен по адресам:
-echo   http://localhost:5173
-echo   http://127.0.0.1:5173
+echo Frontend: http://localhost:5173
+echo Backend:  http://localhost:8000
 echo.
-echo Для остановки нажмите Ctrl+C
-echo.
+echo Press Ctrl+C to stop
 echo ================================================
 echo.
 
 call npm run dev
 
+echo.
+echo Server stopped.
 pause
-

@@ -4,7 +4,7 @@
  * Отображает персонализированные рекомендации на основе питомцев пользователя
  */
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { getPersonalRecommendations } from '../api/shop'
 import { useAuthStore } from '../store/authStore'
@@ -31,20 +31,9 @@ function PersonalRecommendations() {
   const [error, setError] = useState(null)
 
   /**
-   * Загрузка персональных рекомендаций
-   */
-  useEffect(() => {
-    if (isAuthenticated) {
-      fetchRecommendations()
-    } else {
-      setIsLoading(false)
-    }
-  }, [isAuthenticated])
-
-  /**
    * Загрузка рекомендаций из API
    */
-  const fetchRecommendations = async () => {
+  const fetchRecommendations = useCallback(async () => {
     setIsLoading(true)
     setError(null)
 
@@ -57,7 +46,18 @@ function PersonalRecommendations() {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [])
+
+  /**
+   * Загрузка персональных рекомендаций
+   */
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchRecommendations()
+    } else {
+      setIsLoading(false)
+    }
+  }, [isAuthenticated, fetchRecommendations])
 
   // Если пользователь не авторизован, не показываем ничего
   if (!isAuthenticated) {
@@ -95,7 +95,7 @@ function PersonalRecommendations() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
         {recommendations.map((product) => (
           <div key={product.id} className="group bg-white rounded-xl border border-gray-200 overflow-hidden hover:shadow-md transition-all duration-200">
-            <Link to={`/shop/product/${product.id}`}>
+            <Link to={`/shop/products/${product.id}`}>
               <div className="aspect-square bg-gray-100 overflow-hidden">
                 {product.main_image ? (
                   <img
@@ -112,7 +112,7 @@ function PersonalRecommendations() {
             </Link>
 
             <div className="p-4">
-              <Link to={`/shop/product/${product.id}`}>
+              <Link to={`/shop/products/${product.id}`}>
                 <h3 className="font-medium text-gray-900 mb-2 line-clamp-2 group-hover:text-primary-600 transition-colors">
                   {product.name}
                 </h3>
@@ -168,7 +168,7 @@ function PersonalRecommendations() {
               )}
 
               <Link
-                to={`/shop/product/${product.id}`}
+                to={`/shop/products/${product.id}`}
                 className="w-full btn-secondary py-2 text-center block text-sm"
               >
                 Посмотреть товар

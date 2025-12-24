@@ -75,12 +75,59 @@ export const getFrequentlyBoughtTogether = async (productId) => {
 }
 
 /**
- * Получение персональных рекомендаций товаров
+ * Получение персональных рекомендаций товаров и курсов
  *
+ * @param {Object} [options] - Опции
+ * @param {number} [options.products_limit=8] - Лимит товаров
+ * @param {number} [options.courses_limit=4] - Лимит курсов
+ * @param {string} [options.type='all'] - Тип рекомендаций ('all', 'products', 'courses')
  * @returns {Promise<Object>} Персональные рекомендации на основе питомцев пользователя
  */
-export const getPersonalRecommendations = async () => {
-  return await api.get('/shop/personal-recommendations/')
+export const getPersonalRecommendations = async (options = {}) => {
+  const params = new URLSearchParams()
+  
+  if (options.products_limit) params.append('products_limit', options.products_limit)
+  if (options.courses_limit) params.append('courses_limit', options.courses_limit)
+  if (options.type) params.append('type', options.type)
+  
+  const queryString = params.toString()
+  const url = queryString ? `/shop/personal-recommendations/?${queryString}` : '/shop/personal-recommendations/'
+  
+  return await api.get(url)
+}
+
+/**
+ * Получение рекомендаций для корзины
+ *
+ * @param {number} [limit=6] - Максимальное количество рекомендаций
+ * @returns {Promise<Object>} Рекомендации товаров для корзины
+ */
+export const getCartRecommendations = async (limit = 6) => {
+  return await api.get(`/shop/cart/recommendations/?limit=${limit}`)
+}
+
+/**
+ * Получение товаров, отфильтрованных по проблемам здоровья
+ *
+ * @param {string} healthIssue - Код проблемы здоровья
+ * @param {number} [limit=12] - Максимальное количество товаров
+ * @returns {Promise<Object>} Товары для конкретной проблемы здоровья
+ */
+export const getHealthFilteredProducts = async (healthIssue, limit = 12) => {
+  const params = new URLSearchParams()
+  if (healthIssue) params.append('health_issue', healthIssue)
+  params.append('limit', limit)
+  
+  return await api.get(`/shop/products/health-filter/?${params.toString()}`)
+}
+
+/**
+ * Получение списка доступных фильтров по проблемам здоровья
+ *
+ * @returns {Promise<Object>} Список доступных фильтров
+ */
+export const getHealthFilters = async () => {
+  return await api.get('/shop/products/health-filter/')
 }
 
 // =============================================================================
@@ -379,8 +426,22 @@ export const getReturn = async (returnId) => {
 }
 
 // =============================================================================
-// ВАРИАНТЫ ФИЛЬТРОВ
+// КОНСТАНТЫ
 // =============================================================================
+
+/**
+ * Доступные проблемы здоровья для фильтрации
+ */
+export const HEALTH_ISSUES = [
+  { code: 'overweight', label: 'Для контроля веса' },
+  { code: 'sensitive_digestion', label: 'Для чувствительного пищеварения' },
+  { code: 'skin_issues', label: 'Для здоровья кожи и шерсти' },
+  { code: 'joint_problems', label: 'Для здоровья суставов' },
+  { code: 'dental_issues', label: 'Для здоровья зубов' },
+  { code: 'allergies', label: 'Гипоаллергенный' },
+  { code: 'kidney_issues', label: 'Для здоровья почек' },
+  { code: 'heart_issues', label: 'Для здоровья сердца' },
+]
 
 /**
  * Доступные варианты фильтра по типу животного

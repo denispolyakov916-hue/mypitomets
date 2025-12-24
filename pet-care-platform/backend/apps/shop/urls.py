@@ -22,9 +22,11 @@ from .views import (
     ProductDetailView,
     FrequentlyBoughtTogetherView,
     PersonalRecommendationsView,
+    HealthFilteredProductsView,
     CartView,
     CartItemView,
     CartRefreshView,
+    CartRecommendationsView,
     OrderCheckoutView,
     OrderCreateView,
     OrderHistoryView,
@@ -53,6 +55,10 @@ urlpatterns = [
     # Персональные рекомендации
     # GET /api/shop/personal-recommendations/
     path('personal-recommendations/', PersonalRecommendationsView.as_view(), name='personal-recommendations'),
+
+    # Фильтр товаров по проблемам здоровья
+    # GET /api/shop/products/health-filter/?health_issue=overweight
+    path('products/health-filter/', HealthFilteredProductsView.as_view(), name='health-filtered-products'),
     
     # Операции с корзиной
     # GET, POST /api/shop/cart/
@@ -61,6 +67,10 @@ urlpatterns = [
     # Обновление корзины (для фронтенда)
     # GET /api/shop/cart/refresh/
     path('cart/refresh/', CartRefreshView.as_view(), name='cart-refresh'),
+    
+    # Рекомендации для корзины
+    # GET /api/shop/cart/recommendations/
+    path('cart/recommendations/', CartRecommendationsView.as_view(), name='cart-recommendations'),
     
     # Операции с элементами корзины
     # PUT, DELETE /api/shop/cart/item/

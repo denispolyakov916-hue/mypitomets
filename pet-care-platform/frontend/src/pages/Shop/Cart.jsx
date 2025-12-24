@@ -11,11 +11,12 @@
  * - Оформлением заказа
  */
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useCartStore } from '../../store/cartStore'
 import { useToastStore } from '../../store/toastStore'
 import { PageLoader, ButtonLoader } from '../../components/Loader'
+import RecommendationBlock from '../../components/RecommendationBlock'
 import * as shopApi from '../../api/shop'
 
 /**
@@ -69,6 +70,10 @@ function Cart() {
   // Сообщение из редиректа (например, при истечении времени checkout)
   const [redirectMessage, setRedirectMessage] = useState(null)
   const [isDeletingSelected, setIsDeletingSelected] = useState(false)
+  
+  // Рекомендации для корзины
+  const [recommendations, setRecommendations] = useState([])
+  const [recommendationsLoading, setRecommendationsLoading] = useState(false)
 
   /**
    * Проверка, является ли элемент курсом
@@ -98,6 +103,27 @@ function Cart() {
   const isAllCoursesSelected = courses.length > 0 && selectedCourses.length === courses.length
 
   /**
+   * Загрузка рекомендаций для корзины
+   */
+  const loadRecommendations = useCallback(async () => {
+    if (products.length === 0) {
+      setRecommendations([])
+      return
+    }
+    
+    setRecommendationsLoading(true)
+    try {
+      const response = await shopApi.getCartRecommendations(6)
+      setRecommendations(response.recommendations || [])
+    } catch (err) {
+      console.error('Failed to load cart recommendations:', err)
+      setRecommendations([])
+    } finally {
+      setRecommendationsLoading(false)
+    }
+  }, [products.length])
+
+  /**
    * Загрузка корзины при монтировании и обработка сообщений
    */
   useEffect(() => {
@@ -113,6 +139,30 @@ function Cart() {
     return () => clearError()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.state?.message, location.pathname])
+
+  /**
+   * Загрузка рекомендаций когда корзина загружена
+   */
+  useEffect(() => {
+    if (!isLoading && items.length > 0) {
+      loadRecommendations()
+    }
+  }, [isLoading, items.length, loadRecommendations])
+  
+  /**
+   * Обработчик добавления рекомендованного товара в корзину
+   */
+  const handleAddRecommendation = async (product, quantity = 1) => {
+    try {
+      await shopApi.addToCart(product.id, quantity)
+      await loadCart()
+      success(`${product.name} добавлен в корзину`)
+      // Перезагружаем рекомендации
+      await loadRecommendations()
+    } catch (err) {
+      showError(err.message || 'Не удалось добавить товар в корзину')
+    }
+  }
 
   /**
    * Обработчик выбора/снятия элемента
@@ -581,6 +631,20 @@ function Cart() {
                 })}
               </div>
             </div>
+          )}
+
+          {/* Блок рекомендаций */}
+          {(recommendations.length > 0 || recommendationsLoading) && (
+            <RecommendationBlock
+              title="Вам может понравиться"
+              subtitle="Товары, которые часто покупают вместе с выбранными"
+              recommendations={recommendations}
+              type="products"
+              onAddToCart={handleAddRecommendation}
+              loading={recommendationsLoading}
+              compact={true}
+              showReason={true}
+            />
           )}
         </div>
 

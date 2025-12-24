@@ -26,10 +26,11 @@ class CourseListView(APIView):
     permission_classes = [AllowAny]
     
     def get(self, request):
-        from django.db.models import Count, Min, Max
+        from django.db.models import Min, Max
         
-        # Базовый queryset - активные курсы
-        courses = Course.objects.filter(is_active=True)
+        # Используем оптимизированный каталог с предзагруженными рейтингами
+        # Это устраняет N+1 проблему при вызове to_dict()
+        courses = Course.objects.catalog()
         
         # Фильтр по питомцу (персональная подборка)
         pet_id = request.query_params.get('pet_id')
@@ -40,103 +41,64 @@ class CourseListView(APIView):
         if pet_id and request.user.is_authenticated:
             try:
                 pet = Pet.objects.get(id=pet_id, owner=request.user)
-                species_to_pet_type = {
-                    'dog': 'dog',
-                    'cat': 'cat',
-                }
-                if pet.species in species_to_pet_type:
-                    pet_type = species_to_pet_type[pet.species]
+                if pet.species in ['dog', 'cat']:
+                    pet_type = pet.species
             except Exception:
                 pass
         
         # Персональная подборка по питомцам пользователя
         if personal == 'true':
             if request.user.is_authenticated:
-                user_pets = Pet.objects.filter(owner=request.user)
-                if user_pets.exists():
-                    # Собираем все виды животных пользователя
-                    user_species = set()
-                    for pet in user_pets:
-                        if pet.species in ['dog', 'cat']:
-                            user_species.add(pet.species)
-
-                    if user_species:
-                        # Показываем курсы для видов животных пользователя + универсальные
-                        courses = courses.filter(pet_type__in=list(user_species) + ['all'])
-                    else:
-                        # Если у пользователя нет собак/кошек, показываем универсальные курсы
-                        courses = courses.filter(pet_type='all')
-                else:
-                    # Если у пользователя нет питомцев, показываем универсальные курсы
-                    courses = courses.filter(pet_type='all')
+                courses = courses.for_user_pets(request.user)
             else:
                 # Для неавторизованных пользователей показываем универсальные курсы
                 courses = courses.filter(pet_type='all')
         else:
             # Стандартная фильтрация по типу животного
-            if pet_type and pet_type in ['dog', 'cat', 'all']:
-                if pet_type == 'all':
-                    # Для фильтра "Для всех" показываем ВСЕ курсы
-                    pass  # не фильтруем, показываем все
-                else:
-                    # Для конкретных типов показываем курсы этого типа + универсальные
-                    courses = courses.filter(pet_type__in=[pet_type, 'all'])
+            if pet_type and pet_type in ['dog', 'cat']:
+                courses = courses.for_pet_type(pet_type)
+            # Для pet_type='all' или отсутствия фильтра - показываем все
 
-        # Фильтрация по категории
+        # Фильтрация по категории и подкатегории
         category = request.query_params.get('category')
-        if category:
-            courses = courses.filter(category=category)
-
-        # Фильтрация по подкатегории
         subcategory = request.query_params.get('subcategory')
-        if subcategory:
-            courses = courses.filter(subcategory=subcategory)
+        courses = courses.in_category(category, subcategory)
 
         # Фильтрация по уровню
         level = request.query_params.get('level')
-        if level:
-            courses = courses.filter(level=level)
+        courses = courses.by_level(level)
 
         # Фильтрация по формату
         format_type = request.query_params.get('format_type')
-        if format_type:
-            courses = courses.filter(format_type=format_type)
+        courses = courses.by_format(format_type)
         
         # Фильтр по типу цены
         price_type = request.query_params.get('price_type')
         if price_type == 'free':
-            courses = courses.filter(price=0)
+            courses = courses.free()
         elif price_type == 'paid':
-            courses = courses.filter(price__gt=0)
+            courses = courses.paid()
 
         # Фильтрация по цене
         min_price = request.query_params.get('min_price')
         max_price = request.query_params.get('max_price')
-        if min_price:
-            try:
-                courses = courses.filter(price__gte=float(min_price))
-            except ValueError:
-                pass
-        if max_price:
-            try:
-                courses = courses.filter(price__lte=float(max_price))
-            except ValueError:
-                pass
+        try:
+            min_price_val = float(min_price) if min_price else None
+            max_price_val = float(max_price) if max_price else None
+            courses = courses.by_price_range(min_price_val, max_price_val)
+        except ValueError:
+            pass
         
         # Поиск по названию
         search = request.query_params.get('search')
-        if search:
-            courses = courses.filter(title__icontains=search)
+        courses = courses.search(search)
 
-        # Фильтр по рейтингу
+        # Фильтр по рейтингу (оптимизировано - используем SQL аннотацию)
         min_rating = request.query_params.get('min_rating')
         if min_rating:
             try:
                 min_rating_val = float(min_rating)
-                courses = courses.filter(id__in=[
-                    c.id for c in courses
-                    if c.get_average_rating() >= min_rating_val
-                ])
+                courses = courses.with_min_rating(min_rating_val)
             except ValueError:
                 pass
 
@@ -149,13 +111,12 @@ class CourseListView(APIView):
             except ValueError:
                 pass
 
-        # Сортировка по популярности или рейтингу
+        # Сортировка (оптимизировано - сортировка по рейтингу теперь через SQL)
         sort_by = request.query_params.get('sort_by')
         if sort_by == 'rating':
-            # Сортировка по рейтингу (нужно реализовать отдельно, так как рейтинг вычисляется)
-            courses = sorted(courses, key=lambda c: c.get_average_rating(), reverse=True)
+            courses = courses.order_by_rating()
         elif sort_by == 'popularity':
-            courses = courses.order_by('-order_count', '-id')
+            courses = courses.order_by_popularity()
         elif sort_by == 'price_asc':
             courses = courses.order_by('price')
         elif sort_by == 'price_desc':

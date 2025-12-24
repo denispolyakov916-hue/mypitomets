@@ -14,12 +14,12 @@ class PetAdmin(admin.ModelAdmin):
     
     list_display = (
         'name', 'species_display', 'breed', 'owner_link', 
-        'age_display', 'gender_display', 'is_neutered', 
-        'photo_preview', 'created_at'
+        'age_display', 'gender_display', 'activity_display',
+        'health_issues_display', 'is_neutered', 'created_at'
     )
     list_filter = (
-        'species', 'gender', 'is_neutered', 'created_at', 
-        'owner__is_active'
+        'species', 'gender', 'is_neutered', 'activity_level',
+        'created_at', 'owner__is_active'
     )
     search_fields = (
         'name', 'breed', 'owner__email', 'owner__first_name', 
@@ -38,8 +38,11 @@ class PetAdmin(admin.ModelAdmin):
         ('Фото', {
             'fields': ('photo', 'photo_preview')
         }),
-        ('Дополнительная информация', {
-            'fields': ('favorite_foods', 'allergies'),
+        ('Здоровье и особенности', {
+            'fields': ('health_issues', 'activity_level', 'allergies'),
+        }),
+        ('Предпочтения', {
+            'fields': ('favorite_foods',),
             'classes': ('collapse',)
         }),
         ('Системная информация', {
@@ -104,10 +107,189 @@ class PetAdmin(admin.ModelAdmin):
         """Пометить как кастрированных/стерилизованных."""
         updated = queryset.update(is_neutered=True)
         self.message_user(request, f'Помечено как кастрированных/стерилизованных: {updated}')
-    mark_as_neutered.short_description = 'Пометить как кастрированных/стерилизованных'
+    mark_as_neutered.short_description = 'Пометить %(verbose_name_plural)s как кастрированных/стерилизованных'
     
     def mark_as_not_neutered(self, request, queryset):
         """Убрать пометку о кастрации/стерилизации."""
         updated = queryset.update(is_neutered=False)
         self.message_user(request, f'Убрана пометка о кастрации/стерилизации: {updated}')
-    mark_as_not_neutered.short_description = 'Убрать пометку о кастрации/стерилизации'
+    mark_as_not_neutered.short_description = 'Убрать пометку о кастрации/стерилизации для %(verbose_name_plural)s'
+    
+    def activity_display(self, obj):
+        """Отображение уровня активности."""
+        colors = {
+            'low': '#f59e0b',
+            'medium': '#3b82f6',
+            'high': '#10b981'
+        }
+        icons = {
+            'low': '🐢',
+            'medium': '🐕',
+            'high': '🚀'
+        }
+        color = colors.get(obj.activity_level, '#6b7280')
+        icon = icons.get(obj.activity_level, '')
+        return format_html(
+            '<span style="color: {};">{} {}</span>',
+            color, icon, obj.get_activity_level_display()
+        )
+    activity_display.short_description = 'Активность'
+    
+    def health_issues_display(self, obj):
+        """Отображение проблем здоровья."""
+        if not obj.health_issues:
+            return '-'
+        
+        # Маппинг кодов на русские названия
+        labels = {
+            'overweight': 'Лишний вес',
+            'sensitive_digestion': 'Чувств. пищеварение',
+            'skin_issues': 'Проблемы с кожей',
+            'joint_problems': 'Суставы',
+            'dental_issues': 'Зубы',
+            'allergies': 'Аллергии',
+            'kidney_issues': 'Почки',
+            'heart_issues': 'Сердце',
+        }
+        
+        issues = []
+        for issue in obj.health_issues[:3]:  # Показываем только первые 3
+            label = labels.get(issue, issue)
+            issues.append(label)
+        
+        result = ', '.join(issues)
+        if len(obj.health_issues) > 3:
+            result += f' (+{len(obj.health_issues) - 3})'
+        
+        return format_html(
+            '<span style="color: #dc2626;">{}</span>',
+            result
+        )
+    health_issues_display.short_description = 'Проблемы здоровья'
+
+
+# ===== Админка для напоминаний =====
+from .reminder_models import Reminder
+
+
+@admin.register(Reminder)
+class ReminderAdmin(admin.ModelAdmin):
+    """Админка для управления напоминаниями."""
+    
+    list_display = (
+        'title', 'pet_link', 'user_link', 'category_display',
+        'reminder_date', 'reminder_time', 'frequency_display',
+        'status_display', 'created_at'
+    )
+    list_filter = (
+        'category', 'frequency', 'is_active', 'is_completed',
+        'reminder_date', 'created_at'
+    )
+    search_fields = ('title', 'description', 'pet__name', 'user__email')
+    ordering = ('reminder_date', 'reminder_time')
+    readonly_fields = ('id', 'created_at', 'updated_at', 'completed_at')
+    date_hierarchy = 'reminder_date'
+    
+    fieldsets = (
+        ('Основная информация', {
+            'fields': ('title', 'description', 'category', 'pet', 'user')
+        }),
+        ('Расписание', {
+            'fields': ('reminder_date', 'reminder_time', 'frequency')
+        }),
+        ('Статус', {
+            'fields': ('is_active', 'is_completed', 'completed_at')
+        }),
+        ('Уведомления', {
+            'fields': ('notify_email', 'notify_push', 'notify_before'),
+            'classes': ('collapse',)
+        }),
+        ('Системная информация', {
+            'fields': ('id', 'created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )
+    
+    actions = ['mark_completed', 'mark_active', 'deactivate']
+    
+    def pet_link(self, obj):
+        """Ссылка на питомца."""
+        url = reverse('admin:pets_pet_change', args=[obj.pet.id])
+        return format_html(
+            '<a href="{}">{} {}</a>',
+            url,
+            '🐕' if obj.pet.species == 'dog' else '🐈' if obj.pet.species == 'cat' else '🐾',
+            obj.pet.name
+        )
+    pet_link.short_description = 'Питомец'
+    
+    def user_link(self, obj):
+        """Ссылка на пользователя."""
+        url = reverse('admin:users_user_change', args=[obj.user.id])
+        return format_html('<a href="{}">{}</a>', url, obj.user.email)
+    user_link.short_description = 'Владелец'
+    
+    def category_display(self, obj):
+        """Категория с иконкой."""
+        icons = {
+            'feeding': '🍖',
+            'medication': '💊',
+            'vaccination': '💉',
+            'vet_visit': '🏥',
+            'grooming': '✂️',
+            'walk': '🚶',
+            'training': '🎓',
+            'hygiene': '🛁',
+            'other': '📋',
+        }
+        icon = icons.get(obj.category, '📋')
+        return format_html('{} {}', icon, obj.get_category_display())
+    category_display.short_description = 'Категория'
+    
+    def frequency_display(self, obj):
+        """Отображение частоты."""
+        return obj.get_frequency_display()
+    frequency_display.short_description = 'Частота'
+    
+    def status_display(self, obj):
+        """Статус напоминания."""
+        if obj.is_completed:
+            return format_html(
+                '<span style="color: #10b981; font-weight: bold;">✓ Выполнено</span>'
+            )
+        elif not obj.is_active:
+            return format_html(
+                '<span style="color: #6b7280;">Неактивно</span>'
+            )
+        elif obj.is_overdue:
+            return format_html(
+                '<span style="color: #ef4444; font-weight: bold;">⚠ Просрочено</span>'
+            )
+        elif obj.is_upcoming:
+            return format_html(
+                '<span style="color: #f59e0b; font-weight: bold;">🔔 Скоро</span>'
+            )
+        else:
+            return format_html(
+                '<span style="color: #3b82f6;">Запланировано</span>'
+            )
+    status_display.short_description = 'Статус'
+    
+    def mark_completed(self, request, queryset):
+        """Отметить как выполненные."""
+        for reminder in queryset:
+            reminder.mark_completed()
+        self.message_user(request, f'Отмечено как выполненных: {queryset.count()}')
+    mark_completed.short_description = 'Отметить %(verbose_name_plural)s как выполненные'
+    
+    def mark_active(self, request, queryset):
+        """Активировать напоминания."""
+        updated = queryset.update(is_active=True)
+        self.message_user(request, f'Активировано: {updated}')
+    mark_active.short_description = 'Активировать %(verbose_name_plural)s'
+    
+    def deactivate(self, request, queryset):
+        """Деактивировать напоминания."""
+        updated = queryset.update(is_active=False)
+        self.message_user(request, f'Деактивировано: {updated}')
+    deactivate.short_description = 'Деактивировать %(verbose_name_plural)s'

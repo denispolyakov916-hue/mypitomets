@@ -48,10 +48,17 @@ const api = axios.create({
  */
 api.interceptors.request.use(
   (config) => {
+    // Проверяем, что мы в браузере
+    if (typeof window !== 'undefined') {
+      try {
     const token = localStorage.getItem('access_token')
     
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
+        }
+      } catch (error) {
+        console.warn('Ошибка чтения токена из localStorage:', error)
+      }
     }
     
     return config

@@ -6,16 +6,22 @@
  * - Списком питомцев
  * - Историей заказов
  * - Приобретёнными курсами
+ * - Персонализированными рекомендациями
  */
 
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { getProfile, updateProfile } from '../../api/auth'
 import { getUserCourses } from '../../api/courses'
-import { getReturns } from '../../api/shop'
+import { getReturns, getPersonalRecommendations } from '../../api/shop'
 import { useAuthStore } from '../../store/authStore'
 import PetCard from '../../components/PetCard'
 import { PageLoader } from '../../components/Loader'
+import { Progress } from '../../components/ui/Progress'
+import { Card } from '../../components/ui/Card'
+import { Button } from '../../components/ui/Button'
+import { Badge } from '../../components/ui/Badge'
+import RemindersWidget from '../../components/RemindersWidget'
 
 /**
  * Форматирование даты в русскую локаль
@@ -279,6 +285,7 @@ function Profile() {
           {[
             { id: 'profile', label: 'Профиль', count: 0 },
             { id: 'pets', label: 'Питомцы', count: pets.length },
+            { id: 'reminders', label: '🔔 Напоминания', count: 0 },
             { id: 'orders', label: 'Заказы', count: orders.length },
             { id: 'courses', label: 'Курсы', count: courses.length },
             { id: 'returns', label: 'Возвраты', count: returns.length },
@@ -353,118 +360,106 @@ function Profile() {
               </div>
 
               {!isEditing ? (
-                // Просмотр профиля
+                // Просмотр профиля — упрощённая версия
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Основная информация</h3>
-                    <div className="space-y-3">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700">Email</label>
-                        <p className="text-gray-900">{profile.user.email}</p>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Контактные данные</h3>
+                    <div className="space-y-4">
+                      <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                        <span className="text-2xl">📧</span>
+                        <div>
+                          <label className="block text-xs font-medium text-gray-500">Email</label>
+                          <p className="text-gray-900 font-medium">{profile.user.email}</p>
+                        </div>
                       </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700">Имя</label>
-                        <p className="text-gray-900">{profile.user.first_name || 'Не указано'}</p>
+                      <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                        <span className="text-2xl">👤</span>
+                        <div>
+                          <label className="block text-xs font-medium text-gray-500">Имя</label>
+                          <p className="text-gray-900 font-medium">
+                            {profile.user.first_name && profile.user.last_name 
+                              ? `${profile.user.first_name} ${profile.user.last_name}`
+                              : profile.user.first_name || 'Не указано'}
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700">Фамилия</label>
-                        <p className="text-gray-900">{profile.user.last_name || 'Не указано'}</p>
+                      <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                        <span className="text-2xl">📱</span>
+                        <div>
+                          <label className="block text-xs font-medium text-gray-500">Телефон</label>
+                          <p className="text-gray-900 font-medium">{profile.user.phone || 'Не указано'}</p>
+                        </div>
                       </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700">Телефон</label>
-                        <p className="text-gray-900">{profile.user.phone || 'Не указано'}</p>
-                      </div>
+                      {profile.user.city && (
+                        <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                          <span className="text-2xl">📍</span>
+                          <div>
+                            <label className="block text-xs font-medium text-gray-500">Город</label>
+                            <p className="text-gray-900 font-medium">{profile.user.city}</p>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
 
                   <div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Дополнительная информация</h3>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Уведомления</h3>
                     <div className="space-y-3">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700">Дата рождения</label>
-                        <p className="text-gray-900">
-                          {profile.user.date_of_birth ? formatDate(profile.user.date_of_birth) : 'Не указано'}
-                        </p>
+                      <div className={`flex items-center justify-between p-3 rounded-lg ${profile.user.email_notifications ? 'bg-green-50' : 'bg-gray-50'}`}>
+                        <span className="text-sm text-gray-700">Email уведомления</span>
+                        <Badge variant={profile.user.email_notifications ? 'success' : 'secondary'}>
+                          {profile.user.email_notifications ? 'Вкл' : 'Выкл'}
+                        </Badge>
                       </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700">Город</label>
-                        <p className="text-gray-900">{profile.user.city || 'Не указано'}</p>
+                      <div className={`flex items-center justify-between p-3 rounded-lg ${profile.user.order_notifications ? 'bg-green-50' : 'bg-gray-50'}`}>
+                        <span className="text-sm text-gray-700">Уведомления о заказах</span>
+                        <Badge variant={profile.user.order_notifications ? 'success' : 'secondary'}>
+                          {profile.user.order_notifications ? 'Вкл' : 'Выкл'}
+                        </Badge>
                       </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700">Сайт</label>
-                        <p className="text-gray-900">{profile.user.website || 'Не указано'}</p>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700">О себе</label>
-                        <p className="text-gray-900">{profile.user.bio || 'Не указано'}</p>
+                      <div className={`flex items-center justify-between p-3 rounded-lg ${profile.user.marketing_notifications ? 'bg-green-50' : 'bg-gray-50'}`}>
+                        <span className="text-sm text-gray-700">Акции и новости</span>
+                        <Badge variant={profile.user.marketing_notifications ? 'success' : 'secondary'}>
+                          {profile.user.marketing_notifications ? 'Вкл' : 'Выкл'}
+                        </Badge>
                       </div>
                     </div>
-                  </div>
-
-                  <div className="md:col-span-2">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Настройки уведомлений</h3>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="flex items-center">
-                        <input
-                          type="checkbox"
-                          checked={profile.user.email_notifications}
-                          disabled
-                          className="w-4 h-4 text-primary-600"
-                        />
-                        <label className="ml-2 text-sm text-gray-700">Email уведомления</label>
-                      </div>
-                      <div className="flex items-center">
-                        <input
-                          type="checkbox"
-                          checked={profile.user.push_notifications}
-                          disabled
-                          className="w-4 h-4 text-primary-600"
-                        />
-                        <label className="ml-2 text-sm text-gray-700">Push уведомления</label>
-                      </div>
-                      <div className="flex items-center">
-                        <input
-                          type="checkbox"
-                          checked={profile.user.order_notifications}
-                          disabled
-                          className="w-4 h-4 text-primary-600"
-                        />
-                        <label className="ml-2 text-sm text-gray-700">Уведомления о заказах</label>
-                      </div>
-                      <div className="flex items-center">
-                        <input
-                          type="checkbox"
-                          checked={profile.user.marketing_notifications}
-                          disabled
-                          className="w-4 h-4 text-primary-600"
-                        />
-                        <label className="ml-2 text-sm text-gray-700">Маркетинговые уведомления</label>
+                    
+                    {/* Статистика */}
+                    <div className="mt-6 pt-6 border-t border-gray-100">
+                      <h4 className="text-sm font-semibold text-gray-900 mb-3">Ваша статистика</h4>
+                      <div className="grid grid-cols-3 gap-3 text-center">
+                        <div className="p-3 bg-primary-50 rounded-lg">
+                          <p className="text-2xl font-bold text-primary-600">{pets.length}</p>
+                          <p className="text-xs text-gray-500">Питомцев</p>
+                        </div>
+                        <div className="p-3 bg-secondary-50 rounded-lg">
+                          <p className="text-2xl font-bold text-secondary-600">{orders.length}</p>
+                          <p className="text-xs text-gray-500">Заказов</p>
+                        </div>
+                        <div className="p-3 bg-accent-50 rounded-lg">
+                          <p className="text-2xl font-bold text-accent-600">{courses.length}</p>
+                          <p className="text-xs text-gray-500">Курсов</p>
+                        </div>
                       </div>
                     </div>
                   </div>
                 </div>
               ) : (
-                // Форма редактирования
-                <form onSubmit={(e) => { e.preventDefault(); saveProfile(); }} className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Основная информация</h3>
+                // Форма редактирования — упрощённая версия
+                <form onSubmit={(e) => { e.preventDefault(); saveProfile(); }} className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Контактные данные */}
                     <div className="space-y-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                        <input
-                          type="email"
-                          value={editForm.email || ''}
-                          onChange={(e) => setEditForm(prev => ({ ...prev, email: e.target.value }))}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary-500 focus:border-primary-500"
-                        />
-                      </div>
+                      <h3 className="text-lg font-semibold text-gray-900">Контактные данные</h3>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Имя</label>
                         <input
                           type="text"
                           value={editForm.first_name || ''}
                           onChange={(e) => setEditForm(prev => ({ ...prev, first_name: e.target.value }))}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary-500 focus:border-primary-500"
+                          placeholder="Как к вам обращаться"
+                          className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
                         />
                       </div>
                       <div>
@@ -473,7 +468,8 @@ function Profile() {
                           type="text"
                           value={editForm.last_name || ''}
                           onChange={(e) => setEditForm(prev => ({ ...prev, last_name: e.target.value }))}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary-500 focus:border-primary-500"
+                          placeholder="Ваша фамилия"
+                          className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
                         />
                       </div>
                       <div>
@@ -482,22 +478,8 @@ function Profile() {
                           type="tel"
                           value={editForm.phone || ''}
                           onChange={(e) => setEditForm(prev => ({ ...prev, phone: e.target.value }))}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary-500 focus:border-primary-500"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Дополнительная информация</h3>
-                    <div className="space-y-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Дата рождения</label>
-                        <input
-                          type="date"
-                          value={editForm.date_of_birth || ''}
-                          onChange={(e) => setEditForm(prev => ({ ...prev, date_of_birth: e.target.value }))}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary-500 focus:border-primary-500"
+                          placeholder="+7 (999) 123-45-67"
+                          className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
                         />
                       </div>
                       <div>
@@ -506,68 +488,52 @@ function Profile() {
                           type="text"
                           value={editForm.city || ''}
                           onChange={(e) => setEditForm(prev => ({ ...prev, city: e.target.value }))}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary-500 focus:border-primary-500"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Сайт</label>
-                        <input
-                          type="url"
-                          value={editForm.website || ''}
-                          onChange={(e) => setEditForm(prev => ({ ...prev, website: e.target.value }))}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary-500 focus:border-primary-500"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">О себе</label>
-                        <textarea
-                          value={editForm.bio || ''}
-                          onChange={(e) => setEditForm(prev => ({ ...prev, bio: e.target.value }))}
-                          rows={3}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary-500 focus:border-primary-500"
+                          placeholder="Для расчёта доставки"
+                          className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
                         />
                       </div>
                     </div>
-                  </div>
 
-                  <div className="md:col-span-2">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Настройки уведомлений</h3>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="flex items-center">
-                        <input
-                          type="checkbox"
-                          checked={editForm.email_notifications}
-                          onChange={(e) => setEditForm(prev => ({ ...prev, email_notifications: e.target.checked }))}
-                          className="w-4 h-4 text-primary-600 focus:ring-primary-500"
-                        />
-                        <label className="ml-2 text-sm text-gray-700">Email уведомления</label>
-                      </div>
-                      <div className="flex items-center">
-                        <input
-                          type="checkbox"
-                          checked={editForm.push_notifications}
-                          onChange={(e) => setEditForm(prev => ({ ...prev, push_notifications: e.target.checked }))}
-                          className="w-4 h-4 text-primary-600 focus:ring-primary-500"
-                        />
-                        <label className="ml-2 text-sm text-gray-700">Push уведомления</label>
-                      </div>
-                      <div className="flex items-center">
-                        <input
-                          type="checkbox"
-                          checked={editForm.order_notifications}
-                          onChange={(e) => setEditForm(prev => ({ ...prev, order_notifications: e.target.checked }))}
-                          className="w-4 h-4 text-primary-600 focus:ring-primary-500"
-                        />
-                        <label className="ml-2 text-sm text-gray-700">Уведомления о заказах</label>
-                      </div>
-                      <div className="flex items-center">
-                        <input
-                          type="checkbox"
-                          checked={editForm.marketing_notifications}
-                          onChange={(e) => setEditForm(prev => ({ ...prev, marketing_notifications: e.target.checked }))}
-                          className="w-4 h-4 text-primary-600 focus:ring-primary-500"
-                        />
-                        <label className="ml-2 text-sm text-gray-700">Маркетинговые уведомления</label>
+                    {/* Уведомления */}
+                    <div className="space-y-4">
+                      <h3 className="text-lg font-semibold text-gray-900">Уведомления</h3>
+                      <div className="space-y-3">
+                        <label className="flex items-center justify-between p-4 bg-gray-50 rounded-xl cursor-pointer hover:bg-gray-100 transition-colors">
+                          <div>
+                            <p className="font-medium text-gray-900">Email уведомления</p>
+                            <p className="text-sm text-gray-500">Важные сообщения о вашем аккаунте</p>
+                          </div>
+                          <input
+                            type="checkbox"
+                            checked={editForm.email_notifications}
+                            onChange={(e) => setEditForm(prev => ({ ...prev, email_notifications: e.target.checked }))}
+                            className="w-5 h-5 text-primary-600 focus:ring-primary-500 rounded"
+                          />
+                        </label>
+                        <label className="flex items-center justify-between p-4 bg-gray-50 rounded-xl cursor-pointer hover:bg-gray-100 transition-colors">
+                          <div>
+                            <p className="font-medium text-gray-900">Статус заказов</p>
+                            <p className="text-sm text-gray-500">Уведомления об изменении статуса</p>
+                          </div>
+                          <input
+                            type="checkbox"
+                            checked={editForm.order_notifications}
+                            onChange={(e) => setEditForm(prev => ({ ...prev, order_notifications: e.target.checked }))}
+                            className="w-5 h-5 text-primary-600 focus:ring-primary-500 rounded"
+                          />
+                        </label>
+                        <label className="flex items-center justify-between p-4 bg-gray-50 rounded-xl cursor-pointer hover:bg-gray-100 transition-colors">
+                          <div>
+                            <p className="font-medium text-gray-900">Акции и новости</p>
+                            <p className="text-sm text-gray-500">Скидки и специальные предложения</p>
+                          </div>
+                          <input
+                            type="checkbox"
+                            checked={editForm.marketing_notifications}
+                            onChange={(e) => setEditForm(prev => ({ ...prev, marketing_notifications: e.target.checked }))}
+                            className="w-5 h-5 text-primary-600 focus:ring-primary-500 rounded"
+                          />
+                        </label>
                       </div>
                     </div>
                   </div>
@@ -598,6 +564,40 @@ function Profile() {
                 {pets.map(pet => (
                   <PetCard key={pet.id} pet={pet} />
                 ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Вкладка напоминаний */}
+        {activeTab === 'reminders' && (
+          <div>
+            {pets.length === 0 ? (
+              <div className="card text-center py-12">
+                <div className="text-5xl mb-4">🔔</div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                  Добавьте питомца для создания напоминаний
+                </h3>
+                <p className="text-gray-600 mb-4">
+                  Напоминания привязаны к профилям питомцев
+                </p>
+                <Link to="/pets/new" className="btn-primary">
+                  Добавить питомца
+                </Link>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                <div className="flex justify-between items-center">
+                  <h2 className="text-xl font-semibold text-gray-900">
+                    Напоминания по уходу
+                  </h2>
+                  <Link to="/reminders/new">
+                    <Button variant="primary" size="sm">
+                      + Создать напоминание
+                    </Button>
+                  </Link>
+                </div>
+                <RemindersWidget limit={10} />
               </div>
             )}
           </div>
@@ -749,38 +749,71 @@ function Profile() {
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {courses.map(item => (
-                  <div key={item.course.id} className="card">
-                    <div className="flex gap-4">
-                      <div className="w-20 h-20 bg-primary-50 rounded-lg flex items-center justify-center text-4xl flex-shrink-0">
-                        {item.course.pet_type === 'dog' ? '🐕' : item.course.pet_type === 'cat' ? '🐱' : '📚'}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <h3 className="font-semibold text-gray-900 truncate">
-                          {item.course.title}
-                        </h3>
-                        <p className="text-sm text-gray-500 line-clamp-2">
-                          {item.course.description}
-                        </p>
-                        {/* Информация о питомце, если курс привязан к питомцу */}
-                        {item.pet && (
-                          <div className="mt-2 mb-2">
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-primary-100 text-primary-700 text-xs font-medium rounded-full">
-                              <span>🐾</span>
-                              Для: {item.pet.name}
-                            </span>
+                  <Link 
+                    key={item.course.id} 
+                    to={`/courses/${item.course.id}`}
+                    className="block"
+                  >
+                    <Card className="p-4 hover:shadow-lg transition-shadow h-full">
+                      <div className="flex gap-4">
+                        <div className="w-20 h-20 bg-gradient-to-br from-primary-100 to-primary-200 rounded-xl flex items-center justify-center text-4xl flex-shrink-0">
+                          {item.course.pet_type === 'dog' ? '🐕' : item.course.pet_type === 'cat' ? '🐱' : '📚'}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-semibold text-gray-900 truncate mb-1">
+                            {item.course.title}
+                          </h3>
+                          
+                          {/* Информация о питомце */}
+                          {item.pet && (
+                            <Badge variant="primary" className="mb-2">
+                              🐾 Для: {item.pet.name}
+                            </Badge>
+                          )}
+                          
+                          {/* Прогресс-бар */}
+                          <div className="mt-3">
+                            <div className="flex items-center justify-between mb-1">
+                              <span className="text-xs text-gray-500">Прогресс</span>
+                              <span className={`text-xs font-bold ${
+                                item.progress >= 100 ? 'text-green-600' : 
+                                item.progress >= 50 ? 'text-primary-600' : 'text-amber-600'
+                              }`}>
+                                {item.progress}%
+                              </span>
+                            </div>
+                            <Progress 
+                              value={item.progress} 
+                              max={100}
+                              className="h-2"
+                              indicatorClassName={
+                                item.progress >= 100 ? 'bg-green-500' : 
+                                item.progress >= 50 ? 'bg-primary-500' : 'bg-amber-500'
+                              }
+                            />
                           </div>
-                        )}
-                        <div className="flex items-center gap-4 mt-2">
-                          <span className="text-xs text-gray-500">
+                          
+                          <p className="text-xs text-gray-400 mt-2">
                             Приобретён: {formatDate(item.purchased_at)}
-                          </span>
-                          <span className="text-xs text-primary-600 font-medium">
-                            Прогресс: {item.progress}%
-                          </span>
+                          </p>
                         </div>
                       </div>
-                    </div>
-                  </div>
+                      
+                      {/* Статус курса */}
+                      <div className="mt-4 pt-3 border-t border-gray-100 flex justify-between items-center">
+                        {item.progress >= 100 ? (
+                          <Badge variant="success">✓ Завершён</Badge>
+                        ) : item.progress > 0 ? (
+                          <Badge variant="info">В процессе</Badge>
+                        ) : (
+                          <Badge variant="secondary">Не начат</Badge>
+                        )}
+                        <span className="text-sm text-primary-600 font-medium">
+                          Продолжить →
+                        </span>
+                      </div>
+                    </Card>
+                  </Link>
                 ))}
               </div>
             )}

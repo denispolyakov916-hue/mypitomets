@@ -23,6 +23,7 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { ButtonLoader } from './Loader'
 import Rating from './Rating'
+import FavoriteButton from './FavoriteButton'
 import { useCartStore } from '../store/cartStore'
 
 /**
@@ -89,8 +90,9 @@ function ProductCard({ product, onAddToCart, isLoading = false }) {
 
     setIsAdding(true)
     try {
-      await onAddToCart?.(product, 1)
-      // После добавления товар будет в корзине, isInCart автоматически обновится
+      const result = await onAddToCart?.(product, 1)
+      // После успешного добавления кнопка изменится на "В корзину"
+      // Навигация происходит только при клике на зелёную кнопку
     } finally {
       setIsAdding(false)
     }
@@ -125,7 +127,7 @@ function ProductCard({ product, onAddToCart, isLoading = false }) {
   const mainImage = product.main_image || (product.images && product.images[0])
   
   return (
-    <div className="bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow flex flex-col h-full overflow-hidden">
+    <div className="group bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow flex flex-col h-full overflow-hidden">
       {/* Изображение товара - кликабельное */}
       <Link to={`/shop/products/${product.id}`} className="aspect-square bg-gray-50 relative overflow-hidden block">
         {mainImage && !imageError ? (
@@ -161,6 +163,11 @@ function ProductCard({ product, onAddToCart, isLoading = false }) {
         {/* Бейдж животного */}
         <div className="absolute top-2 left-2 px-2 py-1 bg-white/90 text-xs rounded-lg font-medium">
           {animalLabels[product.animal] || product.animal}
+        </div>
+        
+        {/* Кнопка избранного */}
+        <div className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+          <FavoriteButton itemId={product.id} type="product" size="sm" />
         </div>
       </Link>
       

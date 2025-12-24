@@ -142,26 +142,26 @@ class CourseAdmin(admin.ModelAdmin):
         """Активировать курсы."""
         updated = queryset.update(is_active=True)
         self.message_user(request, f'Активировано курсов: {updated}')
-    activate_courses.short_description = 'Активировать курсы'
-    
+    activate_courses.short_description = 'Активировать %(verbose_name_plural)s'
+
     def deactivate_courses(self, request, queryset):
         """Деактивировать курсы."""
         updated = queryset.update(is_active=False)
         self.message_user(request, f'Деактивировано курсов: {updated}')
-    deactivate_courses.short_description = 'Деактивировать курсы'
-    
+    deactivate_courses.short_description = 'Деактивировать %(verbose_name_plural)s'
+
     def make_free(self, request, queryset):
         """Сделать курсы бесплатными."""
         updated = queryset.update(price=0)
         self.message_user(request, f'Сделано бесплатными: {updated}')
-    make_free.short_description = 'Сделать бесплатными'
-    
+    make_free.short_description = 'Сделать %(verbose_name_plural)s бесплатными'
+
     def make_paid(self, request, queryset):
         """Сделать курсы платными (установить цену по умолчанию)."""
         from decimal import Decimal
         updated = queryset.filter(price=0).update(price=Decimal('999.00'))
         self.message_user(request, f'Сделано платными: {updated}')
-    make_paid.short_description = 'Сделать платными (999 ₽)'
+    make_paid.short_description = 'Сделать %(verbose_name_plural)s платными (999 ₽)'
 
 
 @admin.register(UserCourse)
@@ -235,10 +235,10 @@ class UserCourseAdmin(admin.ModelAdmin):
         """Сбросить прогресс."""
         updated = queryset.update(progress=0)
         self.message_user(request, f'Сброшен прогресс для: {updated} записей')
-    reset_progress.short_description = 'Сбросить прогресс'
-    
+    reset_progress.short_description = 'Сбросить прогресс %(verbose_name_plural)s'
+
     def complete_courses(self, request, queryset):
         """Завершить курсы."""
         updated = queryset.update(progress=100)
         self.message_user(request, f'Завершено курсов: {updated}')
-    complete_courses.short_description = 'Завершить курсы'
+    complete_courses.short_description = 'Завершить %(verbose_name_plural)s'

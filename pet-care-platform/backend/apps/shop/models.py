@@ -10,6 +10,7 @@ from django.utils import timezone
 from datetime import timedelta
 from decimal import Decimal
 from core.utils import generate_uuid7
+from .managers import ProductManager
 
 
 class Product(models.Model):
@@ -126,6 +127,9 @@ class Product(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
+    # Используем кастомный менеджер с оптимизированными запросами
+    objects = ProductManager()
+    
     class Meta:
         db_table = 'products'
         verbose_name = 'Товар'
@@ -154,19 +158,37 @@ class Product(models.Model):
         return self.price
     
     def get_average_rating(self):
-        """Средний рейтинг товара."""
+        """
+        Средний рейтинг товара.
+        
+        Оптимизация: если объект имеет аннотированные поля _avg_rating,
+        используем их вместо дополнительного запроса к БД.
+        """
+        # Используем предзагруженное значение если доступно
+        if hasattr(self, '_avg_rating') and self._avg_rating is not None:
+            return float(self._avg_rating)
+        
+        # Fallback на запрос к БД (для единичных объектов)
         from apps.reviews.models import Review
-        reviews = Review.objects.filter(
+        from django.db.models import Avg
+        result = Review.objects.filter(
             product=self,
             is_approved=True
-        )
-        if not reviews.exists():
-            return 0.0
-        from django.db.models import Avg
-        return reviews.aggregate(Avg('rating'))['rating__avg'] or 0.0
+        ).aggregate(avg=Avg('rating'))
+        return result['avg'] or 0.0
     
     def get_reviews_count(self):
-        """Количество одобренных отзывов."""
+        """
+        Количество одобренных отзывов.
+        
+        Оптимизация: если объект имеет аннотированное поле _reviews_count,
+        используем его вместо дополнительного запроса к БД.
+        """
+        # Используем предзагруженное значение если доступно
+        if hasattr(self, '_reviews_count') and self._reviews_count is not None:
+            return self._reviews_count
+        
+        # Fallback на запрос к БД (для единичных объектов)
         from apps.reviews.models import Review
         return Review.objects.filter(
             product=self,

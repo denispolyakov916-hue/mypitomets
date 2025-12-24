@@ -5,7 +5,16 @@
  */
 
 import { create } from 'zustand'
-import { TOAST_TYPES } from '../components/Toast'
+
+/**
+ * Типы уведомлений (дублируем здесь чтобы избежать циклических импортов)
+ */
+const TOAST_TYPES = {
+  SUCCESS: 'success',
+  ERROR: 'error',
+  WARNING: 'warning',
+  INFO: 'info'
+}
 
 let toastIdCounter = 0
 

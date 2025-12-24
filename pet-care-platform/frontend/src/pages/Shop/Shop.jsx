@@ -505,14 +505,16 @@ function Shop() {
       if (confirm('Для добавления в корзину необходимо войти в аккаунт. Перейти на страницу входа?')) {
         navigate('/login', { state: { from: { pathname: '/shop' } } })
       }
-      return
+      return false
     }
 
     const result = await addItem(product.id, quantity)
     if (result) {
       const itemText = quantity === 1 ? 'Товар' : `${quantity} товара`
       success(`${itemText} добавлен${quantity > 1 ? 'ы' : ''} в корзину. Перейдите в корзину для оформления заказа.`, 5000)
+      return true
     }
+    return false
   }
   
   return (

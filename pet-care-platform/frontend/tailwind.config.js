@@ -58,6 +58,62 @@ export default {
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],
       },
+      // Кастомные анимации
+      animation: {
+        'fadeIn': 'fadeIn 0.3s ease-out',
+        'fadeOut': 'fadeOut 0.2s ease-in',
+        'slideUp': 'slideUp 0.3s ease-out',
+        'slideDown': 'slideDown 0.3s ease-out',
+        'slideLeft': 'slideLeft 0.3s ease-out',
+        'slideRight': 'slideRight 0.3s ease-out',
+        'scaleIn': 'scaleIn 0.2s ease-out',
+        'shake': 'shake 0.5s ease-in-out',
+        'pulse-slow': 'pulse 3s ease-in-out infinite',
+        'bounce-subtle': 'bounceSubtle 2s ease-in-out infinite',
+      },
+      keyframes: {
+        fadeIn: {
+          '0%': { opacity: '0' },
+          '100%': { opacity: '1' },
+        },
+        fadeOut: {
+          '0%': { opacity: '1' },
+          '100%': { opacity: '0' },
+        },
+        slideUp: {
+          '0%': { opacity: '0', transform: 'translateY(10px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
+        },
+        slideDown: {
+          '0%': { opacity: '0', transform: 'translateY(-10px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
+        },
+        slideLeft: {
+          '0%': { opacity: '0', transform: 'translateX(10px)' },
+          '100%': { opacity: '1', transform: 'translateX(0)' },
+        },
+        slideRight: {
+          '0%': { opacity: '0', transform: 'translateX(-10px)' },
+          '100%': { opacity: '1', transform: 'translateX(0)' },
+        },
+        scaleIn: {
+          '0%': { opacity: '0', transform: 'scale(0.95)' },
+          '100%': { opacity: '1', transform: 'scale(1)' },
+        },
+        shake: {
+          '0%, 100%': { transform: 'translateX(0)' },
+          '10%, 30%, 50%, 70%, 90%': { transform: 'translateX(-4px)' },
+          '20%, 40%, 60%, 80%': { transform: 'translateX(4px)' },
+        },
+        bounceSubtle: {
+          '0%, 100%': { transform: 'translateY(0)' },
+          '50%': { transform: 'translateY(-5px)' },
+        },
+      },
+      // Переходы
+      transitionDuration: {
+        '400': '400ms',
+      },
     },
   },
   plugins: [],

@@ -6,7 +6,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('training', '0005_auto_20251224_1835'),
+        ('training', '0004_alter_usercourse_unique_together_usercourse_pet_and_more'),
     ]
 
     operations = [

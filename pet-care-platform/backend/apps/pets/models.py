@@ -117,6 +117,28 @@ class Pet(models.Model):
         help_text='Список продуктов или ингредиентов, на которые у питомца аллергия'
     )
     
+    # Проблемы здоровья для персонализированных рекомендаций
+    health_issues = models.JSONField(
+        default=list,
+        blank=True,
+        verbose_name='Проблемы здоровья',
+        help_text='Список проблем здоровья питомца (лишний вес, чувствительное пищеварение и т.д.)'
+    )
+    
+    # Активность питомца
+    ACTIVITY_LEVELS = [
+        ('low', 'Низкая'),
+        ('medium', 'Средняя'),
+        ('high', 'Высокая'),
+    ]
+    activity_level = models.CharField(
+        max_length=10,
+        choices=ACTIVITY_LEVELS,
+        default='medium',
+        verbose_name='Уровень активности',
+        help_text='Уровень физической активности питомца'
+    )
+    
     created_at = models.DateTimeField(
         default=timezone.now,
         verbose_name='Дата создания',
@@ -173,6 +195,12 @@ class Pet(models.Model):
             'photo': photo_url,
             'favorite_foods': self.favorite_foods if self.favorite_foods else [],
             'allergies': self.allergies if self.allergies else [],
+            'health_issues': self.health_issues if self.health_issues else [],
+            'activity_level': self.activity_level,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None
         }
+
+
+# Импортируем модель Reminder для регистрации в Django
+from .reminder_models import Reminder, ReminderCategory, ReminderFrequency

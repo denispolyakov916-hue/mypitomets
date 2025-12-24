@@ -22,6 +22,7 @@
  *   требуют аутентификации (JWT токен)
  */
 
+import React from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 
 // Компоненты Layout
@@ -30,8 +31,7 @@ import PrivateRoute from './components/PrivateRoute'
 
 // Компоненты страниц
 import Home from './pages/Home'
-import Login from './pages/Auth/Login'
-import Register from './pages/Auth/Register'
+import AuthModal from './pages/Auth/AuthModal'
 import Activate from './pages/Auth/Activate'
 import PetList from './pages/PetProfile/PetList'
 import PetForm from './pages/PetProfile/PetForm'
@@ -40,6 +40,7 @@ import Shop from './pages/Shop/Shop'
 import ProductDetail from './pages/Shop/ProductDetail'
 import Cart from './pages/Shop/Cart'
 import UnifiedCheckout from './pages/Checkout/UnifiedCheckout'
+import PaymentMethodSelection from './pages/Checkout/PaymentMethodSelection'
 import Courses from './pages/Training/Courses'
 import CourseDetail from './pages/Training/CourseDetail'
 import Payment from './pages/Payment/Payment'
@@ -54,7 +55,7 @@ import { useAuthStore } from './store/authStore'
 
 /**
  * Компонент App
- * 
+ *
  * Корневой компонент, настраивающий роутинг и layout.
  * Использует компонент Layout для единообразной навигации на всех страницах.
  */
@@ -66,13 +67,13 @@ function App() {
       <Routes>
         {/* Публичные маршруты */}
         <Route path="/" element={<Home />} />
-        <Route 
-          path="/login" 
-          element={isAuthenticated ? <Navigate to="/pets" /> : <Login />} 
+        <Route
+          path="/login"
+          element={isAuthenticated ? <Navigate to="/pets" /> : <AuthModal />}
         />
-        <Route 
-          path="/register" 
-          element={isAuthenticated ? <Navigate to="/pets" /> : <Register />} 
+        <Route
+          path="/register"
+          element={isAuthenticated ? <Navigate to="/pets" /> : <AuthModal />}
         />
         <Route path="/activate" element={<Activate />} />
         
@@ -84,7 +85,7 @@ function App() {
         <Route path="/courses" element={<Courses />} />
         <Route path="/courses/:id" element={<CourseDetail />} />
         
-        {/* Оплата - Публичная (но требует аутентификации внутри) */}
+        {/* Оплата - Требует аутентификации */}
         <Route path="/payment" element={<Payment />} />
         
         {/* Защищённые маршруты - Требуют аутентификации */}
@@ -100,6 +101,7 @@ function App() {
 
           {/* Единый Checkout - Защищённый */}
           <Route path="/checkout" element={<UnifiedCheckout />} />
+          <Route path="/payment-method" element={<PaymentMethodSelection />} />
 
           {/* Профиль */}
           <Route path="/profile" element={<Profile />} />

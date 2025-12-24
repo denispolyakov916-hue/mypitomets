@@ -8,6 +8,7 @@
 import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { getOrders } from '../../api/shop'
+import { createPayment } from '../../api/payments'
 import { PageLoader } from '../../components/Loader'
 import { useToastStore } from '../../store/toastStore'
 import OrderTimer from '../../components/OrderTimer'
@@ -254,23 +255,16 @@ function OrderCard({ order, onOrderExpired }) {
         
         {/* Кнопка действий */}
         <div className="mt-4 pt-4 border-t border-gray-100 flex items-center justify-between">
-          {order.status === 'pending' && (
-            <Link
-              to={`/payment?order_id=${order.id}&type=shop_order&amount=${order.total_amount}`}
-              onClick={(e) => e.stopPropagation()}
+          {(order.status === 'pending' || order.status === 'expired') && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                handlePayOrder(order.id, order.total_amount)
+              }}
               className="btn-primary text-sm"
             >
-              Оплатить заказ
-            </Link>
-          )}
-          {order.status === 'expired' && (
-            <Link
-              to={`/payment?order_id=${order.id}&type=shop_order&amount=${order.total_amount}`}
-              onClick={(e) => e.stopPropagation()}
-              className="btn-primary text-sm"
-            >
-              Попробовать оплатить снова
-            </Link>
+              {order.status === 'pending' ? 'Оплатить заказ' : 'Попробовать оплатить снова'}
+            </button>
           )}
           <button
             onClick={(e) => {
@@ -288,6 +282,31 @@ function OrderCard({ order, onOrderExpired }) {
       </div>
     </div>
   )
+}
+
+/**
+ * Обработчик оплаты заказа
+ */
+const handlePayOrder = async (orderId, amount) => {
+  try {
+    // Создаем платеж для существующего заказа
+    const response = await createPayment({
+      payment_type: 'shop_order',
+      object_id: orderId,
+      amount: amount
+    })
+
+    if (response.payment) {
+      // Перенаправляем на страницу оплаты с payment_id
+      window.location.href = `/payment?payment_id=${response.payment.id}&amount=${response.payment.amount}`
+    } else {
+      throw new Error('Не удалось создать платеж')
+    }
+  } catch (error) {
+    console.error('Ошибка создания платежа:', error)
+    // Показываем ошибку пользователю
+    alert('Не удалось создать платеж. Попробуйте позже.')
+  }
 }
 
 /**

@@ -226,15 +226,15 @@ function Navbar() {
                 >
                   Заказы
                 </Link>
-                <Link 
-                  to="/health-diary" 
+                <Link
+                  to="/health-diary"
                   className={`block ${linkClass('/health-diary')}`}
                   onClick={() => setMobileMenuOpen(false)}
                 >
                   Дневник здоровья
                 </Link>
-                <Link 
-                  to="/profile" 
+                <Link
+                  to="/profile"
                   className={`block ${linkClass('/profile')}`}
                   onClick={() => setMobileMenuOpen(false)}
                 >

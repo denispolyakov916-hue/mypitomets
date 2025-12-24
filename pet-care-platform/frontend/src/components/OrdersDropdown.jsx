@@ -4,7 +4,7 @@
  * Отображает последние заказы пользователя с возможностью перехода к деталям
  */
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { getOrders } from '../api/shop'
 
@@ -52,32 +52,9 @@ function OrdersDropdown() {
   const dropdownRef = useRef(null)
   
   /**
-   * Загрузка заказов
-   */
-  useEffect(() => {
-    if (isOpen) {
-      fetchOrders()
-    }
-  }, [isOpen])
-  
-  /**
-   * Закрытие при клике вне компонента
-   */
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-        setIsOpen(false)
-      }
-    }
-    
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
-  
-  /**
    * Загрузка заказов из API
    */
-  const fetchOrders = async () => {
+  const fetchOrders = useCallback(async () => {
     setIsLoading(true)
     try {
       const response = await getOrders()
@@ -92,7 +69,30 @@ function OrdersDropdown() {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [])
+  
+  /**
+   * Загрузка заказов
+   */
+  useEffect(() => {
+    if (isOpen) {
+      fetchOrders()
+    }
+  }, [isOpen, fetchOrders])
+  
+  /**
+   * Закрытие при клике вне компонента
+   */
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsOpen(false)
+      }
+    }
+    
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
   
   /**
    * Подсчет неоплаченных заказов
