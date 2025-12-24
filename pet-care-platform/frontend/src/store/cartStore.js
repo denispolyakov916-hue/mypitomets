@@ -79,12 +79,18 @@ export const useCartStore = create((set, get) => ({
         total: response.totals?.total || 0,
         itemsCount: response.items_count || 0,
         selectedItems: allIds,
-        isLoading: false
+        isLoading: false,
+        error: null
       })
 
       return true
     } catch (error) {
+      console.error('Ошибка загрузки корзины:', error)
       set({
+        items: [], // Сбрасываем items при ошибке
+        total: 0,
+        itemsCount: 0,
+        selectedItems: new Set(),
         isLoading: false,
         error: error.message || 'Не удалось загрузить корзину'
       })
@@ -132,11 +138,13 @@ export const useCartStore = create((set, get) => ({
         items: orderedItems,
         total: response.totals?.total || 0,
         itemsCount: response.items_count || 0,
-        isLoading: false
+        isLoading: false,
+        error: null
       })
 
       return true
     } catch (error) {
+      console.error('Ошибка добавления товара в корзину:', error)
       set({
         isLoading: false,
         error: error.message || 'Не удалось добавить товар'
@@ -191,6 +199,7 @@ export const useCartStore = create((set, get) => ({
 
       return true
     } catch (error) {
+      console.error('Ошибка добавления курса в корзину:', error)
       // Обработка ошибок от API
       const errorMessage = error.response?.data?.error ||
                           error.response?.data?.message ||
@@ -251,6 +260,7 @@ export const useCartStore = create((set, get) => ({
 
       return true
     } catch (error) {
+      console.error('Ошибка обновления количества в корзине:', error)
       set({
         isLoading: false,
         error: error.message || 'Не удалось обновить количество'
@@ -293,6 +303,7 @@ export const useCartStore = create((set, get) => ({
 
       return true
     } catch (error) {
+      console.error('Ошибка удаления курса из корзины:', error)
       set({
         isLoading: false,
         error: error.message || 'Не удалось удалить курс из корзины'
@@ -525,6 +536,7 @@ export const useCartStore = create((set, get) => ({
       await loadCart()
       return true
     } catch (error) {
+      console.error('Ошибка удаления выбранных элементов из корзины:', error)
       set({
         isLoading: false,
         error: error.message || 'Не удалось удалить выбранные элементы'

@@ -94,21 +94,21 @@ function App() {
           <Route path="/pets/new" element={<PetForm />} />
           <Route path="/pets/:id" element={<PetProfile />} />
           <Route path="/pets/:id/edit" element={<PetForm />} />
-          
-          {/* Корзина - Защищённая */}
+
+          {/* Корзина */}
           <Route path="/cart" element={<Cart />} />
-          
+
           {/* Единый Checkout - Защищённый */}
           <Route path="/checkout" element={<UnifiedCheckout />} />
-          
+
           {/* Профиль */}
           <Route path="/profile" element={<Profile />} />
           <Route path="/settings" element={<Settings />} />
-          
+
           {/* Заказы */}
           <Route path="/orders" element={<Orders />} />
           <Route path="/orders/:id" element={<OrderDetail />} />
-          
+
           {/* Дневник здоровья */}
           <Route path="/health-diary" element={<HealthDiary />} />
         </Route>

@@ -35,73 +35,92 @@ const formatPrice = (price) => {
  * Отображает содержимое корзины с возможностью выборочного оформления.
  */
 function Cart() {
-  const navigate = useNavigate()
-  const location = useLocation()
-  const { 
-    items, 
-    total, 
-    isLoading, 
-    error, 
-    loadCart, 
-    updateQuantity, 
-    removeItem,
-    clearError,
-    selectedItems,
-    setItemSelection,
-    selectAllItems,
-    deselectAllItems,
-    selectAllProducts,
-    deselectAllProducts,
-    selectAllCourses,
-    deselectAllCourses,
-    getSelectedTotal,
-    getSelectedItemIds,
-    removeSelectedItems
-  } = useCartStore()
-  const { success, error: showError } = useToastStore()
-  
+  console.log('=== Cart component MOUNTED/RE-RENDERED ===')
+
+  try {
+    const navigate = useNavigate()
+    const location = useLocation()
+    const {
+      items,
+      total,
+      isLoading,
+      error,
+      loadCart,
+      updateQuantity,
+      removeItem,
+      clearError,
+      selectedItems,
+      setItemSelection,
+      selectAllItems,
+      deselectAllItems,
+      selectAllProducts,
+      deselectAllProducts,
+      selectAllCourses,
+      deselectAllCourses,
+      getSelectedTotal,
+      getSelectedItemIds,
+      removeSelectedItems
+    } = useCartStore()
+
+    console.log('Cart state:', { itemsLength: items.length, total, isLoading, error, selectedItemsSize: selectedItems.size })
+
+    const { success, error: showError } = useToastStore()
+
   // Сообщение из редиректа (например, при истечении времени checkout)
   const [redirectMessage, setRedirectMessage] = useState(null)
   const [isDeletingSelected, setIsDeletingSelected] = useState(false)
-  
+
+  /**
+   * Проверка, является ли элемент курсом
+   */
+  const isCourse = (item) => {
+    return item.course !== undefined && item.course !== null
+  }
+
   // Разделение товаров и курсов
+  console.log('Filtering items by type')
   const products = items.filter(item => !isCourse(item))
   const courses = items.filter(item => isCourse(item))
-  
+
+  console.log('Products:', products.length, 'Courses:', courses.length)
+
   // Проверка "Выбрать все"
   const isAllSelected = items.length > 0 && selectedItems.size === items.length
   const selectedCount = selectedItems.size
   const selectedTotal = getSelectedTotal()
-  
+
+  console.log('Selection state:', { isAllSelected, selectedCount, selectedTotal })
+
   // Проверка выбора товаров и курсов
   const selectedProducts = products.filter(item => selectedItems.has(item.id))
   const selectedCourses = courses.filter(item => selectedItems.has(item.id))
   const isAllProductsSelected = products.length > 0 && selectedProducts.length === products.length
   const isAllCoursesSelected = courses.length > 0 && selectedCourses.length === courses.length
-  
+
   /**
    * Загрузка корзины при монтировании и обработка сообщений
    */
   useEffect(() => {
     loadCart()
-    
+
     // Показываем сообщение из редиректа
     if (location.state?.message) {
       setRedirectMessage(location.state.message)
       // Очищаем state чтобы сообщение не показывалось повторно
       navigate(location.pathname, { replace: true, state: {} })
     }
-    
+
     return () => clearError()
-  }, [loadCart, clearError, location.state, navigate, location.pathname])
-  
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.state?.message, location.pathname])
+
   /**
    * Обработчик выбора/снятия элемента
    */
   const handleItemSelect = (itemId, checked) => {
     setItemSelection(itemId, checked)
   }
-  
+
   /**
    * Обработчик "Выбрать все"
    */
@@ -112,7 +131,7 @@ function Cart() {
       deselectAllItems()
     }
   }
-  
+
   /**
    * Обработчик "Выбрать все товары"
    */
@@ -123,7 +142,7 @@ function Cart() {
       deselectAllProducts()
     }
   }
-  
+
   /**
    * Обработчик "Выбрать все курсы"
    */
@@ -134,13 +153,13 @@ function Cart() {
       deselectAllCourses()
     }
   }
-  
+
   /**
    * Обработчик удаления выбранных элементов
    */
   const handleDeleteSelected = async () => {
     if (selectedCount === 0) return
-    
+
     setIsDeletingSelected(true)
     try {
       const result = await removeSelectedItems()
@@ -153,7 +172,7 @@ function Cart() {
       setIsDeletingSelected(false)
     }
   }
-  
+
   /**
    * Обработчик изменения количества
    */
@@ -161,7 +180,7 @@ function Cart() {
     if (newQuantity < 0) return
     await updateQuantity(productId, newQuantity)
   }
-  
+
   /**
    * Обработчик удаления товара или курса
    */
@@ -171,7 +190,7 @@ function Cart() {
         // Для курсов: бэкенд не поддерживает удаление через DELETE с course_id
         // Используем обходной путь - удаляем через прямой запрос к API
         // или просто перезагружаем корзину после попытки удаления
-        
+
         // Пробуем удалить через DELETE с course_id (может не работать на бэкенде)
         try {
           await shopApi.removeCourseFromCart(itemId)
@@ -192,44 +211,63 @@ function Cart() {
       showError(err.message || 'Не удалось удалить элемент из корзины')
     }
   }
-  
-  /**
-   * Проверка, является ли элемент курсом
-   */
-  const isCourse = (item) => {
-    return item.course !== undefined && item.course !== null
-  }
-  
-  
+
+  console.log('Checking render conditions:', { isLoading, itemsLength: items.length, error })
+
   // Состояние загрузки
-  if (isLoading && items.length === 0) {
+  if (isLoading) {
+    console.log('Rendering PageLoader')
     return <PageLoader />
   }
-  
+
   // Состояние пустой корзины
-  if (items.length === 0) {
+  if (items.length === 0 && !isLoading) {
+    console.log('Rendering empty cart')
     return (
       <div className="page-container animate-fadeIn">
         <div className="card text-center py-12 max-w-lg mx-auto">
-          <div className="text-6xl mb-4">🛒</div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">
-            Корзина пуста
-          </h1>
-          <p className="text-gray-600 mb-6">
-            Добавьте товары из каталога, чтобы оформить заказ
-          </p>
-          <Link to="/shop" className="btn-primary">
-            Перейти в магазин
-          </Link>
+          {/* Показываем ошибку, если она есть */}
+          {error && (
+            <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-600 mb-6">
+              <p className="font-medium mb-2">Ошибка загрузки корзины</p>
+              <p className="text-sm">{error}</p>
+              <button
+                onClick={() => {
+                  clearError()
+                  loadCart()
+                }}
+                className="mt-4 btn-primary text-sm"
+              >
+                Попробовать снова
+              </button>
+            </div>
+          )}
+
+          {!error && (
+            <>
+              <div className="text-6xl mb-4">🛒</div>
+              <h1 className="text-2xl font-bold text-gray-900 mb-2">
+                Корзина пуста
+              </h1>
+              <p className="text-gray-600 mb-6">
+                Добавьте товары из каталога, чтобы оформить заказ
+              </p>
+              <Link to="/shop" className="btn-primary">
+                Перейти в магазин
+              </Link>
+            </>
+          )}
         </div>
       </div>
     )
   }
-  
+
+  console.log('Rendering cart content')
+
   return (
     <div className="page-container animate-fadeIn">
       <h1 className="page-title">Корзина</h1>
-      
+
       {/* Сообщение из редиректа */}
       {redirectMessage && (
         <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg text-amber-700 mb-6 flex items-center gap-2">
@@ -237,7 +275,7 @@ function Cart() {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
           </svg>
           <span>{redirectMessage}</span>
-          <button 
+          <button
             onClick={() => setRedirectMessage(null)}
             className="ml-auto text-amber-600 hover:text-amber-800"
           >
@@ -247,13 +285,13 @@ function Cart() {
           </button>
         </div>
       )}
-      
+
       {error && (
         <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm mb-6">
           {error}
         </div>
       )}
-      
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Товары в корзине */}
         <div className="lg:col-span-2 space-y-6">
@@ -273,7 +311,7 @@ function Cart() {
                 </span>
               )}
             </label>
-            
+
             <div className="flex gap-2">
               {selectedCount > 0 && (
                 <button
@@ -298,7 +336,7 @@ function Cart() {
               )}
             </div>
           </div>
-          
+
           {/* Блок товаров */}
           {products.length > 0 && (
             <div className="card">
@@ -326,41 +364,41 @@ function Cart() {
                   )}
                 </label>
               </div>
-              
+
               <div className="divide-y divide-gray-100">
                 {products.map(item => {
               // Безопасная проверка структуры данных
               if (!item) return null
-              
+
               const isCourseItem = isCourse(item)
-              
+
               // Если это не курс и нет product, пропускаем
               if (!isCourseItem && !item.product) {
                 console.error('Cart item missing product:', item)
                 return null
               }
-              
+
               // Используем ID элемента корзины как ключ - это стабильный уникальный идентификатор
               // который не меняется при обновлении количества
               const cartItemId = item.id // ID элемента корзины (стабильный ключ)
-              const itemId = isCourseItem 
-                ? (item.course?.id || `course-${item.id}`) 
+              const itemId = isCourseItem
+                ? (item.course?.id || `course-${item.id}`)
                 : (item.product?.id || item.id)
-              const itemName = isCourseItem 
-                ? (item.course?.title || 'Курс') 
+              const itemName = isCourseItem
+                ? (item.course?.title || 'Курс')
                 : (item.product?.name || 'Товар')
-              const itemDescription = isCourseItem 
-                ? (item.course?.description || '') 
+              const itemDescription = isCourseItem
+                ? (item.course?.description || '')
                 : (item.product?.description || '')
-              const itemPrice = isCourseItem 
-                ? (item.course?.price || 0) 
+              const itemPrice = isCourseItem
+                ? (item.course?.price || 0)
                 : (item.product?.price || 0)
               const itemQuantity = item.quantity || 1
               // Исправление: используем animal вместо pet_type для товаров
-              const itemPetType = isCourseItem 
-                ? (item.course?.pet_type || 'all') 
+              const itemPetType = isCourseItem
+                ? (item.course?.pet_type || 'all')
                 : (item.product?.animal || 'all')
-              
+
                   return (
                     <div key={cartItemId} className="py-4 first:pt-0 last:pb-0">
                       <div className="flex gap-4">
@@ -373,14 +411,14 @@ function Cart() {
                             className="w-5 h-5 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
                           />
                         </label>
-                        
+
                         {/* Заглушка изображения товара */}
                         <div className="w-20 h-20 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
                           <span className="text-3xl opacity-50">
                             {itemPetType === 'dog' ? '🐕' : itemPetType === 'cat' ? '🐱' : '🐾'}
                           </span>
                         </div>
-                        
+
                         {/* Информация о товаре */}
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1">
@@ -395,7 +433,7 @@ function Cart() {
                             {formatPrice(itemPrice)}
                           </p>
                         </div>
-                        
+
                         {/* Управление количеством */}
                         <div className="flex items-center gap-2">
                           <button
@@ -416,7 +454,7 @@ function Cart() {
                             +
                           </button>
                         </div>
-                        
+
                         {/* Сумма и удаление */}
                         <div className="text-right">
                           <p className="font-semibold text-gray-900">
@@ -438,7 +476,7 @@ function Cart() {
               </div>
             </div>
           )}
-          
+
           {/* Блок курсов */}
           {courses.length > 0 && (
             <div className="card">
@@ -466,19 +504,19 @@ function Cart() {
                   )}
                 </label>
               </div>
-              
+
               <div className="divide-y divide-gray-100">
                 {courses.map(item => {
                   // Безопасная проверка структуры данных
                   if (!item) return null
-                  
+
                   const cartItemId = item.id
                   const itemId = item.course?.id || `course-${item.id}`
                   const itemName = item.course?.title || 'Курс'
                   const itemDescription = item.course?.description || ''
                   const itemPrice = item.course?.price || 0
                   const itemPetType = item.course?.pet_type || 'all'
-                  
+
                   return (
                     <div key={cartItemId} className="py-4 first:pt-0 last:pb-0">
                       <div className="flex gap-4">
@@ -491,14 +529,14 @@ function Cart() {
                             className="w-5 h-5 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
                           />
                         </label>
-                        
+
                         {/* Заглушка изображения курса */}
                         <div className="w-20 h-20 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
                           <span className="text-3xl opacity-50">
                             📚
                           </span>
                         </div>
-                        
+
                         {/* Информация о курсе */}
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1">
@@ -522,7 +560,7 @@ function Cart() {
                             {formatPrice(itemPrice)}
                           </p>
                         </div>
-                        
+
                         {/* Сумма и удаление */}
                         <div className="text-right">
                           <p className="font-semibold text-gray-900">
@@ -545,14 +583,14 @@ function Cart() {
             </div>
           )}
         </div>
-        
+
         {/* Итог и оформление заказа */}
         <div className="lg:col-span-1">
           <div className="card sticky top-24">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">
               Оформление заказа
             </h2>
-            
+
             {/* Итог заказа */}
             <div className="space-y-2 pb-4 border-b border-gray-100">
               <div className="flex justify-between text-gray-600">
@@ -570,7 +608,7 @@ function Cart() {
                 </span>
               </div>
             </div>
-            
+
             {/* Кнопка оформления заказа */}
             <div className="pt-4">
               <Link
@@ -580,21 +618,21 @@ function Cart() {
                   selectedCount === 0 ? 'opacity-50 cursor-not-allowed pointer-events-none' : ''
                 }`}
               >
-                {selectedCount > 0 
+                {selectedCount > 0
                   ? `Оформить заказ (${selectedCount})`
                   : 'Выберите товары'
                 }
               </Link>
             </div>
-            
+
             {selectedCount === 0 && (
               <p className="text-xs text-amber-600 mt-3 text-center">
                 Выберите товары или курсы для оформления
               </p>
             )}
-            
+
             <p className="text-xs text-gray-500 mt-4 text-center">
-              {selectedCount > 0 
+              {selectedCount > 0
                 ? 'Только выбранные товары будут оформлены'
                 : 'Товары и курсы будут оформлены в одном заказе'
               }
@@ -604,6 +642,34 @@ function Cart() {
       </div>
     </div>
   )
+  } catch (error) {
+    console.error('Error in Cart component:', error)
+    return (
+      <div className="page-container animate-fadeIn">
+        <div className="card text-center py-12 max-w-lg mx-auto">
+          <div className="text-6xl mb-4">⚠️</div>
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">
+            Ошибка загрузки корзины
+          </h1>
+          <p className="text-gray-600 mb-6">
+            Произошла ошибка при отображении корзины. Попробуйте обновить страницу.
+          </p>
+          <button
+            onClick={() => window.location.reload()}
+            className="btn-primary"
+          >
+            Обновить страницу
+          </button>
+          <details className="mt-4 text-left">
+            <summary className="cursor-pointer text-sm text-gray-500">Подробности ошибки</summary>
+            <pre className="mt-2 text-xs bg-gray-100 p-2 rounded overflow-auto">
+              {error.message}
+            </pre>
+          </details>
+        </div>
+      </div>
+    )
+  }
 }
 
 export default Cart
