@@ -1,5 +1,12 @@
 """
 Команда для загрузки 30 разнообразных курсов для тестирования фильтрации
+18 бесплатных курсов + 12 платных курсов
+
+Бесплатные курсы включают:
+- 6 курсов для собак (разные категории: основы, питание, дрессировка, поведение, уход)
+- 6 курсов для кошек (аналогичные категории)
+- 6 универсальных курсов (здоровье, социализация, первая помощь, паразиты, обогащение)
+- Разные форматы: видео, текстовые, интерактивные, смешанные
 
 Использование:
     python manage.py load_courses
@@ -16,8 +23,8 @@ class Command(BaseCommand):
         self.stdout.write('Загрузка курсов для тестирования фильтрации...')
 
         courses_data = [
-            # ========== БЕСПЛАТНЫЕ КУРСЫ ДЛЯ НАЧИНАЮЩИХ (10 курсов) ==========
-            
+            # ========== БЕСПЛАТНЫЕ КУРСЫ ДЛЯ НАЧИНАЮЩИХ (18 курсов) ==========
+
             # Собаки - бесплатные
             {
                 "title": "Первые дни щенка дома",
@@ -202,6 +209,176 @@ class Command(BaseCommand):
                 "instructor_bio": "Профессиональный грумер с 8-летним опытом",
                 "what_you_will_learn": "Стрижка когтей\nЧистка ушей\nУход за зубами\nРасчёсывание шерсти",
                 "image_url": "https://images.unsplash.com/photo-1551717743-49959800b1f6?w=400"
+            },
+
+            # Дополнительные бесплатные курсы - разные форматы и категории
+
+            # Собаки - дополнительные бесплатные
+            {
+                "title": "Базовые команды для собак",
+                "description": "Интерактивный курс обучения собаки основным командам. Практические упражнения с обратной связью.",
+                "duration": 75,
+                "price": 0,
+                "pet_type": "dog",
+                "category": "training",
+                "subcategory": "obedience",
+                "level": "beginner",
+                "format_type": "interactive",
+                "lessons_count": 8,
+                "videos_count": 6,
+                "materials_count": 5,
+                "instructor_name": "Сергей Петренко",
+                "instructor_bio": "Кинолог, чемпион России по аджилити",
+                "what_you_will_learn": "Команда 'Ко мне'\nКоманда 'Сидеть'\nКоманда 'Лежать'\nХодьба на поводке",
+                "image_url": "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400"
+            },
+            {
+                "title": "Проблемы поведения щенков",
+                "description": "Курс поможет разобраться в причинах проблемного поведения щенков и научит эффективным методам коррекции.",
+                "duration": 55,
+                "price": 0,
+                "pet_type": "dog",
+                "category": "behavior",
+                "subcategory": "behavior_problems",
+                "level": "beginner",
+                "format_type": "video",
+                "lessons_count": 6,
+                "videos_count": 6,
+                "materials_count": 3,
+                "instructor_name": "Зоопсихолог Анна Ковалева",
+                "instructor_bio": "Специалист по поведению собак, 15 лет опыта",
+                "what_you_will_learn": "Причины проблем поведения\nКоррекция кусания\nПреодоление страхов\nУстановление иерархии",
+                "image_url": "https://images.unsplash.com/photo-1587300003388-59208cc962cb?w=400"
+            },
+            {
+                "title": "Домашний груминг собак",
+                "description": "Профессиональные техники домашнего груминга для собак. Уход за шерстью, когтями и кожей.",
+                "duration": 65,
+                "price": 0,
+                "pet_type": "dog",
+                "category": "care",
+                "subcategory": "hygiene",
+                "level": "beginner",
+                "format_type": "video",
+                "lessons_count": 7,
+                "videos_count": 7,
+                "materials_count": 4,
+                "instructor_name": "Грумер Ольга Сидорова",
+                "instructor_bio": "Мастер-грумер, победитель международных конкурсов",
+                "what_you_will_learn": "Расчёсывание разных типов шерсти\nСтрижка когтей\nУход за ушами\nКупание и сушка",
+                "image_url": "https://images.unsplash.com/photo-1551717743-49959800b1f6?w=400"
+            },
+
+            # Кошки - дополнительные бесплатные
+            {
+                "title": "Дрессировка кошек для начинающих",
+                "description": "Интерактивный курс обучения кошки базовым командам и трюкам методом кликер-дрессировки.",
+                "duration": 70,
+                "price": 0,
+                "pet_type": "cat",
+                "category": "training",
+                "subcategory": "tricks",
+                "level": "beginner",
+                "format_type": "interactive",
+                "lessons_count": 7,
+                "videos_count": 5,
+                "materials_count": 4,
+                "instructor_name": "Мария Иванова",
+                "instructor_bio": "Фелинолог, специалист по дрессировке кошек",
+                "what_you_will_learn": "Основы кликер-дрессировки\nКоманда 'Ко мне'\nБазовые трюки\nРазвитие интеллекта кошки",
+                "image_url": "https://images.unsplash.com/photo-1574158622682-e40e69881006?w=400"
+            },
+            {
+                "title": "Проблемы поведения кошек",
+                "description": "Курс поможет разобраться в причинах проблемного поведения кошек и найти эффективные решения.",
+                "duration": 60,
+                "price": 0,
+                "pet_type": "cat",
+                "category": "behavior",
+                "subcategory": "behavior_problems",
+                "level": "beginner",
+                "format_type": "video",
+                "lessons_count": 6,
+                "videos_count": 6,
+                "materials_count": 4,
+                "instructor_name": "Зоопсихолог Елена Романова",
+                "instructor_bio": "Специалист по поведению кошек, ветеринар",
+                "what_you_will_learn": "Причины агрессии кошек\nРешение проблем с метками\nПреодоление страхов\nКоррекция нежелательного поведения",
+                "image_url": "https://images.unsplash.com/photo-1596854407944-bf87f6fdd49e?w=400"
+            },
+            {
+                "title": "Домашний груминг кошек",
+                "description": "Комплексный курс по уходу за шерстью и гигиеной кошек в домашних условиях.",
+                "duration": 50,
+                "price": 0,
+                "pet_type": "cat",
+                "category": "care",
+                "subcategory": "hygiene",
+                "level": "beginner",
+                "format_type": "video",
+                "lessons_count": 6,
+                "videos_count": 6,
+                "materials_count": 3,
+                "instructor_name": "Грумер Светлана Петрова",
+                "instructor_bio": "Специалист по грумингу кошек, 12 лет опыта",
+                "what_you_will_learn": "Расчёсывание шерсти\nСтрижка когтей\nУход за ушами\nКупание кошек",
+                "image_url": "https://images.unsplash.com/photo-1573865526739-10659fec78a5?w=400"
+            },
+
+            # Универсальные - дополнительные бесплатные (разные форматы)
+            {
+                "title": "Первая помощь питомцам",
+                "description": "Курс первой помощи для экстренных ситуаций. Спасение жизни питомца до приезда специалиста.",
+                "duration": 80,
+                "price": 0,
+                "pet_type": "all",
+                "category": "health",
+                "subcategory": "first_aid",
+                "level": "beginner",
+                "format_type": "video",
+                "lessons_count": 8,
+                "videos_count": 8,
+                "materials_count": 6,
+                "instructor_name": "Ветеринар скорой помощи Алексей Смирнов",
+                "instructor_bio": "Врач ветеринарной скорой помощи, 15 лет опыта",
+                "what_you_will_learn": "Действия при отравлении\nОстановка кровотечения\nПомощь при травмах\nСердечно-легочная реанимация",
+                "image_url": "https://images.unsplash.com/photo-1629909613654-28e377c37b09?w=400"
+            },
+            {
+                "title": "Защита от паразитов",
+                "description": "Полное руководство по защите питомцев от паразитов. Виды паразитов и методы профилактики.",
+                "duration": 35,
+                "price": 0,
+                "pet_type": "all",
+                "category": "health",
+                "subcategory": "prevention",
+                "level": "beginner",
+                "format_type": "text",
+                "lessons_count": 3,
+                "videos_count": 0,
+                "materials_count": 2,
+                "instructor_name": "Ветеринарный паразитолог Ольга Козлова",
+                "instructor_bio": "Специалист по паразитарным заболеваниям",
+                "what_you_will_learn": "Виды паразитов собак и кошек\nВыбор средств защиты\nГрафик обработок\nПризнаки заражения",
+                "image_url": "https://images.unsplash.com/photo-1629909613654-28e377c37b09?w=400"
+            },
+            {
+                "title": "Обогащение среды для питомцев",
+                "description": "Интерактивный курс по созданию интересной среды для собак и кошек. Предотвращение скуки и развитие.",
+                "duration": 90,
+                "price": 0,
+                "pet_type": "all",
+                "category": "care",
+                "subcategory": "enrichment",
+                "level": "beginner",
+                "format_type": "interactive",
+                "lessons_count": 6,
+                "videos_count": 4,
+                "materials_count": 8,
+                "instructor_name": "Зоопсихолог Марина Сергеева",
+                "instructor_bio": "Специалист по поведению животных, эксперт по обогащению",
+                "what_you_will_learn": "Игрушки и развлечения\nИнтеллектуальные игры\nСамодельные обогащения\nРешение проблем поведения",
+                "image_url": "https://images.unsplash.com/photo-1601758003122-53c40e69881006?w=400"
             },
 
             # ========== ПЛАТНЫЕ КУРСЫ СРЕДНЕГО УРОВНЯ (10 курсов) ==========
@@ -639,7 +816,8 @@ class Command(BaseCommand):
                 is_active=True,
             )
             courses_created += 1
-            self.stdout.write(f'Создан курс: {data["title"]} [{data["level"]}] - {"Бесплатно" if data["price"] == 0 else str(data["price"]) + " ₽"}')
+            price_text = "Бесплатно" if data["price"] == 0 else f"{data['price']} руб."
+            self.stdout.write(f'Создан курс: {data["title"]} [{data["level"]}] - {price_text}')
 
         # Статистика
         total_courses = Course.objects.count()
@@ -648,29 +826,41 @@ class Command(BaseCommand):
         all_courses = Course.objects.filter(pet_type='all').count()
         free_courses = Course.objects.filter(price=0).count()
         paid_courses = Course.objects.filter(price__gt=0).count()
-        
+
         beginner_courses = Course.objects.filter(level='beginner').count()
         intermediate_courses = Course.objects.filter(level='intermediate').count()
         advanced_courses = Course.objects.filter(level='advanced').count()
         expert_courses = Course.objects.filter(level='expert').count()
+
+        # Статистика форматов
+        video_courses = Course.objects.filter(format_type='video').count()
+        text_courses = Course.objects.filter(format_type='text').count()
+        interactive_courses = Course.objects.filter(format_type='interactive').count()
+        mixed_courses = Course.objects.filter(format_type='mixed').count()
 
         self.stdout.write('')
         self.stdout.write(self.style.SUCCESS('=' * 50))
         self.stdout.write(self.style.SUCCESS(f'Создано курсов: {courses_created}'))
         self.stdout.write(self.style.SUCCESS('=' * 50))
         self.stdout.write(self.style.SUCCESS(f'По типу животного:'))
-        self.stdout.write(f'  🐕 Курсы для собак: {dog_courses}')
-        self.stdout.write(f'  🐱 Курсы для кошек: {cat_courses}')
-        self.stdout.write(f'  🐾 Универсальные курсы: {all_courses}')
+        self.stdout.write(f'  [DOG] Курсы для собак: {dog_courses}')
+        self.stdout.write(f'  [CAT] Курсы для кошек: {cat_courses}')
+        self.stdout.write(f'  [ALL] Универсальные курсы: {all_courses}')
         self.stdout.write('')
         self.stdout.write(self.style.SUCCESS(f'По цене:'))
-        self.stdout.write(f'  🆓 Бесплатные курсы: {free_courses}')
-        self.stdout.write(f'  💰 Платные курсы: {paid_courses}')
+        self.stdout.write(f'  [FREE] Бесплатные курсы: {free_courses}')
+        self.stdout.write(f'  [PAID] Платные курсы: {paid_courses}')
         self.stdout.write('')
         self.stdout.write(self.style.SUCCESS(f'По уровню:'))
-        self.stdout.write(f'  🌱 Начинающий: {beginner_courses}')
-        self.stdout.write(f'  📚 Средний: {intermediate_courses}')
-        self.stdout.write(f'  🎓 Продвинутый: {advanced_courses}')
-        self.stdout.write(f'  🏆 Эксперт: {expert_courses}')
+        self.stdout.write(f'  [BEGINNER] Начинающий: {beginner_courses}')
+        self.stdout.write(f'  [INTERMEDIATE] Средний: {intermediate_courses}')
+        self.stdout.write(f'  [ADVANCED] Продвинутый: {advanced_courses}')
+        self.stdout.write(f'  [EXPERT] Эксперт: {expert_courses}')
+        self.stdout.write('')
+        self.stdout.write(self.style.SUCCESS(f'По формату обучения:'))
+        self.stdout.write(f'  [VIDEO] Видео: {video_courses}')
+        self.stdout.write(f'  [TEXT] Текстовые: {text_courses}')
+        self.stdout.write(f'  [INTERACTIVE] Интерактивные: {interactive_courses}')
+        self.stdout.write(f'  [MIXED] Смешанные: {mixed_courses}')
         self.stdout.write('')
         self.stdout.write(self.style.SUCCESS('Курсы успешно загружены!'))

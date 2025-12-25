@@ -290,6 +290,20 @@ export const getOrders = async () => {
   return await api.get('/shop/orders/history/')
 }
 
+/**
+ * Обновление заказа
+ * 
+ * @param {string} orderId - ID заказа
+ * @param {Object} orderData - Данные для обновления
+ * @param {string} [orderData.delivery_type] - Тип доставки ('standard', 'express', 'pickup')
+ * @param {string} [orderData.shipping_address] - Адрес доставки
+ * @param {string} [orderData.address_id] - ID сохраненного адреса
+ * @returns {Promise<Object>} Обновленный заказ
+ */
+export const updateOrder = async (orderId, orderData) => {
+  return await api.patch(`/shop/orders/${orderId}/`, orderData)
+}
+
 // =============================================================================
 // АДРЕСА
 // =============================================================================

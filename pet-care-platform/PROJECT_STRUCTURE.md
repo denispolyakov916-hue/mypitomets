@@ -545,6 +545,392 @@ npm run dev
 
 ---
 
+## Функции проекта
+
+### Backend API (Django REST Framework)
+
+#### Модуль пользователей (`apps.users`)
+
+**Views (Представления):**
+- `RegisterView.post()` - Регистрация нового пользователя с отправкой email активации
+- `LoginView.post()` - Аутентификация пользователя с JWT токенами
+- `LogoutView.post()` - Выход пользователя с удалением refresh токена
+- `RefreshView.get()` - Обновление access токена по refresh токену
+- `ActivateView.get()` - Активация аккаунта по ссылке из email
+- `ActivateByCodeView.post()` - Активация аккаунта по коду из email
+- `ExchangeAuthCodeView.post()` - Обмен временного кода на токены после активации
+- `ProfileView.get()` - Получение профиля пользователя с питомцами и заказами
+- `ProfileView.put()` - Обновление данных профиля
+- `UserOrdersView.get()` - Получение истории заказов пользователя
+- `UserCoursesView.get()` - Получение курсов пользователя
+- `GetUsersView.get()` - Получение списка всех пользователей (для тестирования)
+
+**Services (Сервисы):**
+- `UserService.registration()` - Регистрация пользователя с генерацией кодов активации
+- `UserService.activate()` - Активация аккаунта по ссылке или коду
+- `UserService.exchange_temp_code_for_tokens()` - Обмен временного кода на токены
+- `UserService.login()` - Вход с валидацией и генерацией токенов
+- `UserService.logout()` - Выход с удалением токена из БД
+- `UserService.refresh()` - Обновление токенов по refresh токену
+- `UserService.get_all_users()` - Получение всех пользователей
+- `TokenService.generate_tokens()` - Генерация JWT токенов для пользователя
+- `TokenService.validate_access_token()` - Валидация access токена
+- `TokenService.validate_refresh_token()` - Валидация refresh токена
+- `TokenService.save_token()` - Сохранение refresh токена в БД
+- `TokenService.remove_token()` - Удаление refresh токена из БД
+- `TokenService.find_token()` - Поиск refresh токена в БД
+- `MailService.send_activation_mail()` - Отправка email активации с кодом и ссылкой
+
+#### Модуль питомцев (`apps.pets`)
+
+**Views (Представления):**
+- `PetListCreateView.get()` - Получение списка питомцев пользователя
+- `PetListCreateView.post()` - Создание нового питомца
+- `PetDetailView.get()` - Получение деталей питомца
+- `PetDetailView.put()` - Обновление данных питомца
+- `PetDetailView.delete()` - Удаление питомца
+- `ReminderListView.get()` - Получение списка напоминаний с фильтрами
+- `ReminderListView.post()` - Создание нового напоминания
+- `ReminderDetailView.get()` - Получение деталей напоминания
+- `ReminderDetailView.put()` - Обновление напоминания
+- `ReminderDetailView.delete()` - Удаление напоминания
+- `ReminderCompleteView.post()` - Отметка напоминания как выполненного
+- `ReminderCategoriesView.get()` - Получение категорий и частот напоминаний
+- `UpcomingRemindersView.get()` - Получение предстоящих напоминаний для дашборда
+
+**Services (Сервисы):**
+- `PersonalizationService.get_context()` - Получение контекста персонализации для пользователя
+- `PersonalizationService.get_pet_context()` - Получение контекста конкретного питомца
+- `PersonalizationService.filter_products()` - Фильтрация товаров по контексту питомцев
+- `PersonalizationService.filter_courses()` - Фильтрация курсов по контексту питомцев
+- `PersonalizationService.get_product_recommendations()` - Персональные рекомендации товаров
+- `PersonalizationService.get_course_recommendations()` - Персональные рекомендации курсов
+- `PersonalizationService.get_health_based_recommendations()` - Рекомендации по проблемам здоровья
+- `PersonalizationService.get_available_health_filters()` - Доступные фильтры здоровья
+- `PersonalizationService.get_full_recommendations()` - Полные персонализированные рекомендации
+
+#### Модуль магазина (`apps.shop`)
+
+**Views (Представления):**
+- `ProductListView.get()` - Каталог товаров с расширенной фильтрацией и пагинацией
+- `ProductDetailView.get()` - Детали товара с рекомендациями
+- `ProductFrequentlyBoughtView.get()` - "Часто покупают вместе" для товара
+- `CartView.get()` - Получение содержимого корзины
+- `CartView.post()` - Добавление товара в корзину
+- `CartView.delete()` - Очистка корзины
+- `CartItemView.put()` - Обновление количества товара в корзине
+- `CartItemView.delete()` - Удаление товара из корзины
+- `CartRecommendationsView.get()` - Рекомендации для корзины
+- `OrderListView.get()` - Список заказов пользователя
+- `OrderDetailView.get()` - Детали заказа
+- `OrderCreateView.post()` - Создание заказа из корзины
+- `OrderCancelView.post()` - Отмена заказа
+- `PersonalRecommendationsView.get()` - Персональные рекомендации товаров и курсов
+- `HealthIssuesFilterView.get()` - Фильтры по проблемам здоровья
+- `ReservationCreateView.post()` - Бронирование товаров
+- `ReservationListView.get()` - Список броней пользователя
+
+**Managers (Менеджеры):**
+- `ProductQuerySet.with_ratings()` - Добавление аннотаций рейтинга и отзывов
+- `ProductQuerySet.available()` - Фильтр доступных товаров
+- `ProductQuerySet.for_animal()` - Фильтр по типу животного
+- `ProductQuerySet.in_category()` - Фильтр по категории и подкатегории
+- `ProductQuerySet.by_price_range()` - Фильтр по диапазону цен
+- `ProductQuerySet.with_discount()` - Фильтр товаров со скидкой
+- `ProductQuerySet.search()` - Поиск по названию товара
+- `ProductQuerySet.by_vendor()` - Фильтр по бренду
+- `ProductQuerySet.with_min_rating()` - Фильтр по минимальному рейтингу
+- `ProductQuerySet.order_by_rating()` - Сортировка по рейтингу
+- `ProductQuerySet.order_by_popularity()` - Сортировка по популярности
+- `ProductManager.catalog()` - Оптимизированный менеджер для каталога
+- `ProductManager.with_ratings()` - Менеджер с аннотациями рейтинга
+
+**Services (Сервисы):**
+- `CartService.get_cart_items()` - Получение товаров в корзине с оптимизацией
+- `CartService.add_to_cart()` - Добавление товара в корзину
+- `CartService.update_cart_item()` - Обновление количества в корзине
+- `CartService.remove_from_cart()` - Удаление товара из корзины
+- `CartService.clear_cart()` - Очистка корзины
+- `CartService.get_cart_summary()` - Суммарная информация о корзине
+- `OrderService.create_order()` - Создание заказа из корзины
+- `OrderService.cancel_order()` - Отмена заказа
+- `OrderService.get_user_orders()` - Получение заказов пользователя
+- `OrderService.process_expired_orders()` - Обработка просроченных заказов
+- `ReservationService.create_reservation()` - Создание брони товара
+- `ReservationService.cancel_reservation()` - Отмена брони
+- `ReservationService.check_reservation_status()` - Проверка статуса брони
+
+**Recommendation Engine:**
+- `RecommendationEngine.get_frequently_bought_together()` - Анализ "Часто покупают вместе"
+- `RecommendationEngine.get_cart_recommendations()` - Рекомендации для корзины
+- `RecommendationEngine.get_cross_sell_for_courses()` - Кросс-продажи курсов → товары
+- `RecommendationEngine._get_category_based_recommendations()` - Рекомендации по категориям
+- `RecommendationEngine._get_popular_recommendations()` - Популярные товары
+- `RecommendationEngine._apply_personalization()` - Применение персонализации PetID
+
+#### Модуль курсов (`apps.training`)
+
+**Views (Представления):**
+- `CourseListView.get()` - Каталог курсов с фильтрами
+- `CourseDetailView.get()` - Детали курса с отзывами
+- `UserCourseListView.get()` - Курсы пользователя с прогрессом
+- `UserCoursePurchaseView.post()` - Покупка курса
+- `UserCourseDetailView.get()` - Детали приобретенного курса
+- `UserCourseProgressView.put()` - Обновление прогресса обучения
+- `CourseReviewsView.get()` - Отзывы о курсе
+- `CourseReviewsView.post()` - Добавление отзыва о курсе
+
+**Managers (Менеджеры):**
+- `CourseQuerySet.with_ratings()` - Аннотации рейтинга курсов
+- `CourseQuerySet.catalog()` - Оптимизированный каталог курсов
+- `CourseQuerySet.for_pet_type()` - Фильтр по типу животного
+- `CourseQuerySet.by_level()` - Фильтр по уровню сложности
+- `CourseQuerySet.by_category()` - Фильтр по категории
+- `CourseManager.catalog()` - Менеджер каталога курсов
+
+#### Модуль платежей (`apps.payments`)
+
+**Views (Представления):**
+- `PaymentListView.get()` - История платежей
+- `PaymentDetailView.get()` - Детали платежа
+- `PaymentCreateView.post()` - Создание платежа
+- `PaymentStatusView.get()` - Проверка статуса платежа
+- `PaymentWebhookView.post()` - Обработка вебхуков платежной системы
+
+**Services (Сервисы):**
+- `PaymentService.create_payment()` - Создание платежа
+- `PaymentService.process_payment()` - Обработка платежа
+- `PaymentService.refund_payment()` - Возврат платежа
+- `PaymentService.get_payment_status()` - Получение статуса платежа
+
+#### Модуль отзывов (`apps.reviews`)
+
+**Views (Представления):**
+- `ReviewListView.get()` - Список отзывов с фильтрами
+- `ReviewCreateView.post()` - Создание отзыва
+- `ReviewDetailView.get()` - Детали отзыва
+- `ReviewDetailView.put()` - Обновление отзыва
+- `ReviewDetailView.delete()` - Удаление отзыва
+- `ReviewApproveView.post()` - Одобрение отзыва (админ)
+- `ReviewRejectView.post()` - Отклонение отзыва (админ)
+
+**Utils (Утилиты):**
+- `calculate_rating_stats()` - Расчёт статистики рейтингов
+
+#### Модуль календаря (`apps.calendar`)
+
+**Views (Представления):**
+- `CalendarEventListView.get()` - События календаря
+- `CalendarEventCreateView.post()` - Создание события
+- `CalendarEventDetailView.get()` - Детали события
+- `CalendarEventDetailView.put()` - Обновление события
+- `CalendarEventDetailView.delete()` - Удаление события
+- `CalendarSyncView.post()` - Синхронизация с внешними календарями
+
+### Frontend API (React + Axios)
+
+#### Модуль аутентификации (`api/auth.js`)
+- `login()` - Вход по email и паролю
+- `register()` - Регистрация нового пользователя
+- `logout()` - Выход пользователя
+- `refresh()` - Обновление токенов
+- `activateByCode()` - Активация по коду
+- `exchangeAuthCode()` - Обмен кода на токены
+- `getProfile()` - Получение профиля пользователя
+- `updateProfile()` - Обновление профиля
+- `getUserOrders()` - Заказы пользователя
+- `getUserCourses()` - Курсы пользователя
+
+#### Модуль питомцев (`api/pets.js`)
+- `getPets()` - Список питомцев пользователя
+- `getPet()` - Детали питомца
+- `createPet()` - Создание питомца
+- `updatePet()` - Обновление питомца
+- `deletePet()` - Удаление питомца
+
+#### Модуль напоминаний (`api/reminders.js`)
+- `getReminders()` - Список напоминаний
+- `createReminder()` - Создание напоминания
+- `getReminder()` - Детали напоминания
+- `updateReminder()` - Обновление напоминания
+- `deleteReminder()` - Удаление напоминания
+- `completeReminder()` - Отметка выполненным
+- `getReminderCategories()` - Категории напоминаний
+- `getUpcomingReminders()` - Предстоящие напоминания
+
+#### Модуль магазина (`api/shop.js`)
+- `getProducts()` - Каталог товаров с фильтрами
+- `getProduct()` - Детали товара
+- `getFrequentlyBoughtTogether()` - "Часто покупают вместе"
+- `getPersonalRecommendations()` - Персональные рекомендации
+- `getCartRecommendations()` - Рекомендации для корзины
+- `getHealthIssuesFilters()` - Фильтры по здоровью
+- `getCart()` - Содержимое корзины
+- `addToCart()` - Добавление в корзину
+- `updateCartItem()` - Обновление количества
+- `removeFromCart()` - Удаление из корзины
+- `clearCart()` - Очистка корзины
+- `createOrder()` - Создание заказа
+- `getOrders()` - Список заказов
+- `getOrder()` - Детали заказа
+- `cancelOrder()` - Отмена заказа
+
+#### Модуль курсов (`api/courses.js`)
+- `getCourses()` - Каталог курсов
+- `getCourse()` - Детали курса
+- `purchaseCourse()` - Покупка курса
+- `getUserCourses()` - Курсы пользователя
+- `updateCourseProgress()` - Обновление прогресса
+- `getCourseReviews()` - Отзывы о курсе
+- `createCourseReview()` - Создание отзыва
+
+#### Модуль платежей (`api/payments.js`)
+- `getPayments()` - История платежей
+- `getPayment()` - Детали платежа
+- `createPayment()` - Создание платежа
+- `getPaymentStatus()` - Статус платежа
+
+#### Модуль отзывов (`api/reviews.js`)
+- `getReviews()` - Список отзывов
+- `createReview()` - Создание отзыва
+- `updateReview()` - Обновление отзыва
+- `deleteReview()` - Удаление отзыва
+
+### React Components (UI Kit)
+
+#### Базовые компоненты (`components/ui/`)
+- `Button` - Кнопки с вариантами (primary, secondary, success, danger, warning, ghost, link)
+- `Card` - Карточки для контента
+- `Modal` - Модальные окна с размерами (sm, md, lg, xl)
+- `Input` - Поля ввода с валидацией
+- `Badge` - Бейджи/метки с цветами
+- `Progress` - Прогресс-бары с кастомными цветами
+
+#### Основные компоненты (`components/`)
+- `Layout` - Основной макет приложения
+- `Navbar` - Навигационная панель
+- `PetCard` - Карточка питомца
+- `ProductCard` - Карточка товара с кнопкой избранного
+- `CourseCard` - Карточка курса с кнопкой избранного
+- `RecommendationBlock` - Блок рекомендаций
+- `RemindersWidget` - Виджет напоминаний
+- `FavoriteButton` - Кнопка добавления в избранное
+- `ReviewsSection` - Секция отзывов
+- `Rating` - Компонент рейтинга
+- `Loader` - Индикаторы загрузки
+
+### React Hooks (Custom Hooks)
+
+#### Хуки (`hooks/`)
+- `useDebounce(value, delay)` - Дебаунс значения для оптимизации запросов
+- `useDebouncedCallback(callback, delay)` - Дебаунсированная функция
+- `useLocalStorage(key, initialValue)` - Синхронизация с localStorage
+- `useMediaQuery(query)` - Реактивные media queries
+- `useIsMobile()` - Проверка мобильного устройства
+- `useIsTablet()` - Проверка планшета
+- `useIsDesktop()` - Проверка десктопа
+- `usePrefersReducedMotion()` - Предпочтения анимаций
+- `usePrefersDarkMode()` - Предпочтения тёмной темы
+
+### Zustand Stores (State Management)
+
+#### Хранилища состояния (`store/`)
+- `authStore` - Аутентификация пользователя
+  - `login()`, `register()`, `logout()` - Основные действия аутентификации
+  - `validateToken()` - Валидация токена
+  - `loadProfile()` - Загрузка профиля
+  - `startTokenValidation()` - Периодическая проверка токена
+
+- `cartStore` - Корзина покупок
+  - `addToCart()`, `updateItem()`, `removeFromCart()` - Управление товарами
+  - `clearCart()` - Очистка корзины
+  - `getTotal()` - Расчёт суммы
+
+- `petStore` - Данные о питомцах
+  - `loadPets()` - Загрузка питомцев
+  - `addPet()`, `updatePet()`, `deletePet()` - CRUD операции
+  - `setActivePet()` - Установка активного питомца
+
+- `toastStore` - Уведомления/тосты
+  - `showToast()` - Показ уведомления
+  - `showSuccess()`, `showError()`, `showWarning()` - Типизированные уведомления
+  - `clearToast()` - Очистка уведомлений
+
+- `favoritesStore` - Избранные товары и курсы
+  - `toggleFavorite()` - Добавление/удаление из избранного
+  - `isFavorite()` - Проверка избранного
+  - `getFavorites()` - Получение списка избранного
+
+### React Pages (Страницы приложения)
+
+#### Аутентификация (`pages/Auth/`)
+- `LoginPage` - Страница входа
+- `RegisterPage` - Страница регистрации
+- `ActivationPage` - Страница активации аккаунта
+
+#### Профиль питомцев (`pages/PetProfile/`)
+- `PetListPage` - Список питомцев
+- `PetCreatePage` - Создание питомца
+- `PetEditPage` - Редактирование питомца
+- `PetDetailPage` - Детали питомца
+
+#### Магазин (`pages/Shop/`)
+- `ShopPage` - Каталог товаров с фильтрами
+- `ProductDetailPage` - Детали товара с рекомендациями
+- `CartPage` - Корзина покупок
+
+#### Курсы (`pages/Training/`)
+- `CoursesPage` - Каталог курсов
+- `CourseDetailPage` - Детали курса
+- `MyCoursesPage` - Мои курсы с прогрессом
+
+#### Заказы (`pages/Orders/`)
+- `OrdersPage` - Список заказов
+- `OrderDetailPage` - Детали заказа
+
+#### Платежи (`pages/Payment/`)
+- `PaymentPage` - Оформление платежа
+
+#### Дашборд (`pages/Dashboard/`)
+- `ProfilePage` - Личный кабинет с напоминаниями
+- `SettingsPage` - Настройки профиля
+
+### Management команды Django
+
+#### Shop (`apps.shop.management.commands`)
+- `load_test_data` - Загрузка тестового каталога товаров
+- `import_catalog` - Импорт товаров из CSV файла
+- `import_xml_catalog` - Импорт товаров из XML файла
+- `process_expired_orders` - Обработка просроченных заказов
+
+#### Training (`apps.training.management.commands`)
+- `load_courses` - Загружает тестовые курсы обучения
+
+### Core utilities (Ядро приложения)
+
+#### Аутентификация (`core.authentication`)
+- `JWTAuthentication` - Кастомная JWT аутентификация
+- `TokenAuthentication` - Аутентификация по токену
+
+#### Разрешения (`core.permissions`)
+- `IsOwner` - Проверка владения объектом
+- `IsAdminOrReadOnly` - Админ или только чтение
+- `HasPetAccess` - Доступ к данным питомца
+
+#### Пагинация (`core.pagination`)
+- `CustomPagination` - Кастомная пагинация с метаданными
+
+#### Токены (`core.tokens`)
+- `CustomRefreshToken` - Кастомный refresh токен
+- `CustomAccessToken` - Кастомный access токен
+
+#### Утилиты (`core.utils`)
+- `generate_uuid7()` - Генерация UUIDv7
+- `get_client_ip()` - Получение IP клиента
+- `validate_email_domain()` - Валидация домена email
+
+---
+
 ## Контакты
 
 **Проект:** Питомец+ MVP  

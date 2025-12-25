@@ -617,6 +617,7 @@ function PaymentMethodSection({ paymentMethod, onPaymentMethodChange }) {
         {paymentMethods.map((method) => (
           <label
             key={method.id}
+            onClick={() => onPaymentMethodChange(method.id)}
             className={`flex items-center gap-4 p-4 rounded-lg border-2 cursor-pointer transition-all ${
               paymentMethod === method.id
                 ? 'border-primary-500 bg-primary-50'
@@ -630,6 +631,7 @@ function PaymentMethodSection({ paymentMethod, onPaymentMethodChange }) {
               checked={paymentMethod === method.id}
               onChange={(e) => onPaymentMethodChange(e.target.value)}
               className="sr-only"
+              readOnly
             />
             <div className={`p-2 rounded-lg ${
               paymentMethod === method.id
@@ -937,20 +939,47 @@ function UnifiedCheckout() {
       // Перезагружаем корзину (удалены только выбранные элементы)
       await loadCart()
 
-      // ВРЕМЕННАЯ ЗАГЛУШКА: всегда перенаправляем на страницу оплаты
-      console.log('TEMP: Always redirecting to payment page')
+      // Определяем order_id и amount из ответа
+      const orders = response.orders || {}
+      const productsOrder = orders.products_order
+      const courses = orders.courses || []
+      
+      // Используем заказ товаров если есть, иначе первый курс
+      let orderId = null
+      let amount = 0
+      let orderType = 'unified_checkout'
+      
+      if (productsOrder) {
+        orderId = productsOrder.id
+        amount = parseFloat(productsOrder.total_amount || 0)
+        orderType = 'shop_order'
+      } else if (courses.length > 0) {
+        // Если только курсы, используем первый курс
+        orderId = courses[0].user_course_id
+        amount = parseFloat(courses[0].amount || 0)
+        orderType = 'course'
+      }
+
+      if (!orderId) {
+        setError('Не удалось создать заказ')
+        setIsSubmitting(false)
+        return
+      }
+
+      // Перенаправляем на страницу оплаты с правильными параметрами
+      const paymentMethod = formData.payment_method || 'card'
+      console.log('Payment method from formData:', formData.payment_method, 'Using:', paymentMethod)
+      
       const params = new URLSearchParams({
-        amount: '2480', // демо-сумма
-        type: 'demo',
-        method: formData.payment_method || 'card'
+        order_id: orderId,
+        type: orderType,
+        amount: amount.toString(),
+        method: paymentMethod
       })
 
       const paymentUrl = `/payment?${params.toString()}`
       console.log('Redirecting to payment page:', paymentUrl)
-      console.log('About to call navigate...')
       navigate(paymentUrl)
-      console.log('navigate called, should redirect now')
-      return
 
     } catch (err) {
       if (err.message?.includes('резерв') || err.message?.includes('истекло')) {
@@ -1044,7 +1073,10 @@ function UnifiedCheckout() {
             {/* Секция выбора способа оплаты */}
             <PaymentMethodSection
               paymentMethod={formData.payment_method}
-              onPaymentMethodChange={(method) => handleFormChange('payment_method', method)}
+              onPaymentMethodChange={(method) => {
+                console.log('Payment method changed to:', method)
+                handleFormChange({ payment_method: method })
+              }}
             />
 
             {/* Секция выбора способа доставки */}

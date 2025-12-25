@@ -259,20 +259,57 @@ class PaymentService:
                     order.expires_at = timezone.now() + timedelta(minutes=10)
                     logger.info(f"Просроченный заказ восстановлен: {order.id}")
                 
-                # Списываем товары со склада (только если еще не списаны)
+                # Проверяем доступность товаров перед списанием
+                unavailable_items = []
+                insufficient_items = []
+                
+                for order_item in order.items.filter(product__isnull=False):
+                    try:
+                        product = order_item.product
+                        # Проверяем, существует ли товар
+                        if not product:
+                            unavailable_items.append({
+                                'product_id': order_item.product_id,
+                                'product_name': order_item.product_name,
+                                'quantity': order_item.quantity
+                            })
+                        # Проверяем наличие на складе
+                        elif product.stock_count < order_item.quantity:
+                            insufficient_items.append({
+                                'product_id': product.id,
+                                'product_name': order_item.product_name,
+                                'required': order_item.quantity,
+                                'available': product.stock_count
+                            })
+                    except Exception:
+                        # Товар был удален
+                        unavailable_items.append({
+                            'product_id': order_item.product_id,
+                            'product_name': order_item.product_name,
+                            'quantity': order_item.quantity
+                        })
+                
+                # Если есть недоступные товары - откатываем транзакцию и возвращаем ошибку
+                if unavailable_items or insufficient_items:
+                    error_msg = "Недоступные товары в заказе"
+                    if unavailable_items:
+                        error_msg += f": недоступны {len(unavailable_items)} товар(ов)"
+                    if insufficient_items:
+                        error_msg += f": недостаточно {len(insufficient_items)} товар(ов)"
+                    
+                    logger.error(f"{error_msg} для заказа {order.id}")
+                    raise ValueError(error_msg)
+                
+                # Все товары доступны - списываем со склада
                 # Для просроченных заказов товары уже возвращены на склад, так что списываем снова
                 for order_item in order.items.filter(product__isnull=False):
                     product = order_item.product
-                    if product.stock_count >= order_item.quantity:
-                        product.stock_count -= order_item.quantity
-                        # Если товаров не осталось, устанавливаем in_stock=False
-                        if product.stock_count == 0:
-                            product.in_stock = False
-                        product.save()
-                        logger.info(f"Списан товар: {product.name}, количество: {order_item.quantity}, остаток: {product.stock_count}")
-                    else:
-                        # Это не должно происходить, если проверки были сделаны при создании заказа
-                        logger.error(f"Недостаточно товара на складе: {product.name}, требуется: {order_item.quantity}, доступно: {product.stock_count}")
+                    product.stock_count -= order_item.quantity
+                    # Если товаров не осталось, устанавливаем in_stock=False
+                    if product.stock_count == 0:
+                        product.in_stock = False
+                    product.save()
+                    logger.info(f"Списан товар: {product.name}, количество: {order_item.quantity}, остаток: {product.stock_count}")
 
                 # Обновляем счетчики популярности товаров
                 for order_item in order.items.filter(product__isnull=False):

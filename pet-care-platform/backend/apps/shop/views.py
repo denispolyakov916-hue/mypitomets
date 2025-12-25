@@ -960,7 +960,8 @@ class OrderDetailView(APIView):
     """
     Детали одного заказа.
     
-    GET /api/shop/orders/{order_id}/
+    GET /api/shop/orders/{order_id}/ - получение деталей заказа
+    PATCH /api/shop/orders/{order_id}/ - обновление заказа (только для pending/expired)
     """
     
     permission_classes = [IsAuthenticated]
@@ -989,6 +990,77 @@ class OrderDetailView(APIView):
         
         return Response({
             'order': order.to_dict()
+        }, status=status.HTTP_200_OK)
+    
+    def patch(self, request, order_id):
+        """
+        Обновление заказа.
+        
+        Разрешается только для заказов со статусом 'pending' или 'expired'.
+        Можно обновить:
+        - delivery_type (тип доставки)
+        - shipping_address (адрес доставки)
+        - address_id (ID сохраненного адреса)
+        """
+        try:
+            order = Order.objects.get(id=order_id, user=request.user)
+        except Order.DoesNotExist:
+            return Response(
+                {'error': 'Заказ не найден'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        # Проверяем, что заказ можно редактировать
+        if order.status not in ['pending', 'expired']:
+            return Response(
+                {'error': 'Заказ нельзя редактировать. Доступно только для неоплаченных заказов.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Обновляем поля доставки
+        delivery_type = request.data.get('delivery_type')
+        shipping_address = request.data.get('shipping_address')
+        address_id = request.data.get('address_id')
+        
+        if delivery_type:
+            if delivery_type not in ['standard', 'express', 'pickup']:
+                return Response(
+                    {'error': 'Неверный тип доставки'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            order.delivery_type = delivery_type
+        
+        # Обновляем адрес
+        if address_id:
+            from .models import Address
+            try:
+                address = Address.objects.get(id=address_id, user=request.user)
+                order.address = address
+                order.shipping_address = address.full_address
+            except Address.DoesNotExist:
+                return Response(
+                    {'error': 'Адрес не найден'},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+        elif shipping_address is not None:
+            if order.delivery_type != 'pickup' and not shipping_address.strip():
+                return Response(
+                    {'error': 'Необходимо указать адрес доставки'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            order.shipping_address = shipping_address.strip()
+            order.address = None
+        
+        # Пересчитываем стоимость доставки
+        from .services.order_service import OrderService
+        order.delivery_cost = OrderService.calculate_delivery_cost(order.delivery_type)
+        order.total_amount = order.subtotal_amount + order.delivery_cost
+        
+        order.save()
+        
+        return Response({
+            'order': order.to_dict(),
+            'message': 'Заказ успешно обновлен'
         }, status=status.HTTP_200_OK)
 
 

@@ -733,13 +733,19 @@ class OrderItem(models.Model):
                 }
             return data
         else:
-            return {
+            data = {
                 'product_id': self.product_id,
                 'product_name': self.product_name,
                 'price': float(self.price),
                 'quantity': self.quantity,
                 'total': float(self.get_total())
             }
+            # Добавляем изображение товара, если товар существует
+            if self.product and self.product.images:
+                data['product_image'] = self.product.images[0] if self.product.images else None
+            elif self.product:
+                data['product_image'] = None
+            return data
 
 
 class Return(models.Model):

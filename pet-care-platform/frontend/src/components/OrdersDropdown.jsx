@@ -54,8 +54,10 @@ function OrdersDropdown() {
   /**
    * Загрузка заказов из API
    */
-  const fetchOrders = useCallback(async () => {
-    setIsLoading(true)
+  const fetchOrders = useCallback(async (showLoading = false) => {
+    if (showLoading) {
+      setIsLoading(true)
+    }
     try {
       const response = await getOrders()
       // Берем последние 5 заказов, отсортированных по дате
@@ -67,16 +69,33 @@ function OrdersDropdown() {
       console.error('Не удалось загрузить заказы:', err)
       setAllOrders([])
     } finally {
-      setIsLoading(false)
+      if (showLoading) {
+        setIsLoading(false)
+      }
     }
   }, [])
   
   /**
-   * Загрузка заказов
+   * Загрузка заказов при монтировании и периодическое обновление
+   */
+  useEffect(() => {
+    // Загружаем заказы сразу при монтировании для отображения бейджа
+    fetchOrders(false)
+    
+    // Обновляем заказы каждые 30 секунд
+    const interval = setInterval(() => {
+      fetchOrders(false)
+    }, 30000)
+    
+    return () => clearInterval(interval)
+  }, [fetchOrders])
+  
+  /**
+   * Загрузка заказов при открытии меню (с индикатором загрузки)
    */
   useEffect(() => {
     if (isOpen) {
-      fetchOrders()
+      fetchOrders(true)
     }
   }, [isOpen, fetchOrders])
   
@@ -110,7 +129,7 @@ function OrdersDropdown() {
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
         </svg>
         {pendingCount > 0 && (
-          <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center font-medium">
+          <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center font-medium z-10">
             {pendingCount > 9 ? '9+' : pendingCount}
           </span>
         )}

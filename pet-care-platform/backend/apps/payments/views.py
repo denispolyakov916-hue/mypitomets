@@ -35,7 +35,21 @@ class PaymentCreateView(APIView):
         payment_method = serializer.validated_data.get('payment_method', 'card')
 
         # Проверка существования связанного объекта и получение суммы
-        amount = self._get_payment_amount(payment_type, object_id, request.user)
+        try:
+            amount = self._get_payment_amount(payment_type, object_id, request.user)
+        except ValueError as e:
+            # Обработка ошибок недоступных товаров
+            error_msg = str(e)
+            if 'Недоступные товары' in error_msg:
+                return Response(
+                    {'error': error_msg, 'code': 'UNAVAILABLE_ITEMS'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            return Response(
+                {'error': error_msg},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
         if amount is None:
             return Response(
                 {'error': 'Связанный объект не найден или недоступен'},
@@ -79,10 +93,50 @@ class PaymentCreateView(APIView):
             logger = logging.getLogger('apps.payments')
             
             try:
-                order = Order.objects.get(id=object_id, user=user)
+                order = Order.objects.select_related('user').prefetch_related('items__product').get(id=object_id, user=user)
                 
-                # Если заказ просрочен - восстанавливаем его и устанавливаем новый срок
+                # Если заказ просрочен - проверяем доступность товаров перед восстановлением
                 if order.status == 'expired':
+                    unavailable_items = []
+                    insufficient_items = []
+                    
+                    for order_item in order.items.filter(product__isnull=False):
+                        try:
+                            product = order_item.product
+                            # Проверяем, существует ли товар и доступен ли он
+                            if not product:
+                                unavailable_items.append({
+                                    'product_id': order_item.product_id,
+                                    'product_name': order_item.product_name,
+                                    'quantity': order_item.quantity
+                                })
+                            # Проверяем наличие на складе
+                            elif product.stock_count < order_item.quantity:
+                                insufficient_items.append({
+                                    'product_id': product.id,
+                                    'product_name': order_item.product_name,
+                                    'required': order_item.quantity,
+                                    'available': product.stock_count
+                                })
+                        except Exception:
+                            # Товар был удален
+                            unavailable_items.append({
+                                'product_id': order_item.product_id,
+                                'product_name': order_item.product_name,
+                                'quantity': order_item.quantity
+                            })
+                    
+                    # Если есть недоступные товары - возвращаем ошибку
+                    if unavailable_items or insufficient_items:
+                        error_data = {}
+                        if unavailable_items:
+                            error_data['unavailable_items'] = unavailable_items
+                        if insufficient_items:
+                            error_data['insufficient_items'] = insufficient_items
+                        # Сохраняем информацию об ошибке в metadata платежа (если он уже создан)
+                        raise ValueError(f"Недоступные товары в заказе: {error_data}")
+                    
+                    # Все товары доступны - восстанавливаем заказ
                     order.status = 'pending'
                     order.expires_at = timezone.now() + timedelta(minutes=10)
                     order.save()

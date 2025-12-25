@@ -125,6 +125,7 @@ const statusConfig = {
 function OrderCard({ order, onOrderExpired }) {
   const navigate = useNavigate()
   const status = statusConfig[order.status] || statusConfig.pending
+  const [paymentMethod, setPaymentMethod] = useState('card') // 'card' или 'sbp'
 
   // Подсчет товаров и курсов
   const productsCount = order.items.filter(item => item.product_id).length
@@ -216,9 +217,20 @@ function OrderCard({ order, onOrderExpired }) {
               >
                 {item.product_id ? (
                   <>
-                    <svg className="w-3.5 h-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                    </svg>
+                    {item.product_image ? (
+                      <img
+                        src={item.product_image}
+                        alt={item.product_name}
+                        className="w-8 h-8 object-cover rounded border border-gray-200"
+                        onError={(e) => {
+                          e.target.style.display = 'none'
+                        }}
+                      />
+                    ) : (
+                      <svg className="w-3.5 h-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                      </svg>
+                    )}
                     <span className="font-medium">{item.product_name}</span>
                     {item.quantity > 1 && (
                       <span className="text-gray-500">× {item.quantity}</span>
@@ -254,17 +266,52 @@ function OrderCard({ order, onOrderExpired }) {
         </div>
         
         {/* Кнопка действий */}
-        <div className="mt-4 pt-4 border-t border-gray-100 flex items-center justify-between">
+        <div className="mt-4 pt-4 border-t border-gray-100 flex flex-col gap-3">
           {(order.status === 'pending' || order.status === 'expired') && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation()
-                handlePayOrder(order.id, order.total_amount)
-              }}
-              className="btn-primary text-sm"
-            >
-              {order.status === 'pending' ? 'Оплатить заказ' : 'Попробовать оплатить снова'}
-            </button>
+            <>
+              {/* Выбор способа оплаты */}
+              <div className="flex gap-2 p-2 bg-gray-50 rounded-lg">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setPaymentMethod('card')
+                  }}
+                  className={`flex-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                    paymentMethod === 'card'
+                      ? 'bg-primary-600 text-white'
+                      : 'bg-white text-gray-700 hover:bg-gray-100'
+                  }`}
+                >
+                  💳 Карта
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setPaymentMethod('sbp')
+                  }}
+                  className={`flex-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                    paymentMethod === 'sbp'
+                      ? 'bg-primary-600 text-white'
+                      : 'bg-white text-gray-700 hover:bg-gray-100'
+                  }`}
+                >
+                  📱 СБП
+                </button>
+              </div>
+              
+              {/* Кнопка оплаты */}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  handlePayOrder(order.id, order.total_amount, paymentMethod)
+                }}
+                className="btn-primary text-sm w-full"
+              >
+                {order.status === 'pending' 
+                  ? `Оплатить заказ ${paymentMethod === 'sbp' ? 'через СБП' : 'картой'}`
+                  : 'Попробовать оплатить снова'}
+              </button>
+            </>
           )}
           <button
             onClick={(e) => {
@@ -286,26 +333,40 @@ function OrderCard({ order, onOrderExpired }) {
 
 /**
  * Обработчик оплаты заказа
+ * @param {string} orderId - ID заказа
+ * @param {number} amount - Сумма оплаты
+ * @param {string} paymentMethod - Способ оплаты ('card' или 'sbp')
  */
-const handlePayOrder = async (orderId, amount) => {
+const handlePayOrder = async (orderId, amount, paymentMethod = 'card') => {
   try {
+    // Для 'sbp' сохраняем в metadata, так как в модели Payment нет 'sbp' в choices
+    const paymentMethodForBackend = paymentMethod === 'sbp' ? 'card' : paymentMethod
+    const paymentMetadata = paymentMethod === 'sbp' ? { payment_method: 'sbp' } : {}
+    
     // Создаем платеж для существующего заказа
     const response = await createPayment({
       payment_type: 'shop_order',
       object_id: orderId,
-      amount: amount
+      amount: amount,
+      payment_method: paymentMethodForBackend,
+      metadata: paymentMetadata
     })
 
     if (response.payment) {
-      // Перенаправляем на страницу оплаты с payment_id
-      window.location.href = `/payment?payment_id=${response.payment.id}&amount=${response.payment.amount}`
+      // Перенаправляем на страницу оплаты с payment_id и методом оплаты
+      const params = new URLSearchParams({
+        payment_id: response.payment.id,
+        amount: response.payment.amount.toString(),
+        method: paymentMethod
+      })
+      window.location.href = `/payment?${params.toString()}`
     } else {
       throw new Error('Не удалось создать платеж')
     }
   } catch (error) {
     console.error('Ошибка создания платежа:', error)
-    // Показываем ошибку пользователю
-    alert('Не удалось создать платеж. Попробуйте позже.')
+    const errorMessage = error.response?.data?.error || error.message || 'Не удалось создать платеж'
+    alert(`Не удалось создать платеж: ${errorMessage}`)
   }
 }
 

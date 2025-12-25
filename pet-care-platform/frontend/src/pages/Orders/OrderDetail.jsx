@@ -11,7 +11,7 @@
 
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import { getOrders, createReturn } from '../../api/shop'
+import { getOrders, createReturn, updateOrder, getAddresses } from '../../api/shop'
 import { createPayment } from '../../api/payments'
 import { PageLoader } from '../../components/Loader'
 import { useToastStore } from '../../store/toastStore'
@@ -114,26 +114,51 @@ const deliveryTypeLabels = {
 
 /**
  * Обработчик оплаты заказа
+ * @param {string} orderId - ID заказа
+ * @param {number} amount - Сумма оплаты
+ * @param {string} paymentMethod - Способ оплаты ('card' или 'sbp')
  */
-const handlePayOrder = async (orderId, amount) => {
+const handlePayOrder = async (orderId, amount, paymentMethod = 'card') => {
   try {
+    // Определяем тип платежа на основе заказа
+    const paymentType = 'shop_order' // Для заказов товаров
+    
+    // Для 'sbp' сохраняем в metadata, так как в модели Payment нет 'sbp' в choices
+    const paymentMethodForBackend = paymentMethod === 'sbp' ? 'card' : paymentMethod
+    const paymentMetadata = paymentMethod === 'sbp' ? { payment_method: 'sbp' } : {}
+    
     // Создаем платеж для существующего заказа
     const response = await createPayment({
-      payment_type: 'shop_order',
+      payment_type: paymentType,
       object_id: orderId,
-      amount: amount
+      amount: amount,
+      payment_method: paymentMethodForBackend,
+      metadata: paymentMetadata
     })
 
     if (response.payment) {
-      // Перенаправляем на страницу оплаты с payment_id
-      window.location.href = `/payment?payment_id=${response.payment.id}&amount=${response.payment.amount}`
+      // Перенаправляем на страницу оплаты с payment_id и методом оплаты
+      const params = new URLSearchParams({
+        payment_id: response.payment.id,
+        amount: response.payment.amount.toString(),
+        method: paymentMethod
+      })
+      window.location.href = `/payment?${params.toString()}`
     } else {
       throw new Error('Не удалось создать платеж')
     }
   } catch (error) {
     console.error('Ошибка создания платежа:', error)
-    // Показываем ошибку пользователю
-    alert('Не удалось создать платеж. Попробуйте позже.')
+    
+    // Обработка ошибок недоступных товаров
+    const errorMessage = error.response?.data?.error || error.message || 'Не удалось создать платеж'
+    const errorCode = error.response?.data?.code
+    
+    if (errorCode === 'UNAVAILABLE_ITEMS' || errorMessage.includes('Недоступные товары')) {
+      alert('Некоторые товары из заказа больше недоступны. Пожалуйста, обновите заказ или обратитесь в поддержку.')
+    } else {
+      alert(`Не удалось создать платеж: ${errorMessage}`)
+    }
   }
 }
 
@@ -160,10 +185,28 @@ function OrderDetail() {
     description: ''
   })
   const [isSubmittingReturn, setIsSubmittingReturn] = useState(false)
+  
+  // Способ оплаты
+  const [paymentMethod, setPaymentMethod] = useState('card') // 'card' или 'sbp'
+  
+  // Редактирование доставки
+  const [isEditingDelivery, setIsEditingDelivery] = useState(false)
+  const [deliveryForm, setDeliveryForm] = useState({
+    delivery_type: 'standard',
+    shipping_address: '',
+    address_id: ''
+  })
+  const [addresses, setAddresses] = useState([])
+  const [isSavingDelivery, setIsSavingDelivery] = useState(false)
 
   const fetchOrder = async () => {
     setIsLoading(true)
     setError(null)
+    
+    // Инициализируем форму доставки при загрузке заказа
+    if (order) {
+      initDeliveryForm()
+    }
 
     try {
       const response = await getOrders()
@@ -174,6 +217,12 @@ function OrderDetail() {
         showError('Заказ не найден')
       } else {
         setOrder(foundOrder)
+        // Инициализируем форму доставки после загрузки заказа
+        setDeliveryForm({
+          delivery_type: foundOrder.delivery_type || 'standard',
+          shipping_address: foundOrder.shipping_address || '',
+          address_id: foundOrder.address_id || ''
+        })
       }
     } catch (err) {
       const errorMessage = err.response?.data?.error || err.message || 'Не удалось загрузить заказ'
@@ -214,6 +263,83 @@ function OrderDetail() {
       reason: 'not_satisfied',
       description: ''
     })
+  }
+
+  /**
+   * Загрузка адресов пользователя
+   */
+  const loadAddresses = async () => {
+    try {
+      const response = await getAddresses()
+      setAddresses(response.addresses || [])
+    } catch (err) {
+      console.error('Ошибка загрузки адресов:', err)
+    }
+  }
+
+  /**
+   * Инициализация формы редактирования доставки
+   */
+  const initDeliveryForm = () => {
+    if (order) {
+      setDeliveryForm({
+        delivery_type: order.delivery_type || 'standard',
+        shipping_address: order.shipping_address || '',
+        address_id: order.address_id || ''
+      })
+    }
+  }
+
+  /**
+   * Начать редактирование доставки
+   */
+  const startEditingDelivery = async () => {
+    setIsEditingDelivery(true)
+    initDeliveryForm()
+    await loadAddresses()
+  }
+
+  /**
+   * Отменить редактирование доставки
+   */
+  const cancelEditingDelivery = () => {
+    setIsEditingDelivery(false)
+    initDeliveryForm()
+  }
+
+  /**
+   * Сохранить изменения доставки
+   */
+  const saveDelivery = async () => {
+    if (!order) return
+
+    setIsSavingDelivery(true)
+    try {
+      const updateData = {
+        delivery_type: deliveryForm.delivery_type
+      }
+
+      if (deliveryForm.delivery_type === 'pickup') {
+        updateData.shipping_address = 'Самовывоз'
+      } else if (deliveryForm.address_id) {
+        updateData.address_id = deliveryForm.address_id
+      } else if (deliveryForm.shipping_address.trim()) {
+        updateData.shipping_address = deliveryForm.shipping_address.trim()
+      } else {
+        showError('Укажите адрес доставки или выберите сохраненный адрес')
+        setIsSavingDelivery(false)
+        return
+      }
+
+      await updateOrder(order.id, updateData)
+      success('Данные доставки успешно обновлены')
+      setIsEditingDelivery(false)
+      fetchOrder() // Обновляем заказ
+    } catch (err) {
+      showError(err.response?.data?.error || err.message || 'Не удалось обновить данные доставки')
+    } finally {
+      setIsSavingDelivery(false)
+    }
   }
 
   /**
@@ -353,15 +479,6 @@ function OrderDetail() {
                 />
               )}
             </div>
-            
-            {(order.status === 'pending' || order.status === 'expired') && (
-              <button
-                onClick={() => handlePayOrder(order.id, order.total_amount)}
-                className="btn-primary"
-              >
-                {order.status === 'pending' ? 'Оплатить заказ' : 'Попробовать оплатить снова'}
-              </button>
-            )}
           </div>
         </div>
       </div>
@@ -369,6 +486,65 @@ function OrderDetail() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Основная информация */}
         <div className="lg:col-span-2 space-y-6">
+          {/* Информация о заказе */}
+          <div className="card">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">
+              Информация
+            </h2>
+            
+            <div className="space-y-3">
+              <div>
+                <span className="text-sm text-gray-500">Номер заказа</span>
+                <p className="text-gray-900 font-mono font-medium">
+                  {order.id.toUpperCase()}
+                </p>
+              </div>
+              
+              <div>
+                <span className="text-sm text-gray-500">Дата оформления</span>
+                <p className="text-gray-900 font-medium">
+                  {formatDate(order.created_at)}
+                </p>
+              </div>
+              
+              <div>
+                <span className="text-sm text-gray-500">Статус</span>
+                <p className="text-gray-900 font-medium">
+                  {status.label}
+                </p>
+              </div>
+              
+              {/* Способ оплаты - показываем только для неоплаченных заказов */}
+              {(order.status === 'pending' || order.status === 'expired') && (
+                <div>
+                  <span className="text-sm text-gray-500">Способ оплаты</span>
+                  <div className="mt-2 flex gap-2 p-2 bg-gray-50 rounded-lg">
+                    <button
+                      onClick={() => setPaymentMethod('card')}
+                      className={`flex-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                        paymentMethod === 'card'
+                          ? 'bg-primary-600 text-white'
+                          : 'bg-white text-gray-700 hover:bg-gray-100'
+                      }`}
+                    >
+                      💳 Карта
+                    </button>
+                    <button
+                      onClick={() => setPaymentMethod('sbp')}
+                      className={`flex-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                        paymentMethod === 'sbp'
+                          ? 'bg-primary-600 text-white'
+                          : 'bg-white text-gray-700 hover:bg-gray-100'
+                      }`}
+                    >
+                      📱 СБП
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+          
           {/* Товары */}
           {products.length > 0 && (
             <div className="card">
@@ -382,6 +558,19 @@ function OrderDetail() {
               <div className="space-y-4">
                 {products.map((item, idx) => (
                   <div key={idx} className="flex gap-4 pb-4 border-b border-gray-100 last:border-0 last:pb-0">
+                    {/* Изображение товара */}
+                    {item.product_image && (
+                      <div className="flex-shrink-0">
+                        <img
+                          src={item.product_image}
+                          alt={item.product_name}
+                          className="w-20 h-20 object-cover rounded-lg border border-gray-200"
+                          onError={(e) => {
+                            e.target.style.display = 'none'
+                          }}
+                        />
+                      </div>
+                    )}
                     <div className="flex-1">
                       <Link
                         to={`/shop/products/${item.product_id}`}
@@ -485,98 +674,185 @@ function OrderDetail() {
                   {formatPrice(order.total_amount)}
                 </span>
               </div>
+              
+              {/* Кнопка оплаты - показываем только для неоплаченных заказов */}
+              {(order.status === 'pending' || order.status === 'expired') && (
+                <div className="pt-3 border-t border-gray-200">
+                  <button
+                    onClick={() => handlePayOrder(order.id, order.total_amount, paymentMethod)}
+                    className="btn-primary w-full"
+                  >
+                    {order.status === 'pending' 
+                      ? `Оплатить заказ ${paymentMethod === 'sbp' ? 'через СБП' : 'картой'}`
+                      : 'Попробовать оплатить снова'}
+                  </button>
+                </div>
+              )}
             </div>
           </div>
           
           {/* Информация о доставке */}
           {products.length > 0 && (
             <div className="card">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                <svg className="w-5 h-5 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
-                Доставка
-              </h2>
-              
-              <div className="space-y-3">
-                {order.delivery_type && (
-                  <div>
-                    <span className="text-sm text-gray-500">Тип доставки</span>
-                    <p className="text-gray-900 font-medium">
-                      {deliveryTypeLabels[order.delivery_type] || order.delivery_type}
-                    </p>
-                  </div>
-                )}
-                
-                {order.delivery_date && (
-                  <div>
-                    <span className="text-sm text-gray-500">Дата доставки</span>
-                    <p className="text-gray-900 font-medium">
-                      {formatDate(order.delivery_date)}
-                    </p>
-                  </div>
-                )}
-                
-                {order.shipping_address && (
-                  <div>
-                    <span className="text-sm text-gray-500">Адрес доставки</span>
-                    <p className="text-gray-900 font-medium">
-                      {order.shipping_address}
-                    </p>
-                  </div>
-                )}
-                
-                {order.recipient_name && (
-                  <div>
-                    <span className="text-sm text-gray-500">Получатель</span>
-                    <p className="text-gray-900 font-medium">
-                      {order.recipient_name}
-                    </p>
-                  </div>
-                )}
-                
-                {order.recipient_phone && (
-                  <div>
-                    <span className="text-sm text-gray-500">Телефон</span>
-                    <p className="text-gray-900 font-medium">
-                      {order.recipient_phone}
-                    </p>
-                  </div>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                  <svg className="w-5 h-5 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                  Доставка
+                </h2>
+                {(order.status === 'pending' || order.status === 'expired') && !isEditingDelivery && (
+                  <button
+                    onClick={startEditingDelivery}
+                    className="text-sm text-primary-600 hover:text-primary-700 font-medium"
+                  >
+                    Изменить
+                  </button>
                 )}
               </div>
+              
+              {!isEditingDelivery ? (
+                <div className="space-y-3">
+                  {order.delivery_type && (
+                    <div>
+                      <span className="text-sm text-gray-500">Тип доставки</span>
+                      <p className="text-gray-900 font-medium">
+                        {deliveryTypeLabels[order.delivery_type] || order.delivery_type}
+                      </p>
+                    </div>
+                  )}
+                  
+                  {order.delivery_date && (
+                    <div>
+                      <span className="text-sm text-gray-500">Дата доставки</span>
+                      <p className="text-gray-900 font-medium">
+                        {formatDate(order.delivery_date)}
+                      </p>
+                    </div>
+                  )}
+                  
+                  {order.shipping_address && (
+                    <div>
+                      <span className="text-sm text-gray-500">Адрес доставки</span>
+                      <p className="text-gray-900 font-medium">
+                        {order.shipping_address}
+                      </p>
+                    </div>
+                  )}
+                  
+                  {order.recipient_name && (
+                    <div>
+                      <span className="text-sm text-gray-500">Получатель</span>
+                      <p className="text-gray-900 font-medium">
+                        {order.recipient_name}
+                      </p>
+                    </div>
+                  )}
+                  
+                  {order.recipient_phone && (
+                    <div>
+                      <span className="text-sm text-gray-500">Телефон</span>
+                      <p className="text-gray-900 font-medium">
+                        {order.recipient_phone}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {/* Тип доставки */}
+                  <div>
+                    <label className="label">Тип доставки</label>
+                    <div className="space-y-2">
+                      {['standard', 'express', 'pickup'].map((type) => (
+                        <label
+                          key={type}
+                          className="flex items-center gap-3 p-3 border-2 rounded-lg cursor-pointer transition-colors hover:border-primary-300"
+                          style={{
+                            borderColor: deliveryForm.delivery_type === type ? '#2563eb' : '#e5e7eb'
+                          }}
+                        >
+                          <input
+                            type="radio"
+                            name="delivery_type"
+                            value={type}
+                            checked={deliveryForm.delivery_type === type}
+                            onChange={(e) => setDeliveryForm({ ...deliveryForm, delivery_type: e.target.value, shipping_address: e.target.value === 'pickup' ? 'Самовывоз' : deliveryForm.shipping_address })}
+                            className="w-4 h-4 text-primary-600"
+                          />
+                          <span className="flex-1 font-medium">
+                            {deliveryTypeLabels[type]}
+                          </span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Адрес доставки - показываем только если не самовывоз */}
+                  {deliveryForm.delivery_type !== 'pickup' && (
+                    <>
+                      {/* Выбор сохраненного адреса */}
+                      {addresses.length > 0 && (
+                        <div>
+                          <label className="label">Выберите сохраненный адрес</label>
+                          <select
+                            value={deliveryForm.address_id}
+                            onChange={(e) => {
+                              const selectedAddress = addresses.find(a => a.id === e.target.value)
+                              setDeliveryForm({
+                                ...deliveryForm,
+                                address_id: e.target.value,
+                                shipping_address: selectedAddress ? selectedAddress.full_address : deliveryForm.shipping_address
+                              })
+                            }}
+                            className="input"
+                          >
+                            <option value="">Новый адрес</option>
+                            {addresses.map((address) => (
+                              <option key={address.id} value={address.id}>
+                                {address.full_address}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
+
+                      {/* Ввод нового адреса */}
+                      <div>
+                        <label className="label">Адрес доставки</label>
+                        <textarea
+                          value={deliveryForm.shipping_address}
+                          onChange={(e) => setDeliveryForm({ ...deliveryForm, shipping_address: e.target.value, address_id: '' })}
+                          placeholder="Введите адрес доставки"
+                          className="input min-h-[80px]"
+                          rows={3}
+                        />
+                      </div>
+                    </>
+                  )}
+
+                  {/* Кнопки действий */}
+                  <div className="flex gap-2 pt-2">
+                    <button
+                      onClick={saveDelivery}
+                      disabled={isSavingDelivery || (deliveryForm.delivery_type !== 'pickup' && !deliveryForm.shipping_address.trim() && !deliveryForm.address_id)}
+                      className="btn-primary flex-1"
+                    >
+                      {isSavingDelivery ? 'Сохранение...' : 'Сохранить'}
+                    </button>
+                    <button
+                      onClick={cancelEditingDelivery}
+                      disabled={isSavingDelivery}
+                      className="btn-secondary flex-1"
+                    >
+                      Отмена
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
-          
-          {/* Информация о заказе */}
-          <div className="card">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">
-              Информация
-            </h2>
-            
-            <div className="space-y-3">
-              <div>
-                <span className="text-sm text-gray-500">Номер заказа</span>
-                <p className="text-gray-900 font-mono font-medium">
-                  {order.id.toUpperCase()}
-                </p>
-              </div>
-              
-              <div>
-                <span className="text-sm text-gray-500">Дата оформления</span>
-                <p className="text-gray-900 font-medium">
-                  {formatDate(order.created_at)}
-                </p>
-              </div>
-              
-              <div>
-                <span className="text-sm text-gray-500">Статус</span>
-                <p className="text-gray-900 font-medium">
-                  {status.label}
-                </p>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
 
