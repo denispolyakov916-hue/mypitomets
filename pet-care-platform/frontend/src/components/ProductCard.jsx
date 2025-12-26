@@ -127,9 +127,9 @@ function ProductCard({ product, onAddToCart, isLoading = false }) {
   const mainImage = product.main_image || (product.images && product.images[0])
   
   return (
-    <div className="group bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow flex flex-col h-full overflow-hidden">
+    <div className="group bg-white/95 backdrop-blur-sm rounded-xl shadow-sm hover:shadow-lg border border-white/20 transition-all duration-300 flex flex-col h-full overflow-hidden hover:scale-[1.02]">
       {/* Изображение товара - кликабельное */}
-      <Link to={`/shop/products/${product.id}`} className="aspect-square bg-gray-50 relative overflow-hidden block">
+      <Link to={`/shop/products/${product.id}`} className="aspect-square bg-gradient-to-br from-purple-50 to-orange-50 relative overflow-hidden block">
         {mainImage && !imageError ? (
           <img
             src={mainImage}
@@ -140,33 +140,33 @@ function ProductCard({ product, onAddToCart, isLoading = false }) {
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center">
-            <span className="text-6xl opacity-30">
+            <span className="text-6xl opacity-40">
               {product.animal === 'dog' ? '🐕' : product.animal === 'cat' ? '🐱' : '🐾'}
             </span>
           </div>
         )}
-        
+
         {/* Бейдж скидки */}
         {product.discount_percent > 0 && (
-          <div className="absolute top-2 right-2 px-2 py-1 bg-red-500 text-white text-xs rounded-lg font-bold">
+          <div className="absolute top-2 right-2 px-2 py-1 bg-gradient-to-r from-red-500 to-red-600 text-white text-xs rounded-lg font-bold shadow-lg">
             -{product.discount_percent}%
           </div>
         )}
-        
+
         {/* Бейдж наличия */}
         {product.stock_count <= 0 && (
-          <div className="absolute top-2 right-2 px-2 py-1 bg-red-500 text-white text-xs rounded-lg">
+          <div className="absolute top-2 right-2 px-2 py-1 bg-gradient-to-r from-red-500 to-red-600 text-white text-xs rounded-lg shadow-lg">
             Нет в наличии
           </div>
         )}
-        
+
         {/* Бейдж животного */}
-        <div className="absolute top-2 left-2 px-2 py-1 bg-white/90 text-xs rounded-lg font-medium">
+        <div className="absolute top-2 left-2 px-2 py-1 bg-white/95 backdrop-blur-sm text-xs rounded-lg font-medium border border-purple-100">
           {animalLabels[product.animal] || product.animal}
         </div>
-        
+
         {/* Кнопка избранного */}
-        <div className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+        <div className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
           <FavoriteButton itemId={product.id} type="product" size="sm" />
         </div>
       </Link>
@@ -175,24 +175,24 @@ function ProductCard({ product, onAddToCart, isLoading = false }) {
       <div className="flex-1 flex flex-col p-4">
         {/* Бренд */}
         {product.vendor && (
-          <p className="text-xs text-primary-600 font-medium mb-1 uppercase tracking-wide">
+          <p className="text-xs text-purple-600 font-medium mb-1 uppercase tracking-wide">
             {product.vendor}
           </p>
         )}
-        
+
         {/* Название - кликабельное */}
         <Link to={`/shop/products/${product.id}`}>
-          <h3 className="font-medium text-gray-900 mb-1 line-clamp-2 text-sm leading-snug hover:text-primary-600 transition-colors">
+          <h3 className="font-medium text-gray-900 mb-1 line-clamp-2 text-sm leading-snug hover:text-purple-600 transition-colors duration-200">
             {product.name}
           </h3>
         </Link>
-        
+
         {/* Категория */}
-        <p className="text-xs text-gray-500 mb-2">
+        <p className="text-xs text-purple-400 mb-2">
           {categoryLabels[product.category] || product.category}
           {product.category_name && ` • ${product.category_name}`}
         </p>
-        
+
         {/* Рейтинг */}
         {(product.rating || product.reviews_count !== undefined) && (
           <div className="mb-2">
@@ -204,23 +204,23 @@ function ProductCard({ product, onAddToCart, isLoading = false }) {
             />
           </div>
         )}
-        
+
         {/* Вес если есть */}
         {product.weight && (
-          <p className="text-xs text-gray-400 mb-2">
+          <p className="text-xs text-purple-300 mb-2">
             Вес: {product.weight} кг
           </p>
         )}
         
         {/* Цена и добавление в корзину */}
-        <div className="flex items-center justify-between mt-auto pt-3 border-t border-gray-100">
+        <div className="flex items-center justify-between mt-auto pt-3 border-t border-purple-100/50">
           <div className="flex flex-col">
             {product.discount_percent > 0 ? (
               <>
-                <span className="text-xs text-gray-400 line-through">
+                <span className="text-xs text-purple-300 line-through">
                   {formatPrice(product.price)}
                 </span>
-                <span className="text-lg font-bold text-red-600">
+                <span className="text-lg font-bold text-gradient bg-gradient-to-r from-red-500 to-red-600 bg-clip-text text-transparent">
                   {formatPrice(product.discounted_price)}
                 </span>
               </>
@@ -230,7 +230,7 @@ function ProductCard({ product, onAddToCart, isLoading = false }) {
               </span>
             )}
             {product.stock_count > 0 && product.stock_count <= 5 && (
-              <span className="text-xs text-orange-600 font-medium">
+              <span className="text-xs text-orange-500 font-medium">
                 Осталось {product.stock_count} шт.
               </span>
             )}
@@ -238,13 +238,13 @@ function ProductCard({ product, onAddToCart, isLoading = false }) {
 
           {/* Управление количеством и кнопка корзины */}
           {isInCart ? (
-            /* Товар в корзине - серый счетчик и зеленая кнопка */
+            /* Товар в корзине - фиолетовый счетчик и оранжевая кнопка */
             <div className="flex items-center gap-2">
-              {/* Серый блок с управлением количеством */}
-              <div className="flex items-center bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors border border-gray-200">
+              {/* Фиолетовый блок с управлением количеством */}
+              <div className="flex items-center bg-purple-50 hover:bg-purple-100 text-purple-700 rounded-lg transition-colors border border-purple-200">
                 <button
                   onClick={() => handleQuantityChange(-1)}
-                  className="w-8 h-8 flex items-center justify-center hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed rounded-l-lg"
+                  className="w-8 h-8 flex items-center justify-center hover:bg-purple-200 disabled:opacity-50 disabled:cursor-not-allowed rounded-l-lg"
                   title="Уменьшить количество"
                 >
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -257,7 +257,7 @@ function ProductCard({ product, onAddToCart, isLoading = false }) {
                 <button
                   onClick={() => handleQuantityChange(1)}
                   disabled={cartQuantity >= (product.stock_count || 999)}
-                  className="w-8 h-8 flex items-center justify-center hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed rounded-r-lg"
+                  className="w-8 h-8 flex items-center justify-center hover:bg-purple-200 disabled:opacity-50 disabled:cursor-not-allowed rounded-r-lg"
                   title="Увеличить количество"
                 >
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -266,10 +266,10 @@ function ProductCard({ product, onAddToCart, isLoading = false }) {
                 </button>
               </div>
 
-              {/* Зеленая кнопка "В корзину" */}
+              {/* Оранжевая кнопка "В корзину" */}
               <button
                 onClick={handleGoToCart}
-                className="text-sm py-2 px-3 bg-green-600 hover:bg-green-700 text-white rounded-lg flex items-center gap-1.5 transition-colors"
+                className="text-sm py-2 px-3 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white rounded-lg flex items-center gap-1.5 transition-all duration-300 shadow-md hover:shadow-lg"
                 title="Перейти в корзину"
               >
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -279,14 +279,14 @@ function ProductCard({ product, onAddToCart, isLoading = false }) {
               </button>
             </div>
           ) : (
-            /* Товар не в корзине - синяя кнопка "Купить" */
+            /* Товар не в корзине - градиентная кнопка "Купить" */
             <button
               onClick={handleAddToCart}
               disabled={isAdding || isLoading || product.stock_count <= 0}
-              className={`text-sm py-2 px-4 rounded-lg flex items-center gap-1.5 transition-colors ${
+              className={`text-sm py-2 px-4 rounded-lg flex items-center gap-1.5 transition-all duration-300 shadow-md hover:shadow-lg ${
                 product.stock_count <= 0
                   ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
-                  : 'bg-primary-600 hover:bg-primary-700 text-white'
+                  : 'bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white hover:scale-105'
               }`}
             >
               {isAdding ? (

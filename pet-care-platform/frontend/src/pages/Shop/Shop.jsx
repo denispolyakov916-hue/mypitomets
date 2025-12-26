@@ -35,13 +35,13 @@ function FilterSidebar({ filters, availableFilters, onFilterChange, onReset }) {
   }
   
   return (
-    <div className="bg-white rounded-xl shadow-sm p-5 sticky top-4">
+    <div className="bg-white/95 backdrop-blur-sm rounded-xl shadow-lg border border-white/20 p-5 sticky top-4">
       <div className="flex justify-between items-center mb-4">
         <h3 className="font-semibold text-gray-900">Фильтры</h3>
         {(filters.animal || filters.pet_id || filters.category || filters.subcategory || filters.vendor || filters.min_price || filters.max_price || filters.in_stock || filters.has_discount || filters.search) && (
           <button
             onClick={onReset}
-            className="text-sm text-primary-600 hover:text-primary-700"
+            className="text-sm text-purple-600 hover:text-purple-700 transition-colors"
           >
             Сбросить
           </button>
@@ -50,12 +50,12 @@ function FilterSidebar({ filters, availableFilters, onFilterChange, onReset }) {
       
       {/* Персональные подборки для питомцев */}
       {availableFilters.user_pets && availableFilters.user_pets.length > 0 && (
-        <div className="mb-5 pb-5 border-b border-gray-200">
+        <div className="mb-5 pb-5 border-b border-purple-100">
           <label className="block text-sm font-medium text-gray-900 mb-2 flex items-center gap-2">
-            <span className="text-primary-600">⭐</span>
+            <span className="text-purple-600">⭐</span>
             Персональные подборки
           </label>
-          <p className="text-xs text-gray-500 mb-3">
+          <p className="text-xs text-purple-400 mb-3">
             Товары специально для ваших питомцев
           </p>
           <div className="space-y-2">
@@ -67,12 +67,12 @@ function FilterSidebar({ filters, availableFilters, onFilterChange, onReset }) {
               const isSelected = filters.pet_id === pet.id
               
               return (
-                <label 
-                  key={pet.id} 
+                <label
+                  key={pet.id}
                   className={`flex items-center cursor-pointer group p-2 rounded-lg transition-colors ${
-                    isSelected 
-                      ? 'bg-primary-50 border border-primary-200' 
-                      : 'hover:bg-gray-50'
+                    isSelected
+                      ? 'bg-purple-50 border border-purple-200'
+                      : 'hover:bg-purple-25'
                   }`}
                 >
                   <input
@@ -81,14 +81,14 @@ function FilterSidebar({ filters, availableFilters, onFilterChange, onReset }) {
                     value={pet.id}
                     checked={isSelected}
                     onChange={(e) => onFilterChange('pet_id', e.target.value)}
-                    className="w-4 h-4 text-primary-600 focus:ring-primary-500"
+                    className="w-4 h-4 text-purple-600 focus:ring-purple-500"
                   />
                   <span className={`ml-2 text-sm ${
-                    isSelected 
-                      ? 'text-primary-700 font-medium' 
-                      : 'text-gray-700 group-hover:text-primary-600'
+                    isSelected
+                      ? 'text-purple-700 font-medium'
+                      : 'text-gray-700 group-hover:text-purple-600'
                   }`}>
-                    {pet.name} <span className="text-gray-500">({pet.species_label})</span>
+                    {pet.name} <span className="text-purple-400">({pet.species_label})</span>
                   </span>
                 </label>
               )
@@ -96,7 +96,7 @@ function FilterSidebar({ filters, availableFilters, onFilterChange, onReset }) {
             {filters.pet_id && (
               <button
                 onClick={() => onFilterChange('pet_id', '')}
-                className="text-xs text-primary-600 hover:text-primary-700 font-medium mt-2"
+                className="text-xs text-purple-600 hover:text-purple-700 font-medium mt-2 transition-colors"
               >
                 Показать все товары
               </button>
@@ -112,14 +112,14 @@ function FilterSidebar({ filters, availableFilters, onFilterChange, onReset }) {
         </label>
         <div className="space-y-2">
           {availableFilters.animals?.map(opt => (
-            <label key={opt.value} className="flex items-center cursor-pointer">
+            <label key={opt.value} className="flex items-center cursor-pointer hover:text-purple-600 transition-colors">
               <input
                 type="radio"
                 name="animal"
                 value={opt.value}
                 checked={filters.animal === opt.value}
                 onChange={(e) => onFilterChange('animal', e.target.value)}
-                className="w-4 h-4 text-primary-600 focus:ring-primary-500"
+                className="w-4 h-4 text-purple-600 focus:ring-purple-500"
               />
               <span className="ml-2 text-gray-700">{opt.label}</span>
             </label>
@@ -142,14 +142,14 @@ function FilterSidebar({ filters, availableFilters, onFilterChange, onReset }) {
         </label>
         <div className="space-y-2">
           {availableFilters.categories?.map(opt => (
-            <label key={opt.value} className="flex items-center cursor-pointer">
+            <label key={opt.value} className="flex items-center cursor-pointer hover:text-purple-600 transition-colors">
               <input
                 type="radio"
                 name="category"
                 value={opt.value}
                 checked={filters.category === opt.value}
                 onChange={(e) => onFilterChange('category', e.target.value)}
-                className="w-4 h-4 text-primary-600 focus:ring-primary-500"
+                className="w-4 h-4 text-purple-600 focus:ring-purple-500"
               />
               <span className="ml-2 text-gray-700">{opt.label}</span>
             </label>
@@ -195,7 +195,7 @@ function FilterSidebar({ filters, availableFilters, onFilterChange, onReset }) {
           <select
             value={filters.vendor || ''}
             onChange={(e) => onFilterChange('vendor', e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-primary-500 focus:border-primary-500"
+            className="w-full px-3 py-2 border border-purple-200 rounded-lg text-sm focus:ring-purple-500 focus:border-purple-500 bg-white"
           >
             <option value="">Все бренды</option>
             {availableFilters.vendors.map(v => (
@@ -218,20 +218,20 @@ function FilterSidebar({ filters, availableFilters, onFilterChange, onReset }) {
             placeholder="от"
             value={priceRange.min}
             onChange={(e) => setPriceRange(prev => ({ ...prev, min: e.target.value }))}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+            className="w-full px-3 py-2 border border-purple-200 rounded-lg text-sm focus:ring-purple-500 focus:border-purple-500 bg-white"
           />
-          <span className="text-gray-400">—</span>
+          <span className="text-purple-400">—</span>
           <input
             type="number"
             placeholder="до"
             value={priceRange.max}
             onChange={(e) => setPriceRange(prev => ({ ...prev, max: e.target.value }))}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+            className="w-full px-3 py-2 border border-purple-200 rounded-lg text-sm focus:ring-purple-500 focus:border-purple-500 bg-white"
           />
         </div>
         <button
           onClick={handlePriceApply}
-          className="mt-2 w-full py-1.5 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+          className="mt-2 w-full py-1.5 text-sm bg-purple-100 hover:bg-purple-200 text-purple-700 rounded-lg transition-colors"
         >
           Применить
         </button>
@@ -244,25 +244,25 @@ function FilterSidebar({ filters, availableFilters, onFilterChange, onReset }) {
       
       {/* Только в наличии */}
       <div className="mb-5">
-        <label className="flex items-center cursor-pointer">
+        <label className="flex items-center cursor-pointer hover:text-purple-600 transition-colors">
           <input
             type="checkbox"
             checked={filters.in_stock === 'true'}
             onChange={(e) => onFilterChange('in_stock', e.target.checked ? 'true' : '')}
-            className="w-4 h-4 text-primary-600 focus:ring-primary-500 rounded"
+            className="w-4 h-4 text-purple-600 focus:ring-purple-500 rounded"
           />
           <span className="ml-2 text-gray-700">Только в наличии</span>
         </label>
       </div>
-      
+
       {/* Со скидкой */}
       <div className="mb-5">
-        <label className="flex items-center cursor-pointer">
+        <label className="flex items-center cursor-pointer hover:text-orange-600 transition-colors">
           <input
             type="checkbox"
             checked={filters.has_discount === 'true'}
             onChange={(e) => onFilterChange('has_discount', e.target.checked ? 'true' : '')}
-            className="w-4 h-4 text-red-500 focus:ring-red-500 rounded"
+            className="w-4 h-4 text-orange-500 focus:ring-orange-500 rounded"
           />
           <span className="ml-2 text-gray-700">🔥 Со скидкой</span>
         </label>
@@ -276,7 +276,7 @@ function FilterSidebar({ filters, availableFilters, onFilterChange, onReset }) {
         <select
           value={filters.min_rating}
           onChange={(e) => onFilterChange('min_rating', e.target.value)}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white"
+          className="w-full px-3 py-2 border border-purple-200 rounded-lg text-sm bg-white focus:ring-purple-500 focus:border-purple-500"
         >
           <option value="">Любой рейтинг</option>
           <option value="4">⭐⭐⭐⭐ и выше</option>
@@ -294,7 +294,7 @@ function FilterSidebar({ filters, availableFilters, onFilterChange, onReset }) {
         <select
           value={filters.min_orders}
           onChange={(e) => onFilterChange('min_orders', e.target.value)}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white"
+          className="w-full px-3 py-2 border border-purple-200 rounded-lg text-sm bg-white focus:ring-purple-500 focus:border-purple-500"
         >
           <option value="">Любая популярность</option>
           <option value="100">100+ заказов</option>
@@ -353,33 +353,33 @@ function Pagination({ pagination, onPageChange }) {
   }
   
   return (
-    <div className="flex justify-center items-center gap-1 mt-8">
+    <div className="flex justify-center items-center gap-1 mt-8 p-4 bg-white/50 backdrop-blur-sm rounded-xl border border-purple-100">
       <button
         onClick={() => onPageChange(page - 1)}
         disabled={page === 1}
-        className="px-3 py-2 rounded-lg bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+        className="px-3 py-2 rounded-lg bg-white/90 backdrop-blur-sm border border-purple-200 text-gray-700 hover:bg-purple-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
       >
         ←
       </button>
-      
+
       {getPageNumbers().map(num => (
         <button
           key={num}
           onClick={() => onPageChange(num)}
-          className={`px-3 py-2 rounded-lg ${
+          className={`px-3 py-2 rounded-lg transition-all duration-200 ${
             num === page
-              ? 'bg-primary-600 text-white'
-              : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
+              ? 'bg-gradient-to-r from-purple-500 to-purple-600 text-white shadow-lg'
+              : 'bg-white/90 backdrop-blur-sm border border-purple-200 text-gray-700 hover:bg-purple-50'
           }`}
         >
           {num}
         </button>
       ))}
-      
+
       <button
         onClick={() => onPageChange(page + 1)}
         disabled={page === total_pages}
-        className="px-3 py-2 rounded-lg bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+        className="px-3 py-2 rounded-lg bg-white/90 backdrop-blur-sm border border-purple-200 text-gray-700 hover:bg-purple-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
       >
         →
       </button>
@@ -522,7 +522,7 @@ function Shop() {
       {/* Заголовок и поиск */}
       <div className="mb-6">
         <h1 className="page-title mb-4">Магазин товаров для питомцев</h1>
-        
+
         {/* Поиск */}
         <form onSubmit={handleSearch} className="flex gap-2 max-w-xl">
           <input
@@ -530,9 +530,9 @@ function Shop() {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Поиск по названию..."
-            className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-primary-500 focus:border-primary-500"
+            className="flex-1 px-4 py-2 border border-purple-200 rounded-lg focus:ring-purple-500 focus:border-purple-500 bg-white/90 backdrop-blur-sm"
           />
-          <button type="submit" className="btn-primary px-6">
+          <button type="submit" className="btn-primary px-6 bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700">
             Найти
           </button>
         </form>
@@ -550,16 +550,16 @@ function Shop() {
         </aside>
         
         {/* Основной контент */}
-        <main className="flex-1 min-w-0">
+        <main className="flex-1 min-w-0 animate-fadeIn">
           {/* Мобильные фильтры */}
           <div className="lg:hidden mb-4">
-            <div className="flex gap-2 overflow-x-auto pb-2">
+            <div className="flex gap-2 overflow-x-auto pb-2 bg-white/50 backdrop-blur-sm rounded-lg p-2">
               {/* Персональные подборки для питомцев */}
               {availableFilters.user_pets && availableFilters.user_pets.length > 0 && (
                 <select
                   value={filters.pet_id}
                   onChange={(e) => handleFilterChange('pet_id', e.target.value)}
-                  className="px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white"
+                  className="px-3 py-2 border border-purple-200 rounded-lg text-sm bg-white focus:ring-purple-500 focus:border-purple-500"
                 >
                   <option value="">Все товары</option>
                   {availableFilters.user_pets
@@ -574,7 +574,7 @@ function Shop() {
               <select
                 value={filters.animal}
                 onChange={(e) => handleFilterChange('animal', e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white"
+                className="px-3 py-2 border border-purple-200 rounded-lg text-sm bg-white focus:ring-purple-500 focus:border-purple-500"
               >
                 <option value="">Все животные</option>
                 {availableFilters.animals?.map(opt => (
@@ -584,7 +584,7 @@ function Shop() {
               <select
                 value={filters.category}
                 onChange={(e) => handleFilterChange('category', e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white"
+                className="px-3 py-2 border border-purple-200 rounded-lg text-sm bg-white focus:ring-purple-500 focus:border-purple-500"
               >
                 <option value="">Все категории</option>
                 {availableFilters.categories?.map(opt => (
@@ -641,18 +641,23 @@ function Shop() {
                 })()
               )}
               
-              <p className="text-gray-600 mb-4">
+              <p className="text-purple-600 mb-4 font-medium">
                 Найдено товаров: {pagination?.total || products.length}
               </p>
               
               {/* Сетка товаров */}
               <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-                {products.map(product => (
-                  <ProductCard
+                {products.map((product, index) => (
+                  <div
                     key={product.id}
-                    product={product}
-                    onAddToCart={handleAddToCart}
-                  />
+                    className="animate-scaleIn"
+                    style={{ animationDelay: `${index * 0.1}s` }}
+                  >
+                    <ProductCard
+                      product={product}
+                      onAddToCart={handleAddToCart}
+                    />
+                  </div>
                 ))}
               </div>
               
