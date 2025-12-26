@@ -104,3 +104,140 @@ class PurchaseCourseSerializer(serializers.Serializer):
                 "ID курса должен быть положительным числом"
             )
         return value
+
+
+class CommentSerializer(serializers.ModelSerializer):
+    """
+    Сериализатор для комментариев к курсам и урокам.
+    """
+    user_name = serializers.CharField(source='user.get_full_name', read_only=True)
+    user_avatar = serializers.CharField(source='user.profile.avatar', read_only=True)
+    user_reaction = serializers.SerializerMethodField()
+    replies_count = serializers.SerializerMethodField()
+    can_edit = serializers.SerializerMethodField()
+    can_delete = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Comment
+        fields = [
+            'id', 'user', 'user_name', 'user_avatar', 'course', 'lesson',
+            'content', 'parent', 'attachments', 'likes_count', 'dislikes_count',
+            'user_reaction', 'replies_count', 'is_moderated', 'can_edit', 'can_delete',
+            'created_at', 'updated_at'
+        ]
+        read_only_fields = ['id', 'user', 'likes_count', 'dislikes_count', 'created_at', 'updated_at']
+
+    def get_user_reaction(self, obj):
+        request = self.context.get('request')
+        if request and request.user.is_authenticated:
+            return obj.get_user_reaction(request.user)
+        return None
+
+    def get_replies_count(self, obj):
+        return obj.replies.count()
+
+    def get_can_edit(self, obj):
+        request = self.context.get('request')
+        return request and obj.can_edit(request.user)
+
+    def get_can_delete(self, obj):
+        request = self.context.get('request')
+        return request and obj.can_delete(request.user)
+
+    def validate(self, data):
+        """Валидация данных комментария."""
+        # Проверяем, что указан либо курс, либо урок, но не оба
+        course = data.get('course')
+        lesson = data.get('lesson')
+
+        if not course and not lesson:
+            raise serializers.ValidationError("Необходимо указать курс или урок для комментария")
+
+        if course and lesson:
+            raise serializers.ValidationError("Комментарий может относиться только к курсу ИЛИ уроку")
+
+        return data
+
+
+class CommentCreateSerializer(serializers.ModelSerializer):
+    """
+    Сериализатор для создания комментариев.
+    """
+    class Meta:
+        model = Comment
+        fields = ['course', 'lesson', 'content', 'parent', 'attachments']
+
+    def validate(self, data):
+        """Валидация данных при создании комментария."""
+        # Проверяем, что указан либо курс, либо урок, но не оба
+        course = data.get('course')
+        lesson = data.get('lesson')
+
+        if not course and not lesson:
+            raise serializers.ValidationError("Необходимо указать курс или урок для комментария")
+
+        if course and lesson:
+            raise serializers.ValidationError("Комментарий может относиться только к курсу ИЛИ уроку")
+
+        # Если указан parent, проверяем что он существует и относится к тому же объекту
+        parent = data.get('parent')
+        if parent:
+            if course and parent.course != course:
+                raise serializers.ValidationError("Родительский комментарий должен относиться к тому же курсу")
+            if lesson and parent.lesson != lesson:
+                raise serializers.ValidationError("Родительский комментарий должен относиться к тому же уроку")
+
+        return data
+
+
+class RatingSerializer(serializers.ModelSerializer):
+    """
+    Сериализатор для оценок курсов.
+    """
+    user_name = serializers.CharField(source='user.get_full_name', read_only=True)
+    user_avatar = serializers.CharField(source='user.profile.avatar', read_only=True)
+    pet_name = serializers.CharField(source='pet.name', read_only=True)
+    can_edit = serializers.SerializerMethodField()
+    can_delete = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Rating
+        fields = [
+            'id', 'user', 'user_name', 'user_avatar', 'course', 'pet', 'pet_name',
+            'rating', 'review', 'is_approved', 'can_edit', 'can_delete',
+            'created_at', 'updated_at'
+        ]
+        read_only_fields = ['id', 'user', 'created_at', 'updated_at']
+
+    def get_can_edit(self, obj):
+        request = self.context.get('request')
+        return request and obj.can_edit(request.user)
+
+    def get_can_delete(self, obj):
+        request = self.context.get('request')
+        return request and obj.can_delete(request.user)
+
+
+class RatingCreateSerializer(serializers.ModelSerializer):
+    """
+    Сериализатор для создания оценок курсов.
+    """
+    class Meta:
+        model = Rating
+        fields = ['course', 'pet', 'rating', 'review']
+
+    def validate_rating(self, value):
+        """Валидация оценки (1-5 звезд)."""
+        if not (1 <= value <= 5):
+            raise serializers.ValidationError("Оценка должна быть от 1 до 5 звезд")
+        return value
+
+
+class CommentLikeSerializer(serializers.ModelSerializer):
+    """
+    Сериализатор для лайков комментариев.
+    """
+    class Meta:
+        model = CommentLike
+        fields = ['id', 'comment', 'user', 'is_like', 'created_at']
+        read_only_fields = ['id', 'user', 'created_at']

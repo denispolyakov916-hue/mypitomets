@@ -15,6 +15,8 @@
  *   /cart             - Корзина покупок
  *   /checkout         - Единый checkout (товары + курсы)
  *   /courses          - Каталог курсов
+ *   /training/courses/:id/learn - Страница обучения курсу
+ *   /training/lessons/:id - Страница урока
  *   /profile          - Профиль пользователя
  * 
  * Защищённые маршруты:
@@ -22,14 +24,17 @@
  *   требуют аутентификации (JWT токен)
  */
 
-import React from 'react'
+import React, { Suspense, lazy } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 
 // Компоненты Layout
 import Layout from './components/Layout'
 import PrivateRoute from './components/PrivateRoute'
 
-// Компоненты страниц
+// Скелетоны для ленивой загрузки
+import { CourseLearningPageSkeleton, LessonPageSkeleton } from './components/Skeletons'
+
+// Компоненты страниц (синхронные - критичные для первой загрузки)
 import Home from './pages/Home'
 import AuthModal from './pages/Auth/AuthModal'
 import Activate from './pages/Auth/Activate'
@@ -49,6 +54,10 @@ import Settings from './pages/Dashboard/Settings'
 import HealthDiary from './pages/HealthDiary/HealthDiary'
 import Orders from './pages/Orders/Orders'
 import OrderDetail from './pages/Orders/OrderDetail'
+
+// Ленивая загрузка тяжёлых страниц обучения
+const CourseLearningPage = lazy(() => import('./pages/Training/Learning/CourseLearningPage'))
+const LessonPage = lazy(() => import('./pages/Training/Learning/LessonPage'))
 
 // Хранилище для состояния аутентификации
 import { useAuthStore } from './store/authStore'
@@ -113,6 +122,24 @@ function App() {
 
           {/* Дневник здоровья */}
           <Route path="/health-diary" element={<HealthDiary />} />
+
+          {/* Система обучения (ленивая загрузка) */}
+          <Route 
+            path="/training/courses/:courseId/learn" 
+            element={
+              <Suspense fallback={<CourseLearningPageSkeleton />}>
+                <CourseLearningPage />
+              </Suspense>
+            } 
+          />
+          <Route 
+            path="/training/lessons/:lessonId" 
+            element={
+              <Suspense fallback={<LessonPageSkeleton />}>
+                <LessonPage />
+              </Suspense>
+            } 
+          />
         </Route>
         
         {/* Fallback - Редирект на главную */}

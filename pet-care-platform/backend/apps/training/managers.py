@@ -28,12 +28,12 @@ class CourseQuerySet(models.QuerySet):
         """
         return self.annotate(
             _avg_rating=Avg(
-                'reviews__rating',
-                filter=Q(reviews__is_approved=True)
+                'ratings__rating',
+                filter=Q(ratings__is_approved=True)
             ),
             _reviews_count=Count(
-                'reviews',
-                filter=Q(reviews__is_approved=True)
+                'ratings',
+                filter=Q(ratings__is_approved=True)
             )
         )
     
@@ -253,4 +253,169 @@ class CourseManager(models.Manager):
             QuerySet: Оптимизированный QuerySet для каталога
         """
         return self.get_queryset().active().with_ratings()
+
+    def get_personalized_for_pet(self, pet, limit=10):
+        """
+        Получить персонализированные рекомендации курсов для питомца.
+
+        Args:
+            pet: объект Pet
+            limit: максимальное количество курсов
+
+        Returns:
+            QuerySet с аннотированными курсами
+        """
+        # Базовый QuerySet
+        queryset = self.catalog()
+
+        # Фильтрация по базовым характеристикам
+        if pet.species in ['dog', 'cat']:
+            queryset = queryset.filter(pet_type__in=[pet.species, 'all'])
+
+        # Уровень сложности по опыту
+        if pet.training_experience:
+            if pet.training_experience == 'none':
+                queryset = queryset.filter(level='beginner')
+            elif pet.training_experience == 'basic':
+                queryset = queryset.filter(level__in=['beginner', 'intermediate'])
+            elif pet.training_experience == 'intermediate':
+                queryset = queryset.filter(level__in=['intermediate', 'advanced'])
+
+        # Сортировка по релевантности (в будущем можно улучшить)
+        queryset = queryset.order_by('-created_at')
+
+        return queryset[:limit]
+
+    def filter_by_pet_characteristics(self, pet, queryset=None):
+        """
+        Фильтровать курсы по характеристикам питомца.
+
+        Args:
+            pet: объект Pet
+            queryset: базовый QuerySet (опционально)
+
+        Returns:
+            QuerySet отфильтрованный по характеристикам
+        """
+        if queryset is None:
+            queryset = self.catalog()
+
+        # Фильтр по типу питомца
+        if pet.species in ['dog', 'cat']:
+            queryset = queryset.filter(pet_type__in=[pet.species, 'all'])
+
+        # Фильтр по поведению
+        if pet.behavior_type and pet.behavior_type != '':
+            queryset = queryset.filter(
+                Q(recommended_behavior_types__contains=[pet.behavior_type]) |
+                Q(recommended_behavior_types__len=0)  # Курсы без специфики поведения
+            )
+
+        # Фильтр по активности
+        if pet.activity_level and pet.activity_level != '':
+            queryset = queryset.filter(
+                Q(recommended_activity_levels__contains=[pet.activity_level]) |
+                Q(recommended_activity_levels__len=0)
+            )
+
+        # Фильтр по социализации
+        if pet.social_level and pet.social_level != '':
+            queryset = queryset.filter(
+                Q(recommended_social_levels__contains=[pet.social_level]) |
+                Q(recommended_social_levels__len=0)
+            )
+
+        # Фильтр по опыту дрессировки
+        if pet.training_experience and pet.training_experience != '':
+            experience_levels = ['none', 'basic', 'intermediate', 'advanced', 'professional']
+            pet_level_index = experience_levels.index(pet.training_experience)
+
+            # Курсы с подходящим минимальным уровнем опыта
+            suitable_levels = []
+            if pet_level_index >= 0:  # none
+                suitable_levels.append('none')
+            if pet_level_index >= 1:  # basic
+                suitable_levels.append('basic')
+            if pet_level_index >= 2:  # intermediate
+                suitable_levels.append('intermediate')
+            if pet_level_index >= 3:  # advanced
+                suitable_levels.append('advanced')
+            if pet_level_index >= 4:  # professional
+                suitable_levels.append('professional')
+
+            queryset = queryset.filter(min_training_experience__in=suitable_levels)
+
+        # Фильтр по здоровью (исключаем несовместимые)
+        if pet.health_issues:
+            # Курсы которые либо совместимы с проблемами здоровья, либо не имеют специфики
+            queryset = queryset.filter(
+                Q(compatible_health_issues__overlap=pet.health_issues) |
+                Q(compatible_health_issues__len=0)
+            )
+
+        return queryset
+
+    def get_recommended_for_pet_problems(self, pet, limit=5):
+        """
+        Получить курсы, которые помогают решить проблемы питомца.
+
+        Args:
+            pet: объект Pet
+            limit: максимальное количество курсов
+
+        Returns:
+            QuerySet курсов для решения проблем
+        """
+        queryset = self.catalog()
+
+        filters = Q()
+
+        # Курсы для поведенческих проблем
+        if pet.behavioral_problems:
+            filters |= Q(addresses_behavioral_problems__overlap=pet.behavioral_problems)
+
+        # Курсы для особых потребностей
+        if pet.special_needs:
+            filters |= Q(addresses_special_needs__overlap=pet.special_needs)
+
+        # Курсы для проблем здоровья
+        if pet.health_issues:
+            filters |= Q(compatible_health_issues__overlap=pet.health_issues)
+
+        if filters:
+            queryset = queryset.filter(filters)
+
+            # Приоритет по типу питомца
+            if pet.species in ['dog', 'cat']:
+                queryset = queryset.filter(pet_type__in=[pet.species, 'all'])
+
+            return queryset.order_by('-created_at')[:limit]
+
+        return self.get_queryset().none()
+
+    def get_by_pet_activity_preferences(self, pet, limit=5):
+        """
+        Получить курсы по предпочтениям активностей питомца.
+
+        Args:
+            pet: объект Pet
+            limit: максимальное количество курсов
+
+        Returns:
+            QuerySet курсов по предпочтениям
+        """
+        queryset = self.catalog()
+
+        if pet.preferred_activities:
+            queryset = queryset.filter(
+                suitable_activities__overlap=pet.preferred_activities
+            )
+
+            # Приоритет по типу питомца
+            if pet.species in ['dog', 'cat']:
+                queryset = queryset.filter(pet_type__in=[pet.species, 'all'])
+
+            return queryset.order_by('-created_at')[:limit]
+
+        return self.get_queryset().none()
 

@@ -21,6 +21,7 @@ import { usePets } from '../../hooks/usePets'
 import { PageLoader, ButtonLoader } from '../../components/Loader'
 import Rating from '../../components/Rating'
 import ReviewsSection from '../../components/ReviewsSection'
+import { CoursePersonalizationWidget } from '../../components/Learning'
 
 /**
  * Форматирование цены
@@ -285,9 +286,13 @@ function CourseDetail() {
       setIsOwned(true)
       setShowFreeEnrollModal(false)
       success(
-        `Вы успешно записались на курс "${course.title}"! Перейдите в профиль для начала обучения.`,
-        6000
+        `Вы успешно записались на курс "${course.title}"!`,
+        4000
       )
+      // Автоматический переход к обучению через 2 секунды
+      setTimeout(() => {
+        navigate(`/training/courses/${course.id}/learn`)
+      }, 2000)
     } catch (err) {
       const errorMessage = err.response?.data?.error || 
                           err.response?.data?.message || 
@@ -541,7 +546,16 @@ function CourseDetail() {
               </div>
             )}
           </div>
-          
+
+          {/* Персонализированная информация */}
+          {course.personalization && selectedPet && (
+            <CoursePersonalizationWidget
+              personalization={course.personalization}
+              petInfo={selectedPet}
+              className="mb-6"
+            />
+          )}
+
           {/* Требования */}
           {course.requirements && (
             <div className="card">
@@ -708,7 +722,20 @@ function CourseDetail() {
                     )}
                   </button>
                 )}
-                
+
+                {/* Кнопка обучения для записанных пользователей */}
+                {isOwned && (
+                  <button
+                    onClick={() => navigate(`/training/courses/${course.id}/learn`)}
+                    className="w-full py-3 px-4 rounded-lg font-medium transition-colors flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white"
+                  >
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h1m4 0h1m-6 4h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                    </svg>
+                    🎓 Начать обучение
+                  </button>
+                )}
+
                 {/* Информация о гарантиях */}
                 <div className="pt-4 border-t border-gray-200">
                   <div className="space-y-2 text-xs text-gray-500">

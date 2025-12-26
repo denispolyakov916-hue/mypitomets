@@ -22,6 +22,8 @@
 from django.db import models
 from django.conf import settings
 from decimal import Decimal
+from django.utils import timezone
+from core.utils import generate_uuid7
 from .managers import CourseManager
 
 
@@ -178,17 +180,21 @@ class Course(models.Model):
         verbose_name='Время прохождения',
         help_text='Оценка времени для прохождения курса (например, "2-3 недели", "1 месяц")'
     )
+    # Автоматически рассчитывается на основе уроков
     lessons_count = models.PositiveIntegerField(
         default=0,
-        verbose_name='Количество уроков'
+        verbose_name='Количество уроков',
+        help_text='Автоматически рассчитывается на основе связанных уроков'
     )
     videos_count = models.PositiveIntegerField(
         default=0,
-        verbose_name='Количество видео'
+        verbose_name='Количество видео',
+        help_text='Автоматически рассчитывается на основе видео-уроков'
     )
     materials_count = models.PositiveIntegerField(
         default=0,
-        verbose_name='Количество материалов'
+        verbose_name='Количество материалов',
+        help_text='Автоматически рассчитывается на основе дополнительных материалов'
     )
     instructor_name = models.CharField(
         max_length=200,
@@ -206,6 +212,80 @@ class Course(models.Model):
         null=True,
         verbose_name='Требования',
         help_text='Что необходимо знать или иметь перед началом курса'
+    )
+
+    # ===== ПЕРСОНАЛИЗАЦИЯ ПО ХАРАКТЕРИСТИКАМ ПИТОМЦА =====
+
+    # Рекомендуемые типы поведения питомца
+    recommended_behavior_types = models.JSONField(
+        default=list,
+        blank=True,
+        verbose_name='Рекомендуемые типы поведения',
+        help_text='Список типов поведения, для которых подходит курс (calm, active, aggressive, shy, playful)'
+    )
+
+    # Рекомендуемые уровни активности
+    recommended_activity_levels = models.JSONField(
+        default=list,
+        blank=True,
+        verbose_name='Рекомендуемые уровни активности',
+        help_text='Список уровней активности, для которых подходит курс (low, medium, high)'
+    )
+
+    # Рекомендуемые уровни социализации
+    recommended_social_levels = models.JSONField(
+        default=list,
+        blank=True,
+        verbose_name='Рекомендуемые уровни социализации',
+        help_text='Список уровней социализации, для которых подходит курс (home_only, street, social, mixed)'
+    )
+
+    # Минимальный опыт дрессировки
+    min_training_experience = models.CharField(
+        max_length=20,
+        choices=[
+            ('none', 'Без опыта'),
+            ('basic', 'Базовый'),
+            ('intermediate', 'Средний'),
+            ('advanced', 'Продвинутый'),
+            ('professional', 'Профессиональный'),
+        ],
+        blank=True,
+        null=True,
+        verbose_name='Минимальный опыт дрессировки',
+        help_text='Минимальный уровень опыта дрессировки для прохождения курса'
+    )
+
+    # Проблемы здоровья, с которыми совместим курс
+    compatible_health_issues = models.JSONField(
+        default=list,
+        blank=True,
+        verbose_name='Совместимые проблемы здоровья',
+        help_text='Список проблем здоровья, с которыми совместим курс'
+    )
+
+    # Особые потребности, которые учитывает курс
+    addresses_special_needs = models.JSONField(
+        default=list,
+        blank=True,
+        verbose_name='Учитываемые особые потребности',
+        help_text='Список особых потребностей, которые учитывает курс'
+    )
+
+    # Предпочитаемые активности питомца
+    suitable_activities = models.JSONField(
+        default=list,
+        blank=True,
+        verbose_name='Подходящие активности',
+        help_text='Виды активностей питомца, для которых подходит курс'
+    )
+
+    # Поведенческие проблемы, которые решает курс
+    addresses_behavioral_problems = models.JSONField(
+        default=list,
+        blank=True,
+        verbose_name='Решаемые поведенческие проблемы',
+        help_text='Список поведенческих проблем, которые решает курс'
     )
 
     # Популярность (количество покупок)
@@ -267,40 +347,249 @@ class Course(models.Model):
     def get_average_rating(self):
         """
         Средний рейтинг курса.
-        
+
         Оптимизация: если объект имеет аннотированное поле _avg_rating,
         используем его вместо дополнительного запроса к БД.
         """
         # Используем предзагруженное значение если доступно
         if hasattr(self, '_avg_rating') and self._avg_rating is not None:
             return float(self._avg_rating)
-        
+
         # Fallback на запрос к БД (для единичных объектов)
-        from apps.reviews.models import Review
         from django.db.models import Avg
-        result = Review.objects.filter(
-            course=self,
-            is_approved=True
-        ).aggregate(avg=Avg('rating'))
+        result = self.ratings.filter(is_approved=True).aggregate(avg=Avg('rating'))
         return result['avg'] or 0.0
     
     def get_reviews_count(self):
         """
         Количество одобренных отзывов.
-        
+
         Оптимизация: если объект имеет аннотированное поле _reviews_count,
         используем его вместо дополнительного запроса к БД.
         """
         # Используем предзагруженное значение если доступно
         if hasattr(self, '_reviews_count') and self._reviews_count is not None:
             return self._reviews_count
-        
+
         # Fallback на запрос к БД (для единичных объектов)
-        from apps.reviews.models import Review
-        return Review.objects.filter(
-            course=self,
-            is_approved=True
-        ).count()
+        return self.ratings.filter(is_approved=True).count()
+
+    def is_compatible_with_pet(self, pet):
+        """
+        Проверяет совместимость курса с питомцем на основе его характеристик.
+
+        Args:
+            pet: объект Pet с расширенным PetID
+
+        Returns:
+            dict: {
+                'compatible': bool,
+                'score': int (0-100),
+                'reasons': list of str
+            }
+        """
+        score = 50  # Базовый балл
+        reasons = []
+
+        # Проверяем тип поведения
+        if self.recommended_behavior_types and pet.behavior_type:
+            if pet.behavior_type in self.recommended_behavior_types:
+                score += 20
+                reasons.append(f"Подходит для {pet.get_behavior_type_display()}")
+            else:
+                score -= 10
+                reasons.append(f"Не оптимально для {pet.get_behavior_type_display()}")
+
+        # Проверяем уровень активности
+        if self.recommended_activity_levels and pet.activity_level:
+            if pet.activity_level in self.recommended_activity_levels:
+                score += 15
+                reasons.append(f"Соответствует уровню активности {pet.get_activity_level_display()}")
+            else:
+                score -= 8
+                reasons.append(f"Не соответствует уровню активности {pet.get_activity_level_display()}")
+
+        # Проверяем уровень социализации
+        if self.recommended_social_levels and pet.social_level:
+            if pet.social_level in self.recommended_social_levels:
+                score += 15
+                reasons.append(f"Подходит для уровня социализации {pet.get_social_level_display()}")
+            else:
+                score -= 8
+                reasons.append(f"Не подходит для уровня социализации {pet.get_social_level_display()}")
+
+        # Проверяем опыт дрессировки
+        if self.min_training_experience and pet.training_experience:
+            experience_levels = ['none', 'basic', 'intermediate', 'advanced', 'professional']
+            min_level_index = experience_levels.index(self.min_training_experience)
+            pet_level_index = experience_levels.index(pet.training_experience)
+
+            if pet_level_index >= min_level_index:
+                score += 10
+                reasons.append("Достаточный опыт дрессировки")
+            else:
+                score -= 15
+                reasons.append("Требуется больше опыта дрессировки")
+
+        # Проверяем проблемы здоровья
+        if self.compatible_health_issues and pet.health_issues:
+            matching_issues = set(self.compatible_health_issues) & set(pet.health_issues)
+            if matching_issues:
+                score += 10
+                reasons.append(f"Учитывает проблемы здоровья: {', '.join(matching_issues)}")
+            else:
+                score -= 5
+                reasons.append("Не учитывает текущие проблемы здоровья")
+
+        # Проверяем поведенческие проблемы
+        if self.addresses_behavioral_problems and pet.behavioral_problems:
+            matching_problems = set(self.addresses_behavioral_problems) & set(pet.behavioral_problems)
+            if matching_problems:
+                score += 20
+                reasons.append(f"Решает проблемы поведения: {', '.join(matching_problems)}")
+
+        # Проверяем особые потребности
+        if self.addresses_special_needs and pet.special_needs:
+            matching_needs = set(self.addresses_special_needs) & set(pet.special_needs)
+            if matching_needs:
+                score += 15
+                reasons.append(f"Учитывает особые потребности: {', '.join(matching_needs)}")
+
+        # Проверяем предпочтительные активности
+        if self.suitable_activities and pet.preferred_activities:
+            matching_activities = set(self.suitable_activities) & set(pet.preferred_activities)
+            if matching_activities:
+                score += 10
+                reasons.append(f"Соответствует предпочтениям: {', '.join(matching_activities)}")
+
+        # Ограничиваем балл диапазоном 0-100
+        score = max(0, min(100, score))
+
+        return {
+            'compatible': score >= 60,
+            'score': score,
+            'reasons': reasons
+        }
+
+    def get_personalized_recommendations(self, pet):
+        """
+        Получает персонализированные рекомендации для питомца.
+
+        Args:
+            pet: объект Pet
+
+        Returns:
+            dict: рекомендации по прохождению курса
+        """
+        compatibility = self.is_compatible_with_pet(pet)
+
+        recommendations = {
+            'compatibility': compatibility,
+            'difficulty_level': self._get_difficulty_for_pet(pet),
+            'estimated_time': self._get_estimated_time_for_pet(pet),
+            'tips': self._get_personalized_tips(pet),
+            'warnings': self._get_warnings_for_pet(pet)
+        }
+
+        return recommendations
+
+    def _get_difficulty_for_pet(self, pet):
+        """Определяет уровень сложности курса для конкретного питомца."""
+        if not pet.training_experience:
+            return 'unknown'
+
+        experience_levels = ['none', 'basic', 'intermediate', 'advanced', 'professional']
+        pet_level_index = experience_levels.index(pet.training_experience)
+        course_level_index = ['beginner', 'intermediate', 'advanced', 'expert'].index(self.level)
+
+        if pet_level_index >= course_level_index:
+            return 'suitable'
+        elif pet_level_index == course_level_index - 1:
+            return 'challenging'
+        else:
+            return 'difficult'
+
+    def _get_estimated_time_for_pet(self, pet):
+        """Оценивает время прохождения для конкретного питомца."""
+        base_time = self.duration
+
+        # Корректировка по уровню активности
+        if pet.activity_level == 'high':
+            base_time = int(base_time * 1.2)  # Активные питомцы быстрее обучаются
+        elif pet.activity_level == 'low':
+            base_time = int(base_time * 1.5)  # Менее активные нуждаются в большем времени
+
+        # Корректировка по опыту
+        if pet.training_experience == 'none':
+            base_time = int(base_time * 1.8)
+        elif pet.training_experience == 'professional':
+            base_time = int(base_time * 0.8)
+
+        return base_time
+
+    def _get_personalized_tips(self, pet):
+        """Получает персонализированные советы."""
+        tips = []
+
+        if pet.behavior_type == 'shy':
+            tips.append("Начинайте обучение в спокойной обстановке, постепенно увеличивая интенсивность")
+        elif pet.behavior_type == 'aggressive':
+            tips.append("Обеспечьте безопасность и используйте положительное подкрепление")
+        elif pet.behavior_type == 'active':
+            tips.append("Чередуйте обучение с активными играми для поддержания внимания")
+
+        if pet.activity_level == 'low':
+            tips.append("Делайте частые перерывы и используйте мотивацию")
+        elif pet.activity_level == 'high':
+            tips.append("Поддерживайте темп обучения, чередуя активности")
+
+        return tips
+
+    def _get_warnings_for_pet(self, pet):
+        """Получает предупреждения для конкретного питомца."""
+        warnings = []
+
+        if pet.health_issues:
+            health_relevant = set(self.compatible_health_issues or []) & set(pet.health_issues)
+            if not health_relevant:
+                warnings.append("Проконсультируйтесь с ветеринаром перед началом обучения")
+
+        if pet.special_needs and not self.addresses_special_needs:
+            warnings.append("Возможно, потребуется адаптация методов обучения")
+
+        if pet.behavioral_problems and not self.addresses_behavioral_problems:
+            warnings.append("Курс может не решать текущие поведенческие проблемы")
+
+        return warnings
+
+    def update_counts(self):
+        """
+        Обновить счетчики уроков, видео и материалов на основе связанных уроков.
+        """
+        active_lessons = self.lessons.filter(is_active=True)
+
+        self.lessons_count = active_lessons.count()
+        self.videos_count = active_lessons.filter(content_type='video').count()
+
+        # Подсчет дополнительных материалов
+        materials_count = 0
+        for lesson in active_lessons:
+            materials_count += len(lesson.additional_materials) if lesson.additional_materials else 0
+
+        self.materials_count = materials_count
+        self.save()
+
+    def get_lessons_ordered(self):
+        """Получить уроки курса в правильном порядке."""
+        return self.lessons.filter(is_active=True).order_by('order')
+
+    def get_first_lesson(self):
+        """Получить первый урок курса."""
+        return self.get_lessons_ordered().first()
+
+    def get_lesson_by_order(self, order):
+        """Получить урок по порядковому номеру."""
+        return self.lessons.filter(order=order, is_active=True).first()
     
     def to_dict(self, detailed=False):
         """Сериализация для API."""
@@ -325,6 +614,19 @@ class Course(models.Model):
         }
         
         if detailed:
+            # Получаем уроки для детального просмотра
+            lessons_data = []
+            for lesson in self.get_lessons_ordered():
+                lessons_data.append({
+                    'id': lesson.id,
+                    'title': lesson.title,
+                    'content_type': lesson.content_type,
+                    'content_type_display': lesson.get_content_type_display_name(),
+                    'duration': lesson.duration,
+                    'order': lesson.order,
+                    'is_required': lesson.is_required,
+                })
+
             data.update({
                 'detailed_description': self.detailed_description,
                 'what_you_will_learn': self.what_you_will_learn,
@@ -337,6 +639,7 @@ class Course(models.Model):
                 'instructor_bio': self.instructor_bio,
                 'requirements': self.requirements,
                 'additional_images': self.additional_images,
+                'lessons': lessons_data,
             })
         
         return data
@@ -405,3 +708,716 @@ class UserCourse(models.Model):
                 'species': self.pet.species
             }
         return data
+
+
+class Lesson(models.Model):
+    """
+    Модель урока курса.
+
+    Урок - это отдельный элемент обучения в рамках курса.
+    Поддерживает различные форматы контента: видео, текст, интерактив, смешанный.
+    """
+
+    CONTENT_TYPE_CHOICES = [
+        ('video', 'Видео'),
+        ('text', 'Текст'),
+        ('interactive', 'Интерактивный'),
+        ('mixed', 'Смешанный'),
+        ('webinar', 'Вебинар'),
+        ('workshop', 'Мастер-класс'),
+    ]
+
+    id = models.AutoField(primary_key=True)
+
+    course = models.ForeignKey(
+        Course,
+        on_delete=models.CASCADE,
+        related_name='lessons',
+        verbose_name='Курс'
+    )
+
+    title = models.CharField(
+        max_length=200,
+        verbose_name='Название урока'
+    )
+
+    content_type = models.CharField(
+        max_length=20,
+        choices=CONTENT_TYPE_CHOICES,
+        default='video',
+        verbose_name='Тип контента'
+    )
+
+    # Структура контента зависит от типа (JSON поле для гибкости)
+    content = models.JSONField(
+        default=dict,
+        verbose_name='Контент урока',
+        help_text='JSON структура с контентом урока (зависит от типа)'
+    )
+
+    # Метаданные урока
+    duration = models.PositiveIntegerField(
+        default=0,
+        help_text='Длительность в минутах',
+        verbose_name='Длительность'
+    )
+
+    order = models.PositiveIntegerField(
+        default=1,
+        verbose_name='Порядок в курсе',
+        help_text='Порядковый номер урока в курсе'
+    )
+
+    is_required = models.BooleanField(
+        default=True,
+        verbose_name='Обязательный урок',
+        help_text='Должен ли быть пройден для завершения курса'
+    )
+
+    # Дополнительные материалы
+    additional_materials = models.JSONField(
+        default=list,
+        verbose_name='Дополнительные материалы',
+        help_text='Список дополнительных материалов (PDF, ссылки и т.д.)'
+    )
+
+    is_active = models.BooleanField(
+        default=True,
+        verbose_name='Активен'
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'lessons'
+        verbose_name = 'Урок'
+        verbose_name_plural = 'Уроки'
+        ordering = ['course', 'order']
+        unique_together = [['course', 'order']]
+        indexes = [
+            models.Index(fields=['course', 'order']),
+            models.Index(fields=['content_type']),
+        ]
+
+    def __str__(self):
+        return f"{self.course.title} - Урок {self.order}: {self.title}"
+
+    def get_content_type_display_name(self):
+        """Получить название типа контента."""
+        return dict(self.CONTENT_TYPE_CHOICES).get(self.content_type, self.content_type)
+
+
+class UserCourseProgress(models.Model):
+    """
+    Прогресс пользователя по курсу.
+
+    Расширенная модель прогресса с привязкой к питомцу.
+    Отслеживает детальный прогресс прохождения курса.
+    """
+
+    STATUS_CHOICES = [
+        ('not_started', 'Не начат'),
+        ('in_progress', 'В процессе'),
+        ('completed', 'Завершён'),
+        ('paused', 'Приостановлен'),
+    ]
+
+    id = models.CharField(
+        primary_key=True,
+        max_length=36,
+        default=generate_uuid7,
+        editable=False,
+        help_text="UUIDv7 идентификатор прогресса"
+    )
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='course_progress',
+        verbose_name='Пользователь'
+    )
+
+    course = models.ForeignKey(
+        Course,
+        on_delete=models.CASCADE,
+        related_name='user_progress',
+        verbose_name='Курс'
+    )
+
+    # Привязка к конкретному питомцу для персонализации
+    pet = models.ForeignKey(
+        'pets.Pet',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='course_progress',
+        verbose_name='Питомец',
+        help_text='Питомец, для которого проходит курс'
+    )
+
+    status = models.CharField(
+        max_length=15,
+        choices=STATUS_CHOICES,
+        default='not_started',
+        verbose_name='Статус'
+    )
+
+    progress_percent = models.PositiveIntegerField(
+        default=0,
+        verbose_name='Процент выполнения',
+        help_text='Процент завершения курса (0-100)'
+    )
+
+    # Временные метки
+    started_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name='Дата начала'
+    )
+
+    last_activity_at = models.DateTimeField(
+        auto_now=True,
+        verbose_name='Последняя активность'
+    )
+
+    completed_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name='Дата завершения'
+    )
+
+    # Статистика прохождения
+    total_time_spent = models.PositiveIntegerField(
+        default=0,
+        verbose_name='Общее время обучения',
+        help_text='Время в минутах, потраченное на курс'
+    )
+
+    completed_lessons_count = models.PositiveIntegerField(
+        default=0,
+        verbose_name='Завершённых уроков'
+    )
+
+    # Настройки пользователя
+    notifications_enabled = models.BooleanField(
+        default=True,
+        verbose_name='Уведомления включены'
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'user_course_progress'
+        verbose_name = 'Прогресс по курсу'
+        verbose_name_plural = 'Прогресс по курсам'
+        unique_together = [['user', 'course', 'pet']]
+        ordering = ['-last_activity_at']
+        indexes = [
+            models.Index(fields=['user', 'status']),
+            models.Index(fields=['course', 'status']),
+            models.Index(fields=['pet', 'status']),
+            models.Index(fields=['status', 'progress_percent']),
+        ]
+
+    def __str__(self):
+        pet_name = f" ({self.pet.name})" if self.pet else ""
+        return f"{self.user.email} - {self.course.title}{pet_name}"
+
+    def update_progress(self):
+        """Обновить общий прогресс курса на основе уроков."""
+        from django.db.models import Count, Q
+
+        total_lessons = self.course.lessons.filter(is_active=True).count()
+        if total_lessons == 0:
+            self.progress_percent = 0
+            return
+
+        completed_lessons = self.lesson_progress.filter(
+            status='completed'
+        ).count()
+
+        required_lessons = self.course.lessons.filter(
+            is_active=True, is_required=True
+        ).count()
+
+        if required_lessons > 0:
+            completed_required = self.lesson_progress.filter(
+                status='completed',
+                lesson__is_required=True
+            ).count()
+            self.progress_percent = min(100, int((completed_required / required_lessons) * 100))
+        else:
+            self.progress_percent = min(100, int((completed_lessons / total_lessons) * 100))
+
+        # Обновляем статус
+        if self.progress_percent == 100 and self.status != 'completed':
+            self.status = 'completed'
+            self.completed_at = timezone.now()
+        elif self.progress_percent > 0 and self.status == 'not_started':
+            self.status = 'in_progress'
+            if not self.started_at:
+                self.started_at = timezone.now()
+
+        self.save()
+
+    def get_next_lesson(self):
+        """Получить следующий урок для прохождения."""
+        completed_lesson_ids = self.lesson_progress.filter(
+            status='completed'
+        ).values_list('lesson_id', flat=True)
+
+        return self.course.lessons.filter(
+            is_active=True
+        ).exclude(
+            id__in=completed_lesson_ids
+        ).order_by('order').first()
+
+
+class UserLessonProgress(models.Model):
+    """
+    Прогресс пользователя по конкретному уроку.
+
+    Детальный трекинг прохождения каждого урока.
+    """
+
+    STATUS_CHOICES = [
+        ('not_started', 'Не начат'),
+        ('in_progress', 'В процессе'),
+        ('viewed', 'Просмотрен'),
+        ('completed', 'Завершён'),
+        ('skipped', 'Пропущен'),
+    ]
+
+    id = models.CharField(
+        primary_key=True,
+        max_length=36,
+        default=generate_uuid7,
+        editable=False,
+        help_text="UUIDv7 идентификатор прогресса урока"
+    )
+
+    course_progress = models.ForeignKey(
+        UserCourseProgress,
+        on_delete=models.CASCADE,
+        related_name='lesson_progress',
+        verbose_name='Прогресс курса'
+    )
+
+    lesson = models.ForeignKey(
+        Lesson,
+        on_delete=models.CASCADE,
+        related_name='user_progress',
+        verbose_name='Урок'
+    )
+
+    status = models.CharField(
+        max_length=15,
+        choices=STATUS_CHOICES,
+        default='not_started',
+        verbose_name='Статус'
+    )
+
+    # Временные метки
+    started_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name='Время начала'
+    )
+
+    completed_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name='Время завершения'
+    )
+
+    # Статистика просмотра
+    time_spent = models.PositiveIntegerField(
+        default=0,
+        verbose_name='Время просмотра',
+        help_text='Время в секундах, потраченное на урок'
+    )
+
+    # Для интерактивных уроков
+    attempts_count = models.PositiveIntegerField(
+        default=0,
+        verbose_name='Количество попыток',
+        help_text='Количество попыток выполнения интерактивных заданий'
+    )
+
+    success_rate = models.PositiveIntegerField(
+        default=0,
+        verbose_name='Процент успешности',
+        help_text='Процент успешного выполнения (0-100)'
+    )
+
+    # Пользовательские заметки
+    notes = models.TextField(
+        blank=True,
+        null=True,
+        verbose_name='Заметки пользователя'
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'user_lesson_progress'
+        verbose_name = 'Прогресс по уроку'
+        verbose_name_plural = 'Прогресс по урокам'
+        unique_together = [['course_progress', 'lesson']]
+        ordering = ['lesson__order']
+        indexes = [
+            models.Index(fields=['course_progress', 'status']),
+            models.Index(fields=['lesson', 'status']),
+            models.Index(fields=['status']),
+        ]
+
+    def __str__(self):
+        return f"{self.course_progress} - {self.lesson.title}"
+
+    def mark_completed(self, time_spent=None):
+        """Отметить урок как завершённый."""
+        self.status = 'completed'
+        self.completed_at = timezone.now()
+        if time_spent:
+            self.time_spent = time_spent
+        self.save()
+
+        # Обновить общий прогресс курса
+        self.course_progress.update_progress()
+
+
+class Comment(models.Model):
+    """
+    Комментарии к урокам и курсам.
+
+    Поддерживает древовидную структуру для ответов на комментарии.
+    """
+
+    id = models.CharField(
+        primary_key=True,
+        max_length=36,
+        default=generate_uuid7,
+        editable=False,
+        help_text="UUIDv7 идентификатор комментария"
+    )
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='comments',
+        verbose_name='Автор'
+    )
+
+    # Комментарий может относиться либо к курсу, либо к уроку
+    course = models.ForeignKey(
+        Course,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='comments',
+        verbose_name='Курс'
+    )
+
+    lesson = models.ForeignKey(
+        Lesson,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='comments',
+        verbose_name='Урок'
+    )
+
+    content = models.TextField(
+        verbose_name='Текст комментария'
+    )
+
+    # Древовидная структура для ответов
+    parent = models.ForeignKey(
+        'self',
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='replies',
+        verbose_name='Родительский комментарий'
+    )
+
+    # Вложения
+    attachments = models.JSONField(
+        default=list,
+        verbose_name='Вложения',
+        help_text='Список URL вложений (фото, видео питомца и т.д.)'
+    )
+
+    # Рейтинг комментария
+    likes_count = models.PositiveIntegerField(
+        default=0,
+        verbose_name='Количество лайков'
+    )
+
+    dislikes_count = models.PositiveIntegerField(
+        default=0,
+        verbose_name='Количество дизлайков'
+    )
+
+    is_moderated = models.BooleanField(
+        default=False,
+        verbose_name='Промодерирован'
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'comments'
+        verbose_name = 'Комментарий'
+        verbose_name_plural = 'Комментарии'
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['course', '-created_at']),
+            models.Index(fields=['lesson', '-created_at']),
+            models.Index(fields=['parent', '-created_at']),
+            models.Index(fields=['user', '-created_at']),
+        ]
+
+    def __str__(self):
+        target = self.course.title if self.course else self.lesson.title
+        return f"{self.user.email} - {target}"
+
+    def get_replies(self):
+        """Получить все ответы на комментарий."""
+        return Comment.objects.filter(parent=self).order_by('created_at')
+
+    def get_user_reaction(self, user):
+        """
+        Получить реакцию пользователя на комментарий.
+
+        Returns:
+            'like', 'dislike' или None
+        """
+        try:
+            like = CommentLike.objects.get(comment=self, user=user)
+            return 'like' if like.is_like else 'dislike'
+        except CommentLike.DoesNotExist:
+            return None
+
+    def add_like(self, user, is_like=True):
+        """
+        Добавить лайк/дизлайк комментарию.
+
+        Args:
+            user: пользователь
+            is_like: True для лайка, False для дизлайка
+
+        Returns:
+            tuple: (created, was_like)
+        """
+        like, created = CommentLike.objects.get_or_create(
+            comment=self,
+            user=user,
+            defaults={'is_like': is_like}
+        )
+
+        if not created:
+            # Если уже существует, обновляем
+            was_like = like.is_like
+            if like.is_like != is_like:
+                like.is_like = is_like
+                like.save()
+                # Обновляем счетчики
+                if is_like:
+                    self.likes_count += 1
+                    self.dislikes_count -= 1
+                else:
+                    self.likes_count -= 1
+                    self.dislikes_count += 1
+                self.save()
+                return False, was_like
+            # Если та же реакция, удаляем
+            else:
+                like.delete()
+                if is_like:
+                    self.likes_count -= 1
+                else:
+                    self.dislikes_count -= 1
+                self.save()
+                return False, was_like
+
+        # Новая реакция
+        if is_like:
+            self.likes_count += 1
+        else:
+            self.dislikes_count += 1
+        self.save()
+        return True, None
+
+    def can_edit(self, user):
+        """Проверяет, может ли пользователь редактировать комментарий."""
+        return self.user == user
+
+    def can_delete(self, user):
+        """Проверяет, может ли пользователь удалить комментарий."""
+        return self.user == user
+
+    def add_like(self, user):
+        """Добавить лайк от пользователя."""
+        CommentLike.objects.get_or_create(
+            comment=self,
+            user=user,
+            defaults={'is_like': True}
+        )
+        self.update_rating()
+
+    def add_dislike(self, user):
+        """Добавить дизлайк от пользователя."""
+        CommentLike.objects.get_or_create(
+            comment=self,
+            user=user,
+            defaults={'is_like': False}
+        )
+        self.update_rating()
+
+    def update_rating(self):
+        """Обновить счетчики лайков/дизлайков."""
+        self.likes_count = CommentLike.objects.filter(
+            comment=self, is_like=True
+        ).count()
+        self.dislikes_count = CommentLike.objects.filter(
+            comment=self, is_like=False
+        ).count()
+        self.save()
+
+
+class CommentLike(models.Model):
+    """
+    Лайки/дизлайки комментариев.
+    """
+
+    id = models.CharField(
+        primary_key=True,
+        max_length=36,
+        default=generate_uuid7,
+        editable=False,
+        help_text="UUIDv7 идентификатор лайка"
+    )
+
+    comment = models.ForeignKey(
+        Comment,
+        on_delete=models.CASCADE,
+        related_name='user_likes',
+        verbose_name='Комментарий'
+    )
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='comment_likes',
+        verbose_name='Пользователь'
+    )
+
+    is_like = models.BooleanField(
+        verbose_name='Лайк (True) или дизлайк (False)'
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'comment_likes'
+        verbose_name = 'Лайк комментария'
+        verbose_name_plural = 'Лайки комментариев'
+        unique_together = [['comment', 'user']]
+        indexes = [
+            models.Index(fields=['comment', 'is_like']),
+            models.Index(fields=['user', 'created_at']),
+        ]
+
+    def __str__(self):
+        action = "лайкнул" if self.is_like else "дизлайкнул"
+        return f"{self.user.email} {action} комментарий {self.comment.id}"
+
+
+class Rating(models.Model):
+    """
+    Оценки курсов пользователями.
+    """
+
+    id = models.CharField(
+        primary_key=True,
+        max_length=36,
+        default=generate_uuid7,
+        editable=False,
+        help_text="UUIDv7 идентификатор оценки"
+    )
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='course_ratings',
+        verbose_name='Пользователь'
+    )
+
+    course = models.ForeignKey(
+        Course,
+        on_delete=models.CASCADE,
+        related_name='ratings',
+        verbose_name='Курс'
+    )
+
+    rating = models.PositiveIntegerField(
+        choices=[(i, str(i)) for i in range(1, 6)],
+        verbose_name='Оценка',
+        help_text='Оценка от 1 до 5 звезд'
+    )
+
+    review = models.TextField(
+        blank=True,
+        null=True,
+        verbose_name='Отзыв',
+        help_text='Текст отзыва о курсе'
+    )
+
+    # Привязка к питомцу для контекста
+    pet = models.ForeignKey(
+        'pets.Pet',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='course_ratings',
+        verbose_name='Питомец',
+        help_text='Питомец, в контексте которого дана оценка'
+    )
+
+    is_approved = models.BooleanField(
+        default=True,
+        verbose_name='Одобрен',
+        help_text='Прошел ли модерацию'
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'course_ratings'
+        verbose_name = 'Оценка курса'
+        verbose_name_plural = 'Оценки курсов'
+        unique_together = [['user', 'course', 'pet']]
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['course', 'rating']),
+            models.Index(fields=['course', '-created_at']),
+            models.Index(fields=['user', '-created_at']),
+            models.Index(fields=['rating']),
+        ]
+
+    def __str__(self):
+        return f"{self.user.email} - {self.course.title}: {self.rating}★"
+
+    def can_edit(self, user):
+        """Проверяет, может ли пользователь редактировать оценку."""
+        return self.user == user
+
+    def can_delete(self, user):
+        """Проверяет, может ли пользователь удалить оценку."""
+        return self.user == user

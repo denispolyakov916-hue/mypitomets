@@ -38,21 +38,29 @@ export const getPet = async (petId) => {
 
 /**
  * Создание нового профиля питомца
- * 
+ *
  * @param {Object} petData - Информация о питомце
  * @param {string} petData.name - Кличка питомца (обязательно)
  * @param {string} petData.species - Вид животного (обязательно)
  * @param {string} [petData.breed] - Порода
  * @param {string} [petData.date_of_birth] - Дата рождения (YYYY-MM-DD)
  * @param {number} [petData.weight] - Вес в кг
+ * @param {string} [petData.behavior_type] - Тип поведения (для персонализации курсов)
+ * @param {string} [petData.social_level] - Уровень социализации
+ * @param {string} [petData.training_experience] - Опыт дрессировки
+ * @param {Array} [petData.special_needs] - Особые потребности
+ * @param {Array} [petData.preferred_activities] - Предпочитаемые активности
+ * @param {Array} [petData.behavioral_problems] - Поведенческие проблемы
  * @returns {Promise<Object>} Данные созданного питомца
- * 
+ *
  * @example
  *   const { pet } = await createPet({
  *     name: 'Барсик',
  *     species: 'cat',
  *     breed: 'Персидская',
- *     weight: 5.2
+ *     weight: 5.2,
+ *     behavior_type: 'calm',
+ *     social_level: 'home_only'
  *   })
  */
 export const createPet = async (petData) => {
@@ -91,7 +99,7 @@ export const deletePet = async (petId) => {
 
 /**
  * Доступные варианты видов животных для формы создания питомца
- * 
+ *
  * Соответствует SPECIES_CHOICES на бэкенде для консистентности.
  */
 export const SPECIES_OPTIONS = [
@@ -102,4 +110,47 @@ export const SPECIES_OPTIONS = [
   { value: 'fish', label: 'Рыбка' },
   { value: 'reptile', label: 'Рептилия' },
   { value: 'other', label: 'Другое' },
+]
+
+// ===== НОВЫЕ КОНСТАНТЫ ДЛЯ ПЕРСОНАЛИЗАЦИИ КУРСОВ =====
+
+/**
+ * Варианты типов поведения для персонализации курсов
+ */
+export const BEHAVIOR_TYPE_OPTIONS = [
+  { value: 'calm', label: 'Спокойный' },
+  { value: 'active', label: 'Активный' },
+  { value: 'aggressive', label: 'Агрессивный' },
+  { value: 'shy', label: 'Трусливый' },
+  { value: 'playful', label: 'Игривый' },
+]
+
+/**
+ * Варианты уровней социализации
+ */
+export const SOCIAL_LEVEL_OPTIONS = [
+  { value: 'home_only', label: 'Только домашний' },
+  { value: 'street', label: 'Уличный' },
+  { value: 'social', label: 'Социальный' },
+  { value: 'mixed', label: 'Смешанный' },
+]
+
+/**
+ * Варианты опыта дрессировки
+ */
+export const TRAINING_EXPERIENCE_OPTIONS = [
+  { value: 'none', label: 'Без опыта' },
+  { value: 'basic', label: 'Базовый' },
+  { value: 'intermediate', label: 'Средний' },
+  { value: 'advanced', label: 'Продвинутый' },
+  { value: 'professional', label: 'Профессиональный' },
+]
+
+/**
+ * Варианты уровней активности
+ */
+export const ACTIVITY_LEVEL_OPTIONS = [
+  { value: 'low', label: 'Низкая' },
+  { value: 'medium', label: 'Средняя' },
+  { value: 'high', label: 'Высокая' },
 ]

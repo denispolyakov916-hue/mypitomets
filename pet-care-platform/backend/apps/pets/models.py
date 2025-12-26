@@ -138,6 +138,85 @@ class Pet(models.Model):
         verbose_name='Уровень активности',
         help_text='Уровень физической активности питомца'
     )
+
+    # ===== ПЕРСОНАЛИЗАЦИЯ ДЛЯ КУРСОВ ОБУЧЕНИЯ =====
+
+    # Базовые поля для персонализации курсов (обязательные)
+    BEHAVIOR_TYPES = [
+        ('calm', 'Спокойный'),
+        ('active', 'Активный'),
+        ('aggressive', 'Агрессивный'),
+        ('shy', 'Трусливый'),
+        ('playful', 'Игривый'),
+    ]
+    behavior_type = models.CharField(
+        max_length=20,
+        choices=BEHAVIOR_TYPES,
+        blank=True,
+        null=True,
+        verbose_name='Тип поведения',
+        help_text='Основной тип поведения питомца для персонализации курсов'
+    )
+
+    SOCIAL_LEVELS = [
+        ('home_only', 'Только домашний'),
+        ('street', 'Уличный'),
+        ('social', 'Социальный'),
+        ('mixed', 'Смешанный'),
+    ]
+    social_level = models.CharField(
+        max_length=20,
+        choices=SOCIAL_LEVELS,
+        blank=True,
+        null=True,
+        verbose_name='Уровень социализации',
+        help_text='Уровень социализации питомца (домашний/уличный/социальный)'
+    )
+
+    # Расширенные поля для глубокой персонализации (опциональные)
+    TRAINING_EXPERIENCE_LEVELS = [
+        ('none', 'Без опыта'),
+        ('basic', 'Базовый'),
+        ('intermediate', 'Средний'),
+        ('advanced', 'Продвинутый'),
+        ('professional', 'Профессиональный'),
+    ]
+    training_experience = models.CharField(
+        max_length=20,
+        choices=TRAINING_EXPERIENCE_LEVELS,
+        blank=True,
+        null=True,
+        verbose_name='Опыт дрессировки',
+        help_text='Уровень опыта дрессировки питомца'
+    )
+
+    special_needs = models.JSONField(
+        default=list,
+        blank=True,
+        verbose_name='Особые потребности',
+        help_text='Особые потребности питомца (инвалидность, хронические заболевания и т.д.)'
+    )
+
+    preferred_activities = models.JSONField(
+        default=list,
+        blank=True,
+        verbose_name='Предпочитаемые активности',
+        help_text='Виды активностей, которые предпочитает питомец'
+    )
+
+    behavioral_problems = models.JSONField(
+        default=list,
+        blank=True,
+        verbose_name='Поведенческие проблемы',
+        help_text='Поведенческие проблемы питомца для персонализированных курсов коррекции'
+    )
+
+    # Флаг заполненности расширенного профиля
+    is_extended_profile = models.BooleanField(
+        default=False,
+        verbose_name='Расширенный профиль заполнен',
+        help_text='Показывает, заполнены ли расширенные поля профиля PetID'
+    )
     
     created_at = models.DateTimeField(
         default=timezone.now,
@@ -197,6 +276,14 @@ class Pet(models.Model):
             'allergies': self.allergies if self.allergies else [],
             'health_issues': self.health_issues if self.health_issues else [],
             'activity_level': self.activity_level,
+            # Новые поля для персонализации курсов
+            'behavior_type': self.behavior_type,
+            'social_level': self.social_level,
+            'training_experience': self.training_experience,
+            'special_needs': self.special_needs if self.special_needs else [],
+            'preferred_activities': self.preferred_activities if self.preferred_activities else [],
+            'behavioral_problems': self.behavioral_problems if self.behavioral_problems else [],
+            'is_extended_profile': self.is_extended_profile,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None
         }

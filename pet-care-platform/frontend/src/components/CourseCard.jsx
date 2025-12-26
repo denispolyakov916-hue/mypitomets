@@ -245,12 +245,15 @@ function CourseCard({ course, onAddToCart, onEnrollFree, isOwned = false, isLoad
             </span>
           </div>
           {isOwned ? (
-            <Link
-              to={`/courses/${course.id}`}
-              className="text-sm py-2 px-4 rounded-lg bg-green-100 text-green-700 hover:bg-green-200 transition-colors font-medium"
+            <button
+              onClick={() => navigate(`/training/courses/${course.id}/learn`)}
+              className="text-sm py-2 px-4 rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition-colors flex items-center gap-1.5 w-full justify-center font-medium"
             >
-              Открыть
-            </Link>
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h1m4 0h1m-6 4h.01M21 12c0 4.418-4.03-8 9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+              </svg>
+              🎓 Начать обучение
+            </button>
           ) : course.price === 0 ? (
             // Бесплатные курсы - открытие модального окна для записи
             <button

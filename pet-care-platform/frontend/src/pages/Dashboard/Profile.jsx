@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Компонент страницы профиля
  * 
  * Личный кабинет пользователя с:
@@ -71,9 +71,9 @@ function Profile() {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState(null)
   const [activeTab, setActiveTab] = useState('profile')
-  const [isEditing, setIsEditing] = useState(false)
   const [editForm, setEditForm] = useState({})
   const [isSaving, setIsSaving] = useState(false)
+  const [hasChanges, setHasChanges] = useState(false)
 
   /**
    * Загрузка профиля из API
@@ -132,7 +132,7 @@ function Profile() {
   /**
    * Начать редактирование профиля
    */
-  const startEditing = () => {
+  const initEditForm = (profileData) => {
     if (profile?.user) {
       setEditForm({
         email: profile.user.email || '',
@@ -150,16 +150,16 @@ function Profile() {
         marketing_notifications: profile.user.marketing_notifications ?? false,
         preferred_pet_types: profile.user.preferred_pet_types || []
       })
-      setIsEditing(true)
+      setHasChanges(false)
     }
   }
 
   /**
    * Отменить редактирование
    */
-  const cancelEditing = () => {
-    setIsEditing(false)
-    setEditForm({})
+  const cancelChanges = () => {
+    setHasChanges(false)
+    initEditForm(profile)
   }
 
   /**
@@ -173,8 +173,8 @@ function Profile() {
         ...prev,
         user: updatedProfile.user
       }))
-      setIsEditing(false)
-      setEditForm({})
+      setHasChanges(false)
+      initEditForm(profile)
     } catch (err) {
       setError(err.message || 'Не удалось сохранить профиль')
     } finally {
@@ -268,14 +268,12 @@ function Profile() {
             <div>
               <span className="text-sm text-gray-500">Имя</span>
               <p className="text-gray-900">{user.first_name} {user.last_name}</p>
-            </div>
-          )}
+            </div>)}
           {user.phone && (
             <div>
               <span className="text-sm text-gray-500">Телефон</span>
               <p className="text-gray-900">{user.phone}</p>
-            </div>
-          )}
+            </div>)}
         </div>
       </div>
       
@@ -332,17 +330,10 @@ function Profile() {
                   <h2 className="text-2xl font-bold text-gray-900">Личные данные</h2>
                   <p className="text-gray-600 mt-1">Управляйте информацией о вашем аккаунте</p>
                 </div>
-                {!isEditing ? (
-                  <button
-                    onClick={startEditing}
-                    className="btn-secondary"
-                  >
-                    Редактировать
-                  </button>
-                ) : (
+                {hasChanges && (
                   <div className="flex gap-2">
                     <button
-                      onClick={cancelEditing}
+                      onClick={cancelChanges}
                       className="btn-secondary"
                       disabled={isSaving}
                     >
@@ -355,99 +346,10 @@ function Profile() {
                     >
                       {isSaving ? 'Сохранение...' : 'Сохранить'}
                     </button>
-                  </div>
-                )}
+                  </div>)}
               </div>
 
-              {!isEditing ? (
-                // Просмотр профиля — упрощённая версия
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Контактные данные</h3>
-                    <div className="space-y-4">
-                      <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                        <span className="text-2xl">📧</span>
-                        <div>
-                          <label className="block text-xs font-medium text-gray-500">Email</label>
-                          <p className="text-gray-900 font-medium">{profile.user.email}</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                        <span className="text-2xl">👤</span>
-                        <div>
-                          <label className="block text-xs font-medium text-gray-500">Имя</label>
-                          <p className="text-gray-900 font-medium">
-                            {profile.user.first_name && profile.user.last_name 
-                              ? `${profile.user.first_name} ${profile.user.last_name}`
-                              : profile.user.first_name || 'Не указано'}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                        <span className="text-2xl">📱</span>
-                        <div>
-                          <label className="block text-xs font-medium text-gray-500">Телефон</label>
-                          <p className="text-gray-900 font-medium">{profile.user.phone || 'Не указано'}</p>
-                        </div>
-                      </div>
-                      {profile.user.city && (
-                        <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                          <span className="text-2xl">📍</span>
-                          <div>
-                            <label className="block text-xs font-medium text-gray-500">Город</label>
-                            <p className="text-gray-900 font-medium">{profile.user.city}</p>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Уведомления</h3>
-                    <div className="space-y-3">
-                      <div className={`flex items-center justify-between p-3 rounded-lg ${profile.user.email_notifications ? 'bg-green-50' : 'bg-gray-50'}`}>
-                        <span className="text-sm text-gray-700">Email уведомления</span>
-                        <Badge variant={profile.user.email_notifications ? 'success' : 'secondary'}>
-                          {profile.user.email_notifications ? 'Вкл' : 'Выкл'}
-                        </Badge>
-                      </div>
-                      <div className={`flex items-center justify-between p-3 rounded-lg ${profile.user.order_notifications ? 'bg-green-50' : 'bg-gray-50'}`}>
-                        <span className="text-sm text-gray-700">Уведомления о заказах</span>
-                        <Badge variant={profile.user.order_notifications ? 'success' : 'secondary'}>
-                          {profile.user.order_notifications ? 'Вкл' : 'Выкл'}
-                        </Badge>
-                      </div>
-                      <div className={`flex items-center justify-between p-3 rounded-lg ${profile.user.marketing_notifications ? 'bg-green-50' : 'bg-gray-50'}`}>
-                        <span className="text-sm text-gray-700">Акции и новости</span>
-                        <Badge variant={profile.user.marketing_notifications ? 'success' : 'secondary'}>
-                          {profile.user.marketing_notifications ? 'Вкл' : 'Выкл'}
-                        </Badge>
-                      </div>
-                    </div>
-                    
-                    {/* Статистика */}
-                    <div className="mt-6 pt-6 border-t border-gray-100">
-                      <h4 className="text-sm font-semibold text-gray-900 mb-3">Ваша статистика</h4>
-                      <div className="grid grid-cols-3 gap-3 text-center">
-                        <div className="p-3 bg-primary-50 rounded-lg">
-                          <p className="text-2xl font-bold text-primary-600">{pets.length}</p>
-                          <p className="text-xs text-gray-500">Питомцев</p>
-                        </div>
-                        <div className="p-3 bg-secondary-50 rounded-lg">
-                          <p className="text-2xl font-bold text-secondary-600">{orders.length}</p>
-                          <p className="text-xs text-gray-500">Заказов</p>
-                        </div>
-                        <div className="p-3 bg-accent-50 rounded-lg">
-                          <p className="text-2xl font-bold text-accent-600">{courses.length}</p>
-                          <p className="text-xs text-gray-500">Курсов</p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                // Форма редактирования — упрощённая версия
-                <form onSubmit={(e) => { e.preventDefault(); saveProfile(); }} className="space-y-6">
+              <form onSubmit={(e) => { e.preventDefault(); saveProfile(); }} className="space-y-6">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {/* Контактные данные */}
                     <div className="space-y-4">
@@ -457,7 +359,7 @@ function Profile() {
                         <input
                           type="text"
                           value={editForm.first_name || ''}
-                          onChange={(e) => setEditForm(prev => ({ ...prev, first_name: e.target.value }))}
+                          onChange={(e) => updateField('first_name', e.target.value)}
                           placeholder="Как к вам обращаться"
                           className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
                         />
@@ -467,7 +369,7 @@ function Profile() {
                         <input
                           type="text"
                           value={editForm.last_name || ''}
-                          onChange={(e) => setEditForm(prev => ({ ...prev, last_name: e.target.value }))}
+                          onChange={(e) => updateField('last_name', e.target.value)}
                           placeholder="Ваша фамилия"
                           className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
                         />
@@ -477,7 +379,7 @@ function Profile() {
                         <input
                           type="tel"
                           value={editForm.phone || ''}
-                          onChange={(e) => setEditForm(prev => ({ ...prev, phone: e.target.value }))}
+                          onChange={(e) => updateField('phone', e.target.value)}
                           placeholder="+7 (999) 123-45-67"
                           className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
                         />
@@ -487,7 +389,7 @@ function Profile() {
                         <input
                           type="text"
                           value={editForm.city || ''}
-                          onChange={(e) => setEditForm(prev => ({ ...prev, city: e.target.value }))}
+                          onChange={(e) => updateField('city', e.target.value)}
                           placeholder="Для расчёта доставки"
                           className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
                         />
@@ -506,7 +408,7 @@ function Profile() {
                           <input
                             type="checkbox"
                             checked={editForm.email_notifications}
-                            onChange={(e) => setEditForm(prev => ({ ...prev, email_notifications: e.target.checked }))}
+                            onChange={(e) => updateField('email_notifications', e.target.checked)}
                             className="w-5 h-5 text-primary-600 focus:ring-primary-500 rounded"
                           />
                         </label>
@@ -518,7 +420,7 @@ function Profile() {
                           <input
                             type="checkbox"
                             checked={editForm.order_notifications}
-                            onChange={(e) => setEditForm(prev => ({ ...prev, order_notifications: e.target.checked }))}
+                            onChange={(e) => updateField('order_notifications', e.target.checked)}
                             className="w-5 h-5 text-primary-600 focus:ring-primary-500 rounded"
                           />
                         </label>
@@ -530,7 +432,7 @@ function Profile() {
                           <input
                             type="checkbox"
                             checked={editForm.marketing_notifications}
-                            onChange={(e) => setEditForm(prev => ({ ...prev, marketing_notifications: e.target.checked }))}
+                            onChange={(e) => updateField('marketing_notifications', e.target.checked)}
                             className="w-5 h-5 text-primary-600 focus:ring-primary-500 rounded"
                           />
                         </label>
@@ -538,10 +440,8 @@ function Profile() {
                     </div>
                   </div>
                 </form>
-              )}
             </div>
-          </div>
-        )}
+          </div>)}
 
         {/* Вкладка питомцев */}
         {activeTab === 'pets' && (
@@ -564,10 +464,8 @@ function Profile() {
                 {pets.map(pet => (
                   <PetCard key={pet.id} pet={pet} />
                 ))}
-              </div>
-            )}
-          </div>
-        )}
+              </div>)}
+          </div>)}
 
         {/* Вкладка напоминаний */}
         {activeTab === 'reminders' && (
@@ -598,10 +496,8 @@ function Profile() {
                   </Link>
                 </div>
                 <RemindersWidget limit={10} />
-              </div>
-            )}
-          </div>
-        )}
+              </div>)}
+          </div>)}
         
         {/* Вкладка заказов */}
         {activeTab === 'orders' && (
@@ -688,12 +584,9 @@ function Profile() {
                     <Link to="/orders" className="btn-secondary">
                       Показать все заказы ({orders.length})
                     </Link>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        )}
+                  </div>)}
+              </div>)}
+          </div>)}
         
         {/* Вкладка курсов */}
         {activeTab === 'courses' && (
@@ -716,8 +609,7 @@ function Profile() {
                     </option>
                   ))}
                 </select>
-              </div>
-            )}
+              </div>)}
             
             {coursesLoading ? (
               <div className="card text-center py-12">
@@ -796,6 +688,18 @@ function Profile() {
                           <p className="text-xs text-gray-400 mt-2">
                             Приобретён: {formatDate(item.purchased_at)}
                           </p>
+
+                          {/* Кнопка обучения */}
+                          <Button
+                            size="sm"
+                            onClick={(e) => {
+                              e.preventDefault()
+                              navigate(`/training/courses/${item.course.id}/learn${item.pet ? `?pet_id=${item.pet.id}` : ''}`)
+                            }}
+                            className="mt-3 w-full"
+                          >
+                            {item.progress > 0 ? 'Продолжить обучение' : 'Начать обучение'}
+                          </Button>
                         </div>
                       </div>
                       
@@ -815,10 +719,8 @@ function Profile() {
                     </Card>
                   </Link>
                 ))}
-              </div>
-            )}
-          </div>
-        )}
+              </div>)}
+          </div>)}
 
         {/* Вкладка возвратов */}
         {activeTab === 'returns' && (
@@ -896,22 +798,18 @@ function Profile() {
                             <p className="text-sm text-gray-500">
                               Заказ #{returnItem.order_id.slice(0, 8).toUpperCase()}
                             </p>
-                          </div>
-                        )}
+                          </div>)}
                         {returnItem.admin_comment && (
                           <div className="bg-blue-50 rounded-lg p-3 mt-3">
                             <p className="text-sm font-medium text-blue-900 mb-1">Комментарий администратора:</p>
                             <p className="text-sm text-blue-700">{returnItem.admin_comment}</p>
-                          </div>
-                        )}
+                          </div>)}
                       </div>
                     </div>
                   )
                 })}
-              </div>
-            )}
-          </div>
-        )}
+              </div>)}
+          </div>)}
       </div>
     </div>
   )

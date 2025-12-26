@@ -332,6 +332,17 @@ body {
   transform: translateY(-2px);
 }
 
+.social-text-icon {
+  font-size: 18px;
+  font-weight: 600;
+  color: #333;
+  transition: color 0.3s ease;
+}
+
+.auth-social-icon:hover .social-text-icon {
+  color: #5500ff;
+}
+
 .auth-back-link {
   display: block;
   width: 100%;
@@ -413,8 +424,8 @@ body {
 }
 
 .auth-toggle-btn {
-  width: 160px;
-  height: 46px;
+  min-width: 220px;
+  padding: 12px 24px;
   background: transparent;
   border: 2px solid #fff;
   border-radius: 8px;
@@ -423,6 +434,7 @@ body {
   font-weight: 600;
   cursor: pointer;
   transition: background-color 0.3s ease;
+  white-space: nowrap;
 }
 
 .auth-toggle-btn:hover {
@@ -434,7 +446,7 @@ body {
   visibility: hidden;
 }
 
-/* Мобильная адаптивность */
+/* Мобильная адаптивность - планшеты */
 @media screen and (max-width: 650px) {
   .auth-container {
     height: calc(100vh - 40px);
@@ -475,6 +487,7 @@ body {
 
   .auth-toggle-panel.auth-toggle-left {
     top: 0;
+    left: 0;
   }
 
   .auth-toggle-panel.auth-toggle-right {
@@ -496,13 +509,161 @@ body {
   }
 }
 
+/* Мобильная адаптивность - телефоны < 400px */
 @media screen and (max-width: 400px) {
+  .auth-container {
+    width: 100%;
+    height: 100vh;
+    min-height: 600px;
+    border-radius: 0;
+    flex-direction: column;
+  }
+
   .auth-form-box {
-    padding: 20px;
+    position: absolute;
+    top: auto;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    height: 75%;
+    padding: 20px 16px;
+    transition: transform 0.6s ease-in-out 0.6s, visibility 0s 0.3s;
+    transform: translateY(0);
+  }
+
+  .auth-container.auth-active .auth-form-box {
+    right: 0;
+    bottom: 0;
+    transform: translateY(-33.33%);
+  }
+
+  .auth-form-box.auth-register {
+    visibility: hidden;
+  }
+
+  .auth-container.auth-active .auth-form-box.auth-register {
+    visibility: visible;
+  }
+
+  .auth-form {
+    max-width: 100%;
+  }
+
+  .auth-form h1 {
+    font-size: 24px;
+    margin: 0 0 12px;
+  }
+
+  .auth-input-box {
+    margin: 16px 0;
+  }
+
+  .auth-input-box input {
+    padding: 12px 45px 12px 16px;
+    font-size: 14px;
+  }
+
+  .auth-input-box i {
+    right: 16px;
+    font-size: 18px;
+  }
+
+  .auth-btn {
+    height: 44px;
+    font-size: 14px;
+  }
+
+  .auth-social-text {
+    margin: 14px 0;
+    font-size: 13px;
+  }
+
+  .auth-social-icons {
+    gap: 10px;
+  }
+
+  .auth-social-icon {
+    padding: 8px;
+    font-size: 20px;
+  }
+
+  .social-text-icon {
+    font-size: 16px;
+  }
+
+  /* Вертикальная анимация для toggle box */
+  .auth-toggle-box::before {
+    left: 0;
+    top: -200%;
+    width: 100%;
+    height: 250%;
+    border-radius: 0 0 50% 50%;
+    transition: top 0.8s ease-in-out;
+  }
+
+  .auth-container.auth-active .auth-toggle-box::before {
+    left: 0;
+    top: 75%;
+  }
+
+  /* Toggle панели - вертикальное расположение */
+  .auth-toggle-panel {
+    width: 100%;
+    height: 25%;
+    padding: 16px;
   }
 
   .auth-toggle-panel h1 {
-    font-size: 30px;
+    font-size: 20px;
+    margin-bottom: 6px;
+  }
+
+  .auth-toggle-panel p {
+    font-size: 13px;
+    margin-bottom: 12px;
+  }
+
+  .auth-toggle-btn {
+    min-width: 180px;
+    padding: 10px 20px;
+    font-size: 14px;
+  }
+
+  /* Левая панель (сверху) */
+  .auth-toggle-panel.auth-toggle-left {
+    top: 0;
+    left: 0;
+    transition: transform 0.6s ease-in-out 0.6s, opacity 0.4s ease-in-out;
+  }
+
+  .auth-container.auth-active .auth-toggle-panel.auth-toggle-left {
+    left: 0;
+    top: 0;
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+
+  /* Правая панель (снизу, скрыта изначально) */
+  .auth-toggle-panel.auth-toggle-right {
+    top: auto;
+    bottom: 0;
+    right: 0;
+    transform: translateY(100%);
+    opacity: 0;
+    transition: transform 0.6s ease-in-out 0.3s, opacity 0.4s ease-in-out 0.5s;
+  }
+
+  .auth-container.auth-active .auth-toggle-panel.auth-toggle-right {
+    bottom: 0;
+    transform: translateY(0);
+    opacity: 1;
+  }
+
+  /* Скрытие панелей */
+  .auth-toggle-panel.auth-hidden {
+    opacity: 0;
+    visibility: hidden;
   }
 }
 

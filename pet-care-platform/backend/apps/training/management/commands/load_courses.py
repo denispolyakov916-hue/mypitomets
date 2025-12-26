@@ -13,11 +13,497 @@
 """
 
 from django.core.management.base import BaseCommand
-from apps.training.models import Course
+from django.contrib.auth import get_user_model
+from apps.training.models import Course, Lesson, Comment, Rating
+from apps.pets.models import Pet
+import random
 
 
 class Command(BaseCommand):
     help = 'Загрузка 30 разнообразных курсов для тестирования фильтрации'
+
+    def create_lessons_for_course(self, course, course_data):
+        """
+        Создает уроки для курса на основе его типа и характеристик.
+
+        Args:
+            course: объект Course
+            course_data: словарь с данными курса
+
+        Returns:
+            int: количество созданных уроков
+        """
+        lessons_data = self.generate_lessons_data(course, course_data)
+        lessons_created = 0
+
+        for lesson_data in lessons_data:
+            Lesson.objects.create(
+                course=course,
+                **lesson_data
+            )
+            lessons_created += 1
+
+        return lessons_created
+
+    def generate_lessons_data(self, course, course_data):
+        """
+        Генерирует данные уроков на основе типа курса и его характеристик.
+        """
+        lessons = []
+
+        # Получаем базовую информацию о курсе
+        course_type = course_data.get('pet_type', 'all')
+        category = course_data.get('category', 'basics')
+        level = course_data.get('level', 'beginner')
+        format_type = course_data.get('format_type', 'video')
+
+        # Определяем количество уроков
+        lessons_count = course_data.get('lessons_count', 5)
+
+        # Генерируем уроки в зависимости от категории курса
+        if category == 'basics':
+            lessons = self.generate_basics_lessons(course_type, level, lessons_count, format_type)
+        elif category == 'training':
+            lessons = self.generate_training_lessons(course_type, level, lessons_count, format_type)
+        elif category == 'care':
+            lessons = self.generate_care_lessons(course_type, level, lessons_count, format_type)
+        elif category == 'health':
+            lessons = self.generate_health_lessons(course_type, level, lessons_count, format_type)
+        elif category == 'behavior':
+            lessons = self.generate_behavior_lessons(course_type, level, lessons_count, format_type)
+        else:
+            lessons = self.generate_generic_lessons(course_type, category, level, lessons_count, format_type)
+
+        return lessons
+
+    def generate_basics_lessons(self, pet_type, level, count, format_type):
+        """Генерирует уроки для базовых курсов."""
+        lessons = []
+
+        basic_topics = [
+            ("Знакомство с питомцем", "Основные характеристики и особенности породы"),
+            ("Безопасность и уход", "Правила безопасного обращения и базовый уход"),
+            ("Питание и рацион", "Основы правильного питания"),
+            ("Здоровье и профилактика", "Базовые знания о здоровье питомца"),
+            ("Социализация и поведение", "Основы социализации и поведения"),
+        ]
+
+        for i, (title, description) in enumerate(basic_topics[:count], 1):
+            content_type = format_type if format_type != 'mixed' else ('video' if i % 2 == 1 else 'text')
+            content = self.generate_lesson_content(content_type, title, description, pet_type)
+
+            lessons.append({
+                'title': title,
+                'content_type': content_type,
+                'content': content,
+                'duration': 15 + (i * 5),  # 15-65 минут
+                'order': i,
+                'is_required': True if i <= 2 else False
+            })
+
+        return lessons
+
+    def generate_training_lessons(self, pet_type, level, count, format_type):
+        """Генерирует уроки для курсов дрессировки."""
+        lessons = []
+
+        training_topics = [
+            ("Основы дрессировки", "Принципы и методы обучения питомца"),
+            ("Команды послушания", "Изучение основных команд"),
+            ("Коррекция поведения", "Методы коррекции нежелательного поведения"),
+            ("Продвинутые команды", "Сложные команды и трюки"),
+            ("Поддержание навыков", "Как закрепить и поддерживать изученные навыки"),
+        ]
+
+        for i, (title, description) in enumerate(training_topics[:count], 1):
+            content_type = 'interactive' if level != 'beginner' and i > 2 else format_type
+            content = self.generate_lesson_content(content_type, title, description, pet_type)
+
+            lessons.append({
+                'title': title,
+                'content_type': content_type,
+                'content': content,
+                'duration': 20 + (i * 10),  # 20-70 минут
+                'order': i,
+                'is_required': True
+            })
+
+        return lessons
+
+    def generate_care_lessons(self, pet_type, level, count, format_type):
+        """Генерирует уроки для курсов ухода."""
+        lessons = []
+
+        care_topics = [
+            ("Гигиена и груминг", "Правила ухода за шерстью, когтями, зубами"),
+            ("Уход за шерстью", "Расчесывание, купание, стрижка"),
+            ("Уход за когтями и зубами", "Подстригание когтей, чистка зубов"),
+            ("Уход за ушами и глазами", "Профилактика и уход"),
+            ("Общий уход и профилактика", "Комплексный уход за питомцем"),
+        ]
+
+        for i, (title, description) in enumerate(care_topics[:count], 1):
+            content_type = format_type
+            content = self.generate_lesson_content(content_type, title, description, pet_type)
+
+            lessons.append({
+                'title': title,
+                'content_type': content_type,
+                'content': content,
+                'duration': 12 + (i * 8),  # 12-52 минуты
+                'order': i,
+                'is_required': True if i <= 3 else False
+            })
+
+        return lessons
+
+    def generate_health_lessons(self, pet_type, level, count, format_type):
+        """Генерирует уроки для курсов здоровья."""
+        lessons = []
+
+        health_topics = [
+            ("Анатомия и физиология", "Основы строения организма питомца"),
+            ("Профилактика заболеваний", "Вакцинация, паразиты, профилактические осмотры"),
+            ("Распознавание симптомов", "Когда обратиться к ветеринару"),
+            ("Первая помощь", "Базовые навыки оказания помощи"),
+            ("Здоровое питание", "Питание для поддержания здоровья"),
+        ]
+
+        for i, (title, description) in enumerate(health_topics[:count], 1):
+            content_type = 'text' if i == 1 else format_type
+            content = self.generate_lesson_content(content_type, title, description, pet_type)
+
+            lessons.append({
+                'title': title,
+                'content_type': content_type,
+                'content': content,
+                'duration': 18 + (i * 7),  # 18-53 минуты
+                'order': i,
+                'is_required': True
+            })
+
+        return lessons
+
+    def generate_behavior_lessons(self, pet_type, level, count, format_type):
+        """Генерирует уроки для курсов поведения."""
+        lessons = []
+
+        behavior_topics = [
+            ("Понимание поведения", "Почему питомец ведет себя так, а не иначе"),
+            ("Коррекция нежелательного поведения", "Методы коррекции проблемного поведения"),
+            ("Развитие желаемого поведения", "Как научить питомца хорошим привычкам"),
+            ("Работа со страхами и фобиями", "Помощь при различных страхах"),
+            ("Долгосрочное поведение", "Поддержание хорошего поведения на протяжении жизни"),
+        ]
+
+        for i, (title, description) in enumerate(behavior_topics[:count], 1):
+            content_type = 'interactive' if level != 'beginner' else format_type
+            content = self.generate_lesson_content(content_type, title, description, pet_type)
+
+            lessons.append({
+                'title': title,
+                'content_type': content_type,
+                'content': content,
+                'duration': 25 + (i * 8),  # 25-65 минут
+                'order': i,
+                'is_required': True
+            })
+
+        return lessons
+
+    def generate_generic_lessons(self, pet_type, category, level, count, format_type):
+        """Генерирует общие уроки для остальных категорий."""
+        lessons = []
+
+        for i in range(1, count + 1):
+            title = f"Урок {i}: Основы темы"
+            description = f"Изучение основных понятий и практических навыков урока {i}"
+
+            content = self.generate_lesson_content(format_type, title, description, pet_type)
+
+            lessons.append({
+                'title': title,
+                'content_type': format_type,
+                'content': content,
+                'duration': 15 + (i * 5),
+                'order': i,
+                'is_required': i <= 2
+            })
+
+        return lessons
+
+    def generate_lesson_content(self, content_type, title, description, pet_type):
+        """
+        Генерирует контент урока в зависимости от типа контента.
+        """
+        base_content = {
+            'title': title,
+            'description': description,
+            'pet_type': pet_type
+        }
+
+        if content_type == 'video':
+            return {
+                **base_content,
+                'video_url': f"https://example.com/videos/{title.lower().replace(' ', '_')}.mp4",
+                'transcript': f"Здесь будет транскрипт видео урока '{title}'",
+                'key_points': [
+                    "Основной момент 1",
+                    "Основной момент 2",
+                    "Основной момент 3"
+                ]
+            }
+
+        elif content_type == 'text':
+            return {
+                **base_content,
+                'text_content': f"""
+# {title}
+
+{description}
+
+## Основные понятия
+
+Здесь будет подробный текстовый материал урока.
+
+## Практические рекомендации
+
+- Рекомендация 1
+- Рекомендация 2
+- Рекомендация 3
+
+## Заключение
+
+Подведение итогов урока.
+                """.strip(),
+                'images': [
+                    f"https://example.com/images/{title.lower().replace(' ', '_')}_1.jpg"
+                ]
+            }
+
+        elif content_type == 'interactive':
+            return {
+                **base_content,
+                'interactive_type': 'quiz',
+                'questions': [
+                    {
+                        'question': 'Вопрос 1?',
+                        'options': ['Вариант 1', 'Вариант 2', 'Вариант 3'],
+                        'correct_answer': 0,
+                        'explanation': 'Пояснение к правильному ответу'
+                    },
+                    {
+                        'question': 'Вопрос 2?',
+                        'options': ['Вариант A', 'Вариант B', 'Вариант C'],
+                        'correct_answer': 1,
+                        'explanation': 'Пояснение к правильному ответу'
+                    }
+                ],
+                'completion_criteria': {
+                    'min_score': 70,
+                    'max_attempts': 3
+                }
+            }
+
+        elif content_type == 'mixed':
+            return {
+                **base_content,
+                'sections': [
+                    {
+                        'type': 'video',
+                        'content': {
+                            'video_url': f"https://example.com/videos/{title.lower().replace(' ', '_')}_intro.mp4",
+                            'duration': 5
+                        }
+                    },
+                    {
+                        'type': 'text',
+                        'content': {
+                            'text': f"Теоретический материал для урока '{title}'"
+                        }
+                    },
+                    {
+                        'type': 'interactive',
+                        'content': {
+                            'type': 'exercise',
+                            'description': 'Практическое задание'
+                        }
+                    }
+                ]
+            }
+
+        elif content_type == 'webinar':
+            return {
+                **base_content,
+                'webinar_url': f"https://example.com/webinars/{title.lower().replace(' ', '_')}",
+                'scheduled_date': None,  # Для записанных вебинаров
+                'duration': 60,
+                'recording_available': True,
+                'qa_session': True
+            }
+
+        elif content_type == 'masterclass':
+            return {
+                **base_content,
+                'masterclass_type': 'live_demo',
+                'expert_name': 'Эксперт в данной области',
+                'duration': 90,
+                'materials': [
+                    'Презентация',
+                    'Видео демонстрация',
+                    'Дополнительные материалы'
+                ]
+            }
+
+        # По умолчанию возвращаем текстовый контент
+        return base_content
+
+    def create_test_comments_and_ratings(self):
+        """
+        Создает тестовые комментарии и оценки для демонстрации системы.
+
+        Returns:
+            tuple: (comments_created, ratings_created)
+        """
+        User = get_user_model()
+
+        # Получаем всех пользователей (или создаем тестового)
+        users = User.objects.all()
+        if not users.exists():
+            # Создаем тестового пользователя если нет
+            test_user = User.objects.create_user(
+                email='test@example.com',
+                password='testpass123',
+                first_name='Тестовый',
+                last_name='Пользователь'
+            )
+            users = [test_user]
+
+        # Получаем всех питомцев
+        pets = list(Pet.objects.all())
+
+        # Получаем все курсы
+        courses = list(Course.objects.all())
+
+        comments_created = 0
+        ratings_created = 0
+
+        # Создаем оценки для курсов
+        for course in courses:
+            # Выбираем случайных пользователей для оценки
+            rating_users = random.sample(list(users), min(len(users), random.randint(1, 5)))
+
+            for user in rating_users:
+                # Выбираем питомца пользователя (если есть)
+                user_pets = [pet for pet in pets if pet.owner == user]
+                selected_pet = random.choice(user_pets) if user_pets else None
+
+                # Создаем оценку (если не существует)
+                rating_obj, created = Rating.objects.get_or_create(
+                    user=user,
+                    course=course,
+                    pet=selected_pet,
+                    defaults={
+                        'rating': random.randint(3, 5),  # Только положительные оценки для теста
+                        'review': self.generate_random_review(),
+                        'is_approved': True
+                    }
+                )
+
+                if created:
+                    ratings_created += 1
+
+                # Создаем комментарии к курсу
+                if random.choice([True, False]):  # 50% шанс создать комментарий
+                    comment_content = self.generate_random_comment()
+
+                    comment = Comment.objects.create(
+                        user=user,
+                        course=course,
+                        content=comment_content,
+                        is_moderated=True
+                    )
+                    comments_created += 1
+
+                    # Создаем ответы на комментарий (редко)
+                    if random.choice([True, False, False, False]):  # 25% шанс
+                        reply_user = random.choice(users)
+                        if reply_user != user:
+                            Comment.objects.create(
+                                user=reply_user,
+                                course=course,
+                                content=f"Спасибо за полезный комментарий! Полностью согласен с вами.",
+                                parent=comment,
+                                is_moderated=True
+                            )
+                            comments_created += 1
+
+                # Создаем комментарии к урокам курса
+                course_lessons = list(course.lessons.all())
+                if course_lessons:
+                    lesson_comments = random.randint(0, 3)  # 0-3 комментария к урокам
+
+                    for _ in range(lesson_comments):
+                        lesson = random.choice(course_lessons)
+                        comment_user = random.choice(users)
+
+                        Comment.objects.create(
+                            user=comment_user,
+                            lesson=lesson,
+                            content=self.generate_random_lesson_comment(),
+                            is_moderated=True
+                        )
+                        comments_created += 1
+
+        return comments_created, ratings_created
+
+    def generate_random_review(self):
+        """Генерирует случайный отзыв о курсе."""
+        reviews = [
+            "Отличный курс! Много полезной информации, все доступно объяснено.",
+            "Очень понравился материал. Теперь лучше понимаю своего питомца.",
+            "Рекомендую всем владельцам! Полезные советы и практические упражнения.",
+            "Хороший курс для начинающих. Все по полочкам разложено.",
+            "Спасибо за курс! Узнала много нового о уходе за питомцем.",
+            "Отличная подборка материалов. Буду применять на практике.",
+            "Курс превзошел ожидания. Профессиональный подход к обучению.",
+            "Полезная информация, структурированная подача материала.",
+            "Теперь знаю, как правильно ухаживать за своим питомцем.",
+            "Рекомендую! Качественный контент и хорошая подача."
+        ]
+        return random.choice(reviews)
+
+    def generate_random_comment(self):
+        """Генерирует случайный комментарий к курсу."""
+        comments = [
+            "Спасибо за подробный разбор темы!",
+            "Очень полезная информация, буду применять.",
+            "Хотелось бы больше практических примеров.",
+            "Отличный курс, все понятно объяснено.",
+            "Вопрос: а как быть в ситуации, когда...",
+            "Полностью согласен с автором курса.",
+            "Добавлю от себя: важно также учитывать...",
+            "Спасибо! Теперь знаю, что делать.",
+            "Рекомендую этот курс всем знакомым.",
+            "Ожидал большего, но в целом неплохо."
+        ]
+        return random.choice(comments)
+
+    def generate_random_lesson_comment(self):
+        """Генерирует случайный комментарий к уроку."""
+        comments = [
+            "Отличное объяснение! Теперь все стало понятно.",
+            "Спасибо за подробные инструкции.",
+            "Вопрос: а что делать, если питомец не реагирует?",
+            "Очень полезный урок, буду пробовать.",
+            "Добавлю: в моем случае помогло...",
+            "Хороший практический материал.",
+            "Теперь знаю, как правильно выполнять упражнение.",
+            "Спасибо за наглядные примеры!",
+            "Полезная информация для повседневной практики.",
+            "Вопрос по теме: можно ли применять этот метод для..."
+        ]
+        return random.choice(comments)
 
     def handle(self, *args, **options):
         self.stdout.write('Загрузка курсов для тестирования фильтрации...')
@@ -42,7 +528,16 @@ class Command(BaseCommand):
                 "instructor_name": "Мария Соколова",
                 "instructor_bio": "Кинолог с 10-летним опытом работы со щенками всех пород",
                 "what_you_will_learn": "Организация места для щенка\nВыбор первых аксессуаров\nРежим кормления\nПервые дни адаптации",
-                "image_url": "https://images.unsplash.com/photo-1587300003388-59208cc962cb?w=400"
+                "image_url": "https://images.unsplash.com/photo-1587300003388-59208cc962cb?w=400",
+                # Персонализация для щенков
+                "recommended_behavior_types": ["calm", "active", "playful"],
+                "recommended_activity_levels": ["low", "medium"],
+                "recommended_social_levels": ["home_only"],
+                "min_training_experience": "none",
+                "compatible_health_issues": [],
+                "addresses_special_needs": [],
+                "suitable_activities": ["home_training", "socialization"],
+                "addresses_behavioral_problems": []
             },
             {
                 "title": "Приучение щенка к туалету",
@@ -788,11 +1283,18 @@ class Command(BaseCommand):
             },
         ]
 
-        # Очищаем существующие курсы
+        # Очищаем существующие данные
+        from apps.training.models import Lesson, Comment, Rating, CommentLike
+        Lesson.objects.all().delete()
+        Comment.objects.all().delete()
+        Rating.objects.all().delete()
+        CommentLike.objects.all().delete()
         Course.objects.all().delete()
-        self.stdout.write(self.style.WARNING('Очищены существующие курсы'))
+        self.stdout.write(self.style.WARNING('Очищены существующие курсы и связанные данные'))
 
         courses_created = 0
+        lessons_created = 0
+
         for data in courses_data:
             course = Course.objects.create(
                 title=data['title'],
@@ -813,11 +1315,28 @@ class Command(BaseCommand):
                 what_you_will_learn=data.get('what_you_will_learn'),
                 completion_time=data.get('completion_time'),
                 requirements=data.get('requirements'),
+                # Поля персонализации
+                recommended_behavior_types=data.get('recommended_behavior_types', []),
+                recommended_activity_levels=data.get('recommended_activity_levels', []),
+                recommended_social_levels=data.get('recommended_social_levels', []),
+                min_training_experience=data.get('min_training_experience'),
+                compatible_health_issues=data.get('compatible_health_issues', []),
+                addresses_special_needs=data.get('addresses_special_needs', []),
+                suitable_activities=data.get('suitable_activities', []),
+                addresses_behavioral_problems=data.get('addresses_behavioral_problems', []),
                 is_active=True,
             )
             courses_created += 1
+
+            # Создаем уроки для курса
+            lessons_count = self.create_lessons_for_course(course, data)
+            lessons_created += lessons_count
+
             price_text = "Бесплатно" if data["price"] == 0 else f"{data['price']} руб."
-            self.stdout.write(f'Создан курс: {data["title"]} [{data["level"]}] - {price_text}')
+            self.stdout.write(f'Создан курс: {data["title"]} [{data["level"]}] - {price_text} ({lessons_count} уроков)')
+
+        # Создаем тестовые комментарии и оценки
+        comments_created, ratings_created = self.create_test_comments_and_ratings()
 
         # Статистика
         total_courses = Course.objects.count()
@@ -841,6 +1360,9 @@ class Command(BaseCommand):
         self.stdout.write('')
         self.stdout.write(self.style.SUCCESS('=' * 50))
         self.stdout.write(self.style.SUCCESS(f'Создано курсов: {courses_created}'))
+        self.stdout.write(self.style.SUCCESS(f'Создано уроков: {lessons_created}'))
+        self.stdout.write(self.style.SUCCESS(f'Создано комментариев: {comments_created}'))
+        self.stdout.write(self.style.SUCCESS(f'Создано оценок: {ratings_created}'))
         self.stdout.write(self.style.SUCCESS('=' * 50))
         self.stdout.write(self.style.SUCCESS(f'По типу животного:'))
         self.stdout.write(f'  [DOG] Курсы для собак: {dog_courses}')

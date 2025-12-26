@@ -48,6 +48,20 @@ export const getCourses = async (filters = {}) => {
 }
 
 /**
+ * Получить персонализированные курсы для питомца
+ * @param {string} petId - ID питомца
+ * @param {Object} additionalFilters - Дополнительные фильтры
+ * @returns {Promise} Персонализированный список курсов
+ */
+export const getPersonalizedCourses = async (petId, additionalFilters = {}) => {
+  return getCourses({
+    personal: 'true',
+    pet_id: petId,
+    ...additionalFilters
+  })
+}
+
+/**
  * Получение деталей одного курса
  * 
  * Если пользователь авторизован, также возвращает статус владения.
@@ -123,10 +137,132 @@ export const enrollFreeCourse = async (courseId, disclaimerAccepted = false, pet
   const body = {
     disclaimer_accepted: Boolean(disclaimerAccepted)
   }
-  
+
   if (petId) {
     body.pet_id = petId
   }
-  
+
   return await api.post(`/courses/${courseId}/enroll/`, body)
+}
+
+// ===== НОВЫЕ ФУНКЦИИ ДЛЯ СИСТЕМЫ ОБУЧЕНИЯ =====
+
+/**
+ * Получение уроков курса
+ *
+ * @param {number} courseId - ID курса
+ * @param {string} [petId] - ID питомца для персонализированного прогресса
+ * @returns {Promise<Object>} Список уроков с прогрессом
+ */
+export const getCourseLessons = async (courseId, petId = null) => {
+  const params = petId ? `?pet_id=${petId}` : ''
+  return await api.get(`/courses/${courseId}/lessons/${params}`)
+}
+
+/**
+ * Получение деталей урока
+ *
+ * @param {number} lessonId - ID урока
+ * @param {string} [petId] - ID питомца для прогресса
+ * @returns {Promise<Object>} Детали урока с прогрессом
+ */
+export const getLesson = async (lessonId, petId = null) => {
+  const params = petId ? `?pet_id=${petId}` : ''
+  return await api.get(`/lessons/${lessonId}/${params}`)
+}
+
+/**
+ * Завершение урока
+ *
+ * @param {number} lessonId - ID урока
+ * @param {string} [petId] - ID питомца
+ * @param {number} [timeSpent] - Время просмотра в секундах
+ * @returns {Promise<Object>} Результат завершения урока
+ */
+export const completeLesson = async (lessonId, petId = null, timeSpent = 0) => {
+  const body = {
+    pet_id: petId,
+    time_spent: timeSpent
+  }
+
+  return await api.post(`/lessons/${lessonId}/complete/`, body)
+}
+
+/**
+ * Получение прогресса пользователя по курсу
+ *
+ * @param {number} courseId - ID курса
+ * @param {string} petId - ID питомца (обязательно)
+ * @returns {Promise<Object>} Детальный прогресс по курсу
+ */
+export const getCourseProgress = async (courseId, petId) => {
+  if (!petId) {
+    throw new Error('petId обязателен для получения прогресса')
+  }
+
+  return await api.get(`/courses/${courseId}/progress/?pet_id=${petId}`)
+}
+
+/**
+ * Обновление прогресса по уроку
+ *
+ * @param {number} lessonId - ID урока
+ * @param {string} petId - ID питомца
+ * @param {Object} progressData - Данные прогресса
+ * @param {string} [progressData.status] - Статус ('in_progress', 'viewed', 'completed')
+ * @param {number} [progressData.time_spent] - Время просмотра в секундах
+ * @param {number} [progressData.attempts_count] - Количество попыток
+ * @param {number} [progressData.success_rate] - Процент успешности
+ * @param {string} [progressData.notes] - Заметки пользователя
+ * @returns {Promise<Object>} Обновленный прогресс
+ */
+export const updateLessonProgress = async (lessonId, petId, progressData) => {
+  const body = {
+    pet_id: petId,
+    ...progressData
+  }
+
+  return await api.put(`/lessons/${lessonId}/progress/`, body)
+}
+
+/**
+ * Получение комментариев к курсу
+ *
+ * @param {number} courseId - ID курса
+ * @returns {Promise<Object>} Список комментариев
+ */
+export const getCourseComments = async (courseId) => {
+  return await api.get(`/courses/${courseId}/comments/`)
+}
+
+/**
+ * Получение оценок курса
+ *
+ * @param {number} courseId - ID курса
+ * @returns {Promise<Object>} Список оценок и статистика
+ */
+export const getCourseRatings = async (courseId) => {
+  return await api.get(`/courses/${courseId}/ratings/`)
+}
+
+/**
+ * Поставить оценку курсу
+ *
+ * @param {number} courseId - ID курса
+ * @param {number} rating - Оценка (1-5)
+ * @param {string} [review] - Текст отзыва
+ * @param {string} [petId] - ID питомца
+ * @returns {Promise<Object>} Результат создания оценки
+ */
+export const rateCourse = async (courseId, rating, review = '', petId = null) => {
+  const body = {
+    rating: rating,
+    review: review
+  }
+
+  if (petId) {
+    body.pet_id = petId
+  }
+
+  return await api.post(`/courses/${courseId}/ratings/`, body)
 }

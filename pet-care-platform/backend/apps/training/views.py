@@ -10,7 +10,10 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated
 
-from .models import Course, UserCourse
+from .models import (
+    Course, UserCourse, Lesson, UserCourseProgress, UserLessonProgress,
+    Comment, CommentLike, Rating
+)
 from apps.pets.models import Pet
 
 logger = logging.getLogger('apps.training')
@@ -49,10 +52,27 @@ class CourseListView(APIView):
         # Персональная подборка по питомцам пользователя
         if personal == 'true':
             if request.user.is_authenticated:
-                courses = courses.for_user_pets(request.user)
+                # Получаем питомцев пользователя
+                user_pets = Pet.objects.filter(owner=request.user)
+
+                if user_pets.exists():
+                    # Если указан конкретный pet_id, используем его
+                    if pet_id:
+                        try:
+                            pet = user_pets.get(id=pet_id)
+                            courses = Course.objects.filter_by_pet_characteristics(pet)
+                        except Pet.DoesNotExist:
+                            # Если pet_id не найден, используем первого питомца
+                            courses = Course.objects.filter_by_pet_characteristics(user_pets.first())
+                    else:
+                        # Используем первого питомца пользователя
+                        courses = Course.objects.filter_by_pet_characteristics(user_pets.first())
+                else:
+                    # Если питомцев нет, показываем универсальные курсы
+                    courses = courses.filter(pet_types__contains=['all'])
             else:
                 # Для неавторизованных пользователей показываем универсальные курсы
-                courses = courses.filter(pet_type='all')
+                courses = courses.filter(pet_types__contains=['all'])
         else:
             # Стандартная фильтрация по типу животного
             if pet_type and pet_type in ['dog', 'cat']:
@@ -221,6 +241,76 @@ class CourseListView(APIView):
             }
         }, status=status.HTTP_200_OK)
 
+    def _get_personalization_info(self, request, pet_id=None):
+        """
+        Получить информацию о персонализации для текущего запроса.
+        """
+        info = {
+            'is_personalized': False,
+            'pet_info': None,
+            'recommendations': []
+        }
+
+        if not request.user.is_authenticated:
+            return info
+
+        try:
+            # Определяем питомца
+            pet = None
+            if pet_id:
+                pet = Pet.objects.get(id=pet_id, owner=request.user)
+            else:
+                user_pets = Pet.objects.filter(owner=request.user)
+                if user_pets.exists():
+                    pet = user_pets.first()
+
+            if pet:
+                info['is_personalized'] = True
+                info['pet_info'] = {
+                    'id': str(pet.id),
+                    'name': pet.name,
+                    'species': pet.species,
+                    'behavior_type': pet.behavior_type,
+                    'activity_level': pet.activity_level,
+                    'training_experience': pet.training_experience
+                }
+
+                # Получить рекомендации по проблемам
+                problem_courses = Course.objects.get_recommended_for_pet_problems(pet, limit=3)
+                if problem_courses.exists():
+                    info['recommendations'].append({
+                        'type': 'problems',
+                        'title': 'Курсы для решения проблем',
+                        'courses': [
+                            {
+                                'id': str(course.id),
+                                'title': course.title,
+                                'image': course.image
+                            } for course in problem_courses
+                        ]
+                    })
+
+                # Получить курсы по предпочтениям активностей
+                activity_courses = Course.objects.get_by_pet_activity_preferences(pet, limit=3)
+                if activity_courses.exists():
+                    info['recommendations'].append({
+                        'type': 'activities',
+                        'title': 'Курсы по вашим интересам',
+                        'courses': [
+                            {
+                                'id': str(course.id),
+                                'title': course.title,
+                                'image': course.image
+                            } for course in activity_courses
+                        ]
+                    })
+
+        except Exception as e:
+            # В случае ошибки возвращаем базовую информацию
+            pass
+
+        return info
+
 
 class CourseDetailView(APIView):
     """
@@ -243,6 +333,16 @@ class CourseDetailView(APIView):
         # Используем detailed=True для полной информации
         course_data = course.to_dict(detailed=True)
         response_data = {'course': course_data}
+
+        # Добавляем персонализированную информацию
+        pet_id = request.query_params.get('pet_id')
+        if pet_id and request.user.is_authenticated:
+            try:
+                pet = Pet.objects.get(id=pet_id, owner=request.user)
+                personalization = course.get_personalized_recommendations(pet)
+                response_data['personalization'] = personalization
+            except Pet.DoesNotExist:
+                pass
         
         # Проверка владения для авторизованных пользователей
         if request.user.is_authenticated:
@@ -625,3 +725,1226 @@ class FreeCourseEnrollView(APIView):
             }
 
         return Response(response_data, status=status.HTTP_201_CREATED)
+
+
+# ===== НОВЫЕ ВЬЮСЫ ДЛЯ СИСТЕМЫ ОБУЧЕНИЯ =====
+
+class CourseLessonsView(APIView):
+    """
+    Уроки курса.
+
+    GET /api/courses/{course_id}/lessons/
+    Возвращает список уроков курса в правильном порядке.
+    """
+
+    permission_classes = [AllowAny]
+
+    def get(self, request, course_id):
+        try:
+            course = Course.objects.get(id=course_id, is_active=True)
+        except Course.DoesNotExist:
+            return Response(
+                {'error': 'Курс не найден'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        lessons = course.get_lessons_ordered()
+        lessons_data = []
+
+        for lesson in lessons:
+            lesson_data = {
+                'id': lesson.id,
+                'title': lesson.title,
+                'content_type': lesson.content_type,
+                'content_type_display': lesson.get_content_type_display_name(),
+                'duration': lesson.duration,
+                'order': lesson.order,
+                'is_required': lesson.is_required,
+            }
+
+            # Для авторизованных пользователей добавляем статус прогресса
+            if request.user.is_authenticated:
+                try:
+                    course_progress = UserCourseProgress.objects.get(
+                        user=request.user,
+                        course=course,
+                        pet_id=request.query_params.get('pet_id')
+                    )
+                    lesson_progress = UserLessonProgress.objects.filter(
+                        course_progress=course_progress,
+                        lesson=lesson
+                    ).first()
+
+                    if lesson_progress:
+                        lesson_data['progress'] = {
+                            'status': lesson_progress.status,
+                            'time_spent': lesson_progress.time_spent,
+                            'completed_at': lesson_progress.completed_at.isoformat() if lesson_progress.completed_at else None,
+                        }
+                except UserCourseProgress.DoesNotExist:
+                    pass
+
+            lessons_data.append(lesson_data)
+
+        return Response({
+            'lessons': lessons_data,
+            'count': len(lessons_data)
+        }, status=status.HTTP_200_OK)
+
+
+class LessonDetailView(APIView):
+    """
+    Детали урока.
+
+    GET /api/lessons/{id}/
+    Возвращает полную информацию об уроке.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, lesson_id):
+        try:
+            lesson = Lesson.objects.select_related('course').get(id=lesson_id, is_active=True)
+        except Lesson.DoesNotExist:
+            return Response(
+                {'error': 'Урок не найден'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        # Проверка доступа к курсу
+        if not UserCourse.objects.filter(
+            user=request.user,
+            course=lesson.course
+        ).exists():
+            return Response(
+                {'error': 'У вас нет доступа к этому уроку'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        lesson_data = {
+            'id': lesson.id,
+            'course_id': lesson.course.id,
+            'title': lesson.title,
+            'content_type': lesson.content_type,
+            'content_type_display': lesson.get_content_type_display_name(),
+            'content': lesson.content,
+            'duration': lesson.duration,
+            'order': lesson.order,
+            'is_required': lesson.is_required,
+            'additional_materials': lesson.additional_materials,
+        }
+
+        # Прогресс пользователя по уроку
+        pet_id = request.query_params.get('pet_id')
+        try:
+            course_progress = UserCourseProgress.objects.get(
+                user=request.user,
+                course=lesson.course,
+                pet_id=pet_id
+            )
+            lesson_progress = UserLessonProgress.objects.filter(
+                course_progress=course_progress,
+                lesson=lesson
+            ).first()
+
+            if lesson_progress:
+                lesson_data['progress'] = {
+                    'id': str(lesson_progress.id),
+                    'status': lesson_progress.status,
+                    'time_spent': lesson_progress.time_spent,
+                    'attempts_count': lesson_progress.attempts_count,
+                    'success_rate': lesson_progress.success_rate,
+                    'notes': lesson_progress.notes,
+                    'started_at': lesson_progress.started_at.isoformat() if lesson_progress.started_at else None,
+                    'completed_at': lesson_progress.completed_at.isoformat() if lesson_progress.completed_at else None,
+                }
+            else:
+                lesson_data['progress'] = None
+        except UserCourseProgress.DoesNotExist:
+            lesson_data['progress'] = None
+
+        return Response({'lesson': lesson_data}, status=status.HTTP_200_OK)
+
+
+class LessonCompleteView(APIView):
+    """
+    Завершение урока.
+
+    POST /api/lessons/{id}/complete/
+    Отмечает урок как завершённый и обновляет прогресс.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, lesson_id):
+        try:
+            lesson = Lesson.objects.select_related('course').get(id=lesson_id, is_active=True)
+        except Lesson.DoesNotExist:
+            return Response(
+                {'error': 'Урок не найден'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        # Проверка доступа к курсу
+        if not UserCourse.objects.filter(
+            user=request.user,
+            course=lesson.course
+        ).exists():
+            return Response(
+                {'error': 'У вас нет доступа к этому уроку'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        pet_id = request.data.get('pet_id')
+        time_spent = request.data.get('time_spent', 0)
+
+        try:
+            course_progress = UserCourseProgress.objects.get(
+                user=request.user,
+                course=lesson.course,
+                pet_id=pet_id
+            )
+        except UserCourseProgress.DoesNotExist:
+            return Response(
+                {'error': 'Прогресс по курсу не найден'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        # Получаем или создаем прогресс по уроку
+        lesson_progress, created = UserLessonProgress.objects.get_or_create(
+            course_progress=course_progress,
+            lesson=lesson,
+            defaults={
+                'status': 'not_started',
+            }
+        )
+
+        # Отмечаем урок как завершённый
+        lesson_progress.mark_completed(time_spent)
+
+        return Response({
+            'message': 'Урок успешно завершён',
+            'lesson_progress': {
+                'id': str(lesson_progress.id),
+                'status': lesson_progress.status,
+                'completed_at': lesson_progress.completed_at.isoformat(),
+                'time_spent': lesson_progress.time_spent,
+            },
+            'course_progress': {
+                'progress_percent': course_progress.progress_percent,
+                'status': course_progress.status,
+            }
+        }, status=status.HTTP_200_OK)
+
+
+class UserCourseProgressView(APIView):
+    """
+    Прогресс пользователя по курсу.
+
+    GET /api/courses/{course_id}/progress/
+    Возвращает детальный прогресс по курсу для указанного питомца.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, course_id):
+        try:
+            course = Course.objects.get(id=course_id, is_active=True)
+        except Course.DoesNotExist:
+            return Response(
+                {'error': 'Курс не найден'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        # Проверка доступа к курсу
+        if not UserCourse.objects.filter(
+            user=request.user,
+            course=course
+        ).exists():
+            return Response(
+                {'error': 'У вас нет доступа к этому курсу'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        pet_id = request.query_params.get('pet_id')
+        if not pet_id:
+            return Response(
+                {'error': 'Необходимо указать pet_id'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            course_progress = UserCourseProgress.objects.select_related(
+                'course', 'pet'
+            ).get(
+                user=request.user,
+                course=course,
+                pet_id=pet_id
+            )
+        except UserCourseProgress.DoesNotExist:
+            # Создаем прогресс если его нет
+            course_progress = UserCourseProgress.objects.create(
+                user=request.user,
+                course=course,
+                pet_id=pet_id,
+                status='not_started'
+            )
+
+        # Получаем прогресс по всем урокам
+        lessons_progress = []
+        for lesson in course.get_lessons_ordered():
+            lesson_progress = UserLessonProgress.objects.filter(
+                course_progress=course_progress,
+                lesson=lesson
+            ).first()
+
+            lesson_data = {
+                'lesson_id': lesson.id,
+                'title': lesson.title,
+                'order': lesson.order,
+                'is_required': lesson.is_required,
+                'progress': None
+            }
+
+            if lesson_progress:
+                lesson_data['progress'] = {
+                    'id': str(lesson_progress.id),
+                    'status': lesson_progress.status,
+                    'time_spent': lesson_progress.time_spent,
+                    'attempts_count': lesson_progress.attempts_count,
+                    'success_rate': lesson_progress.success_rate,
+                    'completed_at': lesson_progress.completed_at.isoformat() if lesson_progress.completed_at else None,
+                }
+
+            lessons_progress.append(lesson_data)
+
+        progress_data = {
+            'id': str(course_progress.id),
+            'course_id': course.id,
+            'pet_id': str(course_progress.pet_id) if course_progress.pet else None,
+            'pet_name': course_progress.pet.name if course_progress.pet else None,
+            'status': course_progress.status,
+            'progress_percent': course_progress.progress_percent,
+            'started_at': course_progress.started_at.isoformat() if course_progress.started_at else None,
+            'last_activity_at': course_progress.last_activity_at.isoformat(),
+            'completed_at': course_progress.completed_at.isoformat() if course_progress.completed_at else None,
+            'total_time_spent': course_progress.total_time_spent,
+            'completed_lessons_count': course_progress.completed_lessons_count,
+            'notifications_enabled': course_progress.notifications_enabled,
+            'lessons_progress': lessons_progress,
+        }
+
+        return Response({'progress': progress_data}, status=status.HTTP_200_OK)
+
+
+class LessonProgressView(APIView):
+    """
+    Обновление прогресса по уроку.
+
+    PUT /api/lessons/{id}/progress/
+    Обновляет время просмотра, статус и другие метрики урока.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def put(self, request, lesson_id):
+        try:
+            lesson = Lesson.objects.select_related('course').get(id=lesson_id, is_active=True)
+        except Lesson.DoesNotExist:
+            return Response(
+                {'error': 'Урок не найден'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        # Проверка доступа к курсу
+        if not UserCourse.objects.filter(
+            user=request.user,
+            course=lesson.course
+        ).exists():
+            return Response(
+                {'error': 'У вас нет доступа к этому уроку'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        pet_id = request.data.get('pet_id')
+        if not pet_id:
+            return Response(
+                {'error': 'Необходимо указать pet_id'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            course_progress = UserCourseProgress.objects.get(
+                user=request.user,
+                course=lesson.course,
+                pet_id=pet_id
+            )
+        except UserCourseProgress.DoesNotExist:
+            return Response(
+                {'error': 'Прогресс по курсу не найден'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        # Получаем или создаем прогресс по уроку
+        lesson_progress, created = UserLessonProgress.objects.get_or_create(
+            course_progress=course_progress,
+            lesson=lesson,
+            defaults={
+                'status': 'in_progress',
+                'started_at': timezone.now(),
+            }
+        )
+
+        # Обновляем данные прогресса
+        if not lesson_progress.started_at:
+            lesson_progress.started_at = timezone.now()
+
+        lesson_progress.status = request.data.get('status', lesson_progress.status)
+        lesson_progress.time_spent = request.data.get('time_spent', lesson_progress.time_spent)
+        lesson_progress.attempts_count = request.data.get('attempts_count', lesson_progress.attempts_count)
+        lesson_progress.success_rate = request.data.get('success_rate', lesson_progress.success_rate)
+        lesson_progress.notes = request.data.get('notes', lesson_progress.notes)
+
+        lesson_progress.save()
+
+        # Если урок завершён, обновляем общий прогресс курса
+        if lesson_progress.status == 'completed' and not lesson_progress.completed_at:
+            lesson_progress.mark_completed()
+
+        return Response({
+            'lesson_progress': {
+                'id': str(lesson_progress.id),
+                'status': lesson_progress.status,
+                'time_spent': lesson_progress.time_spent,
+                'attempts_count': lesson_progress.attempts_count,
+                'success_rate': lesson_progress.success_rate,
+                'updated_at': lesson_progress.updated_at.isoformat(),
+            }
+        }, status=status.HTTP_200_OK)
+
+
+class LessonCommentsView(APIView):
+    """
+    Комментарии к уроку.
+
+    GET /api/lessons/{id}/comments/ - получить комментарии
+    POST /api/lessons/{id}/comments/ - добавить комментарий
+    """
+
+    def get_permissions(self):
+        if self.request.method == 'GET':
+            return [AllowAny()]
+        return [IsAuthenticated()]
+
+    def get(self, request, lesson_id):
+        try:
+            lesson = Lesson.objects.get(id=lesson_id, is_active=True)
+        except Lesson.DoesNotExist:
+            return Response(
+                {'error': 'Урок не найден'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        comments = Comment.objects.filter(
+            lesson=lesson,
+            parent__isnull=True  # Только корневые комментарии
+        ).select_related('user').order_by('-created_at')
+
+        comments_data = []
+        for comment in comments:
+            comment_data = {
+                'id': str(comment.id),
+                'user': {
+                    'id': comment.user.id,
+                    'username': comment.user.username,
+                    'email': comment.user.email,
+                },
+                'content': comment.content,
+                'attachments': comment.attachments,
+                'likes_count': comment.likes_count,
+                'dislikes_count': comment.dislikes_count,
+                'replies_count': comment.get_replies().count(),
+                'created_at': comment.created_at.isoformat(),
+                'updated_at': comment.updated_at.isoformat(),
+            }
+
+            # Добавляем информацию о лайке пользователя
+            if request.user.is_authenticated:
+                user_like = CommentLike.objects.filter(
+                    comment=comment,
+                    user=request.user
+                ).first()
+                comment_data['user_like'] = {
+                    'is_liked': user_like.is_like if user_like else None
+                } if user_like else None
+
+            comments_data.append(comment_data)
+
+        return Response({
+            'comments': comments_data,
+            'count': len(comments_data)
+        }, status=status.HTTP_200_OK)
+
+    def post(self, request, lesson_id):
+        try:
+            lesson = Lesson.objects.get(id=lesson_id, is_active=True)
+        except Lesson.DoesNotExist:
+            return Response(
+                {'error': 'Урок не найден'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        content = request.data.get('content', '').strip()
+        if not content:
+            return Response(
+                {'error': 'Текст комментария обязателен'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        parent_id = request.data.get('parent_id')
+        parent = None
+        if parent_id:
+            try:
+                parent = Comment.objects.get(id=parent_id, lesson=lesson)
+            except Comment.DoesNotExist:
+                return Response(
+                    {'error': 'Родительский комментарий не найден'},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+
+        comment = Comment.objects.create(
+            user=request.user,
+            lesson=lesson,
+            content=content,
+            parent=parent,
+            attachments=request.data.get('attachments', [])
+        )
+
+        return Response({
+            'message': 'Комментарий добавлен',
+            'comment': {
+                'id': str(comment.id),
+                'content': comment.content,
+                'created_at': comment.created_at.isoformat(),
+            }
+        }, status=status.HTTP_201_CREATED)
+
+
+class CourseCommentsView(APIView):
+    """
+    Комментарии к курсу.
+
+    GET /api/courses/{id}/comments/
+    """
+
+    permission_classes = [AllowAny]
+
+    def get(self, request, course_id):
+        try:
+            course = Course.objects.get(id=course_id, is_active=True)
+        except Course.DoesNotExist:
+            return Response(
+                {'error': 'Курс не найден'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        comments = Comment.objects.filter(
+            course=course,
+            parent__isnull=True
+        ).select_related('user').order_by('-created_at')
+
+        comments_data = []
+        for comment in comments:
+            comment_data = {
+                'id': str(comment.id),
+                'user': {
+                    'id': comment.user.id,
+                    'username': comment.user.username,
+                    'email': comment.user.email,
+                },
+                'content': comment.content,
+                'attachments': comment.attachments,
+                'likes_count': comment.likes_count,
+                'dislikes_count': comment.dislikes_count,
+                'replies_count': comment.get_replies().count(),
+                'created_at': comment.created_at.isoformat(),
+            }
+
+            if request.user.is_authenticated:
+                user_like = CommentLike.objects.filter(
+                    comment=comment,
+                    user=request.user
+                ).first()
+                comment_data['user_like'] = {
+                    'is_liked': user_like.is_like if user_like else None
+                } if user_like else None
+
+            comments_data.append(comment_data)
+
+        return Response({
+            'comments': comments_data,
+            'count': len(comments_data)
+        }, status=status.HTTP_200_OK)
+
+
+class CommentLikeView(APIView):
+    """
+    Лайк/дизлайк комментария.
+
+    POST /api/comments/{id}/like/
+    DELETE /api/comments/{id}/like/
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, comment_id):
+        try:
+            comment = Comment.objects.get(id=comment_id)
+        except Comment.DoesNotExist:
+            return Response(
+                {'error': 'Комментарий не найден'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        is_like = request.data.get('is_like', True)
+
+        if is_like:
+            comment.add_like(request.user)
+            action = 'лайк'
+        else:
+            comment.add_dislike(request.user)
+            action = 'дизлайк'
+
+        return Response({
+            'message': f'{action.capitalize()} добавлен',
+            'likes_count': comment.likes_count,
+            'dislikes_count': comment.dislikes_count,
+        }, status=status.HTTP_200_OK)
+
+    def delete(self, request, comment_id):
+        try:
+            comment = Comment.objects.get(id=comment_id)
+        except Comment.DoesNotExist:
+            return Response(
+                {'error': 'Комментарий не найден'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        CommentLike.objects.filter(
+            comment=comment,
+            user=request.user
+        ).delete()
+
+        comment.update_rating()
+
+        return Response({
+            'message': 'Лайк удалён',
+            'likes_count': comment.likes_count,
+            'dislikes_count': comment.dislikes_count,
+        }, status=status.HTTP_200_OK)
+
+
+class CourseRatingsView(APIView):
+    """
+    Оценки курса.
+
+    GET /api/courses/{id}/ratings/ - получить оценки
+    POST /api/courses/{id}/ratings/ - поставить оценку
+    """
+
+    def get_permissions(self):
+        if self.request.method == 'GET':
+            return [AllowAny()]
+        return [IsAuthenticated()]
+
+    def get(self, request, course_id):
+        try:
+            course = Course.objects.get(id=course_id, is_active=True)
+        except Course.DoesNotExist:
+            return Response(
+                {'error': 'Курс не найден'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        ratings = Rating.objects.filter(
+            course=course,
+            is_approved=True
+        ).select_related('user', 'pet').order_by('-created_at')
+
+        ratings_data = []
+        for rating in ratings:
+            rating_data = {
+                'id': str(rating.id),
+                'user': {
+                    'id': rating.user.id,
+                    'username': rating.user.username,
+                },
+                'rating': rating.rating,
+                'review': rating.review,
+                'pet_name': rating.pet.name if rating.pet else None,
+                'created_at': rating.created_at.isoformat(),
+            }
+            ratings_data.append(rating_data)
+
+        # Статистика рейтингов
+        from django.db.models import Avg, Count
+        stats = ratings.aggregate(
+            avg_rating=Avg('rating'),
+            total_ratings=Count('id')
+        )
+
+        rating_distribution = {}
+        for i in range(1, 6):
+            rating_distribution[i] = ratings.filter(rating=i).count()
+
+        return Response({
+            'ratings': ratings_data,
+            'stats': {
+                'average_rating': round(stats['avg_rating'], 1) if stats['avg_rating'] else 0,
+                'total_ratings': stats['total_ratings'],
+                'distribution': rating_distribution,
+            }
+        }, status=status.HTTP_200_OK)
+
+    def post(self, request, course_id):
+        try:
+            course = Course.objects.get(id=course_id, is_active=True)
+        except Course.DoesNotExist:
+            return Response(
+                {'error': 'Курс не найден'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        # Проверка, что пользователь имеет доступ к курсу
+        if not UserCourse.objects.filter(
+            user=request.user,
+            course=course
+        ).exists():
+            return Response(
+                {'error': 'У вас нет доступа к этому курсу'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        rating_value = request.data.get('rating')
+        if not rating_value or not isinstance(rating_value, int) or rating_value < 1 or rating_value > 5:
+            return Response(
+                {'error': 'Оценка должна быть целым числом от 1 до 5'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        review_text = request.data.get('review', '').strip()
+        pet_id = request.data.get('pet_id')
+
+        # Проверка, не ставил ли уже оценку
+        existing_rating = Rating.objects.filter(
+            user=request.user,
+            course=course,
+            pet_id=pet_id
+        ).first()
+
+        if existing_rating:
+            # Обновляем существующую оценку
+            existing_rating.rating = rating_value
+            existing_rating.review = review_text
+            existing_rating.save()
+            message = 'Оценка обновлена'
+        else:
+            # Создаем новую оценку
+            pet = None
+            if pet_id:
+                try:
+                    pet = Pet.objects.get(id=pet_id, owner=request.user)
+                except Pet.DoesNotExist:
+                    pass
+
+            Rating.objects.create(
+                user=request.user,
+                course=course,
+                rating=rating_value,
+                review=review_text,
+                pet=pet
+            )
+            message = 'Оценка добавлена'
+
+        return Response({
+            'message': message,
+            'rating': rating_value,
+            'review': review_text,
+        }, status=status.HTTP_201_CREATED)
+
+
+# ===== ВЬЮСЫ ДЛЯ КОММЕНТАРИЕВ =====
+
+class CommentListView(APIView):
+    """
+    Список комментариев к курсу или уроку.
+
+    GET /api/courses/{course_id}/comments/ - комментарии к курсу
+    GET /api/lessons/{lesson_id}/comments/ - комментарии к уроку
+    """
+    permission_classes = [AllowAny]
+
+    def get(self, request, course_id=None, lesson_id=None):
+        if course_id:
+            try:
+                course = Course.objects.get(id=course_id, is_active=True)
+            except Course.DoesNotExist:
+                return Response(
+                    {'error': 'Курс не найден'},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+
+            # Получаем только корневые комментарии (без parent)
+            comments = Comment.objects.filter(
+                course=course,
+                parent__isnull=True,
+                is_moderated=True
+            ).order_by('-created_at').prefetch_related('replies', 'user')
+
+        elif lesson_id:
+            try:
+                lesson = Lesson.objects.get(id=lesson_id)
+            except Lesson.DoesNotExist:
+                return Response(
+                    {'error': 'Урок не найден'},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+
+            # Получаем только корневые комментарии (без parent)
+            comments = Comment.objects.filter(
+                lesson=lesson,
+                parent__isnull=True,
+                is_moderated=True
+            ).order_by('-created_at').prefetch_related('replies', 'user')
+        else:
+            return Response(
+                {'error': 'Необходимо указать course_id или lesson_id'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Пагинация
+        page = request.query_params.get('page', 1)
+        per_page = min(int(request.query_params.get('per_page', 10)), 50)
+
+        paginator = Paginator(comments, per_page)
+        try:
+            page_obj = paginator.page(page)
+        except PageNotAnInteger:
+            page_obj = paginator.page(1)
+        except EmptyPage:
+            page_obj = paginator.page(paginator.num_pages)
+
+        serializer = CommentSerializer(
+            page_obj,
+            many=True,
+            context={'request': request}
+        )
+
+        return Response({
+            'comments': serializer.data,
+            'pagination': {
+                'total': paginator.count,
+                'page': page_obj.number,
+                'per_page': per_page,
+                'total_pages': paginator.num_pages,
+                'has_next': page_obj.has_next(),
+                'has_previous': page_obj.has_previous()
+            }
+        })
+
+
+class CommentCreateView(APIView):
+    """
+    Создание комментария к курсу или уроку.
+
+    POST /api/courses/{course_id}/comments/ - комментарий к курсу
+    POST /api/lessons/{lesson_id}/comments/ - комментарий к уроку
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, course_id=None, lesson_id=None):
+        if course_id:
+            try:
+                course = Course.objects.get(id=course_id, is_active=True)
+            except Course.DoesNotExist:
+                return Response(
+                    {'error': 'Курс не найден'},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+
+            # Проверяем доступ к курсу
+            if not UserCourse.objects.filter(user=request.user, course=course).exists():
+                return Response(
+                    {'error': 'У вас нет доступа к этому курсу'},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+
+            data = request.data.copy()
+            data['course'] = course.id
+
+        elif lesson_id:
+            try:
+                lesson = Lesson.objects.get(id=lesson_id)
+            except Lesson.DoesNotExist:
+                return Response(
+                    {'error': 'Урок не найден'},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+
+            # Проверяем доступ к уроку через курс
+            if not UserCourse.objects.filter(user=request.user, course=lesson.course).exists():
+                return Response(
+                    {'error': 'У вас нет доступа к этому уроку'},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+
+            data = request.data.copy()
+            data['lesson'] = lesson.id
+        else:
+            return Response(
+                {'error': 'Необходимо указать course_id или lesson_id'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        serializer = CommentCreateSerializer(data=data)
+        if serializer.is_valid():
+            comment = serializer.save(user=request.user)
+            # Возвращаем созданный комментарий с дополнительной информацией
+            response_serializer = CommentSerializer(
+                comment,
+                context={'request': request}
+            )
+            return Response(
+                response_serializer.data,
+                status=status.HTTP_201_CREATED
+            )
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class CommentDetailView(APIView):
+    """
+    Детали, редактирование и удаление комментария.
+
+    GET /api/comments/{id}/ - детали комментария
+    PUT /api/comments/{id}/ - редактирование
+    DELETE /api/comments/{id}/ - удаление
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, comment_id):
+        try:
+            comment = Comment.objects.get(id=comment_id)
+        except Comment.DoesNotExist:
+            return Response(
+                {'error': 'Комментарий не найден'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        # Проверяем доступ к комментарию
+        if comment.course and not UserCourse.objects.filter(
+            user=request.user, course=comment.course
+        ).exists():
+            return Response(
+                {'error': 'У вас нет доступа к этому комментарию'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        if comment.lesson and not UserCourse.objects.filter(
+            user=request.user, course=comment.lesson.course
+        ).exists():
+            return Response(
+                {'error': 'У вас нет доступа к этому комментарию'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        serializer = CommentSerializer(comment, context={'request': request})
+        return Response(serializer.data)
+
+    def put(self, request, comment_id):
+        try:
+            comment = Comment.objects.get(id=comment_id)
+        except Comment.DoesNotExist:
+            return Response(
+                {'error': 'Комментарий не найден'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        # Проверяем права на редактирование
+        if not comment.can_edit(request.user):
+            return Response(
+                {'error': 'У вас нет прав на редактирование этого комментария'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        serializer = CommentCreateSerializer(comment, data=request.data, partial=True)
+        if serializer.is_valid():
+            updated_comment = serializer.save()
+            response_serializer = CommentSerializer(
+                updated_comment,
+                context={'request': request}
+            )
+            return Response(response_serializer.data)
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request, comment_id):
+        try:
+            comment = Comment.objects.get(id=comment_id)
+        except Comment.DoesNotExist:
+            return Response(
+                {'error': 'Комментарий не найден'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        # Проверяем права на удаление
+        if not comment.can_delete(request.user):
+            return Response(
+                {'error': 'У вас нет прав на удаление этого комментария'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        comment.delete()
+        return Response(
+            {'message': 'Комментарий удален'},
+            status=status.HTTP_204_NO_CONTENT
+        )
+
+
+class CommentLikeView(APIView):
+    """
+    Добавление/удаление лайка комментарию.
+
+    POST /api/comments/{id}/like/ - лайк
+    POST /api/comments/{id}/dislike/ - дизлайк
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, comment_id, action):
+        try:
+            comment = Comment.objects.get(id=comment_id)
+        except Comment.DoesNotExist:
+            return Response(
+                {'error': 'Комментарий не найден'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        # Проверяем доступ к комментарию
+        if comment.course and not UserCourse.objects.filter(
+            user=request.user, course=comment.course
+        ).exists():
+            return Response(
+                {'error': 'У вас нет доступа к этому комментарию'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        if comment.lesson and not UserCourse.objects.filter(
+            user=request.user, course=comment.lesson.course
+        ).exists():
+            return Response(
+                {'error': 'У вас нет доступа к этому комментарию'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        is_like = action == 'like'
+        created, was_like = comment.add_like(request.user, is_like)
+
+        return Response({
+            'message': 'Реакция добавлена' if created else 'Реакция обновлена',
+            'action': action,
+            'likes_count': comment.likes_count,
+            'dislikes_count': comment.dislikes_count
+        })
+
+
+class CourseRatingListView(APIView):
+    """
+    Список оценок курса (улучшенная версия).
+
+    GET /api/courses/{course_id}/ratings/
+    """
+    permission_classes = [AllowAny]
+
+    def get(self, request, course_id):
+        try:
+            course = Course.objects.get(id=course_id, is_active=True)
+        except Course.DoesNotExist:
+            return Response(
+                {'error': 'Курс не найден'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        # Получаем одобренные оценки с пагинацией
+        ratings = Rating.objects.filter(
+            course=course,
+            is_approved=True
+        ).select_related('user', 'pet').order_by('-created_at')
+
+        # Пагинация
+        page = request.query_params.get('page', 1)
+        per_page = min(int(request.query_params.get('per_page', 10)), 50)
+
+        paginator = Paginator(ratings, per_page)
+        try:
+            page_obj = paginator.page(page)
+        except PageNotAnInteger:
+            page_obj = paginator.page(1)
+        except EmptyPage:
+            page_obj = paginator.page(paginator.num_pages)
+
+        serializer = RatingSerializer(
+            page_obj,
+            many=True,
+            context={'request': request}
+        )
+
+        # Статистика оценок
+        stats = Rating.objects.filter(course=course, is_approved=True).aggregate(
+            avg_rating=Avg('rating'),
+            total_ratings=Count('id')
+        )
+
+        # Распределение по звездам
+        rating_distribution = {}
+        for i in range(1, 6):
+            rating_distribution[i] = Rating.objects.filter(
+                course=course,
+                rating=i,
+                is_approved=True
+            ).count()
+
+        return Response({
+            'ratings': serializer.data,
+            'stats': {
+                'average_rating': round(stats['avg_rating'], 1) if stats['avg_rating'] else 0,
+                'total_ratings': stats['total_ratings'],
+                'distribution': rating_distribution,
+            },
+            'pagination': {
+                'total': paginator.count,
+                'page': page_obj.number,
+                'per_page': per_page,
+                'total_pages': paginator.num_pages,
+                'has_next': page_obj.has_next(),
+                'has_previous': page_obj.has_previous()
+            }
+        })
+
+
+class CourseRatingCreateView(APIView):
+    """
+    Создание оценки курса.
+
+    POST /api/courses/{course_id}/ratings/
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, course_id):
+        try:
+            course = Course.objects.get(id=course_id, is_active=True)
+        except Course.DoesNotExist:
+            return Response(
+                {'error': 'Курс не найден'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        # Проверяем доступ к курсу
+        if not UserCourse.objects.filter(user=request.user, course=course).exists():
+            return Response(
+                {'error': 'У вас нет доступа к этому курсу'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        serializer = RatingCreateSerializer(data=request.data)
+        if serializer.is_valid():
+            rating = serializer.save(user=request.user, course=course)
+
+            response_serializer = RatingSerializer(
+                rating,
+                context={'request': request}
+            )
+            return Response(
+                response_serializer.data,
+                status=status.HTTP_201_CREATED
+            )
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class RatingDetailView(APIView):
+    """
+    Детали, редактирование и удаление оценки.
+
+    GET /api/ratings/{id}/ - детали оценки
+    PUT /api/ratings/{id}/ - редактирование
+    DELETE /api/ratings/{id}/ - удаление
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, rating_id):
+        try:
+            rating = Rating.objects.get(id=rating_id)
+        except Rating.DoesNotExist:
+            return Response(
+                {'error': 'Оценка не найдена'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        # Проверяем доступ к оценке
+        if not rating.can_edit(request.user) and not request.user.is_staff:
+            return Response(
+                {'error': 'У вас нет доступа к этой оценке'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        serializer = RatingSerializer(rating, context={'request': request})
+        return Response(serializer.data)
+
+    def put(self, request, rating_id):
+        try:
+            rating = Rating.objects.get(id=rating_id)
+        except Rating.DoesNotExist:
+            return Response(
+                {'error': 'Оценка не найдена'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        # Проверяем права на редактирование
+        if not rating.can_edit(request.user):
+            return Response(
+                {'error': 'У вас нет прав на редактирование этой оценки'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        serializer = RatingCreateSerializer(rating, data=request.data, partial=True)
+        if serializer.is_valid():
+            updated_rating = serializer.save()
+            response_serializer = RatingSerializer(
+                updated_rating,
+                context={'request': request}
+            )
+            return Response(response_serializer.data)
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request, rating_id):
+        try:
+            rating = Rating.objects.get(id=rating_id)
+        except Rating.DoesNotExist:
+            return Response(
+                {'error': 'Оценка не найдена'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        # Проверяем права на удаление
+        if not rating.can_delete(request.user):
+            return Response(
+                {'error': 'У вас нет прав на удаление этой оценки'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        rating.delete()
+        return Response(
+            {'message': 'Оценка удалена'},
+            status=status.HTTP_204_NO_CONTENT
+        )

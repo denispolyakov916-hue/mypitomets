@@ -129,6 +129,34 @@ class PetCreateSerializer(serializers.Serializer):
         default=list,
         help_text="Список аллергенов (опционально)"
     )
+
+    # ===== ПОЛЯ ДЛЯ ПЕРСОНАЛИЗАЦИИ КУРСОВ =====
+
+    # Базовые поля для персонализации (обязательные при создании)
+    behavior_type = serializers.ChoiceField(
+        required=False,  # Пока опционально, станет обязательным позже
+        choices=[
+            ('calm', 'Спокойный'),
+            ('active', 'Активный'),
+            ('aggressive', 'Агрессивный'),
+            ('shy', 'Трусливый'),
+            ('playful', 'Игривый'),
+        ],
+        allow_null=True,
+        help_text="Тип поведения питомца для персонализации курсов"
+    )
+
+    social_level = serializers.ChoiceField(
+        required=False,  # Пока опционально, станет обязательным позже
+        choices=[
+            ('home_only', 'Только домашний'),
+            ('street', 'Уличный'),
+            ('social', 'Социальный'),
+            ('mixed', 'Смешанный'),
+        ],
+        allow_null=True,
+        help_text="Уровень социализации питомца"
+    )
     
     def validate_name(self, value):
         """
@@ -309,6 +337,72 @@ class PetUpdateSerializer(serializers.Serializer):
         allow_null=True,
         help_text="Список аллергенов"
     )
+
+    # ===== ПОЛЯ ДЛЯ ПЕРСОНАЛИЗАЦИИ КУРСОВ =====
+
+    # Базовые поля для персонализации
+    behavior_type = serializers.ChoiceField(
+        required=False,
+        choices=[
+            ('calm', 'Спокойный'),
+            ('active', 'Активный'),
+            ('aggressive', 'Агрессивный'),
+            ('shy', 'Трусливый'),
+            ('playful', 'Игривый'),
+        ],
+        allow_null=True,
+        help_text="Тип поведения питомца для персонализации курсов"
+    )
+
+    social_level = serializers.ChoiceField(
+        required=False,
+        choices=[
+            ('home_only', 'Только домашний'),
+            ('street', 'Уличный'),
+            ('social', 'Социальный'),
+            ('mixed', 'Смешанный'),
+        ],
+        allow_null=True,
+        help_text="Уровень социализации питомца"
+    )
+
+    # Расширенные поля для глубокой персонализации
+    training_experience = serializers.ChoiceField(
+        required=False,
+        choices=[
+            ('none', 'Без опыта'),
+            ('basic', 'Базовый'),
+            ('intermediate', 'Средний'),
+            ('advanced', 'Продвинутый'),
+            ('professional', 'Профессиональный'),
+        ],
+        allow_null=True,
+        help_text="Уровень опыта дрессировки питомца"
+    )
+
+    special_needs = serializers.ListField(
+        child=serializers.CharField(),
+        required=False,
+        allow_empty=True,
+        allow_null=True,
+        help_text="Особые потребности питомца"
+    )
+
+    preferred_activities = serializers.ListField(
+        child=serializers.CharField(),
+        required=False,
+        allow_empty=True,
+        allow_null=True,
+        help_text="Предпочитаемые активности питомца"
+    )
+
+    behavioral_problems = serializers.ListField(
+        child=serializers.CharField(),
+        required=False,
+        allow_empty=True,
+        allow_null=True,
+        help_text="Поведенческие проблемы питомца"
+    )
     
     def validate_name(self, value):
         """Валидация клички при обновлении."""
@@ -395,3 +489,12 @@ class PetSerializer(serializers.Serializer):
     allergies = serializers.ListField(child=serializers.CharField(), read_only=True)
     created_at = serializers.CharField(read_only=True)
     updated_at = serializers.CharField(read_only=True)
+
+    # ===== ПОЛЯ ДЛЯ ПЕРСОНАЛИЗАЦИИ КУРСОВ =====
+    behavior_type = serializers.CharField(read_only=True, allow_null=True)
+    social_level = serializers.CharField(read_only=True, allow_null=True)
+    training_experience = serializers.CharField(read_only=True, allow_null=True)
+    special_needs = serializers.ListField(child=serializers.CharField(), read_only=True)
+    preferred_activities = serializers.ListField(child=serializers.CharField(), read_only=True)
+    behavioral_problems = serializers.ListField(child=serializers.CharField(), read_only=True)
+    is_extended_profile = serializers.BooleanField(read_only=True)

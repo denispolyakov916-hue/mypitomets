@@ -284,22 +284,19 @@ function AuthModal() {
                 )}
               </button>
 
-              {/* Социальные сети (плейсхолдер) */}
+              {/* Социальные сети */}
               <div className="auth-social-text">
                 или {isRegisterMode ? 'зарегистрируйтесь' : 'войдите'} через
               </div>
               <div className="auth-social-icons">
-                <a href="#" className="auth-social-icon">
-                  <i className='bx bxl-google'></i>
+                <a href="#" className="auth-social-icon" title="ВКонтакте">
+                  <i className='bx bxl-vk'></i>
                 </a>
-                <a href="#" className="auth-social-icon">
-                  <i className='bx bxl-facebook'></i>
+                <a href="#" className="auth-social-icon" title="Яндекс">
+                  <span className="social-text-icon">Я</span>
                 </a>
-                <a href="#" className="auth-social-icon">
-                  <i className='bx bxl-github'></i>
-                </a>
-                <a href="#" className="auth-social-icon">
-                  <i className='bx bxl-linkedin'></i>
+                <a href="#" className="auth-social-icon" title="Telegram">
+                  <i className='bx bxl-telegram'></i>
                 </a>
               </div>
             </form>

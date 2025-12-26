@@ -337,6 +337,11 @@ function Payment() {
       navigate('/profile?tab=orders')
     } else if (type === 'shop_order') {
       navigate('/profile?tab=orders')
+    } else if (type === 'course' && courseId) {
+      // Для курса - сразу переход к обучению
+      setTimeout(() => {
+        navigate(`/training/courses/${courseId}/learn`)
+      }, 1000)
     } else {
       navigate('/profile?tab=courses')
     }
