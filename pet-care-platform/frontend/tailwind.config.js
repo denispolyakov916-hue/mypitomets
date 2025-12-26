@@ -18,16 +18,16 @@ export default {
       // Брендовые цвета
       colors: {
         primary: {
-          50: '#eff6ff',
-          100: '#dbeafe',
-          200: '#bfdbfe',
-          300: '#93c5fd',
-          400: '#60a5fa',
-          500: '#3b82f6', // Основной primary цвет
-          600: '#2563eb',
-          700: '#1d4ed8',
-          800: '#1e40af',
-          900: '#1e3a8a',
+          50: '#faf5ff',   // light purple
+          100: '#f3e8ff',
+          200: '#e9d5ff',
+          300: '#d8b4fe',
+          400: '#c084fc',
+          500: '#a855f7', // Основной primary цвет - фиолетовый
+          600: '#9333ea',
+          700: '#7c3aed', // основной фиолетовый из внешнего проекта
+          800: '#6b21a8',
+          900: '#581c87',
         },
         secondary: {
           50: '#f0fdf4',
@@ -47,7 +47,31 @@ export default {
           200: '#fed7aa',
           300: '#fdba74',
           400: '#fb923c',
-          500: '#f97316', // Акцентный цвет для CTA
+          500: '#f97316', // Оранжевый из внешнего проекта
+          600: '#ea580c',
+          700: '#c2410c',
+          800: '#9a3412',
+          900: '#7c2d12',
+        },
+        purple: {
+          50: '#faf5ff',
+          100: '#f3e8ff',
+          200: '#e9d5ff',
+          300: '#d8b4fe',
+          400: '#c084fc',
+          500: '#a855f7',
+          600: '#9333ea',
+          700: '#7c3aed', // основной фиолетовый
+          800: '#6b21a8',
+          900: '#581c87',
+        },
+        orange: {
+          50: '#fff7ed',
+          100: '#ffedd5',
+          200: '#fed7aa',
+          300: '#fdba74',
+          400: '#fb923c',
+          500: '#f97316', // основной оранжевый
           600: '#ea580c',
           700: '#c2410c',
           800: '#9a3412',
@@ -70,6 +94,9 @@ export default {
         'shake': 'shake 0.5s ease-in-out',
         'pulse-slow': 'pulse 3s ease-in-out infinite',
         'bounce-subtle': 'bounceSubtle 2s ease-in-out infinite',
+        'slideUp-cubic': 'slideUp 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)',
+        'slideDown-ease': 'slideDown 0.3s ease-out',
+        'wiggle': 'wiggle 2s ease-in-out infinite',
       },
       keyframes: {
         fadeIn: {
@@ -108,6 +135,20 @@ export default {
         bounceSubtle: {
           '0%, 100%': { transform: 'translateY(0)' },
           '50%': { transform: 'translateY(-5px)' },
+        },
+        wiggle: {
+          '0%, 100%': { transform: 'rotate(0deg)' },
+          '25%': { transform: 'rotate(-10deg)' },
+          '50%': { transform: 'rotate(10deg)' },
+          '75%': { transform: 'rotate(-10deg)' },
+        },
+        slideUpCubic: {
+          '0%': { opacity: '0', transform: 'translateY(100px) scale(0.8)' },
+          '100%': { opacity: '1', transform: 'translateY(0) scale(1)' },
+        },
+        slideDownEase: {
+          '0%': { opacity: '0', maxHeight: '0' },
+          '100%': { opacity: '1', maxHeight: '2000px' },
         },
       },
       // Переходы

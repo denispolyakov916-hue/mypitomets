@@ -357,22 +357,182 @@ function AuthModal() {
 
         {/* Панель переключения */}
         <div className="auth-toggle-box">
-          <div className={`auth-toggle-panel auth-toggle-left ${isRegisterMode ? 'auth-hidden' : ''}`}>
-            <h1>Добро пожаловать!</h1>
-            <p>У вас нет аккаунта?</p>
-            <button className="auth-toggle-btn" onClick={toggleMode}>
-              Зарегистрироваться
-            </button>
-          </div>
+        {/* Форма входа */}
+        <div className={`auth-form-box ${isRegisterMode ? 'auth-register' : 'auth-login'}`}>
+          {!registrationSuccess ? (
+            <form onSubmit={isRegisterMode ? handleRegisterSubmit : handleLoginSubmit} className="auth-form">
+              <h1>{isRegisterMode ? 'Регистрация' : 'Вход'}</h1>
 
-          <div className={`auth-toggle-panel auth-toggle-right ${!isRegisterMode ? 'auth-hidden' : ''}`}>
-            <h1>Рады видеть вас снова!</h1>
-            <p>У вас уже есть аккаунт?</p>
-            <button className="auth-toggle-btn" onClick={toggleMode}>
-              Войти
-            </button>
+              {/* Серверная ошибка */}
+              {error && (
+                <div className="auth-error">
+                  {error}
+                </div>
+              )}
+
+              {/* Поле Email */}
+              <div className="auth-input-box">
+                <input
+                  type="email"
+                  name="email"
+                  value={isRegisterMode ? registerData.email : loginData.email}
+                  onChange={isRegisterMode ? handleRegisterChange : handleLoginChange}
+                  placeholder="Email"
+                  required
+                  disabled={isLoading}
+                  autoComplete="email"
+                />
+                <i className='bx bxs-envelope'></i>
+                {validationErrors.email && (
+                  <div className="auth-field-error">{validationErrors.email}</div>
+                )}
+              </div>
+
+              {/* Поле пароля */}
+              <div className="auth-input-box">
+                <input
+                  type="password"
+                  name="password"
+                  value={isRegisterMode ? registerData.password : loginData.password}
+                  onChange={isRegisterMode ? handleRegisterChange : handleLoginChange}
+                  placeholder="Пароль"
+                  required
+                  disabled={isLoading}
+                  autoComplete={isRegisterMode ? "new-password" : "current-password"}
+                />
+                <i className='bx bxs-lock-alt'></i>
+                {validationErrors.password && (
+                  <div className="auth-field-error">{validationErrors.password}</div>
+                )}
+              </div>
+
+              {/* Поле подтверждения пароля (только для регистрации) */}
+              {isRegisterMode && (
+                <div className="auth-input-box">
+                  <input
+                    type="password"
+                    name="passwordConfirm"
+                    value={registerData.passwordConfirm}
+                    onChange={handleRegisterChange}
+                    placeholder="Подтвердите пароль"
+                    required
+                    disabled={isLoading}
+                    autoComplete="new-password"
+                  />
+                  <i className='bx bxs-lock-alt'></i>
+                  {validationErrors.passwordConfirm && (
+                    <div className="auth-field-error">{validationErrors.passwordConfirm}</div>
+                  )}
+                </div>
+              )}
+
+              {/* Кнопка отправки */}
+              <button
+                type="submit"
+                className="auth-btn"
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <div className="auth-btn-content">
+                    <ButtonLoader />
+                    <span>{isRegisterMode ? 'Регистрация...' : 'Вход...'}</span>
+                  </div>
+                ) : (
+                  isRegisterMode ? 'Зарегистрироваться' : 'Войти'
+                )}
+              </button>
+
+              {/* Социальные сети */}
+              <div className="auth-social-text">
+                или {isRegisterMode ? 'зарегистрируйтесь' : 'войдите'} через
+              </div>
+              <div className="auth-social-icons">
+                <a href="#" className="auth-social-icon" title="ВКонтакте">
+                  <i className='bx bxl-vk'></i>
+                </a>
+                <a href="#" className="auth-social-icon" title="Яндекс">
+                  <span className="social-text-icon">Я</span>
+                </a>
+                <a href="#" className="auth-social-icon" title="Telegram">
+                  <i className='bx bxl-telegram'></i>
+                </a>
+              </div>
+            </form>
+          ) : (
+            /* Форма активации */
+            <form onSubmit={handleActivation} className="auth-form">
+              <h1>Подтвердите email</h1>
+
+              {error && (
+                <div className="auth-error">
+                  {error}
+                </div>
+              )}
+
+              <div className="auth-info-box">
+                Код активации отправлен на <strong>{registerData.email}</strong>
+              </div>
+
+              <div className="auth-input-box">
+                <input
+                  type="text"
+                  name="activationCode"
+                  value={activationCode}
+                  onChange={(e) => {
+                    const value = e.target.value.replace(/\D/g, '').slice(0, 6)
+                    setActivationCode(value)
+                    setValidationErrors({})
+                  }}
+                  placeholder="000000"
+                  maxLength={6}
+                  disabled={isLoading}
+                  className="auth-activation-input"
+                />
+                <i className='bx bxs-key'></i>
+                {validationErrors.activationCode && (
+                  <div className="auth-field-error">{validationErrors.activationCode}</div>
+                )}
+              </div>
+
+              <button
+                type="submit"
+                className="auth-btn"
+                disabled={isLoading || activationCode.length !== 6}
+              >
+                {isLoading ? 'Активация...' : 'Активировать'}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setRegistrationSuccess(false)}
+                className="auth-back-link"
+              >
+                Назад к регистрации
+              </button>
+            </form>
+          )}
+        </div>
+
+          {/* Панель переключения */}
+          <div className="auth-toggle-box">
+            <div className={`auth-toggle-panel auth-toggle-left ${isRegisterMode ? 'auth-hidden' : ''}`}>
+              <h1>Добро пожаловать!</h1>
+              <p>У вас нет аккаунта?</p>
+              <button className="auth-toggle-btn" onClick={toggleMode}>
+                Зарегистрироваться
+              </button>
+            </div>
+
+            <div className={`auth-toggle-panel auth-toggle-right ${!isRegisterMode ? 'auth-hidden' : ''}`}>
+              <h1>Рады видеть вас снова!</h1>
+              <p>У вас уже есть аккаунт?</p>
+              <button className="auth-toggle-btn" onClick={toggleMode}>
+                Войти
+              </button>
+            </div>
           </div>
         </div>
+
       </div>
     </div>
   )

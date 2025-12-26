@@ -12,11 +12,36 @@
 @tailwind components;
 @tailwind utilities;
 
-/* CSS переменные */
+/* CSS переменные из внешнего проекта */
 :root {
-  --color-primary: #3b82f6;
+  --purple-primary: #8B5CF6;
+  --purple-dark: #7C3AED;
+  --orange-primary: #F97316;
+  --orange-dark: #EA580C;
+  --background: #FFFFFF;
+  --text-primary: #1F2937;
+  --text-secondary: #6B7280;
+
+  /* UI Component Variables */
+  --primary: #8B5CF6;
+  --primary-foreground: #FFFFFF;
+  --secondary: #F3F4F6;
+  --secondary-foreground: #1F2937;
+  --accent: #FEF3C7;
+  --accent-foreground: #92400E;
+  --muted: #F9FAFB;
+  --muted-foreground: #6B7280;
+  --card: #FFFFFF;
+  --card-foreground: #1F2937;
+  --foreground: #1F2937;
+  --border: #E5E7EB;
+  --ring: #8B5CF6;
+  --destructive: #EF4444;
+
+  /* Legacy colors for backward compatibility */
+  --color-primary: #8B5CF6;
   --color-secondary: #22c55e;
-  --color-accent: #f97316;
+  --color-accent: #F97316;
   --color-background: #f8fafc;
   --color-surface: #ffffff;
   --color-text: #1e293b;
@@ -36,14 +61,48 @@ html {
 }
 
 body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  color: var(--text-primary);
+  background-color: var(--background);
   margin: 0;
   padding: 0;
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
-  background-color: var(--color-background);
-  color: var(--color-text);
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+h1 {
+  font-size: 3.5rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+h2 {
+  font-size: 2.5rem;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+h3 {
+  font-size: 1.875rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+h4 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+p {
+  font-size: 1rem;
+  line-height: 1.6;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
 }
 
 /* Кастомные утилитарные классы */
@@ -114,15 +173,67 @@ body {
   }
 }
 
-/* Анимации */
+/* Анимации из внешнего проекта */
 @keyframes fadeIn {
   from {
     opacity: 0;
-    transform: translateY(10px);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.9) translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(100px) scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    max-height: 0;
+  }
+  to {
+    opacity: 1;
+    max-height: 2000px;
+  }
+}
+
+@keyframes wiggle {
+  0%, 100% {
+    transform: rotate(0deg);
+  }
+  25% {
+    transform: rotate(-10deg);
+  }
+  50% {
+    transform: rotate(10deg);
+  }
+  75% {
+    transform: rotate(-10deg);
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
   }
 }
 
@@ -130,10 +241,21 @@ body {
   animation: fadeIn 0.3s ease-out;
 }
 
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
+.animate-scaleIn {
+  animation: scaleIn 0.3s ease-out;
+}
+
+.animate-slideUp {
+  animation: slideUp 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.animate-slideDown {
+  animation: slideDown 0.3s ease-out;
+}
+
+.animate-wiggle {
+  animation: wiggle 2s ease-in-out infinite;
+  animation-delay: 3s;
 }
 
 .animate-spin {
@@ -145,9 +267,11 @@ body {
   position: relative;
   width: 850px;
   height: 550px;
-  background: #fff;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
   border-radius: 30px;
-  box-shadow: 0 0 30px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 0 40px rgba(139, 92, 246, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.2);
   overflow: hidden;
   display: flex;
   align-items: center;
@@ -158,11 +282,12 @@ body {
   right: 0;
   width: 50%;
   height: 100%;
-  background: #fff;
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(10px);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #333;
+  color: #1F2937;
   padding: 40px;
   transition: right 0.6s ease-in-out 1.2s, visibility 0s 1s;
   z-index: 1;
@@ -205,22 +330,22 @@ body {
 .auth-input-box input {
   width: 100%;
   padding: 13px 50px 13px 20px;
-  background: #eee;
+  background: rgba(139, 92, 246, 0.1);
   border-radius: 8px;
   border: none;
   outline: none;
   font-size: 16px;
-  color: #333;
+  color: #1F2937;
   font-weight: 500;
   transition: background-color 0.3s ease;
 }
 
 .auth-input-box input:focus {
-  background: #ddd;
+  background: rgba(249, 115, 22, 0.2);
 }
 
 .auth-input-box input::placeholder {
-  color: #888;
+  color: rgba(139, 92, 246, 0.6);
   font-weight: 400;
 }
 
@@ -230,7 +355,7 @@ body {
   top: 50%;
   transform: translateY(-50%);
   font-size: 20px;
-  color: #888;
+  color: rgba(139, 92, 246, 0.6);
 }
 
 .auth-activation-input {
@@ -272,7 +397,7 @@ body {
 .auth-btn {
   width: 100%;
   height: 48px;
-  background: #5500ff;
+  background: linear-gradient(135deg, #8B5CF6 0%, #F97316 100%);
   border-radius: 8px;
   box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
   border: none;
@@ -288,7 +413,7 @@ body {
 }
 
 .auth-btn:hover:not(:disabled) {
-  background: #4400dd;
+  background: linear-gradient(135deg, #7C3AED 0%, #EA580C 100%);
 }
 
 .auth-btn:disabled {
@@ -306,7 +431,7 @@ body {
   text-align: center;
   margin: 20px 0;
   font-size: 14px;
-  color: #666;
+  color: rgba(139, 92, 246, 0.8);
 }
 
 .auth-social-icons {
@@ -318,29 +443,29 @@ body {
 .auth-social-icon {
   display: inline-flex;
   padding: 10px;
-  border: 2px solid #ccc;
+  border: 2px solid rgba(139, 92, 246, 0.3);
   border-radius: 8px;
   font-size: 24px;
-  color: #333;
+  color: #1F2937;
   text-decoration: none;
   transition: all 0.3s ease;
 }
 
 .auth-social-icon:hover {
-  border-color: #5500ff;
-  color: #5500ff;
+  border-color: #8B5CF6;
+  color: #8B5CF6;
   transform: translateY(-2px);
 }
 
 .social-text-icon {
   font-size: 18px;
   font-weight: 600;
-  color: #333;
+  color: #1F2937;
   transition: color 0.3s ease;
 }
 
 .auth-social-icon:hover .social-text-icon {
-  color: #5500ff;
+  color: #8B5CF6;
 }
 
 .auth-back-link {
@@ -348,7 +473,7 @@ body {
   width: 100%;
   background: transparent;
   border: none;
-  color: #5500ff;
+  color: #8B5CF6;
   font-size: 14px;
   cursor: pointer;
   margin-top: 15px;
@@ -368,7 +493,7 @@ body {
   left: -250%;
   width: 300%;
   height: 100%;
-  background: #5500ff;
+  background: linear-gradient(135deg, #8B5CF6 0%, #F97316 100%);
   border-radius: 150px;
   z-index: 2;
   transition: left 1.8s ease-in-out;
@@ -539,130 +664,6 @@ body {
   }
 
   .auth-form-box.auth-register {
-    visibility: hidden;
-  }
-
-  .auth-container.auth-active .auth-form-box.auth-register {
-    visibility: visible;
-  }
-
-  .auth-form {
-    max-width: 100%;
-  }
-
-  .auth-form h1 {
-    font-size: 24px;
-    margin: 0 0 12px;
-  }
-
-  .auth-input-box {
-    margin: 16px 0;
-  }
-
-  .auth-input-box input {
-    padding: 12px 45px 12px 16px;
-    font-size: 14px;
-  }
-
-  .auth-input-box i {
-    right: 16px;
-    font-size: 18px;
-  }
-
-  .auth-btn {
-    height: 44px;
-    font-size: 14px;
-  }
-
-  .auth-social-text {
-    margin: 14px 0;
-    font-size: 13px;
-  }
-
-  .auth-social-icons {
-    gap: 10px;
-  }
-
-  .auth-social-icon {
-    padding: 8px;
-    font-size: 20px;
-  }
-
-  .social-text-icon {
-    font-size: 16px;
-  }
-
-  /* Вертикальная анимация для toggle box */
-  .auth-toggle-box::before {
-    left: 0;
-    top: -200%;
-    width: 100%;
-    height: 250%;
-    border-radius: 0 0 50% 50%;
-    transition: top 0.8s ease-in-out;
-  }
-
-  .auth-container.auth-active .auth-toggle-box::before {
-    left: 0;
-    top: 75%;
-  }
-
-  /* Toggle панели - вертикальное расположение */
-  .auth-toggle-panel {
-    width: 100%;
-    height: 25%;
-    padding: 16px;
-  }
-
-  .auth-toggle-panel h1 {
-    font-size: 20px;
-    margin-bottom: 6px;
-  }
-
-  .auth-toggle-panel p {
-    font-size: 13px;
-    margin-bottom: 12px;
-  }
-
-  .auth-toggle-btn {
-    min-width: 180px;
-    padding: 10px 20px;
-    font-size: 14px;
-  }
-
-  /* Левая панель (сверху) */
-  .auth-toggle-panel.auth-toggle-left {
-    top: 0;
-    left: 0;
-    transition: transform 0.6s ease-in-out 0.6s, opacity 0.4s ease-in-out;
-  }
-
-  .auth-container.auth-active .auth-toggle-panel.auth-toggle-left {
-    left: 0;
-    top: 0;
-    transform: translateY(-100%);
-    opacity: 0;
-  }
-
-  /* Правая панель (снизу, скрыта изначально) */
-  .auth-toggle-panel.auth-toggle-right {
-    top: auto;
-    bottom: 0;
-    right: 0;
-    transform: translateY(100%);
-    opacity: 0;
-    transition: transform 0.6s ease-in-out 0.3s, opacity 0.4s ease-in-out 0.5s;
-  }
-
-  .auth-container.auth-active .auth-toggle-panel.auth-toggle-right {
-    bottom: 0;
-    transform: translateY(0);
-    opacity: 1;
-  }
-
-  /* Скрытие панелей */
-  .auth-toggle-panel.auth-hidden {
-    opacity: 0;
     visibility: hidden;
   }
 }
