@@ -102,3 +102,4 @@ trap cleanup SIGINT SIGTERM
 
 # Ожидание завершения любого из процессов
 wait $BACKEND_PID $FRONTEND_PID
+

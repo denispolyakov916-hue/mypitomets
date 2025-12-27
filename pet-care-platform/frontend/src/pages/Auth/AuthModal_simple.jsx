@@ -320,7 +320,7 @@ function AuthModal() {
                   type="text"
                   name="activationCode"
                   value={activationCode}
-                  onChange={(e) => {
+                  onChange={() => {}}
                     const value = e.target.value.replace(/\D/g, '').slice(0, 6)
                     setActivationCode(value)
                     setValidationErrors({})
@@ -357,20 +357,21 @@ function AuthModal() {
 
         {/* Панель переключения */}
         <div className="auth-toggle-box">
-          <div className={`auth-toggle-panel auth-toggle-left ${isRegisterMode ? 'auth-hidden' : ''}`}>
-            <h1>Добро пожаловать!</h1>
-            <p>У вас нет аккаунта?</p>
-            <button className="auth-toggle-btn" onClick={toggleMode}>
-              Зарегистрироваться
-            </button>
-          </div>
+            <div className={`auth-toggle-panel auth-toggle-left ${isRegisterMode ? 'auth-hidden' : ''}`}>
+              <h1>Добро пожаловать!</h1>
+              <p>У вас нет аккаунта?</p>
+              <button className="auth-toggle-btn" onClick={toggleMode}>
+                Зарегистрироваться
+              </button>
+            </div>
 
-          <div className={`auth-toggle-panel auth-toggle-right ${!isRegisterMode ? 'auth-hidden' : ''}`}>
-            <h1>Рады видеть вас снова!</h1>
-            <p>У вас уже есть аккаунт?</p>
-            <button className="auth-toggle-btn" onClick={toggleMode}>
-              Войти
-            </button>
+            <div className={`auth-toggle-panel auth-toggle-right ${!isRegisterMode ? 'auth-hidden' : ''}`}>
+              <h1>Рады видеть вас снова!</h1>
+              <p>У вас уже есть аккаунт?</p>
+              <button className="auth-toggle-btn" onClick={toggleMode}>
+                Войти
+              </button>
+            </div>
           </div>
         </div>
 

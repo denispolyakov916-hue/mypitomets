@@ -124,3 +124,4 @@ VITE_API_URL=http://localhost:8000/api
 2. Откройте http://localhost:5173 в браузере
 3. Код frontend автоматически перезагрузится при изменениях
 4. Для бэкенда перезапустите `./backend/start_backend.sh` после изменений
+
