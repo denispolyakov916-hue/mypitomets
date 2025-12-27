@@ -275,6 +275,7 @@ button {
   overflow: hidden;
   display: flex;
   align-items: center;
+  margin-top: 50px;
 }
 
 .auth-form-box {

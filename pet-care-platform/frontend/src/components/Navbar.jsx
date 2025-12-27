@@ -159,16 +159,16 @@ function Navbar() {
                           navigate(`/${service.id}`)
                           setServicesDropdownOpen(false)
                         }}
-                        className={`w-full text-left px-6 py-4 transition-all duration-300 ${
+                        className={`group w-full text-left px-6 py-4 transition-all duration-300 ${
                           location.pathname === `/${service.id}` || location.pathname.startsWith(`/${service.id}/`)
-                            ? 'bg-gradient-to-r from-purple-50 to-orange-50'
-                            : 'hover:bg-gradient-to-r hover:from-purple-50/50 hover:to-orange-50/50'
+                            ? 'bg-gradient-to-r from-purple-100 to-orange-100'
+                            : 'hover:bg-gradient-to-r hover:from-purple-100 hover:to-orange-100 hover:pl-8'
                         }`}
                       >
-                        <span className={`${
+                        <span className={`transition-colors duration-300 ${
                           location.pathname === `/${service.id}` || location.pathname.startsWith(`/${service.id}/`)
                             ? 'text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-orange-500'
-                            : 'text-gray-700'
+                            : 'text-gray-700 group-hover:text-purple-600'
                         }`}>
                           {service.label}
                         </span>
