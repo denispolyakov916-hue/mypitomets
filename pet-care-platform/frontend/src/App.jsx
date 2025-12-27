@@ -54,6 +54,7 @@ import Settings from './pages/Dashboard/Settings'
 import HealthDiary from './pages/HealthDiary/HealthDiary'
 import Orders from './pages/Orders/Orders'
 import OrderDetail from './pages/Orders/OrderDetail'
+import PetIdPage from './pages/PetId/PetIdPage'
 
 // Ленивая загрузка тяжёлых страниц обучения
 const CourseLearningPage = lazy(() => import('./pages/Training/Learning/CourseLearningPage'))
@@ -94,6 +95,7 @@ function App() {
         <Route path="/courses" element={<Courses />} />
         <Route path="/courses/:id" element={<CourseDetail />} />
         
+        
         {/* Оплата - Требует аутентификации */}
         <Route path="/payment" element={<Payment />} />
         
@@ -105,9 +107,12 @@ function App() {
           <Route path="/pets/:id" element={<PetProfile />} />
           <Route path="/pets/:id/edit" element={<PetForm />} />
 
+          {/* Pet ID*/}
+          <Route path="/pet-id" element={<PetIdPage />} />
+
           {/* Корзина */}
           <Route path="/cart" element={<Cart />} />
-
+          
           {/* Единый Checkout - Защищённый */}
           <Route path="/checkout" element={<UnifiedCheckout />} />
           <Route path="/payment-method" element={<PaymentMethodSelection />} />
