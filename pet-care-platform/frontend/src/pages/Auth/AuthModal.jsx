@@ -61,13 +61,21 @@ function AuthModal() {
   /**
    * Переключение между режимами
    */
-  const toggleMode = () => {
+// Сделайте так:
+const toggleMode = () => {
+  // Сначала запускаем анимацию переключателя
+  setIsActive(!isActive)
+  
+  // Через 1.8 секунды (после завершения анимации переключателя) 
+  // меняем режим формы
+  setTimeout(() => {
     setIsRegisterMode(!isRegisterMode)
-    setIsActive(!isActive)
-    setValidationErrors({})
-    setRegistrationSuccess(false)
-    setActivationCode('')
-  }
+  }, 800) // 1.8 секунды = время анимации переключателя
+  
+  setValidationErrors({})
+  setRegistrationSuccess(false)
+  setActivationCode('')
+}
 
   /**
    * Валидация формы входа

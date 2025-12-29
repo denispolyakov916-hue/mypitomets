@@ -48,3 +48,4 @@ export default function StepContacts({ formData, updateFormData }) {
     </div>
   );
 }
+

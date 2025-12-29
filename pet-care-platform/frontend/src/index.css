@@ -298,13 +298,15 @@ button {
 .auth-container.auth-active .auth-form-box {
   right: 50%;
 }
-
-.auth-container.auth-active .auth-form-box.auth-register {
-  visibility: visible;
-}
-
-.auth-form-box.auth-register {
-  visibility: hidden;
+@media screen and (min-width: 651px) {
+  .auth-container.auth-active .auth-form-box.auth-register {
+    visibility: visible;
+  }
+  
+  
+  .auth-form-box.auth-register {
+    visibility: hidden;
+  }
 }
 
 .auth-form {
@@ -665,10 +667,10 @@ button {
   }
 }
 
-/* Мобильная адаптивность - телефоны < 400px */
-@media screen and (max-width: 400px) {
+/* Мобильная адаптивность - телефоны < 600px */
+@media screen and (max-width: 600px) {
   .auth-container {
-    height: calc(100vh - 80px);
+    height: calc(100vh-90px);
     width: 100%;
     max-width: none;
     border-radius: 20px;
@@ -685,23 +687,27 @@ button {
     left: 0;
     width: 100%;
     height: 78%;
-    padding: 15px 20px;
+    /* 78% */
+    padding: 15px 10px;
     overflow-y: auto;
-    transition: bottom 0.6s ease-in-out 1.2s, visibility 0s 1s;
+    transition: bottom 1.6s ease-in-out 1.2s; /* Добавлена задержка для visibility */
   }
 
   .auth-container.auth-active .auth-form-box {
     right: 0;
-    bottom: 22%;
+    bottom: 30%;
+  }  
+
+  .auth-form-box.auth-register {    
+    visibility: hidden;
+    opacity: 0;
+    transition: visibility 0s 2.5s, opacity 0.5s 2s; /* Задержка перед скрытием */
   }
 
   .auth-container.auth-active .auth-form-box.auth-register {
-    right: 0;
     visibility: visible;
-  }
-
-  .auth-form-box.auth-register {
-    visibility: visible;
+    opacity: 1;
+    transition: visibility 0s 2.5s, opacity 0.5s 2.5s;
   }
 
   .auth-toggle-box {
@@ -727,8 +733,9 @@ button {
   }
 
   .auth-container.auth-active .auth-toggle-box::before {
-    top: 78%;
+    top: 70%;
   }
+
 
   .auth-toggle-panel {
     width: 100%;

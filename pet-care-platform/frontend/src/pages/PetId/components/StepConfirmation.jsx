@@ -204,3 +204,4 @@ export default function StepConfirmation({ formData, progress }) {
     </div>
   );
 }
+

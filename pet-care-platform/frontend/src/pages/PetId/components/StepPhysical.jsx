@@ -114,3 +114,4 @@ export default function StepPhysical({ formData, updateFormData }) {
     </div>
   );
 }
+
