@@ -214,6 +214,13 @@ export const useAuthStore = create((set, get) => ({
   validateToken: async () => {
     if (!get().isAuthenticated) return false
 
+    // Защита от одновременных вызовов
+    const state = get()
+    if (state.isLoading && state.user) {
+      // Если уже идет загрузка и есть пользователь - не повторяем
+      return true
+    }
+
     try {
       const profile = await authApi.getProfile()
       set({
@@ -302,6 +309,17 @@ export const useAuthStore = create((set, get) => ({
    */
   loadProfile: async () => {
     if (!get().isAuthenticated) return null
+
+    const state = get()
+    // Если уже загружается и есть пользователь - не повторяем запрос
+    if (state.isLoading && state.user) {
+      return { user: state.user }
+    }
+
+    // Если пользователь уже загружен - возвращаем его
+    if (state.user) {
+      return { user: state.user }
+    }
 
     set({ isLoading: true })
 

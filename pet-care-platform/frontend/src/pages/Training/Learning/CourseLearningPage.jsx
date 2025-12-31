@@ -3,7 +3,8 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { Button } from '../../../components/ui'
 import { Card } from '../../../components/ui'
 import { ProgressTracker, RatingWidget } from '../../../components/Learning'
-import { getCourse, getCourseLessons, getCourseProgress, enrollFreeCourse } from '../../../api/courses'
+import CourseRatingDisplay from '../../../components/CourseRatingDisplay'
+import { getCourse, getCourseLessons, getCourseProgress, enrollFreeCourse, getCoursePages } from '../../../api/courses'
 import { useAuthStore } from '../../../store/authStore'
 import { usePets } from '../../../hooks/usePets'
 import { useToastStore } from '../../../store/toastStore'
@@ -57,7 +58,23 @@ const CourseLearningPage = () => {
       setLoadingCourse(true)
       const courseResponse = await getCourse(courseId)
       // API клиент возвращает response.data напрямую
-      setCourse({ ...courseResponse.course, is_owned: courseResponse.is_owned })
+      const courseData = { ...courseResponse.course, is_owned: courseResponse.is_owned }
+      setCourse(courseData)
+
+      // Проверяем, использует ли курс новую архитектуру страниц
+      try {
+        const pagesResponse = await getCoursePages(courseId)
+        if (pagesResponse.pages && pagesResponse.pages.length > 0) {
+          // Курс использует новую архитектуру - перенаправляем
+          const params = petId ? `?pet_id=${petId}` : ''
+          navigate(`/training/courses/${courseId}/learn/pages/1${params}`, { replace: true })
+          return courseResponse.is_owned
+        }
+      } catch (error) {
+        // Если API страниц недоступен, продолжаем со старой архитектурой
+        console.log('Pages API not available, using legacy architecture')
+      }
+
       return courseResponse.is_owned
     } catch (error) {
       console.error('Error loading course:', error)
@@ -66,7 +83,7 @@ const CourseLearningPage = () => {
     } finally {
       setLoadingCourse(false)
     }
-  }, [courseId, showError])
+  }, [courseId, petId, showError, navigate])
 
   // Загрузка уроков (параллельно с прогрессом)
   const loadLessons = useCallback(async () => {
@@ -274,6 +291,14 @@ const CourseLearningPage = () => {
               )}
             </div>
           </div>
+
+          {/* Рейтинг курса */}
+          {course && (
+            <CourseRatingDisplay
+              courseId={courseId}
+              className="mb-8"
+            />
+          )}
         </div>
 
         {/* Основной контент */}
@@ -430,7 +455,10 @@ const CourseLearningPage = () => {
                 petId={petId}
                 onRatingSubmit={(rating, review) => {
                   success('Спасибо за оценку!')
-                  // Можно обновить локальное состояние
+                  // Перезагружаем страницу для обновления всех данных
+                  setTimeout(() => {
+                    window.location.reload()
+                  }, 1000)
                 }}
               />
             )}

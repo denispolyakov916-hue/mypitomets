@@ -27,14 +27,14 @@ from django.conf.urls.static import static
 # URL МАРШРУТЫ
 # =============================================================================
 
-from apps.shop.admin_views import admin_dashboard, recommendation_settings, pet_analytics, payment_analytics
+# from apps.shop.admin_views import admin_dashboard, recommendation_settings, pet_analytics, payment_analytics  # Временно отключено
 
 urlpatterns = [
-    # Кастомный дашборд администратора
-    path('admin/dashboard/', admin_dashboard, name='admin-dashboard'),
-    path('admin/recommendations/', recommendation_settings, name='admin-recommendations'),
-    path('admin/pet-analytics/', pet_analytics, name='admin-pet-analytics'),
-    path('admin/payment-analytics/', payment_analytics, name='admin-payment-analytics'),
+    # Кастомный дашборд администратора - временно отключен
+    # path('admin/dashboard/', admin_dashboard, name='admin-dashboard'),
+    # path('admin/recommendations/', recommendation_settings, name='admin-recommendations'),
+    # path('admin/pet-analytics/', pet_analytics, name='admin-pet-analytics'),
+    # path('admin/payment-analytics/', payment_analytics, name='admin-payment-analytics'),
     
     # Административный интерфейс Django (для разработки/отладки)
     path('admin/', admin.site.urls),
@@ -73,6 +73,11 @@ urlpatterns = [
     # Эндпоинты отзывов и рейтингов
     # Обрабатывает: отзывы на товары и курсы, рейтинги
     path('api/reviews/', include('apps.reviews.urls')),
+
+    # REST API для новой React админ-панели
+    # Обрабатывает: аналитика, управление данными, CRUD операций
+    # Доступ: только для пользователей с is_staff=True
+    path('', include('config.urls_admin')),
 ]
 
 # Обслуживание медиа файлов в режиме разработки

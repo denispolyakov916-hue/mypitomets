@@ -14,28 +14,40 @@ export default defineConfig(({ mode }) => {
   // Загружаем переменные окружения
   const env = loadEnv(mode, process.cwd(), '')
   
-  // Извлекаем URL бэкенда из переменной окружения
-  // Если VITE_API_URL установлен, используем его (убираем /api для target)
-  // Иначе используем localhost по умолчанию
-  const apiUrl = env.VITE_API_URL || 'http://localhost:8000/api'
-  const proxyTarget = apiUrl.replace('/api', '') || 'http://localhost:8000'
+  // URL бэкенда для прокси
+  // Используем IPv4 адрес компьютера для корректной работы в локальной сети
+  const backendHost = env.VITE_BACKEND_HOST || '192.168.1.11'
+  const backendPort = env.VITE_BACKEND_PORT || '8077'
+  const proxyTarget = `http://${backendHost}:${backendPort}`
+  
+  console.log(`[Vite] API proxy target: ${proxyTarget}`)
   
   return {
     plugins: [react()],
     
     // Конфигурация сервера разработки
+    // ПОРТ 5199 - уникальный порт для избежания конфликтов в локальной сети
     server: {
-      port: 5173,
-      host: true, // Разрешить внешние подключения (для Docker)
-      
+      port: 5199,
+      host: true, // Разрешить внешние подключения (доступ по IP из сети)
+
       // Проксирование API запросов к Django бэкенду
-      // Используем переменную окружения VITE_API_URL или fallback на localhost
+      // Все запросы на /api/* перенаправляются на бэкенд
       // Это позволяет избежать CORS проблем в разработке
       proxy: {
         '/api': {
           target: proxyTarget,
           changeOrigin: true,
           secure: false,
+          // Логирование прокси запросов для отладки
+          configure: (proxy, options) => {
+            proxy.on('error', (err, req, res) => {
+              console.log('[Proxy Error]', err.message)
+            })
+            proxy.on('proxyReq', (proxyReq, req, res) => {
+              console.log('[Proxy]', req.method, req.url, '->', proxyTarget + req.url)
+            })
+          }
         }
       }
     },

@@ -13,6 +13,10 @@
 """
 
 from rest_framework import serializers
+from .models import (
+    Course, Lesson, UserCourse, UserCourseProgress, UserLessonProgress,
+    Comment, CommentLike, Rating, CoursePage, ContentBlock, BlockTemplate
+)
 
 
 class CourseSerializer(serializers.Serializer):
@@ -241,3 +245,101 @@ class CommentLikeSerializer(serializers.ModelSerializer):
         model = CommentLike
         fields = ['id', 'comment', 'user', 'is_like', 'created_at']
         read_only_fields = ['id', 'user', 'created_at']
+
+
+# ===== СЕРИАЛИЗАТОРЫ ДЛЯ КОНСТРУКТОРА КУРСОВ =====
+
+class CoursePageSerializer(serializers.ModelSerializer):
+    """
+    Сериализатор для страниц курсов.
+    """
+    blocks_count = serializers.SerializerMethodField()
+    course_title = serializers.CharField(source='course.title', read_only=True)
+
+    class Meta:
+        model = CoursePage
+        fields = [
+            'id', 'course', 'course_title', 'title', 'order_number',
+            'page_type', 'settings', 'is_active', 'created_at', 'updated_at',
+            'blocks_count'
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at', 'blocks_count']
+
+    def get_blocks_count(self, obj):
+        """Количество активных блоков на странице."""
+        return obj.blocks.filter(is_active=True).count()
+
+
+class ContentBlockSerializer(serializers.ModelSerializer):
+    """
+    Сериализатор для блоков контента.
+    """
+    page_title = serializers.CharField(source='page.title', read_only=True)
+    block_type_display = serializers.CharField(source='get_block_type_display', read_only=True)
+
+    class Meta:
+        model = ContentBlock
+        fields = [
+            'id', 'page', 'page_title', 'block_type', 'block_type_display',
+            'content', 'settings', 'order', 'is_active', 'created_at', 'updated_at'
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at']
+
+    def validate(self, data):
+        """Валидация данных блока."""
+        block_type = data.get('block_type')
+        content = data.get('content', {})
+
+        # Базовая валидация в зависимости от типа блока
+        if block_type == 'rich_text' and 'html' not in content:
+            raise serializers.ValidationError("Rich text блок должен содержать поле 'html'")
+
+        if block_type == 'video_player' and 'video_url' not in content:
+            raise serializers.ValidationError("Video блок должен содержать поле 'video_url'")
+
+        return data
+
+
+class BlockTemplateSerializer(serializers.ModelSerializer):
+    """
+    Сериализатор для шаблонов блоков.
+    """
+    created_by_name = serializers.CharField(source='created_by.get_full_name', read_only=True)
+    category_display = serializers.CharField(source='get_category_display', read_only=True)
+
+    class Meta:
+        model = BlockTemplate
+        fields = [
+            'id', 'name', 'description', 'block_type', 'content', 'settings',
+            'category', 'category_display', 'is_public', 'created_by',
+            'created_by_name', 'usage_count', 'is_active', 'created_at', 'updated_at'
+        ]
+        read_only_fields = ['id', 'usage_count', 'created_at', 'updated_at']
+
+
+class CourseBuilderPageSerializer(serializers.ModelSerializer):
+    """
+    Расширенный сериализатор страницы с блоками для конструктора.
+    """
+    blocks = ContentBlockSerializer(many=True, read_only=True)
+    course_title = serializers.CharField(source='course.title', read_only=True)
+
+    class Meta:
+        model = CoursePage
+        fields = [
+            'id', 'course', 'course_title', 'title', 'order_number',
+            'page_type', 'settings', 'is_active', 'blocks'
+        ]
+
+
+class CourseBuilderSerializer(serializers.ModelSerializer):
+    """
+    Сериализатор курса с страницами и блоками для конструктора.
+    """
+    pages = CourseBuilderPageSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = Course
+        fields = [
+            'id', 'title', 'description', 'pages'
+        ]

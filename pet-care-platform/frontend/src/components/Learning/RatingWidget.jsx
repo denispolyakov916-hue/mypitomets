@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { Button } from '../ui'
 import { Card } from '../ui'
 import { Textarea } from '../ui'
@@ -22,11 +22,12 @@ const RatingWidget = ({
   const [stats, setStats] = useState(null)
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
-  const [showForm, setShowForm] = useState(false)
+  const [showForm, setShowForm] = useState(true)
   const [selectedRating, setSelectedRating] = useState(0)
   const [review, setReview] = useState('')
   const [userRating, setUserRating] = useState(null)
   const [editing, setEditing] = useState(false)
+  const [hoveredRating, setHoveredRating] = useState(0)
 
   // Загрузка оценок при монтировании
   useEffect(() => {
@@ -65,8 +66,7 @@ const RatingWidget = ({
       setSubmitting(true)
       await rateCourse(courseId, selectedRating, review, petId)
 
-      setShowForm(false)
-      loadRatings() // Перезагрузка оценок
+      setEditing(false)
 
       if (onRatingSubmit) {
         onRatingSubmit(selectedRating, review)
@@ -80,23 +80,40 @@ const RatingWidget = ({
 
   // Отрисовка звезд
   const renderStars = (rating, interactive = false, onStarClick = null) => {
+    const handleMouseEnter = (value) => {
+      if (!interactive) return
+      setHoveredRating(value)
+    }
+
+    const handleMouseLeave = () => {
+      if (!interactive) return
+      setHoveredRating(0)
+    }
+
+    const activeRating = hoveredRating || rating
+
     return (
-      <div className="flex items-center space-x-1">
-        {[1, 2, 3, 4, 5].map((star) => (
-          <button
-            key={star}
-            type="button"
-            className={`text-2xl transition-colors ${
-              star <= rating
-                ? 'text-yellow-400'
-                : 'text-gray-300'
-            } ${interactive ? 'hover:text-yellow-500 cursor-pointer' : ''}`}
-            onClick={interactive ? () => onStarClick(star) : undefined}
-            disabled={!interactive}
-          >
-            ★
-          </button>
-        ))}
+      <div className="flex items-center space-x-1" onMouseLeave={handleMouseLeave}>
+        {[1, 2, 3, 4, 5].map((star) => {
+          const isFilled = star <= activeRating
+
+          return (
+            <button
+              key={star}
+              type="button"
+              className={`text-2xl transition-all duration-150 ${
+                isFilled
+                  ? 'text-yellow-400'
+                  : 'text-gray-300'
+              } ${interactive ? 'hover:scale-110 cursor-pointer' : 'cursor-default'}`}
+              onClick={interactive ? () => onStarClick(star) : undefined}
+              onMouseEnter={() => handleMouseEnter(star)}
+              disabled={!interactive}
+            >
+              ★
+            </button>
+          )
+        })}
       </div>
     )
   }
@@ -112,7 +129,7 @@ const RatingWidget = ({
       setUserRating(null)
       setSelectedRating(0)
       setReview('')
-      setShowForm(false)
+      setEditing(false)
       loadRatings()
     } catch (error) {
       console.error('Error deleting rating:', error)
@@ -128,7 +145,6 @@ const RatingWidget = ({
   // Отмена редактирования
   const cancelEditing = () => {
     setEditing(false)
-    setShowForm(false)
     if (userRating) {
       setSelectedRating(userRating.rating)
       setReview(userRating.review || '')
@@ -148,103 +164,13 @@ const RatingWidget = ({
 
   return (
     <div className={`space-y-6 ${className}`}>
-      {/* Общий рейтинг */}
-      <Card className="p-6">
-        <div className="text-center">
-          <div className="flex items-center justify-center space-x-4 mb-4">
-            <div className="text-center">
-              <div className="text-4xl font-bold text-gray-900">
-                {stats?.average_rating?.toFixed(1) || '0.0'}
-              </div>
-              <div className="text-sm text-gray-500">средний рейтинг</div>
-            </div>
-
-            <div className="flex flex-col items-center">
-              {renderStars(Math.round(stats?.average_rating || 0))}
-              <div className="text-sm text-gray-500 mt-1">
-                {stats?.total_ratings || 0} оценок
-              </div>
-            </div>
-          </div>
-
-          {/* Распределение оценок */}
-          {stats && (
-            <div className="space-y-2 max-w-xs mx-auto">
-              {[5, 4, 3, 2, 1].map((rating) => {
-                const count = stats.distribution[rating] || 0
-                const percentage = stats.total_ratings > 0
-                  ? (count / stats.total_ratings) * 100
-                  : 0
-
-                return (
-                  <div key={rating} className="flex items-center space-x-2">
-                    <span className="text-sm w-8">{rating}★</span>
-                    <div className="flex-1 bg-gray-200 rounded-full h-2">
-                      <div
-                        className="bg-yellow-400 h-2 rounded-full transition-all"
-                        style={{ width: `${percentage}%` }}
-                      ></div>
-                    </div>
-                    <span className="text-sm text-gray-500 w-8">{count}</span>
-                  </div>
-                )
-              })}
-            </div>
-          )}
-
-          {/* Кнопка оценки */}
-          {!userRating && (
-            <div className="mt-6">
-              <Button
-                onClick={() => setShowForm(true)}
-                variant="outline"
-              >
-                Оценить курс
-              </Button>
-            </div>
-          )}
-
-          {userRating && (
-            <div className="mt-6 p-4 bg-blue-50 rounded-lg">
-              <div className="flex items-center justify-center space-x-2 mb-2">
-                <span className="text-sm text-blue-700">Ваша оценка:</span>
-                {renderStars(userRating.rating)}
-              </div>
-              {userRating.review && (
-                <p className="text-sm text-blue-700 italic">"{userRating.review}"</p>
-              )}
-
-              {/* Кнопки управления оценкой */}
-              <div className="flex items-center justify-center space-x-2 mt-3">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={startEditing}
-                >
-                  ✏️ Редактировать
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={handleDeleteRating}
-                  className="text-red-600 hover:text-red-700"
-                >
-                  🗑️ Удалить
-                </Button>
-              </div>
-            </div>
-          )}
-        </div>
-      </Card>
-
       {/* Форма оценки */}
-      {showForm && (
-        <Card className="p-6">
-          <h3 className="text-lg font-semibold mb-4">
-            {editing ? 'Редактировать оценку' : 'Оценить курс'}
-          </h3>
+      <Card className="p-6">
+        <h3 className="text-lg font-semibold mb-4">
+          {editing || userRating ? 'Редактировать оценку' : 'Оценить курс'}
+        </h3>
 
-          <div className="space-y-4">
+        <div className="space-y-4">
             {/* Выбор рейтинга */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -280,18 +206,19 @@ const RatingWidget = ({
 
             {/* Кнопки */}
             <div className="flex justify-end space-x-3">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => {
-                  setShowForm(false)
-                  setSelectedRating(0)
-                  setReview('')
-                }}
-                disabled={submitting}
-              >
-                Отмена
-              </Button>
+              {!userRating && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setSelectedRating(0)
+                    setReview('')
+                  }}
+                  disabled={submitting}
+                >
+                  Отмена
+                </Button>
+              )}
               <div className="flex space-x-2">
                 <Button
                   onClick={handleSubmitRating}
@@ -314,7 +241,6 @@ const RatingWidget = ({
             </div>
           </div>
         </Card>
-      )}
 
       {/* Список отзывов */}
       {ratings.length > 0 && (
