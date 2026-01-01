@@ -124,3 +124,4 @@ export default function StepLifestyle({ formData, updateFormData }) {
   );
 }
 
+

@@ -696,6 +696,7 @@ button {
   .auth-container.auth-active .auth-form-box {
     right: 0;
     bottom: 30%;
+    transition: bottom 0s 2.5s;
   }  
 
   .auth-form-box.auth-register {    
