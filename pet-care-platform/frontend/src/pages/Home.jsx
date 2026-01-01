@@ -140,7 +140,7 @@ function Home() {
                 <>
                   <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
                     <Link
-                      to="/pets"
+                      to="/pet-id"
                       className="bg-white text-purple-600 font-bold py-4 px-10 rounded-full
                                hover:shadow-xl hover:shadow-white/30 transition-all duration-300 text-lg"
                     >
@@ -345,7 +345,7 @@ function Home() {
               {isAuthenticated && (
                 <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
                   <Link
-                    to="/pets/new"
+                    to="/pet-id"
                     className="bg-gradient-to-r from-purple-500 to-orange-500 text-white font-bold text-xl py-4 px-12 rounded-full hover:shadow-xl hover:shadow-purple-500/40 transition-all duration-300 inline-block"
                   >
                     Добавить питомца

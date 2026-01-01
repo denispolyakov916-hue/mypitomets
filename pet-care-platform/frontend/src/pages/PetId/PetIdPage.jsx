@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Plus, QrCode, Edit, Share2, Download } from 'lucide-react';
-import { getPets, createPet, updatePet } from '../../api/pets';
+import { Plus, QrCode, Edit, Share2, Download, Trash2 } from 'lucide-react';
+import { getPets, createPet, updatePet, deletePet } from '../../api/pets';
 import PetIdWizard from './PetIdWizard';
 import { PageLoader } from '../../components/Loader';
 
@@ -92,6 +92,19 @@ export default function PetIdPage() {
   const handleEditPet = (pet) => {
     setEditingPet(pet);
     setShowWizard(true);
+  };
+
+  const handleDeletePet = async (pet) => {
+    if (window.confirm(`Вы уверены, что хотите удалить питомца "${pet.name}"?`)) {
+      try {
+        await deletePet(pet.id);
+        fetchPets(); // Обновить список
+        console.log('Питомец успешно удалён');
+      } catch (error) {
+        console.error('Ошибка удаления питомца:', error);
+        alert('Не удалось удалить питомца');
+      }
+    }
   };
 
   const handleCloseWizard = () => {
@@ -186,9 +199,20 @@ export default function PetIdPage() {
                     {pet.species === 'dog' ? '🐕' : pet.species === 'cat' ? '🐱' : '🐾'}
                   </div>
                 )}
-                {/* QR-код миниатюра */}
-                <div className="absolute top-4 right-4 bg-white p-2 rounded-lg shadow-md">
-                  <QrCode className="w-6 h-6 text-purple-600" />
+                {/* Кнопки в правом верхнем углу */}
+                <div className="absolute top-4 right-4 flex gap-2">
+                  {/* Кнопка удаления */}
+                  <button
+                    onClick={() => handleDeletePet(pet)}
+                    className="bg-red-500 hover:bg-red-600 p-2 rounded-lg shadow-md transition-colors"
+                    title="Удалить питомца"
+                  >
+                    <Trash2 className="w-5 h-5 text-white" />
+                  </button>
+                  {/* QR-код миниатюра */}
+                  <div className="bg-white p-2 rounded-lg shadow-md">
+                    <QrCode className="w-5 h-5 text-purple-600" />
+                  </div>
                 </div>
               </div>
 

@@ -7,10 +7,7 @@
  *   /                 - Главная страница (лендинг/дашборд в зависимости от авторизации)
  *   /login            - Страница входа
  *   /register         - Страница регистрации
- *   /pets             - Список питомцев
- *   /pets/new         - Создание нового питомца
- *   /pets/:id         - Профиль питомца
- *   /pets/:id/edit    - Редактирование питомца
+ *   /pet-id           - Pet ID: цифровые паспорта питомцев (создание, редактирование, список)
  *   /shop             - Каталог товаров
  *   /cart             - Корзина покупок
  *   /checkout         - Единый checkout (товары + курсы)
@@ -122,11 +119,11 @@ function App() {
               <Route path="/" element={<Home />} />
               <Route
                 path="/login"
-                element={isAuthenticated ? <Navigate to="/pets" /> : <AuthModal />}
+                element={isAuthenticated ? <Navigate to="/pet-id" /> : <AuthModal />}
               />
               <Route
                 path="/register"
-                element={isAuthenticated ? <Navigate to="/pets" /> : <AuthModal />}
+                element={isAuthenticated ? <Navigate to="/pet-id" /> : <AuthModal />}
               />
               <Route path="/activate" element={<Activate />} />
 
@@ -143,11 +140,11 @@ function App() {
 
               {/* Защищённые маршруты - Требуют аутентификации */}
               <Route element={<PrivateRoute />}>
-                {/* Питомцы */}
-                <Route path="/pets" element={<PetList />} />
-                <Route path="/pets/new" element={<PetForm />} />
-                <Route path="/pets/:id" element={<PetProfile />} />
-                <Route path="/pets/:id/edit" element={<PetForm />} />
+                {/* Питомцы - редиректы на Pet ID */}
+                <Route path="/pets" element={<Navigate to="/pet-id" replace />} />
+                <Route path="/pets/new" element={<Navigate to="/pet-id" replace />} />
+                <Route path="/pets/:id" element={<Navigate to="/pet-id" replace />} />
+                <Route path="/pets/:id/edit" element={<Navigate to="/pet-id" replace />} />
 
                 {/* Pet ID*/}
                 <Route path="/pet-id" element={<PetIdPage />} />

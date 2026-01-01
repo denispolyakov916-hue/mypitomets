@@ -126,7 +126,7 @@ function Register() {
     const success = await activateByCode(activationCode)
     
     if (success) {
-      navigate('/pets', { replace: true })
+      navigate('/pet-id', { replace: true })
     }
   }
   

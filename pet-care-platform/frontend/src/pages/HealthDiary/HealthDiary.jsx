@@ -296,7 +296,7 @@ function HealthDiary() {
           <p className="text-gray-600 mb-4">
             Добавьте профиль питомца, чтобы вести дневник здоровья
           </p>
-          <Link to="/pets/new" className="btn-primary">
+          <Link to="/pet-id" className="btn-primary">
             Добавить питомца
           </Link>
         </div>

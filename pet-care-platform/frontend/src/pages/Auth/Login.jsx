@@ -89,7 +89,7 @@ function Login() {
     
     if (success) {
       // Редирект на целевую страницу или список питомцев
-      const from = location.state?.from?.pathname || '/pets'
+      const from = location.state?.from?.pathname || '/pet-id'
       navigate(from, { replace: true })
     }
   }

@@ -39,7 +39,7 @@ function Activate() {
           setUser(response.user)
           setStatus('success')
           setTimeout(() => {
-            navigate('/pets', { replace: true })
+            navigate('/pet-id', { replace: true })
           }, 2000)
         })
         .catch((err) => {

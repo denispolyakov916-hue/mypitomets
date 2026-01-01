@@ -587,7 +587,7 @@ function Profile() {
                 <p className="text-gray-600 mb-4">
                   Добавьте профиль вашего питомца
                 </p>
-                <Link to="/pets/new" className="btn-primary">
+                <Link to="/pet-id" className="btn-primary">
                   Добавить питомца
                 </Link>
               </div>
@@ -611,7 +611,7 @@ function Profile() {
                 <p className="text-gray-600 mb-4">
                   Напоминания привязаны к профилям питомцев
                 </p>
-                <Link to="/pets/new" className="btn-primary">
+                <Link to="/pet-id" className="btn-primary">
                   Добавить питомца
                 </Link>
               </div>

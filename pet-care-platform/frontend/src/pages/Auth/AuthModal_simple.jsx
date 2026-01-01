@@ -152,7 +152,7 @@ function AuthModal() {
     const success = await login(loginData.email, loginData.password)
 
     if (success) {
-      const from = location.state?.from?.pathname || '/pets'
+      const from = location.state?.from?.pathname || '/pet-id'
       navigate(from, { replace: true })
     }
   }
@@ -192,7 +192,7 @@ function AuthModal() {
     const success = await activateByCode(activationCode)
 
     if (success) {
-      navigate('/pets', { replace: true })
+      navigate('/pet-id', { replace: true })
     }
   }
 
