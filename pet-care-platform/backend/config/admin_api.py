@@ -951,7 +951,7 @@ class AdminModelViewSet(viewsets.ModelViewSet):
         # Добавляем базовую фильтрацию по query параметрам
         for field, value in self.request.query_params.items():
             if field not in ['page', 'page_size', 'ordering', 'search']:
-                if hasattr(queryset.model, field):
+                if hasattr(queryset.model, field and value):
                     queryset = queryset.filter(**{field: value})
 
         return queryset
