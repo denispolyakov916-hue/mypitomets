@@ -125,22 +125,20 @@ const OrdersTable = () => {
       key: 'user',
       label: 'Покупатель',
       sortable: false,
-      render: (value, row) => (
-        <div>
-          {row.user ? (
-            <div>
-              <div className="font-medium text-gray-900">{row.user.email}</div>
-              {row.user.first_name && (
+        render: (value, row) => (
+          <div>
+            {row.user_email ? (
+              <div>
+                <div className="font-medium text-gray-900">{row.user_email}</div>
                 <div className="text-sm text-gray-500">
-                  {row.user.first_name} {row.user.last_name || ''}
+                  ID: {row.user_id}
                 </div>
-              )}
-            </div>
-          ) : (
-            <span className="text-gray-500">Анонимный</span>
-          )}
-        </div>
-      )
+              </div>
+            ) : (
+              <span className="text-gray-500">Анонимный</span>
+            )}
+          </div>
+        )
     },
     {
       key: 'total_amount',

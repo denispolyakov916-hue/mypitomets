@@ -95,12 +95,13 @@ const PetsTable = () => {
       sortable: false,
       render: (value, row) => (
         <div>
-          <div className="font-medium text-gray-900">{row.owner?.email || 'Не указан'}</div>
-          {row.owner?.first_name && (
+          <div className="font-medium text-gray-900">{row.owner_email || 'Не указан'}</div>
+          {/* Закомментировать проблемный код */}
+          {/* {row.owner?.first_name && (
             <div className="text-sm text-gray-500">
               {row.owner.first_name} {row.owner.last_name || ''}
             </div>
-          )}
+          )} */}
         </div>
       )
     },

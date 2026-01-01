@@ -828,8 +828,8 @@ class AdminManagementViewSet(viewsets.ViewSet):
                     'Пользователь': order.user.email if order.user else '',
                     'Сумма': float(order.total_amount),
                     'Статус': order.status,
-                    'Способ доставки': order.delivery_method or '',
-                    'Адрес доставки': order.delivery_address or '',
+                    'Способ доставки': order.delivery_type or '',
+                    'Адрес доставки': order.shipping_address or '',
                     'Дата заказа': order.created_at.strftime('%d.%m.%Y %H:%M'),
                     'Дата обновления': order.updated_at.strftime('%d.%m.%Y %H:%M'),
                 })
@@ -951,7 +951,7 @@ class AdminModelViewSet(viewsets.ModelViewSet):
         # Добавляем базовую фильтрацию по query параметрам
         for field, value in self.request.query_params.items():
             if field not in ['page', 'page_size', 'ordering', 'search']:
-                if hasattr(queryset.model, field and value):
+                if hasattr(queryset.model, field) and value:
                     queryset = queryset.filter(**{field: value})
 
         return queryset
@@ -1243,6 +1243,10 @@ class AdminOrderViewSet(AdminModelViewSet):
     queryset = Order.objects.select_related('user', 'address').prefetch_related('items').all()
     ordering = ('-created_at',)
 
+    def get_queryset(self):
+        """Переопределяем get_queryset, чтобы избежать проблем с фильтрами."""
+        return Order.objects.select_related('user', 'address').prefetch_related('items').all()
+
     def _serialize_order(self, order):
         """Сериализация заказа в формат для API."""
         try:
@@ -1255,8 +1259,8 @@ class AdminOrderViewSet(AdminModelViewSet):
             'user_id': str(order.user.id) if order.user else None,
             'total_amount': float(order.total_amount or 0),
             'status': order.status,
-            'delivery_method': order.delivery_method or '',
-            'delivery_address': order.delivery_address or '',
+            'delivery_method': order.delivery_type or '',
+            'delivery_address': order.shipping_address or '',
             'items_count': items_count,
             'created_at': order.created_at.isoformat(),
             'updated_at': order.updated_at.isoformat(),
