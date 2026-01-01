@@ -4,14 +4,15 @@ export default function StepContacts({ formData, updateFormData }) {
   return (
     <div className="space-y-6">
       <div className="mb-6">
-        <h3 className="text-gray-900 text-lg font-medium mb-2">Контактная информация</h3>
+        <h3 className="text-gray-900 text-3xl font-bold mb-2">Контакты владельца</h3>
         <p className="text-sm text-gray-500">Укажите ваши контактные данные для связи</p>
       </div>
 
-      <div className="grid md:grid-cols-1 gap-4">
+      <div className="grid md:grid-cols-2 gap-4">
         {/* Телефон */}
-        <div>
-          <label className="block text-sm text-gray-700 mb-2">Телефон *</label>
+        <div>          
+          <label className="block text-sm text-gray-700 mb-2">📞 Телефон *</label>
+          
           <input
             type="tel"
             value={formData.phone}
@@ -23,7 +24,7 @@ export default function StepContacts({ formData, updateFormData }) {
 
         {/* Email */}
         <div>
-          <label className="block text-sm text-gray-700 mb-2">Email *</label>
+          <label className="block text-sm text-gray-700 mb-2">✉️ Email *</label>
           <input
             type="email"
             value={formData.email}
@@ -32,10 +33,13 @@ export default function StepContacts({ formData, updateFormData }) {
             placeholder="example@email.com"
           />
         </div>
+        </div>
+
+        <div className="grid md:grid-cols-1 gap-4">
 
         {/* Город */}
         <div>
-          <label className="block text-sm text-gray-700 mb-2">Город проживания</label>
+          <label className="block text-sm text-gray-700 mb-2">📍 Регион / город *</label>
           <input
             type="text"
             value={formData.city}

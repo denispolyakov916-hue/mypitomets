@@ -5,9 +5,7 @@ const SELECT_STYLE = INPUT_STYLE + " cursor-pointer appearance-none pr-12";
 const TEXTAREA_STYLE = INPUT_STYLE + " resize-none";
 
 const TRAITS = [
-  'Игривый', 'Дружелюбный', 'Энергичный', 'Спокойный',
-  'Умный', 'Послушный', 'Любопытный', 'Застенчивый',
-  'Агрессивный', 'Ленивый', 'Общительный', 'Самостоятельный'
+  'Дружелюбный', 'Активный', 'Спокойный', 'Игривый', 'Застенчивый', 'Любопытный', 'Независимый', 'Ласковый'
 ];
 
 const BEHAVIOR_PROBLEMS = [
@@ -25,16 +23,73 @@ const TRAINING_LEVELS = [
 ];
 
 export default function StepBehavior({ formData, updateFormData, toggleArrayValue }) {
+  // Инициализируем массив пользовательских черт характера, если он не существует
+  const customTraits = formData.customTraits || [];
+  
+  const handleCustomTraitChange = (index, value) => {
+    const newCustomTraits = [...customTraits];
+    newCustomTraits[index] = value;
+    
+    // Обновляем массив пользовательских черт характера
+    updateFormData('customTraits', newCustomTraits);
+    
+    // Обновляем массив выбранных черт характера
+    const hasCustomTraits = newCustomTraits.some(trait => trait && trait.trim());
+    if (hasCustomTraits && !formData.traits.includes('Другое')) {
+      toggleArrayValue('traits', 'Другое');
+    } else if (!hasCustomTraits && formData.traits.includes('Другое')) {
+      toggleArrayValue('traits', 'Другое');
+    }
+    
+    // Если ввели текст в последнее поле, добавляем новое пустое поле
+    if (value.trim() && index === customTraits.length - 1) {
+      updateFormData('customTraits', [...newCustomTraits, '']);
+    }
+  };
+
+  const handleCustomTraitBlur = () => {
+    // Удаляем пустые поля, кроме последнего
+    const filteredTraits = customTraits.filter((trait, index) => {
+      // Оставляем непустые поля
+      if (trait && trait.trim()) return true;
+      // Оставляем последнее пустое поле
+      return index === customTraits.length - 1;
+    });
+    
+    // Если после фильтрации не осталось ни одного поля, добавляем пустое
+    const finalTraits = filteredTraits.length === 0 ? [''] : filteredTraits;
+    
+    updateFormData('customTraits', finalTraits);
+    
+    // Обновляем массив выбранных черт характера
+    const hasCustomTraits = finalTraits.some(trait => trait && trait.trim());
+    if (hasCustomTraits && !formData.traits.includes('Другое')) {
+      toggleArrayValue('traits', 'Другое');
+    } else if (!hasCustomTraits && formData.traits.includes('Другое')) {
+      toggleArrayValue('traits', 'Другое');
+    }
+  };
+
+  const handleCustomTraitFocus = () => {
+    // При фокусе на любом поле добавляем "Другое" в выбранные
+    if (!formData.traits.includes('Другое')) {
+      toggleArrayValue('traits', 'Другое');
+    }
+  };
+
+  // Показываем только непустые поля + одно пустое для ввода
+  const visibleCustomTraits = customTraits.length === 0 ? [''] : customTraits;
+
   return (
     <div className="space-y-6">
       <div className="mb-6">
-        <h3 className="text-gray-900 text-lg font-medium mb-2">Поведение и дрессировка</h3>
-        <p className="text-sm text-gray-500">Опишите характер и уровень обученности питомца</p>
+        <h3 className="text-gray-900 text-3xl font-bold mb-2">Поведение и цели</h3>
+        <p className="text-sm text-gray-500">Характер питомца и задачи дрессировки</p>
       </div>
 
-      {/* Черты характера */}
+      {/* Характерные черты */}
       <div>
-        <label className="block text-sm text-gray-700 mb-3">Черты характера</label>
+        <label className="block text-sm text-gray-700 mb-3">Характерные черты</label>
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
           {TRAITS.map((trait) => (
             <label
@@ -47,6 +102,21 @@ export default function StepBehavior({ formData, updateFormData, toggleArrayValu
               />
               <span className="text-sm text-gray-700">{trait}</span>
             </label>
+          ))}
+          
+          {/* Динамические поля для пользовательских черт характера */}
+          {visibleCustomTraits.map((trait, index) => (
+            <div key={index} className="p-3 bg-white border-none rounded-xl transition-all">
+              <input
+                type="text"
+                value={trait || ''}
+                onChange={(e) => handleCustomTraitChange(index, e.target.value)}
+                onBlur={handleCustomTraitBlur}
+                onFocus={handleCustomTraitFocus}
+                className={`${INPUT_STYLE} ${formData.traits.includes('Другое') && trait.trim() ? 'border-dashed border-purple-400 bg-purple-50' : ''} text-center placeholder:text-purple-300 placeholder:text-center`}
+                placeholder={index === 0 ? "+ Другое" : "+ Еще черта"}
+              />
+            </div>
           ))}
         </div>
       </div>
@@ -101,7 +171,3 @@ export default function StepBehavior({ formData, updateFormData, toggleArrayValu
     </div>
   );
 }
-
-
-
-

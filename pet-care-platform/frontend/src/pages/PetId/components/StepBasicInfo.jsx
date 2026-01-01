@@ -7,7 +7,7 @@ export default function StepBasicInfo({ formData, updateFormData }) {
   return (
     <div className="space-y-6">
       <div className="mb-6">
-        <h3 className="text-gray-900 text-lg font-medium mb-2">Основные данные питомца</h3>
+        <h3 className="text-gray-900 text-3xl font-bold mb-2">Основные данные питомца</h3>
         <p className="text-sm text-gray-500">Заполните базовую информацию о вашем питомце</p>
       </div>
       

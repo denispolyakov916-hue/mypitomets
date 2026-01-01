@@ -2,33 +2,31 @@ const INPUT_STYLE = "w-full px-4 py-3 border-2 border-gray-200 rounded-2xl focus
 const SELECT_STYLE = INPUT_STYLE + " cursor-pointer appearance-none pr-12";
 
 const SIZE_OPTIONS = [
-  { value: 'mini', label: 'Миниатюрный (до 5 кг)' },
-  { value: 'small', label: 'Маленький (5-10 кг)' },
+  { value: 'small', label: 'Маленький (до 10 кг)' },
   { value: 'medium', label: 'Средний (10-25 кг)' },
-  { value: 'large', label: 'Крупный (25-40 кг)' },
-  { value: 'giant', label: 'Гигантский (свыше 40 кг)' }
+  { value: 'large', label: 'Крупный (более 25 кг)' },
 ];
 
 const BODY_TYPE_OPTIONS = [
-  { value: 'slim', label: 'Худощавый' },
-  { value: 'normal', label: 'Нормальный' },
+  { value: 'slim', label: 'Недостаточный вес' },
+  { value: 'normal', label: 'Идеальный вес' },
   { value: 'overweight', label: 'Избыточный вес' },
   { value: 'obese', label: 'Ожирение' }
 ];
 
 const ACTIVITY_LEVEL_OPTIONS = [
-  { value: 'low', label: 'Низкий (домашний питомец)' },
-  { value: 'moderate', label: 'Средний (регулярные прогулки)' },
-  { value: 'high', label: 'Высокий (активный образ жизни)' },
-  { value: 'very_high', label: 'Очень высокий (спорт, охота)' }
+  { value: 'low', label: 'Низкий (менее 30 мин/день)' },
+  { value: 'moderate', label: 'Средний (30-60 мин/день)' },
+  { value: 'high', label: 'Высокий (1-2 часа/день)' },
+  { value: 'very_high', label: 'Очень высокий (более 2 часов/день)' }
 ];
 
 export default function StepPhysical({ formData, updateFormData }) {
   return (
     <div className="space-y-6">
       <div className="mb-6">
-        <h3 className="text-gray-900 text-lg font-medium mb-2">Физические параметры</h3>
-        <p className="text-sm text-gray-500">Укажите размеры, вес и уровень активности питомца</p>
+        <h3 className="text-gray-900 text-3xl font-bold mb-2">Физические параметры</h3>
+        <p className="text-sm text-gray-500">Данные о весе, размере и активности питомца</p>
       </div>
 
       <div className="grid md:grid-cols-2 gap-4">
@@ -40,25 +38,13 @@ export default function StepPhysical({ formData, updateFormData }) {
             value={formData.currentWeight}
             onChange={(e) => updateFormData('currentWeight', e.target.value)}
             className={INPUT_STYLE}
-            placeholder="0.0"
-            step="0.1"
+            placeholder="0"
+            step="1"
             min="0"
           />
         </div>
 
         {/* Идеальный вес */}
-        <div>
-          <label className="block text-sm text-gray-700 mb-2">Идеальный вес (кг)</label>
-          <input
-            type="number"
-            value={formData.idealWeight}
-            onChange={(e) => updateFormData('idealWeight', e.target.value)}
-            className={INPUT_STYLE}
-            placeholder="0.0"
-            step="0.1"
-            min="0"
-          />
-        </div>
 
         {/* Размер */}
         <div>

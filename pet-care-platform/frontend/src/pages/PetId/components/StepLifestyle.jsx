@@ -36,7 +36,7 @@ export default function StepLifestyle({ formData, updateFormData }) {
         <p className="text-sm text-gray-500">Расскажите об условиях проживания и распорядке дня</p>
       </div>
 
-      <div className="grid md:grid-cols-2 gap-4">
+      <div className="grid md:grid-cols-3 gap-4">
         {/* Тип жилья */}
         <div>
           <label className="block text-sm text-gray-700 mb-2">Тип жилья</label>
@@ -54,38 +54,6 @@ export default function StepLifestyle({ formData, updateFormData }) {
           </select>
         </div>
 
-        {/* Наличие двора */}
-        <div className="flex items-center gap-3 p-4 bg-purple-50 border-2 border-purple-200 rounded-xl">
-          <CustomCheckbox
-            checked={formData.hasYard}
-            onChange={() => updateFormData('hasYard', !formData.hasYard)}
-          />
-          <span className="text-sm text-gray-700">Есть двор/участок</span>
-        </div>
-      </div>
-
-      {/* Другие питомцы */}
-      <div>
-        <label className="block text-sm text-gray-700 mb-2">Другие питомцы в доме</label>
-        <textarea
-          value={formData.otherPets}
-          onChange={(e) => updateFormData('otherPets', e.target.value)}
-          className={TEXTAREA_STYLE}
-          rows={3}
-          placeholder="Опишите других животных в доме (порода, возраст, характер)"
-        />
-      </div>
-
-      {/* Наличие детей */}
-      <label className="flex items-center gap-3 p-4 bg-purple-50 border-2 border-purple-200 rounded-xl cursor-pointer hover:bg-purple-100 transition-all">
-        <CustomCheckbox
-          checked={formData.hasChildren}
-          onChange={() => updateFormData('hasChildren', !formData.hasChildren)}
-        />
-        <span className="text-sm text-gray-700">В доме есть дети</span>
-      </label>
-
-      <div className="grid md:grid-cols-2 gap-4">
         {/* Частота прогулок */}
         <div>
           <label className="block text-sm text-gray-700 mb-2">Частота прогулок</label>
@@ -119,7 +87,46 @@ export default function StepLifestyle({ formData, updateFormData }) {
             ))}
           </select>
         </div>
+
+        {/* Другие питомцы */}
+      <div>
+        <label className="block text-sm text-gray-700 mb-2">Другие животные дома</label>
+        <textarea
+          value={formData.otherPets}
+          onChange={(e) => updateFormData('otherPets', e.target.value)}
+          className={TEXTAREA_STYLE}
+          rows={1}
+          placeholder="Например: 1 кошка, 1 попугай"
+        />
       </div>
+      
+
+  {/* Дополнительно - двор */}
+  <div>
+    <label className="block text-sm text-gray-700 mb-2">Дополнительно</label>
+    <div className="flex items-center gap-3 p-4 bg-purple-50 border-2 border-purple-200 rounded-xl">
+      <CustomCheckbox
+        checked={formData.hasYard}
+        onChange={() => updateFormData('hasYard', !formData.hasYard)}
+      />
+      <span className="text-sm text-gray-700">Есть двор/участок</span>
+    </div>
+  </div>
+
+  {/* Дополнительно - дети */}
+  <div>
+    <label className="block text-sm text-gray-700 mb-2 invisible">hidden</label>
+    <label className="flex items-center gap-3 p-4 bg-purple-50 border-2 border-purple-200 rounded-xl cursor-pointer hover:bg-purple-100 transition-all">
+      <CustomCheckbox
+        checked={formData.hasChildren}
+        onChange={() => updateFormData('hasChildren', !formData.hasChildren)}
+      />
+      <span className="text-sm text-gray-700">В доме есть дети</span>
+    </label>
+  </div>
+
+      </div> 
+
     </div>
   );
 }

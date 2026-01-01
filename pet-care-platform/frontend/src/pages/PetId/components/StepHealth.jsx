@@ -5,30 +5,29 @@ const SELECT_STYLE = INPUT_STYLE + " cursor-pointer appearance-none pr-12";
 const TEXTAREA_STYLE = INPUT_STYLE + " resize-none";
 
 const DENTAL_HEALTH_OPTIONS = [
-  { value: 'excellent', label: 'Отличное состояние' },
-  { value: 'good', label: 'Хорошее состояние' },
+  { value: 'excellent', label: 'Отличное' },
+  { value: 'good', label: 'Хорошее' },
   { value: 'fair', label: 'Удовлетворительное' },
-  { value: 'poor', label: 'Плохое состояние' },
-  { value: 'needs_attention', label: 'Требует внимания' }
+  { value: 'needs_attention', label: 'Требуется лечения' }
 ];
 
 export default function StepHealth({ formData, updateFormData }) {
   return (
     <div className="space-y-6">
       <div className="mb-6">
-        <h3 className="text-gray-900 text-lg font-medium mb-2">Здоровье питомца</h3>
-        <p className="text-sm text-gray-500">Информация о состоянии здоровья и медицинской истории</p>
+        <h3 className="text-gray-900 text-3xl font-bold mb-2">Здоровье и медицина</h3>
+        <p className="text-sm text-gray-500">Медицинская информация о питомце</p>
       </div>
 
       {/* Хронические заболевания */}
       <div>
-        <label className="block text-sm text-gray-700 mb-2">Хронические заболевания</label>
+        <label className="block text-sm text-gray-700 mb-2">Хронические заболевания / Состояния</label>
         <textarea
           value={formData.chronicConditions}
           onChange={(e) => updateFormData('chronicConditions', e.target.value)}
           className={TEXTAREA_STYLE}
           rows={3}
-          placeholder="Опишите хронические заболевания, аллергии или другие проблемы со здоровьем"
+          placeholder="Например: диабет, артрит, аллергии"
         />
       </div>
 
@@ -40,25 +39,25 @@ export default function StepHealth({ formData, updateFormData }) {
           onChange={(e) => updateFormData('vaccinations', e.target.value)}
           className={TEXTAREA_STYLE}
           rows={3}
-          placeholder="Перечислите сделанные прививки и даты вакцинации"
+          placeholder="Укажите все вакцины и даты"
         />
       </div>
 
       {/* Медикаменты */}
       <div>
-        <label className="block text-sm text-gray-700 mb-2">Текущие медикаменты</label>
+        <label className="block text-sm text-gray-700 mb-2">Принимаемые препараты</label>
         <textarea
           value={formData.medications}
           onChange={(e) => updateFormData('medications', e.target.value)}
           className={TEXTAREA_STYLE}
           rows={3}
-          placeholder="Укажите принимаемые лекарства, витамины, добавки"
+          placeholder="Название, дозировка, частота приема"
         />
       </div>
 
-      {/* Здоровье зубов */}
+      {/* Состояние зубов */}
       <div>
-        <label className="block text-sm text-gray-700 mb-2">Здоровье зубов</label>
+        <label className="block text-sm text-gray-700 mb-2">Состояние зубов</label>
         <select
           value={formData.dentalHealth}
           onChange={(e) => updateFormData('dentalHealth', e.target.value)}
@@ -87,7 +86,7 @@ export default function StepHealth({ formData, updateFormData }) {
 
       {/* Медицинские документы */}
       <div>
-        <label className="block text-sm text-gray-700 mb-2">Медицинские документы</label>
+        <label className="block text-sm text-gray-700 mb-2">Загрузка медицинских документов</label>
         <div className="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center hover:border-purple-400 hover:bg-purple-50 transition-all cursor-pointer">
           <div className="text-4xl mb-2">📄</div>
           <p className="text-gray-700 text-sm mb-1">Загрузить медицинские документы</p>

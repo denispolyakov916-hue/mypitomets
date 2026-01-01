@@ -7,11 +7,68 @@ const TEXTAREA_STYLE = INPUT_STYLE + " resize-none";
 const FLAVORS = ['Курица', 'Говядина', 'Рыба', 'Индейка', 'Ягненок', 'Кролик'];
 
 export default function StepNutrition({ formData, updateFormData, toggleArrayValue }) {
+  // Инициализируем массив пользовательских вкусов, если он не существует
+  const customFlavors = formData.customFlavors || [];
+  
+  const handleCustomFlavorChange = (index, value) => {
+    const newCustomFlavors = [...customFlavors];
+    newCustomFlavors[index] = value;
+    
+    // Обновляем массив пользовательских вкусов
+    updateFormData('customFlavors', newCustomFlavors);
+    
+    // Обновляем массив выбранных вкусов
+    const hasCustomFlavors = newCustomFlavors.some(flavor => flavor && flavor.trim());
+    if (hasCustomFlavors && !formData.favoriteFlavors.includes('Другое')) {
+      toggleArrayValue('favoriteFlavors', 'Другое');
+    } else if (!hasCustomFlavors && formData.favoriteFlavors.includes('Другое')) {
+      toggleArrayValue('favoriteFlavors', 'Другое');
+    }
+    
+    // Если ввели текст в последнее поле, добавляем новое пустое поле
+    if (value.trim() && index === customFlavors.length - 1) {
+      updateFormData('customFlavors', [...newCustomFlavors, '']);
+    }
+  };
+
+  const handleCustomFlavorBlur = () => {
+    // Удаляем пустые поля, кроме последнего
+    const filteredFlavors = customFlavors.filter((flavor, index) => {
+      // Оставляем непустые поля
+      if (flavor && flavor.trim()) return true;
+      // Оставляем последнее пустое поле
+      return index === customFlavors.length - 1;
+    });
+    
+    // Если после фильтрации не осталось ни одного поля, добавляем пустое
+    const finalFlavors = filteredFlavors.length === 0 ? [''] : filteredFlavors;
+    
+    updateFormData('customFlavors', finalFlavors);
+    
+    // Обновляем массив выбранных вкусов
+    const hasCustomFlavors = finalFlavors.some(flavor => flavor && flavor.trim());
+    if (hasCustomFlavors && !formData.favoriteFlavors.includes('Другое')) {
+      toggleArrayValue('favoriteFlavors', 'Другое');
+    } else if (!hasCustomFlavors && formData.favoriteFlavors.includes('Другое')) {
+      toggleArrayValue('favoriteFlavors', 'Другое');
+    }
+  };
+
+  const handleCustomFlavorFocus = () => {
+    // При фокусе на любом поле добавляем "Другое" в выбранные
+    if (!formData.favoriteFlavors.includes('Другое')) {
+      toggleArrayValue('favoriteFlavors', 'Другое');
+    }
+  };
+
+  // Фильтруем пустые поля, но оставляем хотя бы одно для ввода
+  const visibleCustomFlavors = customFlavors.length === 0 ? [''] : customFlavors;
+
   return (
     <div className="space-y-6">
       <div className="mb-6">
-        <h3 className="text-gray-900 text-lg font-medium mb-2">Питание и предпочтения</h3>
-        <p className="text-sm text-gray-500">Информация о рационе питомца</p>
+        <h3 className="text-gray-900 text-3xl font-bold mb-2">Питание и предпочтения</h3>
+        <p className="text-sm text-gray-500">Информация о рационе и пищевых предпочтениях</p>
       </div>
 
       <div className="grid md:grid-cols-2 gap-4">
@@ -27,6 +84,7 @@ export default function StepNutrition({ formData, updateFormData, toggleArrayVal
             <option value="wet">Влажный корм</option>
             <option value="mixed">Смешанное питание</option>
             <option value="raw">Натуральное питание</option>
+            <option value="home">Домашняя еда</option>
           </select>
         </div>
 
@@ -62,7 +120,34 @@ export default function StepNutrition({ formData, updateFormData, toggleArrayVal
               <span className="text-sm text-gray-700">{flavor}</span>
             </label>
           ))}
+          
+          {/* Динамические поля для пользовательских вкусов */}
+          {visibleCustomFlavors.map((flavor, index) => (
+            <div key={index} className="p-3 bg-white border-none rounded-xl transition-all">
+              <input
+                type="text"
+                value={flavor || ''}
+                onChange={(e) => handleCustomFlavorChange(index, e.target.value)}
+                onBlur={handleCustomFlavorBlur}
+                onFocus={handleCustomFlavorFocus}
+                className={`${INPUT_STYLE} ${formData.favoriteFlavors.includes('Другое') && flavor.trim() ? 'border-dashed border-purple-400 bg-purple-50' : ''} text-center placeholder:text-purple-300 placeholder:text-center`}
+                placeholder={index === 0 ? "+ Другое" : "+ Еще вкус"}
+              />
+            </div>
+          ))}
         </div>
+      </div>
+
+      {/* Исключаемые ингреденты */}
+      <div>
+        <label className="block text-sm text-gray-700 mb-2">Исключаемые ингреденты</label>
+        <textarea
+          value={formData.excludedIngredients}
+          onChange={(e) => updateFormData('excludedIngredients', e.target.value)}
+          className={TEXTAREA_STYLE}
+          rows={3}
+          placeholder="Например: соя, кукуруза, пшеница"
+        />
       </div>
 
       {/* Аллергии */}
@@ -85,6 +170,18 @@ export default function StepNutrition({ formData, updateFormData, toggleArrayVal
         />
         <span className="text-sm text-gray-700">Чувствительное пищеварение</span>
       </label>
+
+      {/* Добавки / Витамины */}
+      <div>
+        <label className="block text-sm text-gray-700 mb-2">Добавки / Витамины</label>
+        <textarea
+          value={formData.vitamins}
+          onChange={(e) => updateFormData('vitamins', e.target.value)}
+          className={TEXTAREA_STYLE}
+          rows={3}
+          placeholder="Например: Omega-3, пробиотики"
+        />
+      </div>
     </div>
   );
 }

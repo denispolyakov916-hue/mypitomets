@@ -197,7 +197,7 @@ export default function StepConfirmation({ formData, progress }) {
           <CheckCircle className="w-6 h-6 text-green-500" />
           <div>
             <h4 className="text-md font-medium text-gray-800">Готово к сохранению!</h4>
-            <p className="text-sm text-gray-600">Все данные заполнены и готовы к созданию Pet ID</p>
+            <p className="text-sm text-gray-600">Вы можете отредактировать любую информацию позже в профиле питомца</p>
           </div>
         </div>
       </div>

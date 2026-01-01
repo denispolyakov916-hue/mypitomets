@@ -113,7 +113,7 @@ export default function PetIdWizard({ onClose, onSubmit }) {
         {/* Header */}
         <div className="p-6 border-b border-gray-100 flex items-center justify-between flex-shrink-0">
           <div>
-            <h2 className="text-2xl bg-gradient-to-r from-purple-600 to-orange-500 bg-clip-text text-transparent font-bold">
+            <h2 className="text-5xl bg-gradient-to-r from-purple-600 to-orange-500 bg-clip-text text-transparent font-bold">
               Создание Pet ID
             </h2>
             <p className="text-sm text-gray-500 mt-1">Шаг {currentStep} из {STEPS.length}</p>
