@@ -24,6 +24,14 @@ URL маршруты для эндпоинтов обучения (Курсы).
     POST /api/comments/{id}/like/        - Лайк комментария
     DELETE /api/comments/{id}/like/      - Удалить лайк
 
+Новые эндпоинты конструктора курсов:
+    GET  /api/courses/{id}/builder/      - Структура курса для конструктора
+    CRUD /api/courses/{id}/pages/        - Управление страницами курса
+    CRUD /api/pages/{id}/blocks/         - Управление блоками страницы
+    POST /api/blocks/{id}/duplicate/     - Дублирование блока
+    CRUD /api/block-templates/           - Управление шаблонами блоков
+    POST /api/block-templates/{id}/use/  - Использование шаблона
+
 Все пути имеют префикс /api/courses/ в главном urls.py
 """
 
@@ -44,15 +52,20 @@ from .views import (
     LessonCommentsView,
     CourseCommentsView,
     CommentLikeView,
+    CommentReactionView,
     CourseRatingsView,
     # Новые вьюсы для комментариев и оценок
     CommentListView,
     CommentCreateView,
     CommentDetailView,
-    CommentLikeView as NewCommentLikeView,
     CourseRatingListView,
     CourseRatingCreateView,
-    RatingDetailView
+    RatingDetailView,
+    # Новые вьюсы для конструктора курсов
+    CourseBuilderView,
+    CoursePageViewSet,
+    ContentBlockViewSet,
+    BlockTemplateViewSet
 )
 
 urlpatterns = [
@@ -144,7 +157,7 @@ urlpatterns = [
     # Реакции на комментарии
     # POST /api/comments/{id}/like/
     # POST /api/comments/{id}/dislike/
-    path('comments/<uuid:comment_id>/<str:action>/', NewCommentLikeView.as_view(), name='comment-reaction'),
+    path('comments/<uuid:comment_id>/<str:action>/', CommentReactionView.as_view(), name='comment-reaction'),
 
     # Оценки курса (улучшенные)
     # GET /api/courses/{course_id}/ratings/
@@ -157,4 +170,76 @@ urlpatterns = [
     # PUT /api/ratings/{id}/
     # DELETE /api/ratings/{id}/
     path('ratings/<uuid:rating_id>/', RatingDetailView.as_view(), name='rating-detail'),
+
+    # ===== МАРШРУТЫ КОНСТРУКТОРА КУРСОВ =====
+
+    # Структура курса для конструктора
+    # GET /api/courses/{course_id}/builder/
+    path('<int:course_id>/builder/', CourseBuilderView.as_view(), name='course-builder'),
+
+    # Управление страницами курса
+    # GET /api/courses/{course_id}/pages/
+    # POST /api/courses/{course_id}/pages/
+    path('<int:course_id>/pages/', CoursePageViewSet.as_view({
+        'get': 'list',
+        'post': 'create'
+    }), name='course-pages'),
+
+    # Управление конкретной страницей
+    # GET /api/pages/{page_id}/
+    # PUT /api/pages/{page_id}/
+    # DELETE /api/pages/{page_id}/
+    path('pages/<int:pk>/', CoursePageViewSet.as_view({
+        'get': 'retrieve',
+        'put': 'update',
+        'delete': 'destroy'
+    }), name='course-page-detail'),
+
+    # Управление блоками страницы
+    # GET /api/pages/{page_id}/blocks/
+    # POST /api/pages/{page_id}/blocks/
+    path('pages/<int:page_id>/blocks/', ContentBlockViewSet.as_view({
+        'get': 'list',
+        'post': 'create'
+    }), name='page-blocks'),
+
+    # Управление конкретным блоком
+    # GET /api/blocks/{block_id}/
+    # PUT /api/blocks/{block_id}/
+    # DELETE /api/blocks/{block_id}/
+    path('blocks/<int:pk>/', ContentBlockViewSet.as_view({
+        'get': 'retrieve',
+        'put': 'update',
+        'delete': 'destroy'
+    }), name='content-block-detail'),
+
+    # Дублирование блока
+    # POST /api/blocks/{block_id}/duplicate/
+    path('blocks/<int:pk>/duplicate/', ContentBlockViewSet.as_view({
+        'post': 'duplicate'
+    }), name='content-block-duplicate'),
+
+    # Шаблоны блоков
+    # GET /api/block-templates/
+    # POST /api/block-templates/
+    path('block-templates/', BlockTemplateViewSet.as_view({
+        'get': 'list',
+        'post': 'create'
+    }), name='block-templates'),
+
+    # Управление шаблоном блока
+    # GET /api/block-templates/{id}/
+    # PUT /api/block-templates/{id}/
+    # DELETE /api/block-templates/{id}/
+    path('block-templates/<int:pk>/', BlockTemplateViewSet.as_view({
+        'get': 'retrieve',
+        'put': 'update',
+        'delete': 'destroy'
+    }), name='block-template-detail'),
+
+    # Использование шаблона
+    # POST /api/block-templates/{id}/use/
+    path('block-templates/<int:pk>/use/', BlockTemplateViewSet.as_view({
+        'post': 'use_template'
+    }), name='block-template-use'),
 ]

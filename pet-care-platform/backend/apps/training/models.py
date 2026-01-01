@@ -1421,3 +1421,269 @@ class Rating(models.Model):
     def can_delete(self, user):
         """Проверяет, может ли пользователь удалить оценку."""
         return self.user == user
+
+
+# ===== НОВЫЕ МОДЕЛИ ДЛЯ КОНСТРУКТОРА КУРСОВ =====
+
+class CoursePage(models.Model):
+    """
+    Страница курса - контейнер для блоков контента.
+    Заменяет монолитную структуру уроков.
+    """
+
+    course_id = models.PositiveIntegerField(verbose_name='ID курса')  # Временно без ForeignKey
+
+    title = models.CharField(
+        max_length=200,
+        verbose_name='Название страницы'
+    )
+
+    order_number = models.PositiveIntegerField(
+        default=1,
+        verbose_name='Порядок'
+    )
+
+    # Тип страницы (опционально, может наследоваться от course.format_type)
+    page_type = models.CharField(
+        max_length=20,
+        choices=[
+            ('text', 'Текстовая'),
+            ('video', 'Видео'),
+            ('interactive', 'Интерактивная'),
+            ('quiz', 'Тест'),
+            ('webinar', 'Вебинар'),
+            ('assignment', 'Задание'),
+        ],
+        blank=True,
+        null=True,
+        verbose_name='Тип страницы'
+    )
+
+    # Настройки страницы
+    settings = models.JSONField(
+        default=dict,
+        verbose_name='Настройки страницы',
+        help_text='JSON с настройками: required_completion, timer_enabled, allow_skipping и т.д.'
+    )
+
+    is_active = models.BooleanField(default=True, verbose_name='Активна')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'course_pages'
+        verbose_name = 'Страница курса'
+        verbose_name_plural = 'Страницы курсов'
+
+    def __str__(self):
+        return f"Курс {self.course_id} - Страница {self.order_number}: {self.title}"
+
+    def get_blocks_ordered(self):
+        """Получить блоки страницы в правильном порядке."""
+        return self.blocks.filter(is_active=True).order_by('order')
+
+
+class ContentBlock(models.Model):
+    """
+    Универсальный блок контента для страниц курсов.
+    Основной строительный элемент конструктора.
+    """
+
+    page = models.ForeignKey(
+        CoursePage,
+        on_delete=models.CASCADE,
+        related_name='blocks',
+        verbose_name='Страница'
+    )
+
+    block_type = models.CharField(
+        max_length=30,
+        choices=[
+            # Текстовые
+            ('rich_text', 'Форматированный текст'),
+            ('image', 'Изображение'),
+            ('gallery', 'Галерея'),
+            ('file_download', 'Файл для скачивания'),
+
+            # Медиа
+            ('video_player', 'Видео-плеер'),
+            ('audio_player', 'Аудио-плеер'),
+            ('embed', 'Встраиваемый контент'),
+
+            # Интерактивные
+            ('quiz', 'Тест/Викторина'),
+            ('poll', 'Опрос'),
+            ('checklist', 'Чек-лист'),
+            ('timer', 'Таймер'),
+
+            # Специализированные
+            ('pet_action', 'Действие с питомцем'),
+            ('progress_tracker', 'Трекер прогресса'),
+            ('comment_section', 'Комментарии'),
+            ('rating', 'Оценка'),
+        ],
+        verbose_name='Тип блока'
+    )
+
+    # Универсальное поле для данных блока
+    content = models.JSONField(
+        default=dict,
+        verbose_name='Содержимое блока',
+        help_text='JSON с данными блока (зависит от типа)'
+    )
+
+    # Настройки конкретного блока
+    settings = models.JSONField(
+        default=dict,
+        verbose_name='Настройки блока',
+        help_text='JSON с настройками блока'
+    )
+
+    # Порядок в странице
+    order = models.PositiveIntegerField(default=1, verbose_name='Порядок')
+
+    is_active = models.BooleanField(default=True, verbose_name='Активен')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'content_blocks'
+        verbose_name = 'Блок контента'
+        verbose_name_plural = 'Блоки контента'
+        ordering = ['page', 'order']
+        unique_together = [['page', 'order']]
+        indexes = [
+            models.Index(fields=['page', 'order']),
+            models.Index(fields=['block_type']),
+            models.Index(fields=['is_active']),
+        ]
+
+    def __str__(self):
+        return f"Блок {self.block_type} (страница {self.page.title})"
+
+    def get_block_type_display(self):
+        """Получить название типа блока."""
+        return dict(self._meta.get_field('block_type').choices).get(self.block_type, self.block_type)
+
+
+class BlockTemplate(models.Model):
+    """
+    Шаблоны блоков для переиспользования.
+    Позволяет сохранять часто используемые блоки.
+    """
+
+    name = models.CharField(max_length=200, verbose_name='Название шаблона')
+    description = models.TextField(blank=True, verbose_name='Описание')
+
+    BLOCK_TYPE_CHOICES = [
+        ('rich_text', 'Форматированный текст'),
+        ('image', 'Изображение'),
+        ('gallery', 'Галерея'),
+        ('file_download', 'Файл для скачивания'),
+        ('video_player', 'Видео-плеер'),
+        ('audio_player', 'Аудио-плеер'),
+        ('embed', 'Встраиваемый контент'),
+        ('quiz', 'Тест/Викторина'),
+        ('poll', 'Опрос'),
+        ('checklist', 'Чек-лист'),
+        ('timer', 'Таймер'),
+        ('pet_action', 'Действие с питомцем'),
+        ('progress_tracker', 'Трекер прогресса'),
+        ('comment_section', 'Комментарии'),
+        ('rating', 'Оценка'),
+    ]
+
+    block_type = models.CharField(
+        max_length=30,
+        choices=BLOCK_TYPE_CHOICES,
+        verbose_name='Тип блока'
+    )
+
+    content = models.JSONField(
+        default=dict,
+        verbose_name='Содержимое',
+        help_text='JSON с данными блока'
+    )
+
+    settings = models.JSONField(
+        default=dict,
+        verbose_name='Настройки',
+        help_text='JSON с настройками блока'
+    )
+
+    # Категоризация шаблонов
+    category = models.CharField(
+        max_length=50,
+        choices=[
+            ('text', 'Текстовые'),
+            ('media', 'Медиа'),
+            ('interactive', 'Интерактивные'),
+            ('pet_specific', 'Для питомцев'),
+            ('utility', 'Утилиты'),
+        ],
+        default='text',
+        verbose_name='Категория'
+    )
+
+    is_public = models.BooleanField(default=True, verbose_name='Публичный шаблон')
+
+    created_by = models.ForeignKey(
+        'users.User',
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='block_templates',
+        verbose_name='Создатель'
+    )
+
+    usage_count = models.PositiveIntegerField(default=0, verbose_name='Количество использований')
+    is_active = models.BooleanField(default=True, verbose_name='Активен')
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'block_templates'
+        verbose_name = 'Шаблон блока'
+        verbose_name_plural = 'Шаблоны блоков'
+        ordering = ['-usage_count', 'name']
+        indexes = [
+            models.Index(fields=['block_type']),
+            models.Index(fields=['category']),
+            models.Index(fields=['is_public']),
+            models.Index(fields=['-usage_count']),
+        ]
+
+    def __str__(self):
+        return f"Шаблон: {self.name} ({self.block_type})"
+
+    def increment_usage(self):
+        """Увеличить счетчик использования."""
+        self.usage_count += 1
+        self.save(update_fields=['usage_count'])
+
+    def create_block_from_template(self, page, order=None):
+        """
+        Создать блок на основе шаблона.
+
+        Args:
+            page: CoursePage для создания блока
+            order: Порядок блока (опционально)
+
+        Returns:
+            ContentBlock: Созданный блок
+        """
+        if order is None:
+            # Найти максимальный порядок на странице
+            max_order = page.blocks.aggregate(models.Max('order'))['order__max'] or 0
+            order = max_order + 1
+
+        block = ContentBlock.objects.create(
+            page=page,
+            block_type=self.block_type,
+            content=self.content.copy(),  # Глубокое копирование
+            settings=self.settings.copy(),
+            order=order
+        )
+
+        self.increment_usage()
+        return block

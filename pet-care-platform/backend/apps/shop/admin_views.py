@@ -23,7 +23,7 @@ def admin_dashboard(request):
     from apps.training.models import Course, UserCourse
     from apps.payments.models import Payment
     from apps.reviews.models import Review
-    from apps.calendar.models import CalendarEvent
+    # from apps.calendar.models import CalendarEvent  # Временно отключено
 
     today = timezone.now()
     week_ago = today - timedelta(days=7)
@@ -91,17 +91,11 @@ def admin_dashboard(request):
     pending_reviews = Review.objects.filter(is_approved=False).count()
     avg_rating = Review.objects.filter(is_approved=True).aggregate(avg=Avg('rating'))['avg'] or 0
 
-    # Метрики календаря
-    total_events = CalendarEvent.objects.count()
-    upcoming_events = CalendarEvent.objects.filter(
-        start_date__gte=today.date(),
-        status='scheduled'
-    ).count()
-    completed_events = CalendarEvent.objects.filter(status='completed').count()
-    today_events = CalendarEvent.objects.filter(
-        start_date=today.date(),
-        status='scheduled'
-    ).count()
+    # Метрики календаря (временно отключены)
+    total_events = 0  # CalendarEvent.objects.count()
+    upcoming_events = 0  # CalendarEvent.objects.filter(start_date__gte=today.date(), status='scheduled').count()
+    completed_events = 0  # CalendarEvent.objects.filter(status='completed').count()
+    today_events = 0  # CalendarEvent.objects.filter(start_date=today.date(), status='scheduled').count()
 
     # Топ товаров
     top_products = Product.objects.filter(

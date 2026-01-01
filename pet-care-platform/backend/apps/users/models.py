@@ -121,6 +121,8 @@ class User(AbstractBaseUser, PermissionsMixin):
             'id': str(self.id),
             'email': self.email,
             'isActivated': self.is_activated,
+            'is_staff': self.is_staff,
+            'is_superuser': self.is_superuser,
         }
     
     def to_dict_full(self):
@@ -152,6 +154,8 @@ class User(AbstractBaseUser, PermissionsMixin):
             'preferred_pet_types': self.preferred_pet_types,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'isActivated': self.is_activated,
+            'is_staff': self.is_staff,
+            'is_superuser': self.is_superuser,
         }
 
 

@@ -10,7 +10,7 @@
  */
 
 import { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { getProfile, updateProfile } from '../../api/auth'
 import { getUserCourses } from '../../api/courses'
 import { getReturns, getPersonalRecommendations } from '../../api/shop'
@@ -60,6 +60,7 @@ const statusLabels = {
  */
 function Profile() {
   const { logout } = useAuthStore()
+  const navigate = useNavigate()
   
   // Состояние
   const [profile, setProfile] = useState(null)
@@ -130,25 +131,42 @@ function Profile() {
   }
 
   /**
+   * Обновить поле формы
+   */
+  const updateField = (field, value) => {
+    setEditForm(prev => ({ ...prev, [field]: value }))
+    setHasChanges(true)
+  }
+
+  /**
    * Начать редактирование профиля
    */
   const initEditForm = (profileData) => {
-    if (profile?.user) {
+    if (profileData?.user) {
+      // Форматируем дату для input type="date" (YYYY-MM-DD)
+      let formattedDate = ''
+      if (profileData.user.date_of_birth) {
+        const date = new Date(profileData.user.date_of_birth)
+        if (!isNaN(date.getTime())) {
+          formattedDate = date.toISOString().split('T')[0]
+        }
+      }
+      
       setEditForm({
-        email: profile.user.email || '',
-        first_name: profile.user.first_name || '',
-        last_name: profile.user.last_name || '',
-        phone: profile.user.phone || '',
-        default_address: profile.user.default_address || '',
-        bio: profile.user.bio || '',
-        date_of_birth: profile.user.date_of_birth || '',
-        city: profile.user.city || '',
-        website: profile.user.website || '',
-        email_notifications: profile.user.email_notifications ?? true,
-        push_notifications: profile.user.push_notifications ?? true,
-        order_notifications: profile.user.order_notifications ?? true,
-        marketing_notifications: profile.user.marketing_notifications ?? false,
-        preferred_pet_types: profile.user.preferred_pet_types || []
+        email: profileData.user.email || '',
+        first_name: profileData.user.first_name || '',
+        last_name: profileData.user.last_name || '',
+        phone: profileData.user.phone || '',
+        default_address: profileData.user.default_address || '',
+        bio: profileData.user.bio || '',
+        date_of_birth: formattedDate,
+        city: profileData.user.city || '',
+        website: profileData.user.website || '',
+        email_notifications: profileData.user.email_notifications ?? true,
+        push_notifications: profileData.user.push_notifications ?? true,
+        order_notifications: profileData.user.order_notifications ?? true,
+        marketing_notifications: profileData.user.marketing_notifications ?? false,
+        preferred_pet_types: profileData.user.preferred_pet_types || []
       })
       setHasChanges(false)
     }
@@ -173,8 +191,9 @@ function Profile() {
         ...prev,
         user: updatedProfile.user
       }))
+      // Обновляем editForm с новыми данными
+      initEditForm({ user: updatedProfile.user })
       setHasChanges(false)
-      initEditForm(profile)
     } catch (err) {
       setError(err.message || 'Не удалось сохранить профиль')
     } finally {
@@ -188,6 +207,15 @@ function Profile() {
   useEffect(() => {
     fetchProfile()
   }, [])
+
+  /**
+   * Инициализация формы редактирования при загрузке профиля
+   */
+  useEffect(() => {
+    if (profile) {
+      initEditForm(profile)
+    }
+  }, [profile])
 
   /**
    * Загрузка курсов при переключении на вкладку курсов или изменении фильтра
@@ -247,36 +275,6 @@ function Profile() {
         </button>
       </div>
       
-      {/* Информация об аккаунте */}
-      <div className="card mb-8">
-        <div className="flex justify-between items-start mb-4">
-          <h2 className="section-title mb-0">Информация об аккаунте</h2>
-          <Link to="/settings" className="btn-secondary text-sm">
-            Редактировать профиль
-          </Link>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <span className="text-sm text-gray-500">Email</span>
-            <p className="text-gray-900">{user.email}</p>
-          </div>
-          <div>
-            <span className="text-sm text-gray-500">Дата регистрации</span>
-            <p className="text-gray-900">{formatDate(user.created_at)}</p>
-          </div>
-          {user.first_name && (
-            <div>
-              <span className="text-sm text-gray-500">Имя</span>
-              <p className="text-gray-900">{user.first_name} {user.last_name}</p>
-            </div>)}
-          {user.phone && (
-            <div>
-              <span className="text-sm text-gray-500">Телефон</span>
-              <p className="text-gray-900">{user.phone}</p>
-            </div>)}
-        </div>
-      </div>
-      
       {/* Вкладки */}
       <div className="border-b border-gray-200 mb-6">
         <nav className="flex gap-8">
@@ -323,125 +321,259 @@ function Profile() {
       <div className="animate-fadeIn">
         {/* Вкладка профиля */}
         {activeTab === 'profile' && profile?.user && (
-          <div>
-            <div className="card">
-              <div className="flex justify-between items-start mb-6">
-                <div>
-                  <h2 className="text-2xl font-bold text-gray-900">Личные данные</h2>
-                  <p className="text-gray-600 mt-1">Управляйте информацией о вашем аккаунте</p>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {/* Центральная часть - Иконки-разделы */}
+            <div className="lg:col-span-2">
+              <div className="card">
+                <h2 className="text-2xl font-bold text-gray-900 mb-6">Мой кабинет</h2>
+                
+                {/* Иконки-разделы */}
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  {/* Питомцы */}
+                  <button
+                    onClick={() => setActiveTab('pets')}
+                    className="flex flex-col items-center justify-center p-6 bg-gradient-to-br from-primary-50 to-primary-100 rounded-xl hover:from-primary-100 hover:to-primary-200 transition-all transform hover:scale-105 shadow-sm hover:shadow-md"
+                  >
+                    <div className="text-4xl mb-3">🐾</div>
+                    <p className="font-semibold text-gray-900">Питомцы</p>
+                    <p className="text-sm text-gray-600 mt-1">{pets.length} {pets.length === 1 ? 'питомец' : pets.length < 5 ? 'питомца' : 'питомцев'}</p>
+                  </button>
+
+                  {/* Заказы */}
+                  <button
+                    onClick={() => setActiveTab('orders')}
+                    className="flex flex-col items-center justify-center p-6 bg-gradient-to-br from-secondary-50 to-secondary-100 rounded-xl hover:from-secondary-100 hover:to-secondary-200 transition-all transform hover:scale-105 shadow-sm hover:shadow-md"
+                  >
+                    <div className="text-4xl mb-3">📦</div>
+                    <p className="font-semibold text-gray-900">Заказы</p>
+                    <p className="text-sm text-gray-600 mt-1">{orders.length} {orders.length === 1 ? 'заказ' : orders.length < 5 ? 'заказа' : 'заказов'}</p>
+                  </button>
+
+                  {/* Курсы */}
+                  <button
+                    onClick={() => setActiveTab('courses')}
+                    className="flex flex-col items-center justify-center p-6 bg-gradient-to-br from-accent-50 to-accent-100 rounded-xl hover:from-accent-100 hover:to-accent-200 transition-all transform hover:scale-105 shadow-sm hover:shadow-md"
+                  >
+                    <div className="text-4xl mb-3">📚</div>
+                    <p className="font-semibold text-gray-900">Курсы</p>
+                    <p className="text-sm text-gray-600 mt-1">{courses.length} {courses.length === 1 ? 'курс' : courses.length < 5 ? 'курса' : 'курсов'}</p>
+                  </button>
+
+                  {/* Напоминания */}
+                  <button
+                    onClick={() => setActiveTab('reminders')}
+                    className="flex flex-col items-center justify-center p-6 bg-gradient-to-br from-yellow-50 to-yellow-100 rounded-xl hover:from-yellow-100 hover:to-yellow-200 transition-all transform hover:scale-105 shadow-sm hover:shadow-md"
+                  >
+                    <div className="text-4xl mb-3">🔔</div>
+                    <p className="font-semibold text-gray-900">Напоминания</p>
+                    <p className="text-sm text-gray-600 mt-1">Уход за питомцами</p>
+                  </button>
+
+                  {/* Возвраты */}
+                  <button
+                    onClick={() => setActiveTab('returns')}
+                    className="flex flex-col items-center justify-center p-6 bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl hover:from-purple-100 hover:to-purple-200 transition-all transform hover:scale-105 shadow-sm hover:shadow-md"
+                  >
+                    <div className="text-4xl mb-3">🔄</div>
+                    <p className="font-semibold text-gray-900">Возвраты</p>
+                    <p className="text-sm text-gray-600 mt-1">{returns.length} {returns.length === 1 ? 'возврат' : returns.length < 5 ? 'возврата' : 'возвратов'}</p>
+                  </button>
+
+                  {/* Профиль */}
+                  <button
+                    onClick={() => setActiveTab('profile')}
+                    className="flex flex-col items-center justify-center p-6 bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl hover:from-gray-100 hover:to-gray-200 transition-all transform hover:scale-105 shadow-sm hover:shadow-md"
+                  >
+                    <div className="text-4xl mb-3">👤</div>
+                    <p className="font-semibold text-gray-900">Профиль</p>
+                    <p className="text-sm text-gray-600 mt-1">Личные данные</p>
+                  </button>
                 </div>
-                {hasChanges && (
-                  <div className="flex gap-2">
-                    <button
-                      onClick={cancelChanges}
-                      className="btn-secondary"
-                      disabled={isSaving}
-                    >
-                      Отмена
-                    </button>
-                    <button
-                      onClick={saveProfile}
-                      disabled={isSaving}
-                      className="btn-primary"
-                    >
-                      {isSaving ? 'Сохранение...' : 'Сохранить'}
-                    </button>
-                  </div>)}
               </div>
+            </div>
 
-              <form onSubmit={(e) => { e.preventDefault(); saveProfile(); }} className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {/* Контактные данные */}
-                    <div className="space-y-4">
-                      <h3 className="text-lg font-semibold text-gray-900">Контактные данные</h3>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Имя</label>
-                        <input
-                          type="text"
-                          value={editForm.first_name || ''}
-                          onChange={(e) => updateField('first_name', e.target.value)}
-                          placeholder="Как к вам обращаться"
-                          className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Фамилия</label>
-                        <input
-                          type="text"
-                          value={editForm.last_name || ''}
-                          onChange={(e) => updateField('last_name', e.target.value)}
-                          placeholder="Ваша фамилия"
-                          className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Телефон</label>
-                        <input
-                          type="tel"
-                          value={editForm.phone || ''}
-                          onChange={(e) => updateField('phone', e.target.value)}
-                          placeholder="+7 (999) 123-45-67"
-                          className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Город</label>
-                        <input
-                          type="text"
-                          value={editForm.city || ''}
-                          onChange={(e) => updateField('city', e.target.value)}
-                          placeholder="Для расчёта доставки"
-                          className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
-                        />
-                      </div>
+            {/* Правая часть - Форма редактирования (sticky) */}
+            <div className="lg:col-span-1">
+              <div className="card sticky top-6">
+                <div className="flex justify-between items-start mb-6">
+                  <div>
+                    <h2 className="text-xl font-bold text-gray-900">Редактировать профиль</h2>
+                    <p className="text-sm text-gray-600 mt-1">Личные данные</p>
+                  </div>
+                  {hasChanges && (
+                    <div className="flex flex-col gap-2 animate-fadeIn">
+                      <button
+                        onClick={saveProfile}
+                        disabled={isSaving}
+                        className="btn-primary text-sm px-4 py-2"
+                      >
+                        {isSaving ? 'Сохранение...' : 'Сохранить'}
+                      </button>
+                      <button
+                        onClick={cancelChanges}
+                        className="btn-secondary text-sm px-4 py-2"
+                        disabled={isSaving}
+                      >
+                        Отмена
+                      </button>
                     </div>
+                  )}
+                </div>
 
-                    {/* Уведомления */}
-                    <div className="space-y-4">
-                      <h3 className="text-lg font-semibold text-gray-900">Уведомления</h3>
-                      <div className="space-y-3">
-                        <label className="flex items-center justify-between p-4 bg-gray-50 rounded-xl cursor-pointer hover:bg-gray-100 transition-colors">
-                          <div>
-                            <p className="font-medium text-gray-900">Email уведомления</p>
-                            <p className="text-sm text-gray-500">Важные сообщения о вашем аккаунте</p>
-                          </div>
-                          <input
-                            type="checkbox"
-                            checked={editForm.email_notifications}
-                            onChange={(e) => updateField('email_notifications', e.target.checked)}
-                            className="w-5 h-5 text-primary-600 focus:ring-primary-500 rounded"
-                          />
-                        </label>
-                        <label className="flex items-center justify-between p-4 bg-gray-50 rounded-xl cursor-pointer hover:bg-gray-100 transition-colors">
-                          <div>
-                            <p className="font-medium text-gray-900">Статус заказов</p>
-                            <p className="text-sm text-gray-500">Уведомления об изменении статуса</p>
-                          </div>
-                          <input
-                            type="checkbox"
-                            checked={editForm.order_notifications}
-                            onChange={(e) => updateField('order_notifications', e.target.checked)}
-                            className="w-5 h-5 text-primary-600 focus:ring-primary-500 rounded"
-                          />
-                        </label>
-                        <label className="flex items-center justify-between p-4 bg-gray-50 rounded-xl cursor-pointer hover:bg-gray-100 transition-colors">
-                          <div>
-                            <p className="font-medium text-gray-900">Акции и новости</p>
-                            <p className="text-sm text-gray-500">Скидки и специальные предложения</p>
-                          </div>
-                          <input
-                            type="checkbox"
-                            checked={editForm.marketing_notifications}
-                            onChange={(e) => updateField('marketing_notifications', e.target.checked)}
-                            className="w-5 h-5 text-primary-600 focus:ring-primary-500 rounded"
-                          />
-                        </label>
-                      </div>
+                <form onSubmit={(e) => { e.preventDefault(); saveProfile(); }} className="space-y-4">
+                  {/* Email (только для чтения) */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                    <input
+                      type="email"
+                      value={editForm.email || ''}
+                      disabled
+                      className="w-full px-4 py-3 border border-gray-300 rounded-xl bg-gray-50 text-gray-500 cursor-not-allowed"
+                    />
+                  </div>
+
+                  {/* Имя */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Имя</label>
+                    <input
+                      type="text"
+                      value={editForm.first_name || ''}
+                      onChange={(e) => updateField('first_name', e.target.value)}
+                      placeholder="Как к вам обращаться"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
+                    />
+                  </div>
+
+                  {/* Фамилия */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Фамилия</label>
+                    <input
+                      type="text"
+                      value={editForm.last_name || ''}
+                      onChange={(e) => updateField('last_name', e.target.value)}
+                      placeholder="Ваша фамилия"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
+                    />
+                  </div>
+
+                  {/* Телефон */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Телефон</label>
+                    <input
+                      type="tel"
+                      value={editForm.phone || ''}
+                      onChange={(e) => updateField('phone', e.target.value)}
+                      placeholder="+7 (999) 123-45-67"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
+                    />
+                  </div>
+
+                  {/* Город */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Город</label>
+                    <input
+                      type="text"
+                      value={editForm.city || ''}
+                      onChange={(e) => updateField('city', e.target.value)}
+                      placeholder="Для расчёта доставки"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
+                    />
+                  </div>
+
+                  {/* Биография */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">О себе</label>
+                    <textarea
+                      value={editForm.bio || ''}
+                      onChange={(e) => updateField('bio', e.target.value)}
+                      placeholder="Расскажите о себе"
+                      rows="3"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors resize-none"
+                    />
+                  </div>
+
+                  {/* Дата рождения */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Дата рождения</label>
+                    <input
+                      type="date"
+                      value={editForm.date_of_birth || ''}
+                      onChange={(e) => updateField('date_of_birth', e.target.value)}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
+                    />
+                  </div>
+
+                  {/* Адрес по умолчанию */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Адрес доставки</label>
+                    <input
+                      type="text"
+                      value={editForm.default_address || ''}
+                      onChange={(e) => updateField('default_address', e.target.value)}
+                      placeholder="Адрес для доставки"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
+                    />
+                  </div>
+
+                  {/* Веб-сайт */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Веб-сайт</label>
+                    <input
+                      type="url"
+                      value={editForm.website || ''}
+                      onChange={(e) => updateField('website', e.target.value)}
+                      placeholder="https://example.com"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
+                    />
+                  </div>
+
+                  {/* Уведомления */}
+                  <div className="pt-4 border-t border-gray-200">
+                    <h3 className="text-sm font-semibold text-gray-900 mb-3">Уведомления</h3>
+                    <div className="space-y-2">
+                      <label className="flex items-center justify-between p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors">
+                        <div>
+                          <p className="text-sm font-medium text-gray-900">Email уведомления</p>
+                          <p className="text-xs text-gray-500">Важные сообщения о вашем аккаунте</p>
+                        </div>
+                        <input
+                          type="checkbox"
+                          checked={editForm.email_notifications ?? true}
+                          onChange={(e) => updateField('email_notifications', e.target.checked)}
+                          className="w-4 h-4 text-primary-600 focus:ring-primary-500 rounded"
+                        />
+                      </label>
+                      <label className="flex items-center justify-between p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors">
+                        <div>
+                          <p className="text-sm font-medium text-gray-900">Статус заказов</p>
+                          <p className="text-xs text-gray-500">Уведомления об изменении статуса</p>
+                        </div>
+                        <input
+                          type="checkbox"
+                          checked={editForm.order_notifications ?? true}
+                          onChange={(e) => updateField('order_notifications', e.target.checked)}
+                          className="w-4 h-4 text-primary-600 focus:ring-primary-500 rounded"
+                        />
+                      </label>
+                      <label className="flex items-center justify-between p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors">
+                        <div>
+                          <p className="text-sm font-medium text-gray-900">Акции и новости</p>
+                          <p className="text-xs text-gray-500">Скидки и специальные предложения</p>
+                        </div>
+                        <input
+                          type="checkbox"
+                          checked={editForm.marketing_notifications ?? false}
+                          onChange={(e) => updateField('marketing_notifications', e.target.checked)}
+                          className="w-4 h-4 text-primary-600 focus:ring-primary-500 rounded"
+                        />
+                      </label>
                     </div>
                   </div>
                 </form>
+              </div>
             </div>
-          </div>)}
+          </div>
+        )}
 
         {/* Вкладка питомцев */}
         {activeTab === 'pets' && (

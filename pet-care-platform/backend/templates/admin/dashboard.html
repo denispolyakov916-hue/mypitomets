@@ -462,10 +462,11 @@
             <div class="metric-value">{{ processing_orders }}</div>
             <div class="metric-subtitle">
                 <span>Ожидают: {{ pending_orders }}</span>
-                {% if today_events > 0 %}
-                    <span>•</span>
-                    <span>📅 {{ today_events }} событий сегодня</span>
-                {% endif %}
+                {# Временно отключено - события календаря #}
+                {# {% if today_events > 0 %} #}
+                {#     <span>•</span> #}
+                {#     <span>📅 {{ today_events }} событий сегодня</span> #}
+                {# {% endif %} #}
             </div>
         </div>
     </div>
@@ -515,8 +516,8 @@
             <div class="metric-value">{{ total_events }}</div>
             <div class="metric-subtitle">
                 <span>{{ upcoming_events }} предстоящих</span>
-                <span>•</span>
-                <span style="color: var(--success);">{{ completed_events }} выполнено</span>
+                {# <span>•</span> #}
+                {# <span style="color: var(--success);">{{ completed_events }} выполнено</span> #}
             </div>
         </div>
     </div>

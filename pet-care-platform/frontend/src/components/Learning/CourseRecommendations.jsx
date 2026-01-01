@@ -3,6 +3,7 @@ import { Card } from '../ui'
 import { Button } from '../ui'
 import { getPersonalizedCourses } from '../../api/courses'
 import { useNavigate } from 'react-router-dom'
+import Rating from '../Rating'
 
 /**
  * Компонент персонализированных рекомендаций курсов
@@ -148,11 +149,13 @@ const CourseRecommendations = ({
                   </div>
 
                   {course.rating && (
-                    <div className="flex items-center mt-2">
-                      <span className="text-yellow-400">⭐</span>
-                      <span className="text-sm text-gray-600 ml-1">
-                        {course.rating.toFixed(1)} ({course.reviews_count})
-                      </span>
+                    <div className="mt-2">
+                      <Rating
+                        rating={course.rating}
+                        reviewsCount={course.reviews_count}
+                        readonly={true}
+                        size="sm"
+                      />
                     </div>
                   )}
                 </div>

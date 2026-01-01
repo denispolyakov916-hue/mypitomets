@@ -196,9 +196,22 @@ class UserService:
         Исключения:
             ApiError: Если email или пароль неверны
         """
+        # Нормализуем email (нижний регистр, без пробелов)
+        email_normalized = email.lower().strip() if email else ''
+        
+        # Логирование для отладки
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.debug(f"[UserService.login] Поиск пользователя с email: '{email}' -> нормализованный: '{email_normalized}'")
+        
         try:
-            user = User.objects.get(email=email)
+            # Используем __iexact для поиска без учета регистра
+            user = User.objects.get(email__iexact=email_normalized)
+            logger.debug(f"[UserService.login] Пользователь найден: {user.email}")
         except User.DoesNotExist:
+            # Проверяем, есть ли пользователи с похожим email (для отладки)
+            similar_users = User.objects.filter(email__icontains=email_normalized.split('@')[0])[:3]
+            logger.warning(f"[UserService.login] Пользователь не найден. Похожие email в БД: {[u.email for u in similar_users]}")
             raise ApiError.bad_request('Пользователь с таким email не найден')
         
         # Проверка пароля

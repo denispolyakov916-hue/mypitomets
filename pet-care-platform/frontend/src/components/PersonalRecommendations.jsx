@@ -9,6 +9,7 @@ import { Link } from 'react-router-dom'
 import { getPersonalRecommendations } from '../api/shop'
 import { useAuthStore } from '../store/authStore'
 import { PageLoader } from './Loader'
+import Rating from './Rating'
 
 /**
  * Форматирование цены
@@ -39,8 +40,17 @@ function PersonalRecommendations() {
 
     try {
       const response = await getPersonalRecommendations()
-      setRecommendations(response.recommendations || [])
+      // API возвращает объект с products и courses, объединяем их в один массив с метками типа
+      const products = (response.products || []).map(item => ({ ...item, itemType: 'product' }))
+      const courses = (response.courses || []).map(item => ({
+        ...item.course,
+        itemType: 'course',
+        recommendation_reason: item.reason,
+        pet_name: item.pet_name
+      }))
+      setRecommendations([...products, ...courses])
     } catch (err) {
+      console.error('Error loading personal recommendations:', err)
       setError(err.message || 'Не удалось загрузить рекомендации')
       setRecommendations([])
     } finally {
@@ -93,89 +103,107 @@ function PersonalRecommendations() {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-        {recommendations.map((product) => (
-          <div key={product.id} className="group bg-white rounded-xl border border-gray-200 overflow-hidden hover:shadow-md transition-all duration-200">
-            <Link to={`/shop/products/${product.id}`}>
+        {recommendations.map((item) => {
+          const isProduct = item.itemType === 'product'
+          const isCourse = item.itemType === 'course'
+          const linkUrl = isProduct ? `/shop/products/${item.id}` : `/courses/${item.id}`
+
+          return (
+          <div key={`${item.itemType}-${item.id}`} className="group bg-white rounded-xl border border-gray-200 overflow-hidden hover:shadow-md transition-all duration-200">
+            <Link to={linkUrl}>
               <div className="aspect-square bg-gray-100 overflow-hidden">
-                {product.main_image ? (
+                {(item.main_image || item.image_url) ? (
                   <img
-                    src={product.main_image}
-                    alt={product.name}
+                    src={item.main_image || item.image_url}
+                    alt={item.name || item.title}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
                   />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center">
-                    <span className="text-3xl">📦</span>
+                    <span className="text-3xl">{isProduct ? '📦' : '🎓'}</span>
                   </div>
                 )}
               </div>
             </Link>
 
             <div className="p-4">
-              <Link to={`/shop/products/${product.id}`}>
+              <Link to={linkUrl}>
                 <h3 className="font-medium text-gray-900 mb-2 line-clamp-2 group-hover:text-primary-600 transition-colors">
-                  {product.name}
+                  {item.name || item.title}
                 </h3>
               </Link>
 
+              {item.recommendation_reason && (
+                <p className="text-xs text-primary-600 mb-2 italic">
+                  {item.recommendation_reason}
+                </p>
+              )}
+
               <div className="flex items-center justify-between mb-3">
                 <div className="flex flex-col">
-                  {product.discount_percent > 0 ? (
+                  {isProduct && item.discount_percent > 0 ? (
                     <>
                       <div className="flex items-center gap-2">
                         <span className="text-sm text-gray-400 line-through">
-                          {formatPrice(product.price)}
+                          {formatPrice(item.price)}
                         </span>
                         <span className="px-2 py-1 bg-red-500 text-white text-xs rounded-lg font-bold">
-                          -{product.discount_percent}%
+                          -{item.discount_percent}%
                         </span>
                       </div>
                       <span className="text-lg font-bold text-red-600">
-                        {formatPrice(product.discounted_price)}
+                        {formatPrice(item.discounted_price)}
                       </span>
                     </>
                   ) : (
                     <span className="text-lg font-bold text-gray-900">
-                      {formatPrice(product.price)}
+                      {isProduct ? formatPrice(item.price) : (item.is_free ? 'Бесплатно' : formatPrice(item.price))}
                     </span>
                   )}
                 </div>
-                <span className={`px-2 py-1 text-xs rounded-full ${
-                  product.animal === 'dog' ? 'bg-blue-100 text-blue-700' : 'bg-orange-100 text-orange-700'
-                }`}>
-                  {product.animal === 'dog' ? 'Собаки' : 'Кошки'}
-                </span>
+                <div className="flex flex-col gap-1">
+                  <span className={`px-2 py-1 text-xs rounded-full ${
+                    (item.animal || item.pet_type) === 'dog' ? 'bg-blue-100 text-blue-700' : 'bg-orange-100 text-orange-700'
+                  }`}>
+                    {(item.animal || item.pet_type) === 'dog' ? 'Собаки' : (item.pet_type === 'all' ? 'Все' : 'Кошки')}
+                  </span>
+                  {isCourse && (
+                    <span className="px-2 py-1 text-xs rounded-full bg-green-100 text-green-700">
+                      Курс
+                    </span>
+                  )}
+                </div>
               </div>
 
-              <p className="text-sm text-gray-500 mb-2 capitalize">{product.category_name || product.category}</p>
+              <p className="text-sm text-gray-500 mb-2 capitalize">
+                {isProduct ? (item.category_name || item.category) : item.category_display}
+              </p>
 
-              {product.rating > 0 && (
-                <div className="flex items-center gap-1 mb-3">
-                  <div className="flex items-center">
-                    {[...Array(5)].map((_, i) => (
-                      <svg
-                        key={i}
-                        className={`w-4 h-4 ${i < Math.floor(product.rating) ? 'text-yellow-400' : 'text-gray-300'}`}
-                        fill="currentColor"
-                        viewBox="0 0 20 20"
-                      >
-                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                      </svg>
-                    ))}
-                  </div>
-                  <span className="text-sm text-gray-500">({product.reviews_count})</span>
+              {item.rating > 0 && (
+                <div className="mb-3">
+                  <Rating
+                    rating={item.rating}
+                    reviewsCount={item.reviews_count || 0}
+                    readonly={true}
+                    size="sm"
+                  />
                 </div>
               )}
 
               <Link
-                to={`/shop/products/${product.id}`}
-                className="w-full btn-secondary py-2 text-center block text-sm"
+                to={linkUrl}
+                className={`w-full py-2 text-center block text-sm font-medium rounded-lg transition-colors ${
+                  isProduct
+                    ? 'btn-secondary'
+                    : 'bg-green-600 text-white hover:bg-green-700'
+                }`}
               >
-                Посмотреть товар
+                {isProduct ? 'Посмотреть товар' : 'Записаться на курс'}
               </Link>
             </div>
           </div>
-        ))}
+          )
+        })}
       </div>
 
       <div className="mt-6 text-center">

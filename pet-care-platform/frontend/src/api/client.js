@@ -16,9 +16,10 @@
 import axios from 'axios'
 import { refreshToken } from './auth'
 
-// Базовый URL API - использует переменную окружения или прокси в разработке
-// Если VITE_API_URL не установлен, используется '/api' (прокси из vite.config.js)
-const API_BASE_URL = import.meta.env.VITE_API_URL || '/api'
+// Базовый URL API - использует прокси из vite.config.js
+// НЕ используем VITE_API_URL чтобы избежать CORS проблем в разработке
+// Все запросы на /api/* будут проксироваться Vite на бэкенд
+const API_BASE_URL = '/api'
 
 /**
  * Создание экземпляра Axios с конфигурацией по умолчанию
@@ -48,6 +49,18 @@ const api = axios.create({
  */
 api.interceptors.request.use(
   (config) => {
+    // Логирование запросов для отладки
+    if (config.url && config.url.includes('/auth/login')) {
+      console.log('[API Request] Login request:', {
+        url: config.url,
+        method: config.method,
+        data: config.data,
+        headers: config.headers,
+        baseURL: config.baseURL,
+        fullURL: `${config.baseURL}${config.url}`
+      })
+    }
+    
     // Проверяем, что мы в браузере
     if (typeof window !== 'undefined') {
       try {
@@ -78,6 +91,14 @@ api.interceptors.request.use(
  */
 api.interceptors.response.use(
   (response) => {
+    // Логирование ответов для отладки
+    if (response.config.url && response.config.url.includes('/auth/login')) {
+      console.log('[API Response] Login response:', {
+        status: response.status,
+        data: response.data,
+        headers: response.headers
+      })
+    }
     // Возвращаем данные напрямую для удобства
     return response.data
   },
@@ -92,6 +113,16 @@ api.interceptors.response.use(
     }
     
     const { status, data } = error.response
+    
+    // Логирование ошибок для отладки
+    if (error.config.url && error.config.url.includes('/auth/login')) {
+      console.error('[API Error] Login error:', {
+        status: status,
+        data: data,
+        config: error.config,
+        message: error.message
+      })
+    }
     
     // Обработка 401 Unauthorized - токен истёк или невалиден
     if (status === 401) {

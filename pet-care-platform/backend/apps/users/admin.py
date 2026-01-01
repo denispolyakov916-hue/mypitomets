@@ -62,8 +62,9 @@ class UserAdmin(BaseUserAdmin):
     """Полноценная админка для управления пользователями."""
     
     list_display = (
-        'email', 'full_name', 'is_active', 'is_activated', 
-        'is_staff', 'pets_count', 'orders_count', 'payments_count', 
+        'email', 'full_name', 'is_active', 'is_activated',
+        'is_staff', 'is_superuser', 'pets_count', 'orders_count',
+        'payments_count', 'courses_count', 'reviews_count',
         'created_at', 'last_login'
     )
     list_filter = (
@@ -75,8 +76,9 @@ class UserAdmin(BaseUserAdmin):
     )
     ordering = ('-created_at',)
     readonly_fields = (
-        'id', 'created_at', 'updated_at', 'activation_link', 
-        'activation_code', 'last_login'
+        'id', 'created_at', 'updated_at', 'activation_link',
+        'activation_code', 'last_login', 'pets_count', 'orders_count',
+        'payments_count', 'courses_count', 'reviews_count'
     )
     
     fieldsets = (
@@ -91,6 +93,10 @@ class UserAdmin(BaseUserAdmin):
         }),
         ('Права доступа', {
             'fields': ('is_active', 'is_staff', 'is_superuser', 'groups', 'user_permissions')
+        }),
+        ('Статистика пользователя', {
+            'fields': ('pets_count', 'orders_count', 'payments_count', 'courses_count', 'reviews_count'),
+            'classes': ('collapse',)
         }),
         ('Системная информация', {
             'fields': ('id', 'created_at', 'updated_at', 'last_login'),
@@ -144,6 +150,26 @@ class UserAdmin(BaseUserAdmin):
             return format_html('<a href="{}">{} платежей</a>', url, count)
         return '0'
     payments_count.short_description = 'Платежи'
+
+    def courses_count(self, obj):
+        """Количество приобретенных курсов."""
+        from apps.training.models import UserCourse
+        count = UserCourse.objects.filter(user=obj).count()
+        if count > 0:
+            url = reverse('admin:training_usercourse_changelist') + f'?user__id__exact={obj.id}'
+            return format_html('<a href="{}">{} курсов</a>', url, count)
+        return '0'
+    courses_count.short_description = 'Курсы'
+
+    def reviews_count(self, obj):
+        """Количество отзывов."""
+        from apps.reviews.models import Review
+        count = Review.objects.filter(user=obj).count()
+        if count > 0:
+            url = reverse('admin:reviews_review_changelist') + f'?user__id__exact={obj.id}'
+            return format_html('<a href="{}">{} отзывов</a>', url, count)
+        return '0'
+    reviews_count.short_description = 'Отзывы'
     
     def activate_users(self, request, queryset):
         """Активировать выбранных пользователей."""
