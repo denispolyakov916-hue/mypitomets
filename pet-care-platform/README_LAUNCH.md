@@ -126,3 +126,5 @@ VITE_API_URL=http://localhost:8000/api
 4. Для бэкенда перезапустите `./backend/start_backend.sh` после изменений
 
 
+
+
