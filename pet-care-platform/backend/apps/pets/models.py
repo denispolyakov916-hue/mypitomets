@@ -211,6 +211,83 @@ class Pet(models.Model):
         help_text='Поведенческие проблемы питомца для персонализированных курсов коррекции'
     )
 
+    # ===== НОВЫЕ ПОЛЯ PETID =====
+
+    # Физические параметры
+    SIZE_CHOICES = [
+        ('small', 'Маленький (до 10 кг)'),
+        ('medium', 'Средний (10-25 кг)'),
+        ('large', 'Крупный (более 25 кг)'),
+    ]
+    size = models.CharField(max_length=20, choices=SIZE_CHOICES, blank=True, null=True, verbose_name='Размер')
+
+    BODY_TYPE_CHOICES = [
+        ('slim', 'Недостаточный вес'),
+        ('normal', 'Идеальный вес'),
+        ('overweight', 'Избыточный вес'),
+        ('obese', 'Ожирение'),
+    ]
+    body_type = models.CharField(max_length=20, choices=BODY_TYPE_CHOICES, blank=True, null=True, verbose_name='Тип телосложения')
+
+    # Контакты владельца (переопределяемые)
+    owner_phone = models.CharField(max_length=20, blank=True, verbose_name='Телефон владельца')
+    owner_email = models.EmailField(blank=True, verbose_name='Email владельца')
+    owner_city = models.CharField(max_length=100, blank=True, verbose_name='Город владельца')
+
+    # ===== РАСШИРЕННОЕ ПИТАНИЕ =====
+    DIET_TYPE_CHOICES = [
+        ('dry', 'Сухой корм'),
+        ('wet', 'Влажный корм'),
+        ('mixed', 'Смешанное питание'),
+        ('raw', 'Натуральное питание'),
+        ('home', 'Домашняя еда'),
+    ]
+    diet_type = models.CharField(max_length=20, choices=DIET_TYPE_CHOICES, blank=True, null=True, verbose_name='Тип питания')
+
+    FEEDING_FREQUENCY_CHOICES = [
+        ('1', '1 раз в день'),
+        ('2', '2 раза в день'),
+        ('3', '3 раза в день'),
+        ('free', 'Свободный доступ'),
+    ]
+    feeding_frequency = models.CharField(max_length=10, choices=FEEDING_FREQUENCY_CHOICES, blank=True, null=True, verbose_name='Частота кормления')
+
+    sensitive_digestion = models.BooleanField(default=False, verbose_name='Чувствительное пищеварение')
+    excluded_ingredients = models.JSONField(default=list, blank=True, verbose_name='Исключаемые ингредиенты')
+    vitamins_supplements = models.TextField(blank=True, verbose_name='Добавки и витамины')
+
+    # ===== РАСШИРЕННОЕ ПОВЕДЕНИЕ =====
+    character_traits = models.JSONField(default=list, blank=True, verbose_name='Черты характера')
+    training_goals = models.TextField(blank=True, verbose_name='Цели дрессировки')
+
+    # ===== РАСШИРЕННОЕ ЗДОРОВЬЕ =====
+    chronic_conditions = models.TextField(blank=True, verbose_name='Хронические заболевания')
+    vaccinations = models.TextField(blank=True, verbose_name='Вакцинации')
+    medications = models.TextField(blank=True, verbose_name='Принимаемые препараты')
+
+    DENTAL_HEALTH_CHOICES = [
+        ('excellent', 'Отличное'),
+        ('good', 'Хорошее'),
+        ('fair', 'Удовлетворительное'),
+        ('needs_attention', 'Требует лечения'),
+    ]
+    dental_health = models.CharField(max_length=20, choices=DENTAL_HEALTH_CHOICES, blank=True, null=True, verbose_name='Состояние зубов')
+    vet_visits = models.TextField(blank=True, verbose_name='Посещения ветеринара')
+
+    # ===== ОБРАЗ ЖИЗНИ =====
+    HOUSING_TYPE_CHOICES = [
+        ('apartment', 'Квартира'),
+        ('house', 'Частный дом'),
+        ('cottage', 'Дача/Коттедж'),
+        ('other', 'Другое'),
+    ]
+    housing_type = models.CharField(max_length=20, choices=HOUSING_TYPE_CHOICES, blank=True, null=True, verbose_name='Тип жилья')
+    has_yard = models.BooleanField(default=False, verbose_name='Есть двор')
+    other_pets = models.TextField(blank=True, verbose_name='Другие питомцы дома')
+    has_children = models.BooleanField(default=False, verbose_name='В доме есть дети')
+    walk_frequency = models.CharField(max_length=50, blank=True, verbose_name='Частота прогулок')
+    walk_duration = models.CharField(max_length=50, blank=True, verbose_name='Длительность прогулки')
+
     # Флаг заполненности расширенного профиля
     is_extended_profile = models.BooleanField(
         default=False,
@@ -283,6 +360,31 @@ class Pet(models.Model):
             'special_needs': self.special_needs if self.special_needs else [],
             'preferred_activities': self.preferred_activities if self.preferred_activities else [],
             'behavioral_problems': self.behavioral_problems if self.behavioral_problems else [],
+            # Новые поля PetID
+            'size': self.size,
+            'body_type': self.body_type,
+            'diet_type': self.diet_type,
+            'feeding_frequency': self.feeding_frequency,
+            'sensitive_digestion': self.sensitive_digestion,
+            'excluded_ingredients': self.excluded_ingredients if self.excluded_ingredients else [],
+            'vitamins_supplements': self.vitamins_supplements,
+            'character_traits': self.character_traits if self.character_traits else [],
+            'training_goals': self.training_goals,
+            'chronic_conditions': self.chronic_conditions,
+            'vaccinations': self.vaccinations,
+            'medications': self.medications,
+            'dental_health': self.dental_health,
+            'vet_visits': self.vet_visits,
+            'housing_type': self.housing_type,
+            'has_yard': self.has_yard,
+            'other_pets': self.other_pets,
+            'has_children': self.has_children,
+            'walk_frequency': self.walk_frequency,
+            'walk_duration': self.walk_duration,
+            # Контакты владельца
+            'owner_phone': self.owner_phone,
+            'owner_email': self.owner_email,
+            'owner_city': self.owner_city,
             'is_extended_profile': self.is_extended_profile,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None

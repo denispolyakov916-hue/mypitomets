@@ -13,18 +13,10 @@ export default function StepNutrition({ formData, updateFormData, toggleArrayVal
   const handleCustomFlavorChange = (index, value) => {
     const newCustomFlavors = [...customFlavors];
     newCustomFlavors[index] = value;
-    
+
     // Обновляем массив пользовательских вкусов
     updateFormData('customFlavors', newCustomFlavors);
-    
-    // Обновляем массив выбранных вкусов
-    const hasCustomFlavors = newCustomFlavors.some(flavor => flavor && flavor.trim());
-    if (hasCustomFlavors && !formData.favoriteFlavors.includes('Другое')) {
-      toggleArrayValue('favoriteFlavors', 'Другое');
-    } else if (!hasCustomFlavors && formData.favoriteFlavors.includes('Другое')) {
-      toggleArrayValue('favoriteFlavors', 'Другое');
-    }
-    
+
     // Если ввели текст в последнее поле, добавляем новое пустое поле
     if (value.trim() && index === customFlavors.length - 1) {
       updateFormData('customFlavors', [...newCustomFlavors, '']);
@@ -44,22 +36,8 @@ export default function StepNutrition({ formData, updateFormData, toggleArrayVal
     const finalFlavors = filteredFlavors.length === 0 ? [''] : filteredFlavors;
     
     updateFormData('customFlavors', finalFlavors);
-    
-    // Обновляем массив выбранных вкусов
-    const hasCustomFlavors = finalFlavors.some(flavor => flavor && flavor.trim());
-    if (hasCustomFlavors && !formData.favoriteFlavors.includes('Другое')) {
-      toggleArrayValue('favoriteFlavors', 'Другое');
-    } else if (!hasCustomFlavors && formData.favoriteFlavors.includes('Другое')) {
-      toggleArrayValue('favoriteFlavors', 'Другое');
-    }
   };
 
-  const handleCustomFlavorFocus = () => {
-    // При фокусе на любом поле добавляем "Другое" в выбранные
-    if (!formData.favoriteFlavors.includes('Другое')) {
-      toggleArrayValue('favoriteFlavors', 'Другое');
-    }
-  };
 
   // Фильтруем пустые поля, но оставляем хотя бы одно для ввода
   const visibleCustomFlavors = customFlavors.length === 0 ? [''] : customFlavors;
@@ -129,8 +107,7 @@ export default function StepNutrition({ formData, updateFormData, toggleArrayVal
                 value={flavor || ''}
                 onChange={(e) => handleCustomFlavorChange(index, e.target.value)}
                 onBlur={handleCustomFlavorBlur}
-                onFocus={handleCustomFlavorFocus}
-                className={`${INPUT_STYLE} ${formData.favoriteFlavors.includes('Другое') && flavor.trim() ? 'border-dashed border-purple-400 bg-purple-50' : ''} text-center placeholder:text-purple-300 placeholder:text-center`}
+                className={`${INPUT_STYLE} text-center placeholder:text-purple-300 placeholder:text-center`}
                 placeholder={index === 0 ? "+ Другое" : "+ Еще вкус"}
               />
             </div>

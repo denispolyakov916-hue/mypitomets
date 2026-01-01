@@ -36,18 +36,89 @@ const initialFormData = {
   // Шаг 3
   currentWeight: '', size: '', bodyType: '', activityLevel: '',
   // Шаг 4
-  dietType: '', feedingFrequency: '', favoriteFlavors: [], allergies: '', sensitiveBelly: false,
+  dietType: '', feedingFrequency: '', favoriteFlavors: [], allergies: '', sensitiveBelly: false, excludedIngredients: '', vitamins: '',
   // Шаг 5
   traits: [], behaviorProblems: [], goals: '', trainingLevel: '',
   // Шаг 6
-  chronicConditions: '', vaccinations: '', medications: '', dentalHealth: '',
+  chronicConditions: '', vaccinations: '', medications: '', dentalHealth: '', vetVisits: '',
   // Шаг 7
   housingType: '', hasYard: false, otherPets: '', hasChildren: false, walkFrequency: '', walkDuration: ''
 };
 
-export default function PetIdWizard({ onClose, onSubmit }) {
+// Импорт констант для разделения данных
+const FLAVORS = ['Курица', 'Говядина', 'Рыба', 'Индейка', 'Ягненок', 'Кролик'];
+const TRAITS = ['Дружелюбный', 'Активный', 'Спокойный', 'Игривый', 'Застенчивый', 'Любопытный', 'Независимый', 'Ласковый'];
+
+// Функция маппинга данных из API в формат формы (для редактирования)
+const transformApiDataToForm = (apiData) => {
+  const result = {
+    // Основные данные
+    name: apiData.name || '',
+    species: apiData.species || 'dog',
+    breed: apiData.breed || '',
+    gender: apiData.gender || '',
+    birthDate: apiData.date_of_birth || '',
+    neutered: apiData.is_neutered ? 'yes' : '',
+    photo: null, // Фото нужно будет обрабатывать отдельно
+
+    // Контакты
+    phone: apiData.owner_phone || '',
+    email: apiData.owner_email || '',
+    city: apiData.owner_city || '',
+
+    // Физические параметры
+    currentWeight: apiData.weight ? apiData.weight.toString() : '',
+    size: apiData.size || '',
+    bodyType: apiData.body_type || '',
+    activityLevel: apiData.activity_level || '',
+
+    // Питание
+    dietType: apiData.diet_type || '',
+    feedingFrequency: apiData.feeding_frequency || '',
+    favoriteFlavors: Array.isArray(apiData.favorite_foods) ? apiData.favorite_foods.filter(food => FLAVORS.includes(food)) : [],
+    customFlavors: Array.isArray(apiData.favorite_foods) ? apiData.favorite_foods.filter(food => !FLAVORS.includes(food)).concat(['']) : [''],
+    allergies: Array.isArray(apiData.allergies) && apiData.allergies.length > 0 ? apiData.allergies[0] : '',
+    sensitiveBelly: apiData.sensitive_digestion || false,
+    excludedIngredients: Array.isArray(apiData.excluded_ingredients) ? apiData.excluded_ingredients.join(', ') : '',
+    vitamins: apiData.vitamins_supplements || '',
+
+    // Поведение
+    traits: Array.isArray(apiData.character_traits) ? apiData.character_traits.filter(trait => TRAITS.includes(trait)) : [],
+    customTraits: Array.isArray(apiData.character_traits) ? apiData.character_traits.filter(trait => !TRAITS.includes(trait)).concat(['']) : [''],
+    behaviorProblems: Array.isArray(apiData.behavioral_problems) ? apiData.behavioral_problems : [],
+    goals: apiData.training_goals || '',
+    trainingLevel: apiData.training_experience || '',
+
+    // Здоровье
+    chronicConditions: apiData.chronic_conditions || '',
+    vaccinations: apiData.vaccinations || '',
+    medications: apiData.medications || '',
+    dentalHealth: apiData.dental_health || '',
+    vetVisits: apiData.vet_visits || '',
+
+    // Образ жизни
+    housingType: apiData.housing_type || '',
+    hasYard: apiData.has_yard || false,
+    otherPets: apiData.other_pets || '',
+    hasChildren: apiData.has_children || false,
+    walkFrequency: apiData.walk_frequency || '',
+    walkDuration: apiData.walk_duration || '',
+  };
+
+  return result;
+};
+
+export default function PetIdWizard({ onClose, onSubmit, editData }) {
+  // Определяем начальные данные: если editData есть - режим редактирования
+  const getInitialFormData = () => {
+    if (editData) {
+      return transformApiDataToForm(editData);
+    }
+    return initialFormData;
+  };
+
   const [currentStep, setCurrentStep] = useState(1);
-  const [formData, setFormData] = useState(initialFormData);
+  const [formData, setFormData] = useState(getInitialFormData);
 
   // Обновление данных формы
   const updateFormData = (field, value) => {
@@ -113,7 +184,7 @@ export default function PetIdWizard({ onClose, onSubmit }) {
         {/* Header */}
         <div className="p-6 border-b border-gray-100 flex items-center justify-between flex-shrink-0">
           <div>
-            <h2 className="text-5xl bg-gradient-to-r from-purple-600 to-orange-500 bg-clip-text text-transparent font-bold">
+            <h2 className="text-4xl bg-gradient-to-r from-purple-600 to-orange-500 bg-clip-text text-transparent font-bold">
               Создание Pet ID
             </h2>
             <p className="text-sm text-gray-500 mt-1">Шаг {currentStep} из {STEPS.length}</p>
@@ -188,7 +259,7 @@ export default function PetIdWizard({ onClose, onSubmit }) {
               onClick={handleSubmit}
               className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-orange-500 text-white rounded-xl hover:shadow-lg transition-all"
             >
-              <Check className="w-5 h-5" /> Сохранить
+              <Check className="w-5 h-5" /> {editData ? 'Обновить' : 'Сохранить'}
             </button>
           ) : (
             <button

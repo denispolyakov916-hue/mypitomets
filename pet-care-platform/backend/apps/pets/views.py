@@ -51,7 +51,12 @@ class PetListCreateView(APIView):
         date_of_birth = serializer.validated_data.get('date_of_birth')
         if date_of_birth and isinstance(date_of_birth, str):
             date_of_birth = datetime.strptime(date_of_birth, '%Y-%m-%d').date()
-        
+
+        # Контакты владельца: по умолчанию из User, но можно переопределить
+        owner_phone = serializer.validated_data.get('owner_phone') or request.user.phone
+        owner_email = serializer.validated_data.get('owner_email') or request.user.email
+        owner_city = serializer.validated_data.get('owner_city') or request.user.city
+
         # Создание питомца
         pet = Pet.objects.create(
             owner=request.user,
@@ -63,7 +68,45 @@ class PetListCreateView(APIView):
             gender=serializer.validated_data.get('gender', 'unknown'),
             is_neutered=serializer.validated_data.get('is_neutered', False),
             favorite_foods=serializer.validated_data.get('favorite_foods', []),
-            allergies=serializer.validated_data.get('allergies', [])
+            allergies=serializer.validated_data.get('allergies', []),
+            # Расширенные поля для курсов
+            behavior_type=serializer.validated_data.get('behavior_type'),
+            social_level=serializer.validated_data.get('social_level'),
+            training_experience=serializer.validated_data.get('training_experience'),
+            special_needs=serializer.validated_data.get('special_needs', []),
+            preferred_activities=serializer.validated_data.get('preferred_activities', []),
+            behavioral_problems=serializer.validated_data.get('behavioral_problems', []),
+            # Новые поля PetID
+            size=serializer.validated_data.get('size'),
+            body_type=serializer.validated_data.get('body_type'),
+            activity_level=serializer.validated_data.get('activity_level', 'medium'),
+            # Питание
+            diet_type=serializer.validated_data.get('diet_type'),
+            feeding_frequency=serializer.validated_data.get('feeding_frequency'),
+            sensitive_digestion=serializer.validated_data.get('sensitive_digestion', False),
+            excluded_ingredients=serializer.validated_data.get('excluded_ingredients', []),
+            vitamins_supplements=serializer.validated_data.get('vitamins_supplements', ''),
+            # Поведение
+            character_traits=serializer.validated_data.get('character_traits', []),
+            training_goals=serializer.validated_data.get('training_goals', ''),
+            # Здоровье
+            chronic_conditions=serializer.validated_data.get('chronic_conditions', ''),
+            vaccinations=serializer.validated_data.get('vaccinations', ''),
+            medications=serializer.validated_data.get('medications', ''),
+            dental_health=serializer.validated_data.get('dental_health'),
+            vet_visits=serializer.validated_data.get('vet_visits', ''),
+            # Образ жизни
+            housing_type=serializer.validated_data.get('housing_type'),
+            has_yard=serializer.validated_data.get('has_yard', False),
+            other_pets=serializer.validated_data.get('other_pets', ''),
+            has_children=serializer.validated_data.get('has_children', False),
+            walk_frequency=serializer.validated_data.get('walk_frequency', ''),
+            walk_duration=serializer.validated_data.get('walk_duration', ''),
+            # Контакты владельца
+            owner_phone=owner_phone,
+            owner_email=owner_email,
+            owner_city=owner_city,
+            is_extended_profile=True
         )
         
         # Обработка фото если загружено
@@ -131,7 +174,28 @@ class PetDetailView(APIView):
         
         # Обновление только предоставленных полей
         update_fields = []
-        for field in ['name', 'species', 'breed', 'date_of_birth', 'weight', 'gender', 'is_neutered', 'favorite_foods', 'allergies']:
+        # Все поля, которые можно обновлять
+        all_fields = [
+            # Основные поля
+            'name', 'species', 'breed', 'date_of_birth', 'weight', 'gender', 'is_neutered',
+            'favorite_foods', 'allergies', 'activity_level',
+            # Расширенные поля для курсов
+            'behavior_type', 'social_level', 'training_experience', 'special_needs', 'preferred_activities', 'behavioral_problems',
+            # Новые поля PetID
+            'size', 'body_type',
+            # Питание
+            'diet_type', 'feeding_frequency', 'sensitive_digestion', 'excluded_ingredients', 'vitamins_supplements',
+            # Поведение
+            'character_traits', 'training_goals',
+            # Здоровье
+            'chronic_conditions', 'vaccinations', 'medications', 'dental_health', 'vet_visits',
+            # Образ жизни
+            'housing_type', 'has_yard', 'other_pets', 'has_children', 'walk_frequency', 'walk_duration',
+            # Контакты владельца
+            'owner_phone', 'owner_email', 'owner_city'
+        ]
+
+        for field in all_fields:
             value = serializer.validated_data.get(field)
             if value is not None:
                 # Конвертация даты из строки

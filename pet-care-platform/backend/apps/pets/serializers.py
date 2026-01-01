@@ -248,6 +248,44 @@ class PetCreateSerializer(serializers.Serializer):
         
         return round(value, 2)
 
+    # Новые поля PetID
+    size = serializers.ChoiceField(
+        choices=[
+            ('small', 'Маленький (до 10 кг)'),
+            ('medium', 'Средний (10-25 кг)'),
+            ('large', 'Крупный (более 25 кг)'),
+        ],
+        required=False,
+        allow_null=True,
+        help_text="Размер питомца"
+    )
+
+    body_type = serializers.ChoiceField(
+        choices=[
+            ('slim', 'Недостаточный вес'),
+            ('normal', 'Идеальный вес'),
+            ('overweight', 'Избыточный вес'),
+            ('obese', 'Ожирение'),
+        ],
+        required=False,
+        allow_null=True,
+        help_text="Тип телосложения"
+    )
+
+    activity_level = serializers.ChoiceField(
+        choices=[
+            ('low', 'Низкая'),
+            ('medium', 'Средняя'),
+            ('high', 'Высокая'),
+        ],
+        required=False,
+        help_text="Уровень активности"
+    )
+
+    owner_phone = serializers.CharField(required=False, allow_blank=True, max_length=20, help_text="Телефон владельца")
+    owner_email = serializers.EmailField(required=False, allow_blank=True, help_text="Email владельца")
+    owner_city = serializers.CharField(required=False, allow_blank=True, max_length=100, help_text="Город владельца")
+
 
 class PetUpdateSerializer(serializers.Serializer):
     """
@@ -403,7 +441,88 @@ class PetUpdateSerializer(serializers.Serializer):
         allow_null=True,
         help_text="Поведенческие проблемы питомца"
     )
-    
+
+    # Новые поля PetID
+    size = serializers.ChoiceField(
+        choices=[
+            ('small', 'Маленький (до 10 кг)'),
+            ('medium', 'Средний (10-25 кг)'),
+            ('large', 'Крупный (более 25 кг)'),
+        ],
+        required=False,
+        allow_null=True,
+        help_text="Размер питомца"
+    )
+
+    body_type = serializers.ChoiceField(
+        choices=[
+            ('slim', 'Недостаточный вес'),
+            ('normal', 'Идеальный вес'),
+            ('overweight', 'Избыточный вес'),
+            ('obese', 'Ожирение'),
+        ],
+        required=False,
+        allow_null=True,
+        help_text="Тип телосложения"
+    )
+
+    activity_level = serializers.ChoiceField(
+        choices=[
+            ('low', 'Низкая'),
+            ('medium', 'Средняя'),
+            ('high', 'Высокая'),
+        ],
+        required=False,
+        help_text="Уровень активности"
+    )
+
+    owner_phone = serializers.CharField(required=False, allow_blank=True, max_length=20, help_text="Телефон владельца")
+    owner_email = serializers.EmailField(required=False, allow_blank=True, help_text="Email владельца")
+    owner_city = serializers.CharField(required=False, allow_blank=True, max_length=100, help_text="Город владельца")
+
+    # Новые поля PetID - полные данные
+    # Физические параметры (уже есть: size, body_type)
+
+    # Питание
+    diet_type = serializers.ChoiceField(
+        choices=[('dry', 'Сухой корм'), ('wet', 'Влажный корм'), ('mixed', 'Смешанное питание'),
+                ('raw', 'Натуральное питание'), ('home', 'Домашняя еда')],
+        required=False, allow_null=True, help_text="Тип питания"
+    )
+    feeding_frequency = serializers.ChoiceField(
+        choices=[('1', '1 раз в день'), ('2', '2 раза в день'), ('3', '3 раза в день'), ('free', 'Свободный доступ')],
+        required=False, allow_null=True, help_text="Частота кормления"
+    )
+    sensitive_digestion = serializers.BooleanField(required=False, default=False, help_text="Чувствительное пищеварение")
+    excluded_ingredients = serializers.ListField(child=serializers.CharField(), required=False, default=list, help_text="Исключаемые ингредиенты")
+    vitamins_supplements = serializers.CharField(required=False, allow_blank=True, help_text="Добавки и витамины")
+
+    # Поведение
+    character_traits = serializers.ListField(child=serializers.CharField(), required=False, default=list, help_text="Черты характера")
+    training_goals = serializers.CharField(required=False, allow_blank=True, help_text="Цели дрессировки")
+    behavioral_problems = serializers.ListField(child=serializers.CharField(), required=False, default=list, help_text="Поведенческие проблемы")
+
+    # Здоровье
+    chronic_conditions = serializers.CharField(required=False, allow_blank=True, help_text="Хронические заболевания")
+    vaccinations = serializers.CharField(required=False, allow_blank=True, help_text="Вакцинации")
+    medications = serializers.CharField(required=False, allow_blank=True, help_text="Принимаемые препараты")
+    dental_health = serializers.ChoiceField(
+        choices=[('excellent', 'Отличное'), ('good', 'Хорошее'), ('fair', 'Удовлетворительное'), ('needs_attention', 'Требует лечения')],
+        required=False, allow_null=True, help_text="Состояние зубов"
+    )
+    vet_visits = serializers.CharField(required=False, allow_blank=True, help_text="Посещения ветеринара")
+
+    # Образ жизни
+    housing_type = serializers.ChoiceField(
+        choices=[('apartment', 'Квартира'), ('house', 'Частный дом'), ('cottage', 'Дача/Коттедж'), ('other', 'Другое')],
+        required=False, allow_null=True, help_text="Тип жилья"
+    )
+    has_yard = serializers.BooleanField(required=False, default=False, help_text="Есть двор")
+    other_pets = serializers.CharField(required=False, allow_blank=True, help_text="Другие питомцы дома")
+    has_children = serializers.BooleanField(required=False, default=False, help_text="В доме есть дети")
+    walk_frequency = serializers.CharField(required=False, allow_blank=True, help_text="Частота прогулок")
+    walk_duration = serializers.CharField(required=False, allow_blank=True, help_text="Длительность прогулки")
+
     def validate_name(self, value):
         """Валидация клички при обновлении."""
         if value is None:
@@ -450,6 +569,48 @@ class PetUpdateSerializer(serializers.Serializer):
             )
         
         return round(value, 2)
+
+    # Новые поля PetID - полные данные для PetUpdateSerializer
+    # Физические параметры (уже есть: size, body_type)
+
+    # Питание
+    diet_type = serializers.ChoiceField(
+        choices=[('dry', 'Сухой корм'), ('wet', 'Влажный корм'), ('mixed', 'Смешанное питание'),
+                ('raw', 'Натуральное питание'), ('home', 'Домашняя еда')],
+        required=False, allow_null=True, help_text="Тип питания"
+    )
+    feeding_frequency = serializers.ChoiceField(
+        choices=[('1', '1 раз в день'), ('2', '2 раза в день'), ('3', '3 раза в день'), ('free', 'Свободный доступ')],
+        required=False, allow_null=True, help_text="Частота кормления"
+    )
+    sensitive_digestion = serializers.BooleanField(required=False, default=False, help_text="Чувствительное пищеварение")
+    excluded_ingredients = serializers.ListField(child=serializers.CharField(), required=False, default=list, help_text="Исключаемые ингредиенты")
+    vitamins_supplements = serializers.CharField(required=False, allow_blank=True, help_text="Добавки и витамины")
+
+    # Поведение
+    character_traits = serializers.ListField(child=serializers.CharField(), required=False, default=list, help_text="Черты характера")
+    training_goals = serializers.CharField(required=False, allow_blank=True, help_text="Цели дрессировки")
+
+    # Здоровье
+    chronic_conditions = serializers.CharField(required=False, allow_blank=True, help_text="Хронические заболевания")
+    vaccinations = serializers.CharField(required=False, allow_blank=True, help_text="Вакцинации")
+    medications = serializers.CharField(required=False, allow_blank=True, help_text="Принимаемые препараты")
+    dental_health = serializers.ChoiceField(
+        choices=[('excellent', 'Отличное'), ('good', 'Хорошее'), ('fair', 'Удовлетворительное'), ('needs_attention', 'Требует лечения')],
+        required=False, allow_null=True, help_text="Состояние зубов"
+    )
+    vet_visits = serializers.CharField(required=False, allow_blank=True, help_text="Посещения ветеринара")
+
+    # Образ жизни
+    housing_type = serializers.ChoiceField(
+        choices=[('apartment', 'Квартира'), ('house', 'Частный дом'), ('cottage', 'Дача/Коттедж'), ('other', 'Другое')],
+        required=False, allow_null=True, help_text="Тип жилья"
+    )
+    has_yard = serializers.BooleanField(required=False, default=False, help_text="Есть двор")
+    other_pets = serializers.CharField(required=False, allow_blank=True, help_text="Другие питомцы дома")
+    has_children = serializers.BooleanField(required=False, default=False, help_text="В доме есть дети")
+    walk_frequency = serializers.CharField(required=False, allow_blank=True, help_text="Частота прогулок")
+    walk_duration = serializers.CharField(required=False, allow_blank=True, help_text="Длительность прогулки")
 
 
 class PetSerializer(serializers.Serializer):

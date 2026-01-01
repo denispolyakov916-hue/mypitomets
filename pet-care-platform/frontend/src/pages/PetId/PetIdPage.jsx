@@ -1,15 +1,78 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Plus, QrCode, Edit, Share2, Download } from 'lucide-react';
-import { getPets } from '../../api/pets';
+import { getPets, createPet, updatePet } from '../../api/pets';
 import PetIdWizard from './PetIdWizard';
 import { PageLoader } from '../../components/Loader';
+
+// Функция маппинга данных формы в API формат
+const transformFormDataToApi = (formData) => {
+  const result = {
+    // Основные данные
+    name: formData.name,
+    species: formData.species,
+    breed: formData.breed || null,
+    gender: formData.gender || 'unknown',
+    date_of_birth: formData.birthDate || null,
+    is_neutered: formData.neutered === 'yes',
+
+    // Физические параметры
+    weight: formData.currentWeight ? parseFloat(formData.currentWeight) : null,
+    size: formData.size || null,
+    body_type: formData.bodyType || null,
+    activity_level: formData.activityLevel || 'medium',
+
+    // Контакты владельца (переопределяемые)
+    owner_phone: formData.phone || null,
+    owner_email: formData.email || null,
+    owner_city: formData.city || null,
+
+    // Питание
+    diet_type: formData.dietType || null,
+    feeding_frequency: formData.feedingFrequency || null,
+    favorite_foods: [
+      ...(formData.favoriteFlavors || []),
+      ...(formData.customFlavors || []).filter(flavor => flavor && flavor.trim())
+    ],
+    allergies: formData.allergies ? [formData.allergies] : [],
+    sensitive_digestion: formData.sensitiveBelly || false,
+    excluded_ingredients: formData.excludedIngredients ? formData.excludedIngredients.split(',').map(s => s.trim()).filter(Boolean) : [],
+    vitamins_supplements: formData.vitamins || '',
+
+    // Поведение
+    character_traits: [
+      ...(formData.traits || []),
+      ...(formData.customTraits || []).filter(trait => trait && trait.trim())
+    ],
+    behavioral_problems: formData.behaviorProblems || [],
+    training_experience: formData.trainingLevel || null,
+    training_goals: formData.goals || '',
+
+    // Здоровье
+    chronic_conditions: formData.chronicConditions || '',
+    vaccinations: formData.vaccinations || '',
+    medications: formData.medications || '',
+    dental_health: formData.dentalHealth || null,
+    vet_visits: formData.vetVisits || '',
+
+    // Образ жизни
+    housing_type: formData.housingType || null,
+    has_yard: formData.hasYard || false,
+    other_pets: formData.otherPets || '',
+    has_children: formData.hasChildren || false,
+    walk_frequency: formData.walkFrequency || '',
+    walk_duration: formData.walkDuration || '',
+  };
+
+  return result;
+};
 
 export default function PetIdPage() {
   const [pets, setPets] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showWizard, setShowWizard] = useState(false);
   const [selectedPet, setSelectedPet] = useState(null);
+  const [editingPet, setEditingPet] = useState(null);
 
   useEffect(() => {
     fetchPets();
@@ -26,10 +89,42 @@ export default function PetIdPage() {
     }
   };
 
-  const handleCreatePetId = (formData) => {
-    console.log('Pet ID создан:', formData);
-    // TODO: Отправить на бэкенд
-    fetchPets();
+  const handleEditPet = (pet) => {
+    setEditingPet(pet);
+    setShowWizard(true);
+  };
+
+  const handleCloseWizard = () => {
+    setShowWizard(false);
+    setEditingPet(null); // Сбросить режим редактирования
+  };
+
+  const handlePetIdSubmit = async (formData) => {
+    try {
+      console.log(`${editingPet ? 'Обновление' : 'Создание'} PetID:`, formData);
+
+      const apiData = transformFormDataToApi(formData);
+      console.log('API данные:', apiData);
+
+      let response;
+      if (editingPet) {
+        // Обновление существующего питомца
+        response = await updatePet(editingPet.id, apiData);
+        console.log('PetID успешно обновлен:', response);
+      } else {
+        // Создание нового питомца
+        response = await createPet(apiData);
+        console.log('PetID успешно создан:', response);
+      }
+
+      // Сбросить режим редактирования и обновить список
+      setEditingPet(null);
+      fetchPets();
+
+    } catch (error) {
+      console.error(`Ошибка ${editingPet ? 'обновления' : 'создания'} PetID:`, error);
+      console.error(`Не удалось ${editingPet ? 'обновить' : 'создать'} PetID`);
+    }
   };
 
   if (isLoading) return <PageLoader />;
@@ -45,7 +140,10 @@ export default function PetIdPage() {
           <p className="text-gray-500 mt-1">Цифровые паспорта ваших питомцев</p>
         </div>
         <button
-          onClick={() => setShowWizard(true)}
+          onClick={() => {
+            setEditingPet(null); // Убедиться, что режим редактирования сброшен
+            setShowWizard(true);
+          }}
           className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-orange-500 text-white rounded-xl hover:shadow-lg transition-all"
         >
           <Plus className="w-5 h-5" />
@@ -60,7 +158,10 @@ export default function PetIdPage() {
           <h3 className="text-xl font-semibold text-gray-700 mb-2">Нет Pet ID</h3>
           <p className="text-gray-500 mb-6">Создайте цифровой паспорт для вашего питомца</p>
           <button
-            onClick={() => setShowWizard(true)}
+            onClick={() => {
+              setEditingPet(null);
+              setShowWizard(true);
+            }}
             className="px-6 py-3 bg-gradient-to-r from-purple-600 to-orange-500 text-white rounded-xl"
           >
             Создать первый Pet ID
@@ -106,7 +207,10 @@ export default function PetIdPage() {
 
                 {/* Действия */}
                 <div className="flex gap-2 mt-4">
-                  <button className="flex-1 flex items-center justify-center gap-2 py-2 bg-purple-50 text-purple-600 rounded-xl hover:bg-purple-100 transition-all">
+                  <button
+                    onClick={() => handleEditPet(pet)}
+                    className="flex-1 flex items-center justify-center gap-2 py-2 bg-purple-50 text-purple-600 rounded-xl hover:bg-purple-100 transition-all"
+                  >
                     <Edit className="w-4 h-4" /> Изменить
                   </button>
                   <button className="p-2 bg-gray-50 text-gray-600 rounded-xl hover:bg-gray-100 transition-all">
@@ -125,8 +229,9 @@ export default function PetIdPage() {
       {/* Модальный визард */}
       {showWizard && (
         <PetIdWizard
-          onClose={() => setShowWizard(false)}
-          onSubmit={handleCreatePetId}
+          onClose={handleCloseWizard}
+          onSubmit={handlePetIdSubmit}
+          editData={editingPet}
         />
       )}
     </div>

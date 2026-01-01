@@ -1431,7 +1431,11 @@ class CoursePage(models.Model):
     Заменяет монолитную структуру уроков.
     """
 
-    course_id = models.PositiveIntegerField(verbose_name='ID курса')  # Временно без ForeignKey
+    course_id = models.PositiveIntegerField(
+    verbose_name='ID курса',  # Временно без ForeignKey
+    null=True,
+    blank=True
+    )
 
     title = models.CharField(
         max_length=200,
