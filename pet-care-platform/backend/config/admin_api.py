@@ -26,7 +26,7 @@ from rest_framework.pagination import PageNumberPagination
 # Импорт моделей
 from apps.users.models import User
 from apps.pets.models import Pet
-from apps.shop.models import Product, Order
+from apps.shop.models import Product, Order, OrderItem
 from apps.training.models import Course
 from apps.payments.models import Payment
 from apps.reviews.models import Review
@@ -407,16 +407,23 @@ class AdminAnalyticsViewSet(viewsets.ViewSet, DashboardCacheMixin):
         days = self._parse_period(period)
         limit = int(request.query_params.get('limit', 20))
 
-        # Оптимизированный запрос с агрегацией
-        sales_by_product = Payment.objects.filter(
+        # Получаем завершенные платежи за период
+        payments = Payment.objects.filter(
             status='completed',
+            payment_type__in=['shop_order', 'unified_checkout'],
             created_at__gte=timezone.now() - timedelta(days=days)
+        )
+
+        # Агрегируем данные по товарам через OrderItem
+        sales_by_product = OrderItem.objects.filter(
+            order__id__in=[p.object_id for p in payments],
+            product__isnull=False  # Только товары, не курсы
         ).values(
-            'order__orderitem__product__name',
-            'order__orderitem__product__external_id'
+            'product__name',
+            'product__external_id'
         ).annotate(
-            total_sales=Sum(F('order__orderitem__quantity') * F('order__orderitem__price')),
-            total_quantity=Sum('order__orderitem__quantity'),
+            total_sales=Sum(F('quantity') * F('price')),
+            total_quantity=Sum('quantity'),
             order_count=Count('order', distinct=True)
         ).order_by('-total_sales')[:limit]
 
@@ -425,7 +432,7 @@ class AdminAnalyticsViewSet(viewsets.ViewSet, DashboardCacheMixin):
         quantity_data = []
 
         for item in sales_by_product:
-            product_name = item['order__orderitem__product__name'] or 'Неизвестный товар'
+            product_name = item['product__name'] or 'Неизвестный товар'
             labels.append(product_name[:30] + ('...' if len(product_name) > 30 else ''))
             sales_data.append(float(item['total_sales'] or 0))
             quantity_data.append(item['total_quantity'] or 0)
@@ -457,16 +464,23 @@ class AdminAnalyticsViewSet(viewsets.ViewSet, DashboardCacheMixin):
         period = request.query_params.get('period', '30d')
         days = self._parse_period(period)
 
-        # Оптимизированный запрос с агрегацией по категориям
-        sales_by_category = Payment.objects.filter(
+        # Получаем завершенные платежи за период
+        payments = Payment.objects.filter(
             status='completed',
+            payment_type__in=['shop_order', 'unified_checkout'],
             created_at__gte=timezone.now() - timedelta(days=days)
+        )
+
+        # Агрегируем данные по категориям товаров через OrderItem
+        sales_by_category = OrderItem.objects.filter(
+            order__id__in=[p.object_id for p in payments],
+            product__isnull=False  # Только товары, не курсы
         ).values(
-            'order__orderitem__product__category'
+            'product__category'
         ).annotate(
-            total_sales=Sum(F('order__orderitem__quantity') * F('order__orderitem__price')),
+            total_sales=Sum(F('quantity') * F('price')),
             order_count=Count('order', distinct=True),
-            product_count=Count('order__orderitem__product', distinct=True)
+            product_count=Count('product', distinct=True)
         ).order_by('-total_sales')
 
         category_map = {
@@ -491,7 +505,7 @@ class AdminAnalyticsViewSet(viewsets.ViewSet, DashboardCacheMixin):
         data = []
 
         for item in sales_by_category:
-            category = item['order__orderitem__product__category'] or 'other'
+            category = item['product__category'] or 'other'
             category_name = category_map.get(category, category.capitalize())
             labels.append(category_name)
             data.append(float(item['total_sales'] or 0))

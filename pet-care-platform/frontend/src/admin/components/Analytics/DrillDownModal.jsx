@@ -37,34 +37,22 @@ const DrillDownModal = ({
 
       switch (drillType) {
         case 'sales_by_products':
-        case 'sales_by_category':
-          // Используем данные продуктов для формирования графика продаж
+          // Используем API аналитики для получения реальных данных о продажах по товарам
           try {
-            const productsResponse = await adminAPI.products.list({ page_size: 50 });
-            const products = productsResponse.data?.results || [];
-            
-            // Формируем данные по категориям
-            const categoryCount = products.reduce((acc, product) => {
-              const category = product.category || 'other';
-              acc[category] = (acc[category] || 0) + 1;
-              return acc;
-            }, {});
-
-            responseData = {
-              labels: Object.keys(categoryCount),
-              datasets: [{
-                data: Object.values(categoryCount),
-                backgroundColor: [
-                  'rgba(59, 130, 246, 0.8)',
-                  'rgba(16, 185, 129, 0.8)',
-                  'rgba(245, 158, 11, 0.8)',
-                  'rgba(239, 68, 68, 0.8)',
-                  'rgba(139, 92, 246, 0.8)'
-                ].slice(0, Object.keys(categoryCount).length)
-              }]
-            };
+            const response = await adminAPI.analytics.sales_by_products({ period });
+            responseData = response.data;
           } catch (err) {
-            throw new Error('Не удалось загрузить данные о товарах');
+            throw new Error('Не удалось загрузить данные о продажах по товарам');
+          }
+          break;
+
+        case 'sales_by_category':
+          // Используем API аналитики для получения реальных данных о продажах по категориям
+          try {
+            const response = await adminAPI.analytics.sales_by_category({ period });
+            responseData = response.data;
+          } catch (err) {
+            throw new Error('Не удалось загрузить данные о продажах по категориям');
           }
           break;
 
