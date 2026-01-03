@@ -1454,7 +1454,12 @@ class AdminOrderViewSet(AdminModelViewSet):
         
         status_filter = request.query_params.get('status', '')
         if status_filter:
-            queryset = queryset.filter(status=status_filter)
+            # Поддержка фильтрации по нескольким статусам через запятую
+            statuses = [s.strip() for s in status_filter.split(',') if s.strip()]
+            if len(statuses) == 1:
+                queryset = queryset.filter(status=status_filter)
+            else:
+                queryset = queryset.filter(status__in=statuses)
         
         search = request.query_params.get('search', '')
         if search:

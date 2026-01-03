@@ -6,7 +6,7 @@ const QuickActions = () => {
     {
       title: 'Заказы на обработку',
       description: 'Просмотреть заказы, требующие внимания',
-      href: '/admin-panel/orders?status=pending',
+      href: '/admin-panel/orders?status=pending,processing',
       icon: '📦',
       color: 'bg-orange-50 border-orange-200 text-orange-700',
     },
