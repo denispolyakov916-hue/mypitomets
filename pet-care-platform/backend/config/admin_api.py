@@ -973,9 +973,9 @@ class AdminUserViewSet(AdminModelViewSet):
                 Q(last_name__icontains=search)
             )
         return queryset.annotate(
-            pets_count=Count('pets'),
-            orders_count=Count('orders'),
-            payments_count=Count('payments')
+            pets_count=Count('pets', distinct=True),
+            orders_count=Count('orders', distinct=True),
+            payments_count=Count('payments', distinct=True)
         ).order_by('-created_at')
 
     def _serialize_user(self, user):
