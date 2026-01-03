@@ -430,12 +430,29 @@ class AdminAnalyticsViewSet(viewsets.ViewSet, DashboardCacheMixin):
         labels = []
         sales_data = []
         quantity_data = []
+        product_data = []
 
         for item in sales_by_product:
             product_name = item['product__name'] or 'Неизвестный товар'
+            sales = float(item['total_sales'] or 0)
+            quantity = item['total_quantity'] or 0
+            order_count = item['order_count'] or 0
+
             labels.append(product_name[:30] + ('...' if len(product_name) > 30 else ''))
-            sales_data.append(float(item['total_sales'] or 0))
-            quantity_data.append(item['total_quantity'] or 0)
+            sales_data.append(sales)
+            quantity_data.append(quantity)
+            product_data.append({
+                'name': product_name,
+                'sales': sales,
+                'quantity': quantity,
+                'order_count': order_count
+            })
+
+        # Расчет дополнительных метрик
+        total_sales = sum(sales_data) if sales_data else 0
+        total_orders = sum(item['order_count'] for item in product_data) if product_data else 0
+        average_check = total_sales / total_orders if total_orders > 0 else 0
+        top_product = product_data[0] if product_data else None
 
         return Response({
             'labels': labels,
@@ -455,7 +472,16 @@ class AdminAnalyticsViewSet(viewsets.ViewSet, DashboardCacheMixin):
                     'borderWidth': 1
                 }
             ],
-            'total': len(labels)
+            'total': len(labels),
+            'summary': {
+                'total_sales': total_sales,
+                'total_orders': total_orders,
+                'average_check': round(average_check, 2),
+                'top_product': {
+                    'name': top_product['name'] if top_product else None,
+                    'sales': top_product['sales'] if top_product else 0
+                }
+            }
         })
 
     @action(detail=False, methods=['get'])
@@ -503,12 +529,26 @@ class AdminAnalyticsViewSet(viewsets.ViewSet, DashboardCacheMixin):
 
         labels = []
         data = []
+        category_data = []
 
         for item in sales_by_category:
             category = item['product__category'] or 'other'
             category_name = category_map.get(category, category.capitalize())
+            sales = float(item['total_sales'] or 0)
+            order_count = item['order_count'] or 0
+
             labels.append(category_name)
-            data.append(float(item['total_sales'] or 0))
+            data.append(sales)
+            category_data.append({
+                'name': category_name,
+                'sales': sales,
+                'order_count': order_count
+            })
+
+        # Расчет дополнительных метрик
+        total_sales = sum(data) if data else 0
+        top_category = category_data[0] if category_data else None
+        top_category_share = (top_category['sales'] / total_sales * 100) if total_sales > 0 else 0
 
         return Response({
             'labels': labels,
@@ -517,7 +557,16 @@ class AdminAnalyticsViewSet(viewsets.ViewSet, DashboardCacheMixin):
                 'backgroundColor': colors[:len(labels)],
                 'borderWidth': 1
             }],
-            'total': len(labels)
+            'total': len(labels),
+            'summary': {
+                'total_sales': total_sales,
+                'top_category': {
+                    'name': top_category['name'] if top_category else None,
+                    'sales': top_category['sales'] if top_category else 0,
+                    'order_count': top_category['order_count'] if top_category else 0,
+                    'share_percentage': round(top_category_share, 1)
+                }
+            }
         })
 
     @action(detail=False, methods=['get'])

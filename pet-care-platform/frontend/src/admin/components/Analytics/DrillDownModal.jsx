@@ -130,56 +130,12 @@ const DrillDownModal = ({
 
     switch (type) {
       case 'sales_by_products':
-        // Для продаж по товарам используем данные о продажах в рублях (первый датасет)
-        if (data.datasets && data.datasets[0] && data.datasets[0].data) {
-          const salesData = data.datasets[0].data;
-          const sum = salesData.reduce((acc, val) => acc + val, 0);
-          const average = salesData.length > 0 ? sum / salesData.length : 0;
-          const max = salesData.length > 0 ? Math.max(...salesData) : 0;
-
-          // Расчет роста: сравнение первой и второй половины данных
-          const midPoint = Math.floor(salesData.length / 2);
-          const firstHalf = salesData.slice(0, midPoint);
-          const secondHalf = salesData.slice(midPoint);
-
-          const firstHalfAvg = firstHalf.length > 0 ? firstHalf.reduce((acc, val) => acc + val, 0) / firstHalf.length : 0;
-          const secondHalfAvg = secondHalf.length > 0 ? secondHalf.reduce((acc, val) => acc + val, 0) / secondHalf.length : 0;
-
-          const growth = firstHalfAvg > 0 ? ((secondHalfAvg - firstHalfAvg) / firstHalfAvg) * 100 : 0;
-
-          return {
-            average: Math.round(average),
-            max: Math.round(max),
-            growth: Math.round(growth * 100) / 100
-          };
-        }
-        break;
+        // Метрики для товаров теперь берутся из summary в основном коде
+        return { average: null, max: null, growth: null };
 
       case 'sales_by_category':
-        // Для продаж по категориям используем данные из datasets[0].data
-        if (data.datasets && data.datasets[0] && data.datasets[0].data) {
-          const salesData = data.datasets[0].data;
-          const sum = salesData.reduce((acc, val) => acc + val, 0);
-          const average = salesData.length > 0 ? sum / salesData.length : 0;
-          const max = salesData.length > 0 ? Math.max(...salesData) : 0;
-
-          // Расчет роста аналогично
-          const midPoint = Math.floor(salesData.length / 2);
-          const firstHalf = salesData.slice(0, midPoint);
-          const secondHalf = salesData.slice(midPoint);
-
-          const firstHalfAvg = firstHalf.length > 0 ? firstHalf.reduce((acc, val) => acc + val, 0) / firstHalf.length : 0;
-          const secondHalfAvg = secondHalf.length > 0 ? secondHalf.reduce((acc, val) => acc + val, 0) / secondHalf.length : 0;
-
-          const growth = firstHalfAvg > 0 ? ((secondHalfAvg - firstHalfAvg) / firstHalfAvg) * 100 : 0;
-
-          return {
-            average: Math.round(average),
-            max: Math.round(max),
-            growth: Math.round(growth * 100) / 100
-          };
-        }
-        break;
+        // Метрики для категорий теперь берутся из summary в основном коде
+        return { average: null, max: null, growth: null };
 
       case 'orders_delivery_analysis':
         // Для анализа доставки используем данные из summary
@@ -433,6 +389,54 @@ const DrillDownModal = ({
                       <span className="ml-2 font-medium text-red-600">{data.summary?.cancellation_rate !== undefined ? `${data.summary.cancellation_rate.toFixed(1)}%` : 'N/A'}</span>
                     </div>
                   </>
+                ) : type === 'sales_by_category' ? (
+                  // Специальные метрики для продаж по категориям
+                  <>
+                    <div>
+                      <span className="text-gray-600">Общий объем продаж:</span>
+                      <span className="ml-2 font-medium">
+                        {data.summary?.total_sales ? `${data.summary.total_sales.toLocaleString()} ₽` : 'N/A'}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-gray-600">Топ-категория:</span>
+                      <span className="ml-2 font-medium">{data.summary?.top_category?.name || 'N/A'}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-600">Доля топ-категории:</span>
+                      <span className="ml-2 font-medium text-blue-600">
+                        {data.summary?.top_category?.share_percentage !== undefined ? `${data.summary.top_category.share_percentage}%` : 'N/A'}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-gray-600">Заказов в топ-категории:</span>
+                      <span className="ml-2 font-medium">{data.summary?.top_category?.order_count || 'N/A'}</span>
+                    </div>
+                  </>
+                ) : type === 'sales_by_products' ? (
+                  // Специальные метрики для продаж по товарам
+                  <>
+                    <div>
+                      <span className="text-gray-600">Общий объем продаж:</span>
+                      <span className="ml-2 font-medium">
+                        {data.summary?.total_sales ? `${data.summary.total_sales.toLocaleString()} ₽` : 'N/A'}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-gray-600">Количество заказов:</span>
+                      <span className="ml-2 font-medium">{data.summary?.total_orders || 'N/A'}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-600">Средний чек:</span>
+                      <span className="ml-2 font-medium">
+                        {data.summary?.average_check ? `${data.summary.average_check.toLocaleString()} ₽` : 'N/A'}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-gray-600">Топ-товар:</span>
+                      <span className="ml-2 font-medium">{data.summary?.top_product?.name || 'N/A'}</span>
+                    </div>
+                  </>
                 ) : (
                   (() => {
                     const metrics = calculateMetrics(data, type);
@@ -446,7 +450,7 @@ const DrillDownModal = ({
                           <span className="text-gray-600">Среднее значение:</span>
                           <span className="ml-2 font-medium">
                             {metrics.average !== null ? (
-                              type === 'sales_by_products' || type === 'sales_by_category' ?
+                              type === 'sales_by_products' ?
                                 `${metrics.average.toLocaleString()} ₽` :
                                 metrics.average
                             ) : 'N/A'}
@@ -456,7 +460,7 @@ const DrillDownModal = ({
                           <span className="text-gray-600">Максимум:</span>
                           <span className="ml-2 font-medium">
                             {metrics.max !== null ? (
-                              type === 'sales_by_products' || type === 'sales_by_category' ?
+                              type === 'sales_by_products' ?
                                 `${metrics.max.toLocaleString()} ₽` :
                                 metrics.max
                             ) : 'N/A'}
