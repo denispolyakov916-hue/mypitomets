@@ -91,6 +91,7 @@ export const adminAPI = {
     sales_by_products: (params) => adminApi.get('admin/analytics/sales_by_products/', { params }),
     sales_by_category: (params) => adminApi.get('admin/analytics/sales_by_category/', { params }),
     user_activity_detail: (params) => adminApi.get('admin/analytics/user_activity_detail/', { params }),
+    orders_delivery_analysis: (params) => adminApi.get('admin/analytics/orders_delivery_analysis/', { params }),
     // Обратная совместимость (старые имена методов)
     salesTrends: (params) => adminApi.get('admin/analytics/sales_trends/', { params }),
     usersTrends: (params) => adminApi.get('admin/analytics/users_trends/', { params }),

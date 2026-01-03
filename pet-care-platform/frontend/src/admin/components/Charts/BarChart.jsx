@@ -119,6 +119,8 @@ const BarChart = ({
       },
       y: {
         display: true,
+        beginAtZero: true,
+        min: 0,
         grid: {
           display: showGrid,
           color: 'rgba(156, 163, 175, 0.2)'

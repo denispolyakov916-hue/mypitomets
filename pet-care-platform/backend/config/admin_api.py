@@ -569,6 +569,125 @@ class AdminAnalyticsViewSet(viewsets.ViewSet, DashboardCacheMixin):
             }
         })
 
+    @action(detail=False, methods=['get'])
+    def orders_delivery_analysis(self, request):
+        """Анализ времени доставки и возвратов заказов для drill-down аналитики"""
+        period = request.query_params.get('period', '30d')
+        days = self._parse_period(period)
+
+        # Получаем заказы за период
+        orders = Order.objects.filter(
+            created_at__gte=timezone.now() - timedelta(days=days)
+        ).select_related('user')
+
+        # Анализ времени доставки для доставленных заказов
+        delivered_orders = orders.filter(status='delivered')
+
+        delivery_times = []
+        for order in delivered_orders:
+            if order.delivery_date and order.created_at:
+                delivery_time = (order.delivery_date - order.created_at.date()).days
+                delivery_times.append(max(0, delivery_time))  # Не отрицательные значения
+
+        # Группируем по времени доставки
+        delivery_time_groups = {}
+        for days_count in delivery_times:
+            if days_count <= 1:
+                key = '1 день'
+            elif days_count <= 3:
+                key = '2-3 дня'
+            elif days_count <= 7:
+                key = '4-7 дней'
+            elif days_count <= 14:
+                key = '1-2 недели'
+            else:
+                key = 'Более 2 недель'
+
+            delivery_time_groups[key] = delivery_time_groups.get(key, 0) + 1
+
+        # Сортируем группы по порядку и всегда показываем все категории
+        ordered_groups = ['1 день', '2-3 дня', '4-7 дней', '1-2 недели', 'Более 2 недель']
+        delivery_labels = []
+        delivery_data = []
+
+        for group in ordered_groups:
+            delivery_labels.append(group)
+            delivery_data.append(delivery_time_groups.get(group, 0))
+
+        # Анализ возвратов/отмен заказов
+        cancelled_orders = orders.filter(status='cancelled')
+        returns_by_reason = {}
+
+        # Группируем отмены по времени (предполагаем причины на основе времени отмены)
+        for order in cancelled_orders:
+            if order.updated_at and order.created_at:
+                time_to_cancel = (order.updated_at - order.created_at).total_seconds() / 3600  # в часах
+
+                if time_to_cancel < 1:
+                    reason = 'Отмена сразу'
+                elif time_to_cancel < 24:
+                    reason = 'Отмена в первый день'
+                elif time_to_cancel < 168:  # 7 дней
+                    reason = 'Отмена в первую неделю'
+                else:
+                    reason = 'Отмена позже'
+
+                returns_by_reason[reason] = returns_by_reason.get(reason, 0) + 1
+
+        # Сортируем причины возвратов
+        returns_ordered = ['Отмена сразу', 'Отмена в первый день', 'Отмена в первую неделю', 'Отмена позже']
+        returns_labels = []
+        returns_data = []
+
+        for reason in returns_ordered:
+            if reason in returns_by_reason:
+                returns_labels.append(reason)
+                returns_data.append(returns_by_reason[reason])
+
+        # Сводная статистика
+        total_orders = orders.count()
+        delivered_count = delivered_orders.count()
+        cancelled_count = cancelled_orders.count()
+        avg_delivery_time = sum(delivery_times) / len(delivery_times) if delivery_times else 0
+
+        return Response({
+            'delivery_time_analysis': {
+                'labels': delivery_labels,
+                'datasets': [{
+                    'label': 'Количество заказов',
+                    'data': delivery_data,
+                    'backgroundColor': [
+                        'rgba(16, 185, 129, 0.8)',   # зеленый
+                        'rgba(59, 130, 246, 0.8)',   # синий
+                        'rgba(245, 158, 11, 0.8)',   # оранжевый
+                        'rgba(245, 101, 101, 0.8)',  # красный
+                        'rgba(107, 114, 128, 0.8)'   # серый
+                    ][:len(delivery_labels)]
+                }]
+            },
+            'returns_analysis': {
+                'labels': returns_labels,
+                'datasets': [{
+                    'label': 'Количество отмен',
+                    'data': returns_data,
+                    'backgroundColor': [
+                        'rgba(239, 68, 68, 0.8)',    # красный
+                        'rgba(245, 101, 101, 0.8)',  # светло-красный
+                        'rgba(245, 158, 11, 0.8)',   # оранжевый
+                        'rgba(107, 114, 128, 0.8)'   # серый
+                    ][:len(returns_labels)]
+                }]
+            },
+            'summary': {
+                'total_orders': total_orders,
+                'delivered_orders': delivered_count,
+                'cancelled_orders': cancelled_count,
+                'delivery_rate': (delivered_count / total_orders * 100) if total_orders > 0 else 0,
+                'cancellation_rate': (cancelled_count / total_orders * 100) if total_orders > 0 else 0,
+                'average_delivery_time': round(avg_delivery_time, 1)
+            }
+        })
+
     def _parse_period(self, period):
         """Парсинг периода в дни"""
         period_map = {

@@ -66,46 +66,13 @@ const DrillDownModal = ({
           }
           break;
 
-        case 'orders_by_region':
-          // Используем данные заказов по статусам
+        case 'orders_delivery_analysis':
+          // Используем API аналитики для получения данных о времени доставки и возвратах
           try {
-            const ordersResponse = await adminAPI.orders.list({ page_size: 100 });
-            const orders = ordersResponse.data?.results || [];
-
-            const statusCount = orders.reduce((acc, order) => {
-              const status = order.status || 'pending';
-              acc[status] = (acc[status] || 0) + 1;
-              return acc;
-            }, {});
-
-            const statusLabels = {
-              pending: 'Ожидает',
-              processing: 'В обработке',
-              shipped: 'Отправлен',
-              delivered: 'Доставлен',
-              cancelled: 'Отменён',
-              expired: 'Истёк'
-            };
-
-            const labels = Object.keys(statusCount).map(s => statusLabels[s] || s);
-
-            responseData = {
-              labels: labels,
-              datasets: [{
-                data: Object.values(statusCount),
-                backgroundColor: [
-                  'rgba(245, 158, 11, 0.8)',
-                  'rgba(59, 130, 246, 0.8)',
-                  'rgba(139, 92, 246, 0.8)',
-                  'rgba(16, 185, 129, 0.8)',
-                  'rgba(239, 68, 68, 0.8)',
-                  'rgba(107, 114, 128, 0.8)'
-                ].slice(0, labels.length)
-              }],
-              total: labels.length
-            };
+            const response = await adminAPI.analytics.orders_delivery_analysis({ period });
+            responseData = response.data;
           } catch (err) {
-            throw new Error('Не удалось загрузить данные о заказах');
+            throw new Error('Не удалось загрузить данные о времени доставки и возвратах');
           }
           break;
 
@@ -214,27 +181,13 @@ const DrillDownModal = ({
         }
         break;
 
-      case 'orders_by_region':
-        // Для заказов по регионам используем данные из datasets[0].data
-        if (data.datasets && data.datasets[0] && data.datasets[0].data) {
-          const orderData = data.datasets[0].data;
-          const sum = orderData.reduce((acc, val) => acc + val, 0);
-          const average = orderData.length > 0 ? sum / orderData.length : 0;
-          const max = orderData.length > 0 ? Math.max(...orderData) : 0;
-
-          const midPoint = Math.floor(orderData.length / 2);
-          const firstHalf = orderData.slice(0, midPoint);
-          const secondHalf = orderData.slice(midPoint);
-
-          const firstHalfAvg = firstHalf.length > 0 ? firstHalf.reduce((acc, val) => acc + val, 0) / firstHalf.length : 0;
-          const secondHalfAvg = secondHalf.length > 0 ? secondHalf.reduce((acc, val) => acc + val, 0) / secondHalf.length : 0;
-
-          const growth = firstHalfAvg > 0 ? ((secondHalfAvg - firstHalfAvg) / firstHalfAvg) * 100 : 0;
-
+      case 'orders_delivery_analysis':
+        // Для анализа доставки используем данные из summary
+        if (data.summary) {
           return {
-            average: Math.round(average),
-            max: max,
-            growth: Math.round(growth * 100) / 100
+            average: data.summary.average_delivery_time || 0,
+            max: null, // Не используем для этого типа
+            growth: null // Не используем для этого типа
           };
         }
         break;
@@ -312,14 +265,42 @@ const DrillDownModal = ({
           />
         );
 
-      case 'orders_by_region':
+      case 'orders_delivery_analysis':
         return (
-          <BarChart
-            {...chartProps}
-            data={data}
-            title="Заказы по статусам"
-            horizontal={false}
-          />
+          <div className="space-y-6">
+            {/* График времени доставки */}
+            {data.delivery_time_analysis && data.delivery_time_analysis.datasets &&
+             data.delivery_time_analysis.datasets[0] &&
+             data.delivery_time_analysis.datasets[0].data.some(value => value > 0) ? (
+              <BarChart
+                {...chartProps}
+                data={data.delivery_time_analysis}
+                title="Время доставки заказов"
+                horizontal={false}
+              />
+            ) : (
+              <div className="bg-white rounded-lg border border-gray-200 p-6">
+                <div style={{ height: `${chartProps.height}px` }} className="flex items-center justify-center">
+                  <div className="text-center text-gray-500">
+                    <div className="text-4xl mb-2">🚚</div>
+                    <p className="font-medium">Время доставки заказов</p>
+                    <p className="text-sm mt-1">Нет данных о времени доставки</p>
+                    <p className="text-xs mt-2 text-gray-400">
+                      У доставленных заказов не указана дата доставки
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* График возвратов */}
+            <PieChart
+              {...chartProps}
+              data={data.returns_analysis}
+              title="Анализ возвратов заказов"
+              showPercentages={true}
+            />
+          </div>
         );
 
       case 'pets_by_breed':
@@ -342,7 +323,7 @@ const DrillDownModal = ({
       sales_by_products: 'Продажи по товарам',
       sales_by_category: 'Продажи по категориям',
       user_activity: 'Активность пользователей',
-      orders_by_region: 'Заказы по регионам',
+      orders_delivery_analysis: 'Время доставки и возвраты',
       pets_by_breed: 'Распределение по породам'
     };
     return titles[type] || 'Детальная аналитика';
@@ -422,6 +403,34 @@ const DrillDownModal = ({
                     <div>
                       <span className="text-gray-600">Супер-пользователей:</span>
                       <span className="ml-2 font-medium">{data.summary?.superuser_count || 'N/A'}</span>
+                    </div>
+                  </>
+                ) : type === 'orders_delivery_analysis' ? (
+                  // Специальная информация для анализа заказов
+                  <>
+                    <div>
+                      <span className="text-gray-600">Всего заказов:</span>
+                      <span className="ml-2 font-medium">{data.summary?.total_orders || 'N/A'}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-600">Доставлено:</span>
+                      <span className="ml-2 font-medium text-green-600">{data.summary?.delivered_orders !== undefined ? data.summary.delivered_orders : 'N/A'}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-600">Отменено:</span>
+                      <span className="ml-2 font-medium text-red-600">{data.summary?.cancelled_orders !== undefined ? data.summary.cancelled_orders : 'N/A'}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-600">Среднее время доставки:</span>
+                      <span className="ml-2 font-medium">{data.summary?.average_delivery_time !== undefined ? `${data.summary.average_delivery_time} дней` : 'N/A'}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-600">Процент доставки:</span>
+                      <span className="ml-2 font-medium text-green-600">{data.summary?.delivery_rate !== undefined ? `${data.summary.delivery_rate.toFixed(1)}%` : 'N/A'}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-600">Процент отмен:</span>
+                      <span className="ml-2 font-medium text-red-600">{data.summary?.cancellation_rate !== undefined ? `${data.summary.cancellation_rate.toFixed(1)}%` : 'N/A'}</span>
                     </div>
                   </>
                 ) : (

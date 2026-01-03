@@ -276,7 +276,7 @@ const AnalyticsDashboard = () => {
           </button>
 
           <button
-            onClick={() => openDrillDown('orders_by_region', 'Анализ заказов')}
+            onClick={() => openDrillDown('orders_delivery_analysis', 'Анализ заказов')}
             className="bg-white p-4 rounded-lg border border-gray-200 hover:border-purple-300 hover:shadow-md transition-all duration-200"
           >
             <div className="flex items-center">
