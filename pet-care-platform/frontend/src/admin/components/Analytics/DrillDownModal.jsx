@@ -57,30 +57,12 @@ const DrillDownModal = ({
           break;
 
         case 'user_activity':
-          // Используем данные пользователей
+          // Используем API аналитики для получения данных об активности пользователей
           try {
-            const usersResponse = await adminAPI.users.list({ page_size: 100 });
-            const users = usersResponse.data?.results || [];
-            const totalUsers = users.length;
-            
-            responseData = {
-              labels: ['Всего пользователей', 'Активных', 'Администраторов'],
-              datasets: [{
-                label: 'Пользователи',
-                data: [
-                  totalUsers,
-                  users.filter(u => u.is_active !== false).length,
-                  users.filter(u => u.is_staff).length
-                ],
-                backgroundColor: [
-                  'rgba(59, 130, 246, 0.8)',
-                  'rgba(16, 185, 129, 0.8)',
-                  'rgba(245, 158, 11, 0.8)'
-                ]
-              }]
-            };
+            const response = await adminAPI.analytics.user_activity_detail({ period });
+            responseData = response.data;
           } catch (err) {
-            throw new Error('Не удалось загрузить данные о пользователях');
+            throw new Error('Не удалось загрузить данные об активности пользователей');
           }
           break;
 
@@ -89,7 +71,7 @@ const DrillDownModal = ({
           try {
             const ordersResponse = await adminAPI.orders.list({ page_size: 100 });
             const orders = ordersResponse.data?.results || [];
-            
+
             const statusCount = orders.reduce((acc, order) => {
               const status = order.status || 'pending';
               acc[status] = (acc[status] || 0) + 1;
@@ -105,8 +87,10 @@ const DrillDownModal = ({
               expired: 'Истёк'
             };
 
+            const labels = Object.keys(statusCount).map(s => statusLabels[s] || s);
+
             responseData = {
-              labels: Object.keys(statusCount).map(s => statusLabels[s] || s),
+              labels: labels,
               datasets: [{
                 data: Object.values(statusCount),
                 backgroundColor: [
@@ -116,8 +100,9 @@ const DrillDownModal = ({
                   'rgba(16, 185, 129, 0.8)',
                   'rgba(239, 68, 68, 0.8)',
                   'rgba(107, 114, 128, 0.8)'
-                ].slice(0, Object.keys(statusCount).length)
-              }]
+                ].slice(0, labels.length)
+              }],
+              total: labels.length
             };
           } catch (err) {
             throw new Error('Не удалось загрузить данные о заказах');
@@ -129,17 +114,19 @@ const DrillDownModal = ({
           try {
             const petsResponse = await adminAPI.pets.list({ page_size: 100 });
             const pets = petsResponse.data?.results || [];
-            
+
             const speciesCount = pets.reduce((acc, pet) => {
               const species = pet.species || 'other';
               acc[species] = (acc[species] || 0) + 1;
               return acc;
             }, {});
 
+            const labels = Object.keys(speciesCount).map(s =>
+              s === 'dog' ? 'Собаки' : s === 'cat' ? 'Кошки' : 'Другие'
+            );
+
             responseData = {
-              labels: Object.keys(speciesCount).map(s => 
-                s === 'dog' ? 'Собаки' : s === 'cat' ? 'Кошки' : 'Другие'
-              ),
+              labels: labels,
               datasets: [{
                 data: Object.values(speciesCount),
                 backgroundColor: [
@@ -148,8 +135,9 @@ const DrillDownModal = ({
                   'rgba(245, 158, 11, 0.8)',
                   'rgba(239, 68, 68, 0.8)',
                   'rgba(139, 92, 246, 0.8)'
-                ].slice(0, Object.keys(speciesCount).length)
-              }]
+                ].slice(0, labels.length)
+              }],
+              total: labels.length
             };
           } catch (err) {
             throw new Error('Не удалось загрузить данные о питомцах');
@@ -167,6 +155,120 @@ const DrillDownModal = ({
     } finally {
       setLoading(false);
     }
+  };
+
+  // Функция для расчета дополнительных метрик
+  const calculateMetrics = (data, type) => {
+    if (!data) return { average: null, max: null, growth: null };
+
+    switch (type) {
+      case 'sales_by_products':
+        // Для продаж по товарам используем данные о продажах в рублях (первый датасет)
+        if (data.datasets && data.datasets[0] && data.datasets[0].data) {
+          const salesData = data.datasets[0].data;
+          const sum = salesData.reduce((acc, val) => acc + val, 0);
+          const average = salesData.length > 0 ? sum / salesData.length : 0;
+          const max = salesData.length > 0 ? Math.max(...salesData) : 0;
+
+          // Расчет роста: сравнение первой и второй половины данных
+          const midPoint = Math.floor(salesData.length / 2);
+          const firstHalf = salesData.slice(0, midPoint);
+          const secondHalf = salesData.slice(midPoint);
+
+          const firstHalfAvg = firstHalf.length > 0 ? firstHalf.reduce((acc, val) => acc + val, 0) / firstHalf.length : 0;
+          const secondHalfAvg = secondHalf.length > 0 ? secondHalf.reduce((acc, val) => acc + val, 0) / secondHalf.length : 0;
+
+          const growth = firstHalfAvg > 0 ? ((secondHalfAvg - firstHalfAvg) / firstHalfAvg) * 100 : 0;
+
+          return {
+            average: Math.round(average),
+            max: Math.round(max),
+            growth: Math.round(growth * 100) / 100
+          };
+        }
+        break;
+
+      case 'sales_by_category':
+        // Для продаж по категориям используем данные из datasets[0].data
+        if (data.datasets && data.datasets[0] && data.datasets[0].data) {
+          const salesData = data.datasets[0].data;
+          const sum = salesData.reduce((acc, val) => acc + val, 0);
+          const average = salesData.length > 0 ? sum / salesData.length : 0;
+          const max = salesData.length > 0 ? Math.max(...salesData) : 0;
+
+          // Расчет роста аналогично
+          const midPoint = Math.floor(salesData.length / 2);
+          const firstHalf = salesData.slice(0, midPoint);
+          const secondHalf = salesData.slice(midPoint);
+
+          const firstHalfAvg = firstHalf.length > 0 ? firstHalf.reduce((acc, val) => acc + val, 0) / firstHalf.length : 0;
+          const secondHalfAvg = secondHalf.length > 0 ? secondHalf.reduce((acc, val) => acc + val, 0) / secondHalf.length : 0;
+
+          const growth = firstHalfAvg > 0 ? ((secondHalfAvg - firstHalfAvg) / firstHalfAvg) * 100 : 0;
+
+          return {
+            average: Math.round(average),
+            max: Math.round(max),
+            growth: Math.round(growth * 100) / 100
+          };
+        }
+        break;
+
+      case 'orders_by_region':
+        // Для заказов по регионам используем данные из datasets[0].data
+        if (data.datasets && data.datasets[0] && data.datasets[0].data) {
+          const orderData = data.datasets[0].data;
+          const sum = orderData.reduce((acc, val) => acc + val, 0);
+          const average = orderData.length > 0 ? sum / orderData.length : 0;
+          const max = orderData.length > 0 ? Math.max(...orderData) : 0;
+
+          const midPoint = Math.floor(orderData.length / 2);
+          const firstHalf = orderData.slice(0, midPoint);
+          const secondHalf = orderData.slice(midPoint);
+
+          const firstHalfAvg = firstHalf.length > 0 ? firstHalf.reduce((acc, val) => acc + val, 0) / firstHalf.length : 0;
+          const secondHalfAvg = secondHalf.length > 0 ? secondHalf.reduce((acc, val) => acc + val, 0) / secondHalf.length : 0;
+
+          const growth = firstHalfAvg > 0 ? ((secondHalfAvg - firstHalfAvg) / firstHalfAvg) * 100 : 0;
+
+          return {
+            average: Math.round(average),
+            max: max,
+            growth: Math.round(growth * 100) / 100
+          };
+        }
+        break;
+
+      case 'pets_by_breed':
+        // Для питомцев по породам используем данные из datasets[0].data
+        if (data.datasets && data.datasets[0] && data.datasets[0].data) {
+          const petData = data.datasets[0].data;
+          const sum = petData.reduce((acc, val) => acc + val, 0);
+          const average = petData.length > 0 ? sum / petData.length : 0;
+          const max = petData.length > 0 ? Math.max(...petData) : 0;
+
+          const midPoint = Math.floor(petData.length / 2);
+          const firstHalf = petData.slice(0, midPoint);
+          const secondHalf = petData.slice(midPoint);
+
+          const firstHalfAvg = firstHalf.length > 0 ? firstHalf.reduce((acc, val) => acc + val, 0) / firstHalf.length : 0;
+          const secondHalfAvg = secondHalf.length > 0 ? secondHalf.reduce((acc, val) => acc + val, 0) / secondHalf.length : 0;
+
+          const growth = firstHalfAvg > 0 ? ((secondHalfAvg - firstHalfAvg) / firstHalfAvg) * 100 : 0;
+
+          return {
+            average: Math.round(average),
+            max: max,
+            growth: Math.round(growth * 100) / 100
+          };
+        }
+        break;
+
+      default:
+        return { average: null, max: null, growth: null };
+    }
+
+    return { average: null, max: null, growth: null };
   };
 
   const renderChart = () => {
@@ -303,24 +405,64 @@ const DrillDownModal = ({
             <div className="bg-gray-50 rounded-lg p-4">
               <h4 className="text-sm font-medium text-gray-900 mb-2">Дополнительная информация</h4>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                <div>
-                  <span className="text-gray-600">Всего записей:</span>
-                  <span className="ml-2 font-medium">{data.total || 'N/A'}</span>
-                </div>
-                <div>
-                  <span className="text-gray-600">Среднее значение:</span>
-                  <span className="ml-2 font-medium">{data.average || 'N/A'}</span>
-                </div>
-                <div>
-                  <span className="text-gray-600">Максимум:</span>
-                  <span className="ml-2 font-medium">{data.max || 'N/A'}</span>
-                </div>
-                <div>
-                  <span className="text-gray-600">Рост:</span>
-                  <span className={`ml-2 font-medium ${data.growth >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                    {data.growth ? `${data.growth > 0 ? '+' : ''}${data.growth}%` : 'N/A'}
-                  </span>
-                </div>
+                {type === 'user_activity' ? (
+                  <>
+                    <div>
+                      <span className="text-gray-600">Всего пользователей:</span>
+                      <span className="ml-2 font-medium">{data.summary?.total_users || 'N/A'}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-600">Активных пользователей:</span>
+                      <span className="ml-2 font-medium">{data.summary?.active_users || 'N/A'}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-600">Администраторов:</span>
+                      <span className="ml-2 font-medium">{data.summary?.staff_users || 'N/A'}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-600">Супер-пользователей:</span>
+                      <span className="ml-2 font-medium">{data.summary?.superuser_count || 'N/A'}</span>
+                    </div>
+                  </>
+                ) : (
+                  (() => {
+                    const metrics = calculateMetrics(data, type);
+                    return (
+                      <>
+                        <div>
+                          <span className="text-gray-600">Всего записей:</span>
+                          <span className="ml-2 font-medium">{data.total || 'N/A'}</span>
+                        </div>
+                        <div>
+                          <span className="text-gray-600">Среднее значение:</span>
+                          <span className="ml-2 font-medium">
+                            {metrics.average !== null ? (
+                              type === 'sales_by_products' || type === 'sales_by_category' ?
+                                `${metrics.average.toLocaleString()} ₽` :
+                                metrics.average
+                            ) : 'N/A'}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-gray-600">Максимум:</span>
+                          <span className="ml-2 font-medium">
+                            {metrics.max !== null ? (
+                              type === 'sales_by_products' || type === 'sales_by_category' ?
+                                `${metrics.max.toLocaleString()} ₽` :
+                                metrics.max
+                            ) : 'N/A'}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-gray-600">Рост:</span>
+                          <span className={`ml-2 font-medium ${metrics.growth >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                            {metrics.growth !== null ? `${metrics.growth > 0 ? '+' : ''}${metrics.growth}%` : 'N/A'}
+                          </span>
+                        </div>
+                      </>
+                    );
+                  })()
+                )}
               </div>
             </div>
           </div>
