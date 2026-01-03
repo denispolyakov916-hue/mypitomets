@@ -78,36 +78,36 @@ export const adminAPI = {
 
   // Аналитика
   analytics: {
-    dashboardOverview: () => adminApi.get('analytics/dashboard_overview/'),
-    chartsData: (period = 30) => adminApi.get(`analytics/charts_data/?period=${period}`),
-    topProducts: (limit = 10) => adminApi.get(`analytics/top_products/?limit=${limit}`),
-    recentOrders: (limit = 10) => adminApi.get(`analytics/recent_orders/?limit=${limit}`),
+    dashboardOverview: () => adminApi.get('admin/analytics/dashboard_overview/'),
+    chartsData: (period = 30) => adminApi.get(`admin/analytics/charts_data/?period=${period}`),
+    topProducts: (limit = 10) => adminApi.get(`admin/analytics/top_products/?limit=${limit}`),
+    recentOrders: (limit = 10) => adminApi.get(`admin/analytics/recent_orders/?limit=${limit}`),
     // Расширенная аналитика (используем правильные имена методов)
-    sales_trends: (params) => adminApi.get('analytics/sales_trends/', { params }),
-    users_trends: (params) => adminApi.get('analytics/users_trends/', { params }),
-    pets_distribution: () => adminApi.get('analytics/pets_distribution/'),
-    orders_trends: (params) => adminApi.get('analytics/orders_trends/', { params }),
+    sales_trends: (params) => adminApi.get('admin/analytics/sales_trends/', { params }),
+    users_trends: (params) => adminApi.get('admin/analytics/users_trends/', { params }),
+    pets_distribution: () => adminApi.get('admin/analytics/pets_distribution/'),
+    orders_trends: (params) => adminApi.get('admin/analytics/orders_trends/', { params }),
     // Drill-down методы (используем правильные имена методов)
-    sales_by_products: (params) => adminApi.get('analytics/sales_by_products/', { params }),
-    sales_by_category: (params) => adminApi.get('analytics/sales_by_category/', { params }),
-    user_activity_detail: (params) => adminApi.get('analytics/user_activity_detail/', { params }),
+    sales_by_products: (params) => adminApi.get('admin/analytics/sales_by_products/', { params }),
+    sales_by_category: (params) => adminApi.get('admin/analytics/sales_by_category/', { params }),
+    user_activity_detail: (params) => adminApi.get('admin/analytics/user_activity_detail/', { params }),
     // Обратная совместимость (старые имена методов)
-    salesTrends: (params) => adminApi.get('analytics/sales_trends/', { params }),
-    usersTrends: (params) => adminApi.get('analytics/users_trends/', { params }),
-    petsDistribution: () => adminApi.get('analytics/pets_distribution/'),
-    ordersTrends: (params) => adminApi.get('analytics/orders_trends/', { params }),
-    salesByProducts: (params) => adminApi.get('analytics/sales_by_products/', { params }),
-    salesByCategory: (params) => adminApi.get('analytics/sales_by_category/', { params }),
-    userActivityDetail: (params) => adminApi.get('analytics/user_activity_detail/', { params }),
+    salesTrends: (params) => adminApi.get('admin/analytics/sales_trends/', { params }),
+    usersTrends: (params) => adminApi.get('admin/analytics/users_trends/', { params }),
+    petsDistribution: () => adminApi.get('admin/analytics/pets_distribution/'),
+    ordersTrends: (params) => adminApi.get('admin/analytics/orders_trends/', { params }),
+    salesByProducts: (params) => adminApi.get('admin/analytics/sales_by_products/', { params }),
+    salesByCategory: (params) => adminApi.get('admin/analytics/sales_by_category/', { params }),
+    userActivityDetail: (params) => adminApi.get('admin/analytics/user_activity_detail/', { params }),
   },
 
   // Управление данными
   management: {
-    bulkUpdateProducts: (data) => adminApi.post('management/bulk_update_products/', data),
-    bulkUpdateOrders: (data) => adminApi.post('management/bulk_update_orders/', data),
-    bulkUpdateUsers: (data) => adminApi.post('management/bulk_update_users/', data),
-    bulkUpdateCourses: (data) => adminApi.post('management/bulk_update_courses/', data),
-    exportData: (params) => adminApi.get('management/export_data/', { 
+    bulkUpdateProducts: (data) => adminApi.post('admin/management/bulk_update_products/', data),
+    bulkUpdateOrders: (data) => adminApi.post('admin/management/bulk_update_orders/', data),
+    bulkUpdateUsers: (data) => adminApi.post('admin/management/bulk_update_users/', data),
+    bulkUpdateCourses: (data) => adminApi.post('admin/management/bulk_update_courses/', data),
+    exportData: (params) => adminApi.get('admin/management/export_data/', {
       params,
       responseType: 'blob' // Для скачивания файлов
     }),
