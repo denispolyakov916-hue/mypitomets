@@ -21,16 +21,10 @@ import { useCartStore } from '../store/cartStore'
 import OrdersDropdown from './OrdersDropdown'
 
 const MenuIcon = () => (
-  <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-    <defs>
-      <linearGradient id="menuGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stopColor="#8B5CF6" />
-        <stop offset="100%" stopColor="#F97316" />
-      </linearGradient>
-    </defs>
-    <line x1="3" y1="12" x2="21" y2="12" stroke="url(#menuGradient)" strokeWidth="2" strokeLinecap="round"></line>
-    <line x1="3" y1="6" x2="21" y2="6" stroke="url(#menuGradient)" strokeWidth="2" strokeLinecap="round"></line>
-    <line x1="3" y1="18" x2="21" y2="18" stroke="url(#menuGradient)" strokeWidth="2" strokeLinecap="round"></line>
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <line x1="3" y1="12" x2="21" y2="12"></line>
+    <line x1="3" y1="6" x2="21" y2="6"></line>
+    <line x1="3" y1="18" x2="21" y2="18"></line>
   </svg>
 );
 
@@ -53,8 +47,9 @@ const services = [
  * Компонент Navbar с адаптивным дизайном
  *
  * Функции:
- * - Десктоп: горизонтальное меню
- * - Мобайл: бургер-меню с выезжающей панелью
+ * - Десктоп (xl+): полное горизонтальное меню
+ * - Планшеты/Мобайл (md+): бургер-меню с выезжающей панелью
+ * - Мобайл (<md): бургер-меню с выезжающей панелью
  * - Подсветка активных ссылок
  * - Бейдж корзины с количеством товаров
  */
@@ -106,7 +101,7 @@ function Navbar() {
           </div>
           
           {/* Десктопная навигация */}
-          <nav className="hidden lg:flex items-center gap-4 xl:gap-6 text-sm">
+          <nav className="hidden xl:flex items-center gap-4 xl:gap-6 text-sm">
             <button
               onClick={() => navigate('/')}
               className={`relative transition-all duration-300 whitespace-nowrap ${
@@ -207,9 +202,9 @@ function Navbar() {
               </>
             )}
           </nav>
-          
+
           {/* Правая сторона - Авторизация и корзина */}
-          <div className="hidden lg:flex items-center gap-3">
+          <div className="hidden xl:flex items-center gap-3">
             {/* Иконка корзины */}
             {isAuthenticated && (
               <>
@@ -260,13 +255,13 @@ function Navbar() {
           </div>
           
           {/* Кнопка мобильного меню */}
-          <div className="lg:hidden flex items-center gap-3">
+          <div className="flex xl:hidden items-center justify-center gap-2">
             {/* Мобильная корзина */}
             {isAuthenticated && (
               <>
                 <Link
                   to="/cart"
-                  className="relative p-2 text-white/80"
+                  className="relative p-2 text-white/80 hover:text-white transition-colors flex-shrink-0"
                 >
                   <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
@@ -282,7 +277,7 @@ function Navbar() {
 
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="p-2 text-white"
+              className="p-2 text-white flex-shrink-0"
             >
               {mobileMenuOpen ? <XIcon /> : <MenuIcon />}
             </button>
@@ -292,7 +287,7 @@ function Navbar() {
 
         {/* Mobile Menu */}
         {mobileMenuOpen && (
-          <div className="lg:hidden py-4 border-t border-white/20 bg-purple-700/95 backdrop-blur-sm">
+          <div className="xl:hidden py-4 border-t border-white/20 bg-purple-700/95 backdrop-blur-sm">
             <nav className="flex flex-col gap-3">
               <button
                 onClick={() => {
