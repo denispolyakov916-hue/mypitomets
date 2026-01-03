@@ -34,6 +34,20 @@ const LineChart = ({
   tension = 0.4,
   className = ''
 }) => {
+  // Проверка валидности данных
+  if (!data || !data.labels || !data.datasets || !Array.isArray(data.labels) || !Array.isArray(data.datasets)) {
+    return (
+      <div className={`bg-white rounded-lg border border-gray-200 p-6 ${className}`}>
+        <div style={{ height: `${height}px` }} className="flex items-center justify-center">
+          <div className="text-center text-gray-500">
+            <div className="text-4xl mb-2">📈</div>
+            <p>Загрузка данных графика...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // Конфигурация графика
   const options = {
     responsive: true,
