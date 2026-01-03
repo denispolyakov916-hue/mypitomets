@@ -31,6 +31,8 @@ function Register() {
   // Состояние формы регистрации
   const [formData, setFormData] = useState({
     email: '',
+    firstName: '',
+    lastName: '',
     password: '',
     passwordConfirm: ''
   })
@@ -51,28 +53,38 @@ function Register() {
    */
   const validateForm = () => {
     const errors = {}
-    
+
     // Валидация email
     if (!formData.email.trim()) {
       errors.email = 'Введите email'
     } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
       errors.email = 'Неверный формат email'
     }
-    
+
+    // Валидация имени (опционально, но если заполнено - проверяем длину)
+    if (formData.firstName && formData.firstName.length < 2) {
+      errors.firstName = 'Имя должно содержать минимум 2 символа'
+    }
+
+    // Валидация фамилии (опционально, но если заполнено - проверяем длину)
+    if (formData.lastName && formData.lastName.length < 2) {
+      errors.lastName = 'Фамилия должна содержать минимум 2 символа'
+    }
+
     // Валидация пароля
     if (!formData.password) {
       errors.password = 'Введите пароль'
     } else if (formData.password.length < 6) {
       errors.password = 'Пароль должен быть не менее 6 символов'
     }
-    
+
     // Валидация подтверждения пароля
     if (!formData.passwordConfirm) {
       errors.passwordConfirm = 'Подтвердите пароль'
     } else if (formData.password !== formData.passwordConfirm) {
       errors.passwordConfirm = 'Пароли не совпадают'
     }
-    
+
     setValidationErrors(errors)
     return Object.keys(errors).length === 0
   }
@@ -100,9 +112,11 @@ function Register() {
     
     try {
       const response = await register(
-        formData.email, 
-        formData.password, 
-        formData.passwordConfirm
+        formData.email,
+        formData.password,
+        formData.passwordConfirm,
+        formData.firstName,
+        formData.lastName
       )
       
       // Регистрация успешна - показываем форму активации
@@ -422,11 +436,79 @@ function Register() {
                 )}
               </motion.div>
 
+              {/* Поле имени */}
+              <motion.div
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.5, delay: 0.5 }}
+              >
+                <label htmlFor="firstName" className="block text-sm font-semibold text-white/90 mb-2">
+                  Имя <span className="text-white/60">(опционально)</span>
+                </label>
+                <input
+                  type="text"
+                  id="firstName"
+                  name="firstName"
+                  value={formData.firstName}
+                  onChange={handleChange}
+                  className={`w-full px-4 py-3 border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent transition-all duration-200 text-white placeholder-white/60 bg-white/10 backdrop-blur-sm ${
+                    validationErrors.firstName ? 'border-red-400 bg-red-500/20' : 'border-white/30 hover:border-orange-400/60'
+                  }`}
+                  placeholder="Ваше имя"
+                  autoComplete="given-name"
+                  disabled={isLoading}
+                />
+                {validationErrors.firstName && (
+                  <motion.p
+                    className="text-sm text-red-500 mt-1"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ duration: 0.3 }}
+                  >
+                    {validationErrors.firstName}
+                  </motion.p>
+                )}
+              </motion.div>
+
+              {/* Поле фамилии */}
+              <motion.div
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.5, delay: 0.55 }}
+              >
+                <label htmlFor="lastName" className="block text-sm font-semibold text-white/90 mb-2">
+                  Фамилия <span className="text-white/60">(опционально)</span>
+                </label>
+                <input
+                  type="text"
+                  id="lastName"
+                  name="lastName"
+                  value={formData.lastName}
+                  onChange={handleChange}
+                  className={`w-full px-4 py-3 border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent transition-all duration-200 text-white placeholder-white/60 bg-white/10 backdrop-blur-sm ${
+                    validationErrors.lastName ? 'border-red-400 bg-red-500/20' : 'border-white/30 hover:border-orange-400/60'
+                  }`}
+                  placeholder="Ваша фамилия"
+                  autoComplete="family-name"
+                  disabled={isLoading}
+                />
+                {validationErrors.lastName && (
+                  <motion.p
+                    className="text-sm text-red-500 mt-1"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ duration: 0.3 }}
+                  >
+                    {validationErrors.lastName}
+                  </motion.p>
+                )}
+              </motion.div>
+
               {/* Поле пароля */}
               <motion.div
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.5, delay: 0.7 }}
+                transition={{ duration: 0.5, delay: 0.8 }}
               >
                 <label htmlFor="password" className="block text-sm font-semibold text-white/90 mb-2">
                   Пароль
@@ -469,7 +551,7 @@ function Register() {
               <motion.div
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.5, delay: 0.8 }}
+                transition={{ duration: 0.5, delay: 0.9 }}
               >
                 <label htmlFor="passwordConfirm" className="block text-sm font-semibold text-white/90 mb-2">
                   Подтвердите пароль
@@ -517,7 +599,7 @@ function Register() {
                 whileTap={{ scale: 0.98 }}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 0.9 }}
+                transition={{ duration: 0.5, delay: 1.0 }}
               >
                 {/* Button shine effect */}
                 <motion.div

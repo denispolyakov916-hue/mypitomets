@@ -22,37 +22,55 @@ import re
 class UserRegistrationSerializer(serializers.Serializer):
     """
     Сериализатор для запросов регистрации пользователя.
-    
+
     Валидирует данные регистрации, включая формат email, надёжность пароля
     и совпадение подтверждения пароля.
-    
+
     Поля:
         email (str): Email адрес пользователя - должен быть валидным форматом email
+        first_name (str): Имя пользователя (опционально)
+        last_name (str): Фамилия пользователя (опционально)
         password (str): Пароль пользователя - минимум 6 символов
         password_confirm (str): Подтверждение пароля - должно совпадать с паролем
-    
+
     Правила валидации:
         - Email должен быть валидного формата (содержит @ и домен)
         - Пароль минимум 6 символов
         - password_confirm должен точно совпадать с password
-    
+
     Пример использования:
-        >>> data = {'email': 'user@example.com', 'password': 'secret123', 'password_confirm': 'secret123'}
+        >>> data = {'email': 'user@example.com', 'first_name': 'Иван', 'last_name': 'Иванов', 'password': 'secret123', 'password_confirm': 'secret123'}
         >>> serializer = UserRegistrationSerializer(data=data)
         >>> if serializer.is_valid():
         ...     validated_data = serializer.validated_data
-    
+
     Заметки по безопасности:
         - Поля паролей помечены как write-only (никогда не сериализуются в ответах)
         - Пароль не хранится в открытом виде (хеширование обрабатывается в data_store)
     """
-    
+
     # Поле email со встроенной валидацией email
     email = serializers.EmailField(
         required=True,
         help_text="Email адрес для аккаунта пользователя"
     )
-    
+
+    # Поле имени (опционально)
+    first_name = serializers.CharField(
+        required=False,
+        max_length=150,
+        allow_blank=True,
+        help_text="Имя пользователя"
+    )
+
+    # Поле фамилии (опционально)
+    last_name = serializers.CharField(
+        required=False,
+        max_length=150,
+        allow_blank=True,
+        help_text="Фамилия пользователя"
+    )
+
     # Поле пароля - write_only гарантирует, что оно никогда не сериализуется в ответах
     password = serializers.CharField(
         required=True,
@@ -61,7 +79,7 @@ class UserRegistrationSerializer(serializers.Serializer):
         style={'input_type': 'password'},
         help_text="Пароль (минимум 6 символов)"
     )
-    
+
     # Подтверждение пароля для формы регистрации
     password_confirm = serializers.CharField(
         required=True,

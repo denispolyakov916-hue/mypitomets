@@ -58,11 +58,13 @@ class RegisterView(APIView):
             
             email = serializer.validated_data['email']
             password = serializer.validated_data['password']
-            
+            first_name = serializer.validated_data.get('first_name', '')
+            last_name = serializer.validated_data.get('last_name', '')
+
             print(f"[REGISTRATION] Начало регистрации для email: {email}")
-            
+
             # Регистрация через сервис
-            user_data = UserService.registration(email, password)
+            user_data = UserService.registration(email, password, first_name, last_name)
             
             # При регистрации токены не выдаются - пользователь должен сначала активировать аккаунт
             # Токены будут выданы только после активации через login

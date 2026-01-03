@@ -23,17 +23,19 @@ class UserService:
     """Сервис для работы с пользователями."""
     
     @staticmethod
-    def registration(email, password):
+    def registration(email, password, first_name=None, last_name=None):
         """
         Регистрация нового пользователя.
-        
+
         Аргументы:
             email: Email адрес пользователя
             password: Пароль пользователя
-            
+            first_name: Имя пользователя (опционально)
+            last_name: Фамилия пользователя (опционально)
+
         Возвращает:
             dict: Словарь с токенами и данными пользователя
-            
+
         Исключения:
             ApiError: Если пользователь уже существует
         """
@@ -42,15 +44,17 @@ class UserService:
             raise ApiError.bad_request(
                 f'Пользователь с почтовым адресом {email} уже существует'
             )
-        
+
         # Создание пользователя
         activation_link = str(uuid.uuid4())
         # Генерация 6-значного кода активации
         activation_code = str(random.randint(100000, 999999))
-        
+
         user = User.objects.create_user(
             email=email,
             password=password,
+            first_name=first_name or '',
+            last_name=last_name or '',
             activation_link=activation_link,
             activation_code=activation_code,
             is_activated=False  # По умолчанию не активирован
@@ -214,17 +218,17 @@ class UserService:
             logger.warning(f"[UserService.login] Пользователь не найден. Похожие email в БД: {[u.email for u in similar_users]}")
             raise ApiError.bad_request('Пользователь с таким email не найден')
         
-        # Проверка пароля
-        if not user.check_password(password):
-            raise ApiError.bad_request('Неверный пароль')
-        
         # Проверка активности пользователя
         if not user.is_active:
             raise ApiError.bad_request('Аккаунт пользователя неактивен')
-        
-        # Проверка активации аккаунта
+
+        # Проверка активации аккаунта (ставим ПЕРЕД проверкой пароля)
         if not user.is_activated:
             raise ApiError.bad_request('Аккаунт не активирован. Проверьте email для активации.')
+
+        # Проверка пароля
+        if not user.check_password(password):
+            raise ApiError.bad_request('Неверный пароль')
         
         # Генерация токенов
         tokens = TokenService.generate_tokens(user)

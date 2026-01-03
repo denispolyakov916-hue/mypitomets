@@ -95,10 +95,10 @@ export const useAuthStore = create((set, get) => ({
       return true
     } catch (error) {
       // Обработка ошибок валидации
-      const errorMessage = error.errors 
+      const errorMessage = error.errors && error.errors.length > 0
         ? Object.values(error.errors).flat().join(', ')
         : error.message || 'Ошибка входа'
-      
+
       set({
         isLoading: false,
         error: errorMessage
@@ -118,11 +118,11 @@ export const useAuthStore = create((set, get) => ({
    * @param {string} passwordConfirm - Подтверждение пароля
    * @returns {Promise<Object>} Результат регистрации с сообщением
    */
-  register: async (email, password, passwordConfirm) => {
+  register: async (email, password, passwordConfirm, firstName = '', lastName = '') => {
     set({ isLoading: true, error: null })
-    
+
     try {
-      const response = await authApi.register(email, password, passwordConfirm)
+      const response = await authApi.register(email, password, passwordConfirm, firstName, lastName)
       
       // НЕ устанавливаем isAuthenticated - токены не выдаются
       set({

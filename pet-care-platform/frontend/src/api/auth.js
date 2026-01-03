@@ -14,23 +14,27 @@ import api from './client'
 
 /**
  * Регистрация нового аккаунта
- * 
+ *
  * Теперь НЕ возвращает токены - требуется активация email.
- * 
+ *
  * @param {string} email - Email адрес пользователя
  * @param {string} password - Пароль (минимум 6 символов)
  * @param {string} passwordConfirm - Подтверждение пароля
+ * @param {string} firstName - Имя пользователя (опционально)
+ * @param {string} lastName - Фамилия пользователя (опционально)
  * @returns {Promise<Object>} Сообщение об успешной регистрации
  * @throws {Object} Ошибка с сообщением и ошибками валидации
- * 
+ *
  * @example
- *   const response = await register('user@example.com', 'secret123', 'secret123')
+ *   const response = await register('user@example.com', 'secret123', 'secret123', 'Иван', 'Иванов')
  */
-export const register = async (email, password, passwordConfirm) => {
+export const register = async (email, password, passwordConfirm, firstName = '', lastName = '') => {
   const response = await api.post('/auth/registration/', {
     email,
     password,
-    password_confirm: passwordConfirm
+    password_confirm: passwordConfirm,
+    first_name: firstName,
+    last_name: lastName
   })
   
   // Токены больше НЕ возвращаются при регистрации
