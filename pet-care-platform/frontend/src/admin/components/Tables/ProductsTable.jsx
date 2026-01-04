@@ -307,6 +307,24 @@ const ProductsTable = () => {
     }
   ], []);
 
+  // Обработчик сброса фильтров
+  const handleResetFilters = () => {
+    setFilters({
+      search: '',
+      category: '',
+      is_active: '',
+      in_stock: '',
+      price_min: '',
+      price_max: ''
+    });
+  };
+
+  // Обработчик показа настроек
+  const handleShowSettings = () => {
+    // В будущем можно добавить модальное окно с настройками отображения колонок
+    alert('Настройки отображения таблиц будут доступны в следующих версиях');
+  };
+
   return (
     <DataTable
       title="Управление товарами"
@@ -323,6 +341,8 @@ const ProductsTable = () => {
       onPageChange={handlePageChange}
       onBulkAction={handleBulkAction}
       emptyMessage="Товары не найдены"
+      onResetFilters={handleResetFilters}
+      onShowSettings={handleShowSettings}
     />
   );
 };

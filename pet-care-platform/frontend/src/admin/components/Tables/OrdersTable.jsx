@@ -301,6 +301,25 @@ const OrdersTable = () => {
     }
   ], []);
 
+  // Обработчик сброса фильтров
+  const handleResetFilters = () => {
+    setFilters({
+      search: '',
+      status: '',
+      payment_status: '',
+      total_min: '',
+      total_max: '',
+      created_at_after: '',
+      created_at_before: ''
+    });
+  };
+
+  // Обработчик показа настроек
+  const handleShowSettings = () => {
+    // В будущем можно добавить модальное окно с настройками отображения колонок
+    alert('Настройки отображения таблиц будут доступны в следующих версиях');
+  };
+
   return (
     <DataTable
       title="Управление заказами"
@@ -317,6 +336,8 @@ const OrdersTable = () => {
       onPageChange={handlePageChange}
       onBulkAction={handleBulkAction}
       emptyMessage="Заказы не найдены"
+      onResetFilters={handleResetFilters}
+      onShowSettings={handleShowSettings}
     />
   );
 };

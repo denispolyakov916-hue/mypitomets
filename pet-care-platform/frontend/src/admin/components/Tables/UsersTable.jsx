@@ -261,6 +261,23 @@ const UsersTable = () => {
     setSelectedUser(null);
   };
 
+  // Обработчик сброса фильтров
+  const handleResetFilters = () => {
+    setFilters({
+      search: '',
+      is_active: '',
+      is_staff: '',
+      created_at_after: '',
+      created_at_before: ''
+    });
+  };
+
+  // Обработчик показа настроек
+  const handleShowSettings = () => {
+    // В будущем можно добавить модальное окно с настройками отображения колонок
+    alert('Настройки отображения таблиц будут доступны в следующих версиях');
+  };
+
   return (
     <>
       <DataTable
@@ -281,6 +298,8 @@ const UsersTable = () => {
         onAction={handleAction}
         onBulkAction={handleBulkAction}
         emptyMessage="Пользователи не найдены"
+        onResetFilters={handleResetFilters}
+        onShowSettings={handleShowSettings}
       />
 
       {/* Модальное окно формы */}

@@ -27,7 +27,9 @@ const DataTable = ({
   onAction, // Новое свойство для обработки действий
   onCreate, // Новое свойство для создания
   createButtonText = 'Создать',
-  emptyMessage = 'Нет данных для отображения'
+  emptyMessage = 'Нет данных для отображения',
+  onResetFilters, // Новое свойство для сброса фильтров
+  onShowSettings // Новое свойство для отображения настроек
 }) => {
   const [selectedRows, setSelectedRows] = useState([]);
   const [sortConfig, setSortConfig] = useState({ key: null, direction: null });
@@ -175,6 +177,8 @@ const DataTable = ({
         onExport={() => setExportModalOpen(true)}
         onCreate={onCreate}
         createButtonText={createButtonText}
+        onResetFilters={onResetFilters}
+        onShowSettings={onShowSettings}
       />
 
       {/* Фильтры */}

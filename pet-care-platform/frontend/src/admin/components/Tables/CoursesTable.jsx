@@ -351,6 +351,26 @@ const CoursesTable = () => {
     }
   ], []);
 
+  // Обработчик сброса фильтров
+  const handleResetFilters = () => {
+    setFilters({
+      search: '',
+      pet_type: '',
+      category: '',
+      level: '',
+      is_active: '',
+      is_free: '',
+      price_min: '',
+      price_max: ''
+    });
+  };
+
+  // Обработчик показа настроек
+  const handleShowSettings = () => {
+    // В будущем можно добавить модальное окно с настройками отображения колонок
+    alert('Настройки отображения таблиц будут доступны в следующих версиях');
+  };
+
   return (
     <>
     <DataTable
@@ -372,6 +392,8 @@ const CoursesTable = () => {
       onCreate={handleCreate}
       createButtonText="Создать курс"
       emptyMessage="Курсы не найдены"
+      onResetFilters={handleResetFilters}
+      onShowSettings={handleShowSettings}
     />
 
     </>

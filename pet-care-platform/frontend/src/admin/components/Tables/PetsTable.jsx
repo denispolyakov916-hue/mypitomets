@@ -323,6 +323,25 @@ const PetsTable = () => {
   // Пока без массовых действий для питомцев
   const bulkActions = useMemo(() => [], []);
 
+  // Обработчик сброса фильтров
+  const handleResetFilters = () => {
+    setFilters({
+      search: '',
+      species: '',
+      breed: '',
+      gender: '',
+      owner__email: '',
+      created_at_after: '',
+      created_at_before: ''
+    });
+  };
+
+  // Обработчик показа настроек
+  const handleShowSettings = () => {
+    // В будущем можно добавить модальное окно с настройками отображения колонок
+    alert('Настройки отображения таблиц будут доступны в следующих версиях');
+  };
+
   return (
     <DataTable
       title="Управление питомцами"
@@ -339,6 +358,8 @@ const PetsTable = () => {
       onPageChange={handlePageChange}
       onBulkAction={handleBulkAction}
       emptyMessage="Питомцы не найдены"
+      onResetFilters={handleResetFilters}
+      onShowSettings={handleShowSettings}
     />
   );
 };
