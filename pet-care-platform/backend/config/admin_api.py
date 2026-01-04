@@ -252,7 +252,7 @@ class AdminAnalyticsViewSet(viewsets.ViewSet, DashboardCacheMixin):
                     'label': 'Продажи (₽)',
                     'data': totals,
                     'borderColor': 'rgb(59, 130, 246)',
-                    'backgroundColor': 'rgba(59, 130, 246, 0.1)',
+                    'backgroundColor': 'rgba(59, 130, 246, 0.5)',
                     'yAxisID': 'y'
                 },
                 {

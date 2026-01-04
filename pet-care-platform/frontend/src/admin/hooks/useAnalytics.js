@@ -9,35 +9,32 @@ export const useAnalytics = (autoRefresh = false, refreshInterval = 300000) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [lastUpdate, setLastUpdate] = useState(null);
+  const [selectedPeriod, setSelectedPeriod] = useState('30d');
 
-  // Формирование данных продаж из статистики
-  const formatSalesData = useCallback((summary) => {
-    // Формируем данные на основе доступной статистики
-    const revenueToday = summary?.revenue_today || 0;
-    const ordersToday = summary?.orders_today || 0;
-    
+  // Формирование данных продаж из трендов
+  const formatSalesData = useCallback((salesTrendsData) => {
+    console.log('[Analytics] Formatting sales data:', salesTrendsData);
+
+    // Используем реальные данные трендов из API
+    if (salesTrendsData && salesTrendsData.labels && salesTrendsData.datasets) {
+      console.log('[Analytics] Using real sales trends data');
+      return salesTrendsData;
+    }
+
+    // Fallback на пустые данные, если API вернул null
+    console.log('[Analytics] Using fallback empty data');
     return {
-      labels: ['Сегодня', 'Неделя (прогноз)', 'Месяц (прогноз)', 'Год (прогноз)'],
+      labels: [],
       datasets: [
         {
           label: 'Выручка (₽)',
-          data: [
-            revenueToday,
-            revenueToday * 7,
-            revenueToday * 30,
-            revenueToday * 365
-          ],
+          data: [],
           borderColor: 'rgb(59, 130, 246)',
           backgroundColor: 'rgba(59, 130, 246, 0.1)',
         },
         {
           label: 'Заказы',
-          data: [
-            ordersToday,
-            ordersToday * 7,
-            ordersToday * 30,
-            ordersToday * 365
-          ],
+          data: [],
           borderColor: 'rgb(16, 185, 129)',
           backgroundColor: 'rgba(16, 185, 129, 0.1)',
         }
@@ -140,22 +137,26 @@ export const useAnalytics = (autoRefresh = false, refreshInterval = 300000) => {
 
       console.log('[Analytics] Loading data from available APIs...');
 
-      // Используем доступные API эндпоинты
-      const [summaryResponse, usersResponse, petsResponse, ordersResponse] = await Promise.allSettled([
-        adminAPI.stats.summary(),
+      // Используем правильные API эндпоинты
+      const [salesTrendsResponse, usersResponse, petsResponse, ordersResponse] = await Promise.allSettled([
+        adminAPI.analytics.sales_trends({ period: selectedPeriod }),
         adminAPI.users.list({ page_size: 100 }), // Берем больше для анализа
         adminAPI.pets.list({ page_size: 100 }),
         adminAPI.orders.list({ page_size: 100 })
       ]);
 
-      const summary = summaryResponse.status === 'fulfilled' ? summaryResponse.value.data : null;
+      const salesTrends = salesTrendsResponse.status === 'fulfilled' ? salesTrendsResponse.value.data : null;
       const users = usersResponse.status === 'fulfilled' ? usersResponse.value.data?.results || [] : [];
       const pets = petsResponse.status === 'fulfilled' ? petsResponse.value.data?.results || [] : [];
       const orders = ordersResponse.status === 'fulfilled' ? ordersResponse.value.data?.results || [] : [];
 
       // Формируем данные для графиков только если есть данные
-      if (summary) {
-        setSalesData(formatSalesData(summary.summary));
+      if (salesTrends) {
+        console.log('[Analytics] Sales trends data received:', salesTrends);
+        setSalesData(formatSalesData(salesTrends));
+      } else {
+        console.log('[Analytics] No sales trends data received');
+        setSalesData(formatSalesData(null)); // Устанавливаем пустые данные
       }
 
       if (users.length > 0) {
@@ -174,7 +175,7 @@ export const useAnalytics = (autoRefresh = false, refreshInterval = 300000) => {
       console.log('[Analytics] Data loaded from API');
 
       // Если все запросы провалились - показываем ошибку
-      if (summaryResponse.status === 'rejected' &&
+      if (salesTrendsResponse.status === 'rejected' &&
           usersResponse.status === 'rejected' &&
           petsResponse.status === 'rejected' &&
           ordersResponse.status === 'rejected') {
@@ -187,7 +188,7 @@ export const useAnalytics = (autoRefresh = false, refreshInterval = 300000) => {
     } finally {
       setLoading(false);
     }
-  }, [formatSalesData, formatUsersData, formatPetsData, formatOrdersData]);
+  }, [formatSalesData, formatUsersData, formatPetsData, formatOrdersData, selectedPeriod]);
 
   // Автообновление
   useEffect(() => {
@@ -210,6 +211,7 @@ export const useAnalytics = (autoRefresh = false, refreshInterval = 300000) => {
   // Обновление периода (перезагружаем данные)
   const updatePeriod = useCallback(async (period) => {
     console.log('[Analytics] Period update requested:', period);
+    setSelectedPeriod(period); // Сохраняем новый период
     await loadAllData();
   }, [loadAllData]);
 
