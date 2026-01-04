@@ -168,8 +168,8 @@ const AdminRoute = ({ children }) => {
 
           {/* Кнопка выхода */}
           <button
-            onClick={() => {
-              useAuthStore.getState().logout();
+            onClick={async () => {
+              await useAuthStore.getState().logout();
               window.location.href = '/admin-panel';
             }}
             className="mt-4 text-red-300 hover:text-white text-sm transition-colors inline-flex items-center gap-1"
