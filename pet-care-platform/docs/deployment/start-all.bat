@@ -110,9 +110,9 @@ echo cd /d "%~dp0backend" >> "%TEMP%\pitomets_backend_auto.bat"
 echo call venv\Scripts\activate.bat >> "%TEMP%\pitomets_backend_auto.bat"
 echo echo. >> "%TEMP%\pitomets_backend_auto.bat"
 echo echo ══════════════════════════════════════════════════════════════════ >> "%TEMP%\pitomets_backend_auto.bat"
-echo echo   БЕКЕНД ПИТОМЕЦ+ запущен на http://192.168.1.11:8077 >> "%TEMP%\pitomets_backend_auto.bat"
-echo echo   API: http://192.168.1.11:8077/api/ >> "%TEMP%\pitomets_backend_auto.bat"
-echo echo   Админка: http://192.168.1.11:8077/admin/ >> "%TEMP%\pitomets_backend_auto.bat"
+echo echo   БЕКЕНД ПИТОМЕЦ+ запущен на http://localhost:8077 >> "%TEMP%\pitomets_backend_auto.bat"
+echo echo   API: http://localhost:8077/api/ >> "%TEMP%\pitomets_backend_auto.bat"
+echo echo   Админка: http://localhost:8077/admin/ >> "%TEMP%\pitomets_backend_auto.bat"
 echo echo ══════════════════════════════════════════════════════════════════ >> "%TEMP%\pitomets_backend_auto.bat"
 echo echo. >> "%TEMP%\pitomets_backend_auto.bat"
 echo python manage.py runserver 0.0.0.0:8077 >> "%TEMP%\pitomets_backend_auto.bat"
@@ -123,7 +123,7 @@ echo @echo off > "%TEMP%\pitomets_frontend_auto.bat"
 echo chcp 65001 ^>nul 2^>^&1 >> "%TEMP%\pitomets_frontend_auto.bat"
 echo title ПИТОМЕЦ+ - Фронтенд (порт 5199) >> "%TEMP%\pitomets_frontend_auto.bat"
 echo cd /d "%~dp0frontend" >> "%TEMP%\pitomets_frontend_auto.bat"
-:: НЕ устанавливаем VITE_API_URL - используем Vite прокси из vite.config.js
+echo set VITE_API_URL=http://localhost:8077/api >> "%TEMP%\pitomets_frontend_auto.bat"
 echo echo. >> "%TEMP%\pitomets_frontend_auto.bat"
 echo echo ══════════════════════════════════════════════════════════════════ >> "%TEMP%\pitomets_frontend_auto.bat"
 echo echo   ФРОНТЕНД ПИТОМЕЦ+ запущен на http://localhost:5199 >> "%TEMP%\pitomets_frontend_auto.bat"
@@ -174,8 +174,8 @@ echo ║                                                                        
 echo ║  АДРЕСА СЕРВЕРОВ:                                                        ║
 echo ║                                                                          ║
 echo ║    ► ФРОНТЕНД:     http://localhost:5199                                 ║
-echo ║    ► БЕКЕНД API:   http://192.168.1.11:8077/api/                        ║
-echo ║    ► АДМИНКА:      http://192.168.1.11:8077/admin/                      ║
+echo ║    ► БЕКЕНД API:   http://localhost:8077/api/                            ║
+echo ║    ► АДМИНКА:      http://localhost:8077/admin/                          ║
 echo ║                                                                          ║
 echo ╠══════════════════════════════════════════════════════════════════════════╣
 echo ║                                                                          ║

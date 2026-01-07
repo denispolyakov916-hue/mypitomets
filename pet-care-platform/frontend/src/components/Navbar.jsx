@@ -12,12 +12,12 @@
  * Использует cartStore для количества товаров в корзине.
  */
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ChevronDown } from 'lucide-react'
 import { useAuthStore } from '../store/authStore'
 import { useCartStore } from '../store/cartStore'
+import { getCart } from '../api/shop'
 import OrdersDropdown from './OrdersDropdown'
 
 const MenuIcon = () => (
@@ -57,12 +57,37 @@ function Navbar() {
   const navigate = useNavigate()
   const location = useLocation()
   const { isAuthenticated, user, logout } = useAuthStore()
-  const { itemsCount } = useCartStore()
+  const { itemsCount, refreshCount } = useCartStore()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-  const [servicesDropdownOpen, setServicesDropdownOpen] = useState(false)
-  const [mobileServicesOpen, setMobileServicesOpen] = useState(false)
 
   const isServicePage = services.some(service => location.pathname === `/${service.id}` || location.pathname.startsWith(`/${service.id}/`))
+
+  /**
+   * Автоматическое обновление количества товаров в корзине
+   * Обновляется каждые 60 секунд для авторизованных пользователей
+   */
+  useEffect(() => {
+    if (!isAuthenticated) return
+
+    // Функция обновления количества товаров
+    const updateCartCount = async () => {
+      try {
+        await refreshCount()
+      } catch (error) {
+        // Игнорируем ошибки автоматического обновления
+        console.debug('Не удалось автоматически обновить количество товаров в корзине')
+      }
+    }
+
+    // Запускаем обновление сразу
+    updateCartCount()
+
+    // Устанавливаем интервал обновления каждые 60 секунд
+    const interval = setInterval(updateCartCount, 60000)
+
+    // Очищаем интервал при размонтировании компонента или выходе пользователя
+    return () => clearInterval(interval)
+  }, [isAuthenticated, refreshCount])
   
   /**
    * Обработчик выхода
@@ -101,7 +126,7 @@ function Navbar() {
           </div>
           
           {/* Десктопная навигация */}
-          <nav className="hidden xl:flex items-center gap-4 xl:gap-6 text-sm">
+          <nav className="hidden lg:flex items-center gap-4 xl:gap-6 text-sm">
             <button
               onClick={() => navigate('/')}
               className={`relative transition-all duration-300 whitespace-nowrap ${
@@ -114,66 +139,24 @@ function Navbar() {
               )}
             </button>
 
-            {/* Services Dropdown */}
-            <div
-              className="relative"
-              onMouseEnter={() => setServicesDropdownOpen(true)}
-              onMouseLeave={() => setServicesDropdownOpen(false)}
-            >
+            {/* Services */}
+            {services.map((service) => (
               <button
-                className={`relative transition-all duration-300 flex items-center gap-1 ${
-                  isServicePage ? 'text-white font-semibold' : 'text-white/80 hover:text-white'
+                key={service.id}
+                onClick={() => navigate(`/${service.id}`)}
+                className={`relative transition-all duration-300 whitespace-nowrap ${
+                  location.pathname === `/${service.id}` || location.pathname.startsWith(`/${service.id}/`)
+                    ? 'text-white font-semibold'
+                    : 'text-white/80 hover:text-white'
                 }`}
               >
-                Наши сервисы
-                <ChevronDown
-                  className={`w-4 h-4 transition-transform duration-300 ${servicesDropdownOpen ? 'rotate-180' : ''}`}
-                  style={{ color: 'white' }}
-                />
-                {isServicePage && (
+                {service.label}
+                {(location.pathname === `/${service.id}` || location.pathname.startsWith(`/${service.id}/`)) && (
                   <span className="absolute -bottom-1 left-0 w-full h-0.5 bg-orange-400 rounded-full shadow-lg shadow-orange-400/50"></span>
                 )}
               </button>
+            ))}
 
-              {/* Dropdown Menu */}
-              <AnimatePresence>
-                {servicesDropdownOpen && (
-                  <motion.div
-                    initial={{ opacity: 0, y: -10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -10 }}
-                    transition={{ duration: 0.2 }}
-                    className="absolute top-full left-0 mt-2 w-72 bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden"
-                  >
-                    {services.map((service, index) => (
-                      <motion.button
-                        key={service.id}
-                        initial={{ opacity: 0, x: -10 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: index * 0.05 }}
-                        onClick={() => {
-                          navigate(`/${service.id}`)
-                          setServicesDropdownOpen(false)
-                        }}
-                        className={`group w-full text-left px-6 py-4 transition-all duration-300 ${
-                          location.pathname === `/${service.id}` || location.pathname.startsWith(`/${service.id}/`)
-                            ? 'bg-gradient-to-r from-purple-100 to-orange-100'
-                            : 'hover:bg-gradient-to-r hover:from-purple-100 hover:to-orange-100 hover:pl-8'
-                        }`}
-                      >
-                        <span className={`transition-colors duration-300 ${
-                          location.pathname === `/${service.id}` || location.pathname.startsWith(`/${service.id}/`)
-                            ? 'text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-orange-500'
-                            : 'text-gray-700 group-hover:text-purple-600'
-                        }`}>
-                          {service.label}
-                        </span>
-                      </motion.button>
-                    ))}
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
 
             {isAuthenticated && (
               <>
@@ -204,7 +187,7 @@ function Navbar() {
           </nav>
 
           {/* Правая сторона - Авторизация и корзина */}
-          <div className="hidden xl:flex items-center gap-3">
+          <div className="hidden lg:flex items-center gap-3">
             {/* Иконка корзины */}
             {isAuthenticated && (
               <>
@@ -255,7 +238,7 @@ function Navbar() {
           </div>
           
           {/* Кнопка мобильного меню */}
-          <div className="flex xl:hidden items-center justify-center gap-2">
+          <div className="flex lg:hidden items-center justify-center gap-2">
             {/* Мобильная корзина */}
             {isAuthenticated && (
               <>
@@ -287,7 +270,7 @@ function Navbar() {
 
         {/* Mobile Menu */}
         {mobileMenuOpen && (
-          <div className="xl:hidden py-4 border-t border-white/20 bg-purple-700/95 backdrop-blur-sm">
+          <div className="lg:hidden py-4 border-t border-white/20 bg-purple-700/95 backdrop-blur-sm">
             <nav className="flex flex-col gap-3">
               <button
                 onClick={() => {
@@ -301,51 +284,24 @@ function Navbar() {
                 Главная
               </button>
 
-              {/* Mobile Services Accordion */}
-              <div>
+              {/* Mobile Services */}
+              {services.map((service) => (
                 <button
-                  onClick={() => setMobileServicesOpen(!mobileServicesOpen)}
-                  className={`w-full text-left px-4 py-2 rounded-lg transition-all duration-300 flex items-center justify-between ${
-                    isServicePage ? 'bg-white/20 text-white font-semibold' : 'text-white/80 hover:bg-white/10'
+                  key={service.id}
+                  onClick={() => {
+                    navigate(`/${service.id}`)
+                    setMobileMenuOpen(false)
+                  }}
+                  className={`text-left px-4 py-2 rounded-lg transition-all duration-300 ${
+                    location.pathname === `/${service.id}` || location.pathname.startsWith(`/${service.id}/`)
+                      ? 'bg-white/20 text-white font-semibold'
+                      : 'text-white/80 hover:bg-white/10'
                   }`}
                 >
-                  <span>Наши сервисы</span>
-                  <ChevronDown
-                    className={`w-4 h-4 transition-transform duration-300 ${mobileServicesOpen ? 'rotate-180' : ''}`}
-                  />
+                  {service.label}
                 </button>
-                <AnimatePresence>
-                  {mobileServicesOpen && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: 'auto', opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.3 }}
-                      className="overflow-hidden"
-                    >
-                      <div className="pl-4 pt-2 space-y-2">
-                        {services.map((service) => (
-                          <button
-                            key={service.id}
-                            onClick={() => {
-                              navigate(`/${service.id}`)
-                              setMobileMenuOpen(false)
-                              setMobileServicesOpen(false)
-                            }}
-                            className={`w-full text-left px-4 py-2 rounded-lg transition-all duration-300 flex items-center gap-2 ${
-                              location.pathname === `/${service.id}` || location.pathname.startsWith(`/${service.id}/`)
-                                ? 'bg-white/20 text-white'
-                                : 'text-white/70 hover:bg-white/10 hover:text-white/90'
-                            }`}
-                          >
-                            <span className="text-sm">{service.label}</span>
-                          </button>
-                        ))}
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
+              ))}
+
 
               {isAuthenticated && (
                 <>

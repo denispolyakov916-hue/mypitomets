@@ -16,8 +16,8 @@ export default defineConfig(({ mode }) => {
   
   // URL бэкенда для прокси
   // Используем IPv4 адрес компьютера для корректной работы в локальной сети
-  const backendHost = env.VITE_BACKEND_HOST || 'localhost'
-  const backendPort = env.VITE_BACKEND_PORT || '8000'
+  const backendHost = env.VITE_BACKEND_HOST || '192.168.1.11'
+  const backendPort = env.VITE_BACKEND_PORT || '8077'
   const proxyTarget = `http://${backendHost}:${backendPort}`
   
   console.log(`[Vite] API proxy target: ${proxyTarget}`)
@@ -29,7 +29,8 @@ export default defineConfig(({ mode }) => {
     // ПОРТ 5199 - уникальный порт для избежания конфликтов в локальной сети
     server: {
       port: 5199,
-      host: true, // Разрешить внешние подключения (доступ по IP из сети)
+      host: '0.0.0.0', // Слушать на всех интерфейсах (включая IPv4)
+      strictPort: false, // Если порт занят, попробовать следующий
 
       // Проксирование API запросов к Django бэкенду
       // Все запросы на /api/* перенаправляются на бэкенд
@@ -39,13 +40,26 @@ export default defineConfig(({ mode }) => {
           target: proxyTarget,
           changeOrigin: true,
           secure: false,
-          // Логирование прокси запросов для отладки
+          ws: false, // Отключаем WebSocket прокси
+          // Не переписываем путь - оставляем /api/* как есть
           configure: (proxy, options) => {
-            proxy.on('error', (err, req, res) => {
-              console.log('[Proxy Error]', err.message)
-            })
             proxy.on('proxyReq', (proxyReq, req, res) => {
-              console.log('[Proxy]', req.method, req.url, '->', proxyTarget + req.url)
+              console.log('[Proxy Request]', req.method, req.url)
+              console.log('[Proxy Target]', proxyTarget + req.url)
+              console.log('[Proxy Headers]', {
+                'host': proxyReq.getHeader('host'),
+                'origin': req.headers.origin,
+                'user-agent': req.headers['user-agent']
+              })
+            })
+            proxy.on('error', (err, req, res) => {
+              console.error('[Proxy Error]', err.message)
+              console.error('[Proxy Error] Code:', err.code)
+              console.error('[Proxy Error] Target:', proxyTarget)
+              console.error('[Proxy Error] Request URL:', req.url)
+            })
+            proxy.on('proxyRes', (proxyRes, req, res) => {
+              console.log('[Proxy Response]', req.url, 'Status:', proxyRes.statusCode)
             })
           }
         }

@@ -20,6 +20,44 @@ import * as shopApi from '../api/shop'
 import * as coursesApi from '../api/courses'
 
 /**
+ * Автоматическое обновление корзины
+ *
+ * Обновляет количество товаров в корзине каждые 60 секунд.
+ * Это обеспечивает актуальность данных в UI без ручных обновлений.
+ */
+let cartRefreshInterval = null
+
+const startCartAutoRefresh = (store) => {
+  // Останавливаем предыдущий интервал, если он существует
+  if (cartRefreshInterval) {
+    clearInterval(cartRefreshInterval)
+  }
+
+  // Запускаем автоматическое обновление каждые 60 секунд
+  cartRefreshInterval = setInterval(async () => {
+    try {
+      // Обновляем только itemsCount и total, без полной перезагрузки items
+      // чтобы не мешать пользователю работать с корзиной
+      const response = await shopApi.getCart()
+      store.setState({
+        total: response.totals?.total || 0,
+        itemsCount: response.items_count || 0
+      })
+    } catch (error) {
+      // Игнорируем ошибки автоматического обновления
+      console.debug('Не удалось автоматически обновить корзину:', error.message)
+    }
+  }, 60000) // 60 секунд
+}
+
+const stopCartAutoRefresh = () => {
+  if (cartRefreshInterval) {
+    clearInterval(cartRefreshInterval)
+    cartRefreshInterval = null
+  }
+}
+
+/**
  * Хранилище корзины
  * 
  * Состояние:
@@ -364,6 +402,24 @@ export const useCartStore = create((set, get) => ({
    */
   refreshCart: async () => {
     return get().loadCart()
+  },
+
+  /**
+   * Обновление только количества товаров (быстрое обновление для UI)
+   * Используется для автоматического обновления бейджей без полной перезагрузки корзины
+   */
+  refreshCount: async () => {
+    try {
+      const response = await shopApi.getCart()
+      set({
+        total: response.totals?.total || 0,
+        itemsCount: response.items_count || 0
+      })
+      return true
+    } catch (error) {
+      console.error('Ошибка обновления количества товаров:', error)
+      return false
+    }
   },
   
   /**
