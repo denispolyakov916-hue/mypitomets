@@ -102,6 +102,27 @@ export const adminAPI = {
     userActivityDetail: (params) => adminApi.get('admin/analytics/user_activity_detail/', { params }),
   },
 
+  // Конструктор графиков
+  chartBuilder: {
+    // Метрики
+    getMetrics: (params) => adminApi.get('admin/analytics/metrics/', { params }),
+    createMetric: (data) => adminApi.post('admin/analytics/metrics/', data),
+    updateMetric: (id, data) => adminApi.patch(`admin/analytics/metrics/${id}/`, data),
+    deleteMetric: (id) => adminApi.delete(`admin/analytics/metrics/${id}/`),
+
+    // Данные графиков
+    getChartData: (config) => adminApi.post('admin/analytics/constructor/data/', config),
+
+    // Конфигурации графиков
+    getChartConfigs: (params) => adminApi.get('admin/analytics/configs/', { params }),
+    createChartConfig: (data) => adminApi.post('admin/analytics/configs/', data),
+    updateChartConfig: (id, data) => adminApi.patch(`admin/analytics/configs/${id}/`, data),
+    deleteChartConfig: (id) => adminApi.delete(`admin/analytics/configs/${id}/`),
+
+    // Шаблоны
+    getTemplates: () => adminApi.get('admin/analytics/configs/?is_template=true'),
+  },
+
   // Управление данными
   management: {
     bulkUpdateProducts: (data) => adminApi.post('admin/management/bulk_update_products/', data),

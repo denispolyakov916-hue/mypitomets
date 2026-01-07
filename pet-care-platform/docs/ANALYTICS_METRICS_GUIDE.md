@@ -16,9 +16,10 @@
 
 ### Технический стек
 - **Backend**: Django + PostgreSQL + Django REST Framework
-- **Frontend**: React + Chart.js + Zustand
+- **Frontend**: React + D3.js + Zustand
 - **Кэширование**: Redis для оптимизации запросов
 - **Агрегация**: Материализованные представления для сложных расчетов
+- **Конструктор графиков**: D3.js с drag-and-drop интерфейсом
 
 ### Подходы к аналитике
 - **Real-time данные**: актуальные показатели без задержек
@@ -26,6 +27,8 @@
 - **Сравнение периодов**: динамика изменений со временем
 - **Сегментация**: анализ по категориям, регионам, типам клиентов
 - **Персонализация**: метрики, адаптированные под роли пользователей
+- **Гибкий конструктор**: D3.js конструктор графиков с drag-and-drop
+- **Многослойная визуализация**: комбинирование различных типов графиков
 
 ---
 
@@ -43,7 +46,7 @@
 | **Регистрации по дням** | GROUP BY DATE(created_at) | User.created_at | Ежедневно |
 
 #### Визуализация
-- **Линейный график**: Динамика регистраций (Chart.js Line Chart)
+- **Линейный график**: Динамика регистраций (D3.js Line Chart)
 - **Круговая диаграмма**: Распределение по статусу активации
 - **Метрики-карточки**: Total, Active, Activated, Conversion Rate
 
@@ -108,17 +111,24 @@ GET /api/admin/analytics/users/activation-funnel/
 
 #### Визуализация
 ```javascript
-// Распределение по видам (Chart.js Pie Chart)
-{
-  type: 'pie',
-  data: {
-    labels: ['Собаки', 'Кошки', 'Птицы', 'Грызуны'],
-    datasets: [{
-      data: speciesCounts,
-      backgroundColor: ['#3b82f6', '#f97316', '#10b981', '#8b5cf6']
-    }]
-  }
-}
+// Распределение по видам (D3.js Pie Chart)
+const pie = d3.pie()
+  .value(d => d.count);
+
+const arc = d3.arc()
+  .innerRadius(0)
+  .outerRadius(100);
+
+const color = d3.scaleOrdinal()
+  .domain(['Собаки', 'Кошки', 'Птицы', 'Грызуны'])
+  .range(['#3b82f6', '#f97316', '#10b981', '#8b5cf6']);
+
+svg.selectAll('path')
+  .data(pie(speciesCounts))
+  .enter()
+  .append('path')
+  .attr('d', arc)
+  .attr('fill', d => color(d.data.species));
 ```
 
 ### 2.2 Здоровье и проблемы
@@ -187,35 +197,55 @@ GET /api/admin/analytics/pets/personalization-impact/
 
 #### Визуализация продаж
 ```javascript
-// Тренд продаж (Chart.js Combo Chart)
-{
-  type: 'bar',
-  data: {
-    labels: dates,
-    datasets: [
-      {
-        type: 'line',
-        label: 'Выручка',
-        data: revenue,
-        yAxisID: 'y',
-        borderColor: '#3b82f6'
-      },
-      {
-        type: 'bar',
-        label: 'Количество заказов',
-        data: ordersCount,
-        yAxisID: 'y1',
-        backgroundColor: '#10b981'
-      }
-    ]
-  },
-  options: {
-    scales: {
-      y: { type: 'linear', position: 'left' },
-      y1: { type: 'linear', position: 'right' }
-    }
-  }
-}
+// Тренд продаж (D3.js Combo Chart)
+const margin = { top: 20, right: 80, bottom: 30, left: 50 };
+const width = 800 - margin.left - margin.right;
+const height = 400 - margin.top - margin.bottom;
+
+// Создание SVG
+const svg = d3.select('#chart')
+  .append('svg')
+  .attr('width', width + margin.left + margin.right)
+  .attr('height', height + margin.top + margin.bottom)
+  .append('g')
+  .attr('transform', `translate(${margin.left},${margin.top})`);
+
+// Шкалы
+const x = d3.scaleBand()
+  .domain(dates)
+  .range([0, width])
+  .padding(0.1);
+
+const y = d3.scaleLinear()
+  .domain([0, d3.max(revenue)])
+  .range([height, 0]);
+
+const y1 = d3.scaleLinear()
+  .domain([0, d3.max(ordersCount)])
+  .range([height, 0]);
+
+// Столбцы для заказов
+svg.selectAll('.bar')
+  .data(dates.map((d, i) => ({ date: d, value: ordersCount[i] })))
+  .enter().append('rect')
+  .attr('class', 'bar')
+  .attr('x', d => x(d.date))
+  .attr('width', x.bandwidth())
+  .attr('y', d => y1(d.value))
+  .attr('height', d => height - y1(d.value))
+  .attr('fill', '#10b981');
+
+// Линия для выручки
+const line = d3.line()
+  .x(d => x(d.date) + x.bandwidth() / 2)
+  .y(d => y(d.value));
+
+svg.append('path')
+  .datum(dates.map((d, i) => ({ date: d, value: revenue[i] })))
+  .attr('fill', 'none')
+  .attr('stroke', '#3b82f6')
+  .attr('stroke-width', 2)
+  .attr('d', line);
 ```
 
 ### 3.2 Статусы заказов
@@ -268,17 +298,39 @@ GET /api/admin/analytics/pets/personalization-impact/
 
 #### Визуализация обучения
 ```javascript
-// Прогресс обучения (Chart.js Doughnut Chart)
-{
-  type: 'doughnut',
-  data: {
-    labels: ['Завершено', 'В процессе', 'Не начато'],
-    datasets: [{
-      data: [completed, inProgress, notStarted],
-      backgroundColor: ['#10b981', '#f59e0b', '#e5e7eb']
-    }]
-  }
-}
+// Прогресс обучения (D3.js Doughnut Chart)
+const width = 300, height = 300, radius = Math.min(width, height) / 2;
+
+const color = d3.scaleOrdinal()
+  .domain(['Завершено', 'В процессе', 'Не начато'])
+  .range(['#10b981', '#f59e0b', '#e5e7eb']);
+
+const pie = d3.pie()
+  .value(d => d.value);
+
+const arc = d3.arc()
+  .innerRadius(radius * 0.6)
+  .outerRadius(radius * 0.9);
+
+const svg = d3.select('#chart')
+  .append('svg')
+  .attr('width', width)
+  .attr('height', height)
+  .append('g')
+  .attr('transform', `translate(${width/2},${height/2})`);
+
+const data = [
+  { label: 'Завершено', value: completed },
+  { label: 'В процессе', value: inProgress },
+  { label: 'Не начато', value: notStarted }
+];
+
+svg.selectAll('path')
+  .data(pie(data))
+  .enter()
+  .append('path')
+  .attr('d', arc)
+  .attr('fill', d => color(d.data.label));
 ```
 
 ### 4.2 Прогресс обучения
@@ -326,18 +378,48 @@ GET /api/admin/analytics/pets/personalization-impact/
 
 #### Распределение платежей
 ```javascript
-// Методы оплаты (Chart.js Bar Chart)
-{
-  type: 'bar',
-  data: {
-    labels: ['Карта', 'Банковский перевод', 'Наличными', 'Электронный кошелек'],
-    datasets: [{
-      label: 'Количество платежей',
-      data: methodCounts,
-      backgroundColor: ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6']
-    }]
-  }
-}
+// Методы оплаты (D3.js Bar Chart)
+const margin = { top: 20, right: 30, bottom: 40, left: 50 };
+const width = 600 - margin.left - margin.right;
+const height = 400 - margin.top - margin.bottom;
+
+const svg = d3.select('#chart')
+  .append('svg')
+  .attr('width', width + margin.left + margin.right)
+  .attr('height', height + margin.top + margin.bottom)
+  .append('g')
+  .attr('transform', `translate(${margin.left},${margin.top})`);
+
+const x = d3.scaleBand()
+  .domain(['Карта', 'Банковский перевод', 'Наличными', 'Электронный кошелек'])
+  .range([0, width])
+  .padding(0.1);
+
+const y = d3.scaleLinear()
+  .domain([0, d3.max(methodCounts)])
+  .range([height, 0]);
+
+// Столбцы
+svg.selectAll('.bar')
+  .data(methodCounts.map((count, i) => ({
+    method: ['Карта', 'Банковский перевод', 'Наличными', 'Электронный кошелек'][i],
+    count: count
+  })))
+  .enter().append('rect')
+  .attr('class', 'bar')
+  .attr('x', d => x(d.method))
+  .attr('width', x.bandwidth())
+  .attr('y', d => y(d.count))
+  .attr('height', d => height - y(d.count))
+  .attr('fill', (d, i) => ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6'][i]);
+
+// Оси
+svg.append('g')
+  .attr('transform', `translate(0,${height})`)
+  .call(d3.axisBottom(x));
+
+svg.append('g')
+  .call(d3.axisLeft(y));
 ```
 
 ### 5.3 Финансовые отчеты
@@ -721,6 +803,330 @@ def invalidate_analytics_cache():
 - **Еженедельный**: Тренды и сравнение с прошлой неделей
 - **Ежемесячный**: Полный бизнес-анализ
 - **Квартальный**: Стратегические insights
+
+---
+
+## 12. Конструктор аналитических графиков
+
+### 12.1 Обзор системы
+
+Конструктор аналитических графиков представляет собой мощный инструмент для создания кастомных визуализаций данных на базе D3.js. Система предоставляет администраторам возможность строить сложные, многослойные графики через интуитивный drag-and-drop интерфейс.
+
+#### Ключевые возможности
+- **Гибкий холст**: Единое рабочее пространство для наложения различных типов графиков
+- **Динамическая настройка осей**: Выбор метрик для осей X и Y из всей системы
+- **Многослойность**: Добавление нескольких независимых графиков на один холст
+- **Интеллектуальный интерфейс**: Автоподбор типов графиков и контекстные подсказки
+- **Высокая производительность**: Оптимизация для работы с большими объемами данных
+
+### 12.2 Архитектура конструктора
+
+#### Frontend компоненты
+```
+src/admin/analytics/constructor/
+├── ChartBuilder.jsx          # Главный компонент конструктора
+├── Canvas.jsx                 # D3.js холст для визуализации
+├── MetricsPanel.jsx           # Панель выбора метрик
+├── AxisConfigurator.jsx       # Настройка осей X/Y
+├── LayerManager.jsx           # Управление слоями графиков
+├── FilterPanel.jsx            # Система фильтров
+└── ExportPanel.jsx            # Экспорт графиков
+```
+
+#### Backend API
+```
+api/admin/analytics/constructor/
+├── metrics/                   # Доступные метрики
+├── chart-data/                # Данные для графиков
+├── configs/                   # Сохранение конфигураций
+└── templates/                 # Шаблоны графиков
+```
+
+### 12.3 Типы поддерживаемых графиков
+
+#### Базовые типы
+- **Линейные графики**: Временные ряды, тренды, сравнение периодов
+- **Столбчатые диаграммы**: Категориальные данные, распределения
+- **Точечные диаграммы**: Корреляции, кластеры, выбросы
+- **Пузырьковые диаграммы**: Многомерные данные с размером и цветом
+
+#### Продвинутые визуализации
+- **Комбинированные графики**: Сочетание линий и столбцов
+- **Диаграммы с областями**: Накопительные данные
+- **Геометрические визуализации**: Диаграммы Вороного, тепловые карты
+
+### 12.4 Процесс создания визуализации
+
+#### Шаг 1: Выбор базового измерения (ось X)
+```javascript
+// Примеры осей X
+const timeAxis = {
+  type: 'time',
+  metric: 'date',
+  format: '%Y-%m-%d',
+  scale: 'time'
+};
+
+const categoryAxis = {
+  type: 'category',
+  metric: 'pet_species',
+  sort: 'count_desc'
+};
+```
+
+#### Шаг 2: Добавление метрик для анализа (ось Y)
+```javascript
+// Конфигурация метрики
+const revenueMetric = {
+  id: 'order_revenue',
+  aggregation: 'sum',
+  label: 'Выручка',
+  color: '#3b82f6',
+  chart_type: 'line'
+};
+```
+
+#### Шаг 3: Настройка слоев и стилей
+```javascript
+// Конфигурация слоя
+const layerConfig = {
+  type: 'line',
+  data_source: 'revenueMetric',
+  style: {
+    stroke: '#3b82f6',
+    stroke_width: 2,
+    opacity: 1
+  },
+  interpolation: 'monotone'
+};
+```
+
+### 12.5 Интеллектуальные возможности
+
+#### Автоподбор типа графика
+Система анализирует характеристики данных и предлагает оптимальный тип визуализации:
+
+```javascript
+function suggestChartType(metrics, dimensions) {
+  // Анализ типов данных
+  const hasTimeDimension = dimensions.some(d => d.type === 'time');
+  const hasNumericMetrics = metrics.some(m => m.data_type === 'decimal');
+  const metricsCount = metrics.length;
+
+  if (hasTimeDimension && hasNumericMetrics) {
+    return metricsCount > 1 ? 'combo' : 'line';
+  }
+
+  if (metricsCount === 2 && metrics.every(m => m.data_type === 'decimal')) {
+    return 'scatter';
+  }
+
+  return 'bar';
+}
+```
+
+#### Связка метрик
+Автоматическое определение коррелирующих показателей для комплексного анализа:
+
+```javascript
+// Рекомендации связанных метрик
+const metricRelationships = {
+  'user_registrations': ['conversion_rate', 'first_order_date', 'lifetime_value'],
+  'order_revenue': ['order_count', 'avg_order_value', 'customer_acquisition_cost'],
+  'pet_profiles': ['health_issues', 'feeding_schedule', 'vet_visits']
+};
+```
+
+### 12.6 Примеры аналитических сценариев
+
+#### Анализ эффективности рекомендаций
+```javascript
+const recommendationAnalysis = {
+  title: 'Эффективность рекомендательной системы',
+  axes: {
+    x: { metric: 'date', type: 'time' },
+    y: [
+      { metric: 'clicks_on_recommendations', type: 'line', color: '#3b82f6' },
+      { metric: 'conversion_to_purchase', type: 'line', color: '#10b981' },
+      { metric: 'avg_order_value', type: 'bar', color: '#f59e0b' }
+    ]
+  },
+  filters: {
+    date_range: { start: '2024-01-01', end: '2024-01-31' }
+  }
+};
+```
+
+#### Сравнение поведения владельцев разных питомцев
+```javascript
+const petOwnerBehavior = {
+  title: 'Поведение владельцев по видам питомцев',
+  axes: {
+    x: { metric: 'pet_species', type: 'category' },
+    y: [
+      { metric: 'purchase_frequency', type: 'bar', color: '#3b82f6' },
+      { metric: 'avg_order_value', type: 'line', color: '#10b981' },
+      { metric: 'course_completion_rate', type: 'scatter', color: '#8b5cf6' }
+    ]
+  },
+  layers: [
+    { type: 'bar', data: 'purchase_frequency' },
+    { type: 'line', data: 'avg_order_value' },
+    { type: 'points', data: 'course_completion_rate' }
+  ]
+};
+```
+
+### 12.7 Производительность и оптимизация
+
+#### Кэширование запросов
+```python
+# Redis кэш для результатов конструктора
+CHART_DATA_CACHE_KEY = "chart_constructor:{config_hash}:{user_id}"
+CHART_DATA_CACHE_TTL = 600  # 10 минут
+
+# Инвалидация при изменениях данных
+@receiver(post_save, sender=Order)
+def invalidate_chart_cache(sender, instance, **kwargs):
+    cache.delete_pattern("chart_constructor:*")
+```
+
+#### Материализованные представления
+```sql
+-- Оптимизированное представление для конструктора
+CREATE MATERIALIZED VIEW chart_constructor_data AS
+SELECT
+    DATE(created_at) as date,
+    'users' as category,
+    COUNT(*) as registrations,
+    NULL as orders,
+    NULL as revenue,
+    NULL as pets
+FROM users
+WHERE created_at >= CURRENT_DATE - INTERVAL '90 days'
+GROUP BY DATE(created_at)
+
+UNION ALL
+
+SELECT
+    DATE(created_at) as date,
+    'orders' as category,
+    NULL as registrations,
+    COUNT(*) as orders,
+    SUM(total_amount) as revenue,
+    NULL as pets
+FROM orders
+WHERE created_at >= CURRENT_DATE - INTERVAL '90 days'
+GROUP BY DATE(created_at);
+```
+
+### 12.8 Безопасность и контроль доступа
+
+#### Права доступа к метрикам
+```python
+class ChartConstructorPermissions:
+    CAN_USE_CONSTRUCTOR = 'analytics.can_use_chart_constructor'
+    CAN_VIEW_ALL_METRICS = 'analytics.can_view_all_metrics'
+    CAN_SAVE_PUBLIC_TEMPLATES = 'analytics.can_save_public_templates'
+    CAN_EXPORT_CHART_DATA = 'analytics.can_export_chart_data'
+```
+
+#### Валидация конфигураций
+```python
+def validate_chart_config(config, user):
+    """Валидация конфигурации графика на безопасность"""
+
+    # Проверка доступа к метрикам
+    allowed_metrics = get_user_allowed_metrics(user)
+    for layer in config.get('layers', []):
+        if layer['metric'] not in allowed_metrics:
+            raise ValidationError(f"Доступ к метрике {layer['metric']} запрещен")
+
+    # Ограничение размера данных
+    if config.get('data_limit', 0) > MAX_CHART_DATA_LIMIT:
+        config['data_limit'] = MAX_CHART_DATA_LIMIT
+
+    return config
+```
+
+### 12.9 API конструктора
+
+#### Получение доступных метрик
+```http
+GET /api/admin/analytics/constructor/metrics/
+Authorization: Bearer <token>
+```
+
+**Ответ:**
+```json
+{
+  "categories": [
+    {
+      "name": "Пользователи",
+      "metrics": [
+        {
+          "id": "user_registrations",
+          "name": "Регистрации пользователей",
+          "data_type": "integer",
+          "dimensions": ["date", "source"],
+          "aggregations": ["count", "sum"]
+        }
+      ]
+    }
+  ]
+}
+```
+
+#### Получение данных для графика
+```http
+POST /api/admin/analytics/constructor/data/
+Content-Type: application/json
+Authorization: Bearer <token>
+```
+
+**Тело запроса:**
+```json
+{
+  "config": {
+    "axes": {
+      "x": {"metric": "date", "type": "time"},
+      "y": [{"metric": "user_registrations", "aggregation": "count"}]
+    },
+    "filters": {
+      "date_range": {"start": "2024-01-01", "end": "2024-01-31"}
+    }
+  },
+  "data_limit": 10000
+}
+```
+
+### 12.10 Интеграция с существующей системой
+
+#### Совместимость с текущими метриками
+Конструктор полностью совместим с существующей системой метрик и использует те же источники данных:
+
+```python
+# Интеграция с существующими моделями
+class ChartConstructorService:
+    def get_available_metrics(self):
+        """Получение всех доступных метрик из системы"""
+
+        metrics = []
+
+        # Метрики пользователей
+        metrics.extend(self.get_user_metrics())
+
+        # Метрики заказов
+        metrics.extend(self.get_order_metrics())
+
+        # Метрики питомцев
+        metrics.extend(self.get_pet_metrics())
+
+        # Метрики курсов
+        metrics.extend(self.get_course_metrics())
+
+        return metrics
+```
 
 ---
 

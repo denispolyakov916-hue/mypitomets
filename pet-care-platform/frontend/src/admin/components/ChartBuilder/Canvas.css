@@ -1,0 +1,232 @@
+.canvas-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 350px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  overflow: hidden;
+}
+
+.canvas-svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* Loading State */
+.canvas-loading {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  z-index: 10;
+  background: rgba(255, 255, 255, 0.95);
+  padding: 30px 40px;
+  border-radius: 12px;
+}
+
+.canvas-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid #e5e7eb;
+  border-top-color: #3b82f6;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.canvas-loading span {
+  font-size: 14px;
+  color: #6b7280;
+  font-weight: 500;
+}
+
+/* Rendering Progress */
+.canvas-rendering {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  z-index: 10;
+  background: rgba(255, 255, 255, 0.95);
+  padding: 30px 40px;
+  border-radius: 12px;
+  min-width: 200px;
+}
+
+.canvas-progress {
+  width: 100%;
+  height: 6px;
+  background: #e5e7eb;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.canvas-progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #3b82f6, #06b6d4);
+  border-radius: 3px;
+  transition: width 0.2s ease;
+}
+
+.canvas-rendering span {
+  font-size: 13px;
+  color: #6b7280;
+}
+
+/* Axis Styling */
+.canvas-svg .x-axis path,
+.canvas-svg .y-axis path {
+  stroke: #d1d5db;
+}
+
+.canvas-svg .x-axis line,
+.canvas-svg .y-axis line {
+  stroke: #e5e7eb;
+}
+
+.canvas-svg .x-axis text,
+.canvas-svg .y-axis text {
+  fill: #64748b;
+  font-size: 11px;
+}
+
+/* Grid */
+.canvas-svg .grid line {
+  stroke-width: 1;
+}
+
+/* Chart Elements */
+.canvas-svg .chart-line {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.canvas-svg .chart-area {
+  stroke: none;
+}
+
+.canvas-svg .chart-points circle,
+.canvas-svg .chart-points rect,
+.canvas-svg .chart-points path {
+  transition: transform 0.15s ease;
+}
+
+.canvas-svg .chart-points circle:hover,
+.canvas-svg .chart-points rect:hover,
+.canvas-svg .chart-points path:hover {
+  transform: scale(1.4);
+}
+
+/* Bars */
+.canvas-svg .bar {
+  transition: opacity 0.2s ease;
+}
+
+.canvas-svg .bar:hover {
+  opacity: 0.85;
+}
+
+/* Pie */
+.canvas-svg .arc path {
+  transition: transform 0.2s ease;
+  transform-origin: center;
+}
+
+.canvas-svg .arc:hover path {
+  transform: scale(1.03);
+}
+
+/* Legend */
+.canvas-svg .legend text {
+  font-size: 12px;
+  fill: #475569;
+}
+
+.canvas-svg .legend rect {
+  rx: 3;
+}
+
+/* Tooltip */
+.chart-tooltip {
+  position: fixed;
+  padding: 10px 14px;
+  background: rgba(15, 23, 42, 0.95);
+  color: #fff;
+  border-radius: 8px;
+  font-size: 13px;
+  line-height: 1.5;
+  pointer-events: none;
+  z-index: 1000;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  max-width: 280px;
+}
+
+.chart-tooltip strong {
+  color: #e5e7eb;
+  font-weight: 600;
+}
+
+/* Animation */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.canvas-svg .chart-line,
+.canvas-svg .chart-area,
+.canvas-svg .bar,
+.canvas-svg .arc path {
+  animation: fadeIn 0.4s ease;
+}
+
+/* No Data State */
+.canvas-no-data {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  text-align: center;
+  color: #9ca3af;
+}
+
+.canvas-no-data-icon {
+  font-size: 48px;
+  opacity: 0.6;
+}
+
+.canvas-no-data h4 {
+  font-size: 16px;
+  font-weight: 600;
+  color: #6b7280;
+  margin: 0;
+}
+
+.canvas-no-data p {
+  font-size: 13px;
+  color: #9ca3af;
+  margin: 0;
+}

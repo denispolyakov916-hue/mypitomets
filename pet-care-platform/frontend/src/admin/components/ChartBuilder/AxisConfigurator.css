@@ -1,0 +1,257 @@
+.axis-configurator {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: white;
+  border-radius: 8px;
+}
+
+.config-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.config-header h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.axis-tabs {
+  display: flex;
+  margin: 16px 20px;
+  background: #f8fafc;
+  border-radius: 8px;
+  padding: 4px;
+}
+
+.axis-tab {
+  flex: 1;
+  padding: 8px 16px;
+  border: none;
+  background: transparent;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #6b7280;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.axis-tab.active {
+  background: white;
+  color: #1e293b;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.axis-config {
+  flex: 1;
+  padding: 20px;
+  overflow-y: auto;
+}
+
+.axis-config h4 {
+  margin: 0 0 16px 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.config-group {
+  margin-bottom: 16px;
+}
+
+.config-group label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #374151;
+}
+
+.config-group input,
+.config-group select {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 14px;
+  background: white;
+}
+
+.config-group input:focus,
+.config-group select:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.metric-select {
+  background: #f9fafb;
+}
+
+.config-row {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.config-row .config-group {
+  flex: 1;
+}
+
+.y-axis-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.y-axis-item {
+  padding: 16px;
+  background: #f8fafc;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+}
+
+.y-axis-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.axis-label {
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.remove-axis-btn {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: none;
+  background: #ef4444;
+  color: white;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+}
+
+.remove-axis-btn:hover {
+  background: #dc2626;
+}
+
+.y-axis-config {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.empty-y-axes {
+  text-align: center;
+  padding: 40px 20px;
+  color: #6b7280;
+}
+
+.empty-y-axes p {
+  margin: 8px 0;
+}
+
+.empty-y-axes p:first-child {
+  font-weight: 600;
+  color: #374151;
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+  .config-header {
+    padding: 12px 16px;
+  }
+
+  .axis-tabs {
+    margin: 12px 16px;
+  }
+
+  .axis-config {
+    padding: 16px;
+  }
+
+  .config-row {
+    flex-direction: column;
+    gap: 8px;
+  }
+}
+
+/* Dark mode */
+@media (prefers-color-scheme: dark) {
+  .axis-configurator {
+    background: #1e293b;
+  }
+
+  .config-header {
+    border-color: #334155;
+  }
+
+  .config-header h3 {
+    color: #f1f5f9;
+  }
+
+  .axis-tabs {
+    background: #334155;
+  }
+
+  .axis-tab {
+    color: #cbd5e1;
+  }
+
+  .axis-tab.active {
+    background: #475569;
+    color: #f1f5f9;
+  }
+
+  .axis-config h4 {
+    color: #cbd5e1;
+  }
+
+  .config-group label {
+    color: #cbd5e1;
+  }
+
+  .config-group input,
+  .config-group select {
+    background: #334155;
+    border-color: #475569;
+    color: #f1f5f9;
+  }
+
+  .config-group input:focus,
+  .config-group select:focus {
+    border-color: #3b82f6;
+  }
+
+  .metric-select {
+    background: #475569;
+  }
+
+  .y-axis-item {
+    background: #334155;
+    border-color: #475569;
+  }
+
+  .axis-label {
+    color: #f1f5f9;
+  }
+
+  .empty-y-axes {
+    color: #cbd5e1;
+  }
+
+  .empty-y-axes p:first-child {
+    color: #f1f5f9;
+  }
+}

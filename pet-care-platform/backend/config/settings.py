@@ -110,6 +110,7 @@ INSTALLED_APPS = [
     'apps.payments',
     'apps.reviews',
     'apps.calendar',
+    'apps.analytics',
 ]
 
 # =============================================================================

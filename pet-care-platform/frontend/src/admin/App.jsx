@@ -26,6 +26,7 @@ import DashboardSelector from './components/Dashboard/DashboardSelector';
 
 // Analytics components
 import AnalyticsDashboard from './components/Analytics/AnalyticsDashboard';
+import { ChartBuilder } from './components/ChartBuilder';
 
 // Table components
 import UsersTable from './components/Tables/UsersTable';
@@ -75,6 +76,7 @@ const AdminApp = () => {
 
         {/* Аналитика */}
         <Route path="analytics" element={<AnalyticsDashboard />} />
+        <Route path="analytics/builder" element={<ChartBuilder />} />
 
         {/* Таблицы данных */}
         <Route path="users" element={<UsersTable />} />

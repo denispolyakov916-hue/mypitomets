@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 
 // Components
 import LineChart from '../Charts/LineChart';
@@ -84,6 +85,15 @@ const AnalyticsDashboard = () => {
         </div>
 
         <div className="flex items-center space-x-4">
+          {/* Кнопка конструктора */}
+          <Link
+            to="/admin-panel/analytics/builder"
+            className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-indigo-500 to-purple-600 text-white text-sm font-medium rounded-lg hover:from-indigo-600 hover:to-purple-700 transition-all shadow-sm"
+          >
+            <span className="mr-2">🎨</span>
+            Конструктор графиков
+          </Link>
+
           {/* Выбор периода */}
           <div className="flex items-center space-x-2">
             <label className="text-sm font-medium text-gray-700">Период:</label>

@@ -51,6 +51,9 @@ urlpatterns = [
     # REST API для админки
     path('', include(admin_router.urls)),
 
+    # Аналитика и конструктор графиков
+    path('analytics/', include('apps.analytics.urls')),
+
     # Быстрая сводка статистики
     path('stats/summary/', admin_stats_summary, name='admin-stats-summary'),
 ]
