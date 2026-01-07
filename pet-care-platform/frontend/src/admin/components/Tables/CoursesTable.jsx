@@ -394,6 +394,7 @@ const CoursesTable = () => {
       emptyMessage="Курсы не найдены"
       onResetFilters={handleResetFilters}
       onShowSettings={handleShowSettings}
+      currentFilters={filters}
     />
 
     </>

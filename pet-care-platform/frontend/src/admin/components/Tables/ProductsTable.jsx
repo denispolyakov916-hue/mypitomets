@@ -343,6 +343,7 @@ const ProductsTable = () => {
       emptyMessage="Товары не найдены"
       onResetFilters={handleResetFilters}
       onShowSettings={handleShowSettings}
+      currentFilters={filters}
     />
   );
 };

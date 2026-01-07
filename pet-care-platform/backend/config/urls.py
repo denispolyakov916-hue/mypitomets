@@ -77,7 +77,7 @@ urlpatterns = [
     # REST API для новой React админ-панели
     # Обрабатывает: аналитика, управление данными, CRUD операций
     # Доступ: только для пользователей с is_staff=True
-    path('', include('config.urls_admin')),
+    path('api/admin/', include('config.urls_admin')),
 ]
 
 # Обслуживание медиа файлов в режиме разработки

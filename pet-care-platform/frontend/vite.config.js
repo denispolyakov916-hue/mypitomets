@@ -16,8 +16,8 @@ export default defineConfig(({ mode }) => {
   
   // URL бэкенда для прокси
   // Используем IPv4 адрес компьютера для корректной работы в локальной сети
-  const backendHost = env.VITE_BACKEND_HOST || '192.168.1.11'
-  const backendPort = env.VITE_BACKEND_PORT || '8077'
+  const backendHost = env.VITE_BACKEND_HOST || 'localhost'
+  const backendPort = env.VITE_BACKEND_PORT || '8000'
   const proxyTarget = `http://${backendHost}:${backendPort}`
   
   console.log(`[Vite] API proxy target: ${proxyTarget}`)

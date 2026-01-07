@@ -338,6 +338,7 @@ const OrdersTable = () => {
       emptyMessage="Заказы не найдены"
       onResetFilters={handleResetFilters}
       onShowSettings={handleShowSettings}
+      currentFilters={filters}
     />
   );
 };

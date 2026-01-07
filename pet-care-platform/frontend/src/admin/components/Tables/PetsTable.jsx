@@ -360,6 +360,7 @@ const PetsTable = () => {
       emptyMessage="Питомцы не найдены"
       onResetFilters={handleResetFilters}
       onShowSettings={handleShowSettings}
+      currentFilters={filters}
     />
   );
 };

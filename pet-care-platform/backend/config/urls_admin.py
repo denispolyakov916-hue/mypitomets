@@ -49,8 +49,8 @@ admin_router.register(r'courses', AdminCourseViewSet, basename='admin-courses')
 # URL паттерны для admin API
 urlpatterns = [
     # REST API для админки
-    path('api/admin/', include(admin_router.urls)),
+    path('', include(admin_router.urls)),
 
     # Быстрая сводка статистики
-    path('api/admin/stats/summary/', admin_stats_summary, name='admin-stats-summary'),
+    path('stats/summary/', admin_stats_summary, name='admin-stats-summary'),
 ]

@@ -300,6 +300,7 @@ const UsersTable = () => {
         emptyMessage="Пользователи не найдены"
         onResetFilters={handleResetFilters}
         onShowSettings={handleShowSettings}
+        currentFilters={filters}
       />
 
       {/* Модальное окно формы */}

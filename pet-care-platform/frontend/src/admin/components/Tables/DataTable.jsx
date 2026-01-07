@@ -8,6 +8,9 @@ import BulkActions from './BulkActions';
 import ExportButton from '../Export/ExportButton';
 import ExportModal from '../Export/ExportModal';
 
+// API
+import { adminAPI } from '../../utils/api';
+
 const DataTable = ({
   title,
   columns,
@@ -29,7 +32,8 @@ const DataTable = ({
   createButtonText = 'Создать',
   emptyMessage = 'Нет данных для отображения',
   onResetFilters, // Новое свойство для сброса фильтров
-  onShowSettings // Новое свойство для отображения настроек
+  onShowSettings, // Новое свойство для отображения настроек
+  currentFilters // Текущие примененные фильтры для экспорта
 }) => {
   const [selectedRows, setSelectedRows] = useState([]);
   const [sortConfig, setSortConfig] = useState({ key: null, direction: null });
@@ -62,9 +66,97 @@ const DataTable = ({
     }
   };
 
-  const handleExport = (exportParams) => {
-    // Логика экспорта будет реализована через API
-    console.log('Export params:', exportParams);
+  const handleExport = async (exportParams) => {
+    try {
+      console.log('Starting export with params:', exportParams);
+
+      // Если передан только формат (например, 'csv'), создаем параметры экспорта
+      if (typeof exportParams === 'string') {
+        exportParams = {
+          format: exportParams,
+          model: model,
+          filters: JSON.stringify(currentFilters || {}),
+          filename: `${model}_export_${new Date().toISOString().split('T')[0]}`
+        };
+      }
+
+      console.log('Final export params:', exportParams);
+      console.log('Current filters:', currentFilters);
+
+      // Проверяем токен авторизации
+      const token = localStorage.getItem('access_token');
+      console.log('Auth token exists:', !!token);
+
+      if (!token) {
+        throw new Error('Пользователь не авторизован. Пожалуйста, войдите в систему.');
+      }
+
+      // Делаем API вызов для экспорта (используем POST для передачи данных в теле)
+      console.log('Making API call to adminAPI.management.exportData');
+      const response = await adminAPI.post('admin/management/export_data/', {
+        model: exportParams.model || model,
+        format: exportParams.format || 'csv',
+        filters: exportParams.filters || JSON.stringify({}),
+        filename: exportParams.filename
+      }, {
+        responseType: 'blob'
+      });
+
+      console.log('API response received:', response.status, response.headers);
+
+      // Создаем blob из ответа
+      const blob = new Blob([response.data], {
+        type: exportParams.format === 'csv' ? 'text/csv' :
+              exportParams.format === 'excel' ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' :
+              exportParams.format === 'pdf' ? 'application/pdf' :
+              'application/json'
+      });
+
+      // Создаем URL для скачивания
+      const url = window.URL.createObjectURL(blob);
+
+      // Создаем временную ссылку для скачивания
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = exportParams.filename || `export.${exportParams.format}`;
+
+      // Добавляем ссылку в DOM, кликаем и удаляем
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      // Освобождаем URL
+      window.URL.revokeObjectURL(url);
+
+      console.log('Export completed successfully');
+    } catch (error) {
+      console.error('Export failed:', error);
+
+      let errorMessage = 'Неизвестная ошибка экспорта';
+
+      if (error.response) {
+        const status = error.response.status;
+        const data = error.response.data;
+
+        if (status === 401) {
+          errorMessage = 'Ошибка авторизации. Пожалуйста, войдите в систему заново.';
+        } else if (status === 403) {
+          errorMessage = 'Недостаточно прав для экспорта данных. Требуются права администратора.';
+        } else if (status === 404) {
+          errorMessage = 'Сервис экспорта не найден. Обратитесь к администратору системы.';
+        } else if (status === 500) {
+          errorMessage = 'Ошибка сервера при экспорте данных.';
+        } else if (data?.error) {
+          errorMessage = data.error;
+        } else {
+          errorMessage = `Ошибка сервера (${status}): ${error.message}`;
+        }
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+
+      alert(`Ошибка экспорта: ${errorMessage}`);
+    }
   };
 
   // Вычисляемые значения
@@ -174,7 +266,15 @@ const DataTable = ({
         onRefresh={onRefresh}
         hasBulkActions={hasBulkActions && hasSelection}
         model={model}
-        onExport={() => setExportModalOpen(true)}
+        onExport={(format) => {
+          if (format) {
+            // Прямой экспорт в указанном формате
+            handleExport(format);
+          } else {
+            // Открываем модальное окно для настройки экспорта
+            setExportModalOpen(true);
+          }
+        }}
         onCreate={onCreate}
         createButtonText={createButtonText}
         onResetFilters={onResetFilters}

@@ -884,12 +884,20 @@ class AdminManagementViewSet(viewsets.ViewSet):
             'message': f'Обновлено курсов: {updated_count}'
         })
 
-    @action(detail=False, methods=['get'])
+    @action(detail=False, methods=['get', 'post'])
     def export_data(self, request):
         """Экспорт данных в разные форматы (CSV, Excel, PDF, JSON)."""
-        model_name = request.query_params.get('model')
-        format_type = request.query_params.get('format', 'csv')
-        filters = request.query_params.get('filters', '{}')
+        # Сначала проверяем POST данные, затем GET параметры
+        if request.method == 'POST':
+            model_name = request.data.get('model')
+            format_type = request.data.get('format', 'csv')
+            filters = request.data.get('filters', '{}')
+            filename = request.data.get('filename')
+        else:
+            model_name = request.query_params.get('model')
+            format_type = request.query_params.get('format', 'csv')
+            filters = request.query_params.get('filters', '{}')
+            filename = request.query_params.get('filename')
 
         try:
             filters_dict = json.loads(filters) if filters else {}
