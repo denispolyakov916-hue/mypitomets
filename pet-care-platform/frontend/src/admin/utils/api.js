@@ -108,8 +108,7 @@ export const adminAPI = {
     bulkUpdateOrders: (data) => adminApi.post('admin/management/bulk_update_orders/', data),
     bulkUpdateUsers: (data) => adminApi.post('admin/management/bulk_update_users/', data),
     bulkUpdateCourses: (data) => adminApi.post('admin/management/bulk_update_courses/', data),
-    exportData: (params) => adminApi.get('admin/management/export_data/', {
-      params,
+    exportData: (data) => adminApi.post('admin/management/export_data/', data, {
       responseType: 'blob' // Для скачивания файлов
     }),
   },

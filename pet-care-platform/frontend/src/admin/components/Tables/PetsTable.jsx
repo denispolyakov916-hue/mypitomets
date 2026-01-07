@@ -361,6 +361,7 @@ const PetsTable = () => {
       onResetFilters={handleResetFilters}
       onShowSettings={handleShowSettings}
       currentFilters={filters}
+      model="pets"
     />
   );
 };

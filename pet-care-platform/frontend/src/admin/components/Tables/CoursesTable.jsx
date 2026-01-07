@@ -395,6 +395,7 @@ const CoursesTable = () => {
       onResetFilters={handleResetFilters}
       onShowSettings={handleShowSettings}
       currentFilters={filters}
+      model="courses"
     />
 
     </>

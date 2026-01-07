@@ -344,6 +344,7 @@ const ProductsTable = () => {
       onResetFilters={handleResetFilters}
       onShowSettings={handleShowSettings}
       currentFilters={filters}
+      model="products"
     />
   );
 };

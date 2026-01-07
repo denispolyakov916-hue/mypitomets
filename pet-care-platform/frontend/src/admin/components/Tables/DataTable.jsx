@@ -82,6 +82,7 @@ const DataTable = ({
 
       console.log('Final export params:', exportParams);
       console.log('Current filters:', currentFilters);
+      console.log('Model prop:', model);
 
       // Проверяем токен авторизации
       const token = localStorage.getItem('access_token');
@@ -91,16 +92,26 @@ const DataTable = ({
         throw new Error('Пользователь не авторизован. Пожалуйста, войдите в систему.');
       }
 
-      // Делаем API вызов для экспорта (используем POST для передачи данных в теле)
-      console.log('Making API call to adminAPI.management.exportData');
-      const response = await adminAPI.post('admin/management/export_data/', {
+      // Проверяем, что модель задана
+      if (!exportParams.model) {
+        throw new Error('Не указана модель для экспорта. Проверьте настройки таблицы.');
+      }
+
+      if (!token) {
+        throw new Error('Пользователь не авторизован. Пожалуйста, войдите в систему.');
+      }
+
+      // Делаем API вызов для экспорта
+      const apiParams = {
         model: exportParams.model || model,
         format: exportParams.format || 'csv',
         filters: exportParams.filters || JSON.stringify({}),
         filename: exportParams.filename
-      }, {
-        responseType: 'blob'
-      });
+      };
+
+      console.log('Making API call with params:', apiParams);
+
+      const response = await adminAPI.management.exportData(apiParams);
 
       console.log('API response received:', response.status, response.headers);
 

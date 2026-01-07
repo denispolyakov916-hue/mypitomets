@@ -899,15 +899,23 @@ class AdminManagementViewSet(viewsets.ViewSet):
             filters = request.query_params.get('filters', '{}')
             filename = request.query_params.get('filename')
 
+        # Отладка параметров
+        print(f"DEBUG: export_data called with method={request.method}")
+        print(f"DEBUG: model_name={model_name}, format_type={format_type}, filters={filters}")
+        print(f"DEBUG: request.data={request.data if request.method == 'POST' else 'N/A'}")
+        print(f"DEBUG: request.POST={dict(request.POST) if hasattr(request, 'POST') else 'N/A'}")
+
         try:
             filters_dict = json.loads(filters) if filters else {}
-        except json.JSONDecodeError:
+        except json.JSONDecodeError as e:
+            print(f"DEBUG: JSON decode error: {e}")
             filters_dict = {}
 
         # Получаем queryset в зависимости от модели
         queryset = self._get_export_queryset(model_name, filters_dict)
 
         if queryset is None:
+            print(f"DEBUG: Model {model_name} not found in model_map")
             return Response(
                 {'error': f'Модель {model_name} не найдена'},
                 status=status.HTTP_400_BAD_REQUEST

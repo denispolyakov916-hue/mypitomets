@@ -339,6 +339,7 @@ const OrdersTable = () => {
       onResetFilters={handleResetFilters}
       onShowSettings={handleShowSettings}
       currentFilters={filters}
+      model="orders"
     />
   );
 };
