@@ -64,24 +64,51 @@ start-frontend.bat
 ## 🛠️ Технологии
 
 ### Backend
-- Django 4.2.8 + Django REST Framework
-- PostgreSQL + UUIDv7
+- Django 5.1.5 (LTS) + Django REST Framework 3.15.2
+- PostgreSQL 15+ + UUIDv7
 - Кастомные QuerySet менеджеры
 - Service Layer архитектура
+- Кэширование (LocMemCache/Redis)
+- Структурированное логирование
 
 ### Frontend
-- React 18 + Vite
+- React 18.2.0 + Vite 5.0.0
 - Tailwind CSS + Chart.js
-- Zustand для state management
+- Zustand 4.4.7 для state management
 - Drag-and-drop с @dnd-kit
+- Lazy Loading и Code Splitting
 
 ## 📚 Документация
 
-- [README_START.md](./README_START.md) - Быстрый старт с новыми скриптами
-- [PROJECT_STRUCTURE.md](./PROJECT_STRUCTURE.md) - Полная документация проекта
-- [COURSE_BUILDER_TECHNICAL_SPECIFICATION.md](./COURSE_BUILDER_TECHNICAL_SPECIFICATION.md) - Техническое задание конструктора курсов
-- [COURSES_IMPLEMENTATION_CONTEXT.md](./COURSES_IMPLEMENTATION_CONTEXT.md) - Контекст реализации курсов
-- [admin-redesign-context.md](./admin-redesign-context.md) - Детали редизайна админки
+### Основная документация
+- [docs/README.md](./docs/README.md) - Структура документации
+- [docs/PROJECT_STRUCTURE.md](./docs/PROJECT_STRUCTURE.md) - Полная документация проекта
+- [docs/REFACTORING_SUMMARY.md](./docs/REFACTORING_SUMMARY.md) - Сводка по рефакторингу
+- [docs/CHANGELOG.md](./docs/CHANGELOG.md) - История изменений
+
+### Техническая документация
+- [docs/DJANGO_5_UPGRADE_GUIDE.md](./docs/DJANGO_5_UPGRADE_GUIDE.md) - Руководство по обновлению Django
+- [docs/QUERY_OPTIMIZATION.md](./docs/QUERY_OPTIMIZATION.md) - Оптимизация запросов
+- [docs/SERVICE_LAYER.md](./docs/SERVICE_LAYER.md) - Сервисный слой
+- [docs/CACHING.md](./docs/CACHING.md) - Кэширование
+- [docs/LOGGING.md](./docs/LOGGING.md) - Логирование
+- [docs/ERROR_HANDLING.md](./docs/ERROR_HANDLING.md) - Обработка ошибок
+
+### Frontend документация
+- [docs/FRONTEND_STORES.md](./docs/FRONTEND_STORES.md) - Zustand stores
+- [docs/FRONTEND_ERROR_HANDLING.md](./docs/FRONTEND_ERROR_HANDLING.md) - Обработка ошибок
+- [docs/BUNDLE_OPTIMIZATION.md](./docs/BUNDLE_OPTIMIZATION.md) - Оптимизация бандла
+- [docs/TYPING.md](./docs/TYPING.md) - Типизация компонентов
+
+### Тестирование
+- [docs/TEST_SCENARIOS.md](./docs/TEST_SCENARIOS.md) - Тестовые сценарии
+- [docs/TESTING_STRATEGY.md](./docs/TESTING_STRATEGY.md) - Стратегия тестирования
+- [docs/API_TESTS.md](./docs/API_TESTS.md) - Тестирование API
+- [docs/LOAD_TESTING.md](./docs/LOAD_TESTING.md) - Нагрузочное тестирование
+
+### Развертывание
+- [docs/deployment/](./docs/deployment/) - Скрипты развертывания
+- [docs/BACKUP_RESTORE.md](./docs/BACKUP_RESTORE.md) - Резервное копирование
 
 ## 🐛 Проблемы?
 

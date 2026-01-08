@@ -12,13 +12,12 @@
  * Использует cartStore для количества товаров в корзине.
  */
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
-import { motion, AnimatePresence } from 'framer-motion'
 import { useAuthStore } from '../store/authStore'
 import { useCartStore } from '../store/cartStore'
-import { getCart } from '../api/shop'
 import OrdersDropdown from './OrdersDropdown'
+import HeaderCounters from './HeaderCounters'
 
 const MenuIcon = () => (
   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -57,37 +56,13 @@ function Navbar() {
   const navigate = useNavigate()
   const location = useLocation()
   const { isAuthenticated, user, logout } = useAuthStore()
-  const { itemsCount, refreshCount } = useCartStore()
+  const itemsCount = useCartStore(s => s.itemsCount)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   const isServicePage = services.some(service => location.pathname === `/${service.id}` || location.pathname.startsWith(`/${service.id}/`))
 
-  /**
-   * Автоматическое обновление количества товаров в корзине
-   * Обновляется каждые 60 секунд для авторизованных пользователей
-   */
-  useEffect(() => {
-    if (!isAuthenticated) return
-
-    // Функция обновления количества товаров
-    const updateCartCount = async () => {
-      try {
-        await refreshCount()
-      } catch (error) {
-        // Игнорируем ошибки автоматического обновления
-        console.debug('Не удалось автоматически обновить количество товаров в корзине')
-      }
-    }
-
-    // Запускаем обновление сразу
-    updateCartCount()
-
-    // Устанавливаем интервал обновления каждые 60 секунд
-    const interval = setInterval(updateCartCount, 60000)
-
-    // Очищаем интервал при размонтировании компонента или выходе пользователя
-    return () => clearInterval(interval)
-  }, [isAuthenticated, refreshCount])
+  // Примечание: автоматическое обновление количества товаров выполняется в HeaderCounters
+  // для предотвращения дублирования запросов
   
   /**
    * Обработчик выхода
@@ -186,28 +161,9 @@ function Navbar() {
             )}
           </nav>
 
-          {/* Правая сторона - Авторизация и корзина */}
+          {/* Правая сторона - Авторизация и счётчики */}
           <div className="hidden lg:flex items-center gap-3">
-            {/* Иконка корзины */}
-            {isAuthenticated && (
-              <>
-                <Link
-                  to="/cart"
-                  className="relative p-2 text-white/80 hover:text-white transition-colors"
-                >
-                  <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
-                  </svg>
-                  {itemsCount > 0 && (
-                    <span className="absolute -top-1 -right-1 bg-orange-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center font-medium">
-                      {itemsCount > 9 ? '9+' : itemsCount}
-                    </span>
-                  )}
-                </Link>
-                {/* Заказы */}
-                <OrdersDropdown />
-              </>
-            )}
+            {isAuthenticated && <HeaderCounters />}
 
             {/* Кнопки авторизации */}
             {isAuthenticated ? (
@@ -238,25 +194,9 @@ function Navbar() {
           </div>
           
           {/* Кнопка мобильного меню */}
-          <div className="flex lg:hidden items-center justify-center gap-2">
-            {/* Мобильная корзина */}
-            {isAuthenticated && (
-              <>
-                <Link
-                  to="/cart"
-                  className="relative p-2 text-white/80 hover:text-white transition-colors flex-shrink-0"
-                >
-                  <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
-                  </svg>
-                  {itemsCount > 0 && (
-                    <span className="absolute -top-1 -right-1 bg-orange-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center font-medium">
-                      {itemsCount > 9 ? '9+' : itemsCount}
-                    </span>
-                  )}
-                </Link>
-              </>
-            )}
+          <div className="flex lg:hidden items-center justify-center gap-3">
+            {/* Мобильные счётчики (компактнее) */}
+            {isAuthenticated && <HeaderCounters />}
 
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}

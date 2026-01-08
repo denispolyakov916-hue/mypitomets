@@ -129,6 +129,7 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'core.middleware.RequestLoggingMiddleware',  # Логирование запросов
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
@@ -233,6 +234,7 @@ REST_FRAMEWORK = {
     'DEFAULT_RENDERER_CLASSES': (
         'rest_framework.renderers.JSONRenderer',
     ),
+    'EXCEPTION_HANDLER': 'core.exception_handler.custom_exception_handler',
 }
 
 # =============================================================================
@@ -325,6 +327,49 @@ CORS_ALLOW_HEADERS = [
 ]
 
 # =============================================================================
+# КЭШИРОВАНИЕ
+# =============================================================================
+
+# Настройки кэширования
+# В разработке используем локальный memory cache
+# В продакшене рекомендуется использовать Redis
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        'LOCATION': 'unique-snowflake',
+        'OPTIONS': {
+            'MAX_ENTRIES': 10000,
+        },
+        'KEY_PREFIX': 'pitomets',
+        'TIMEOUT': 300,  # 5 минут по умолчанию
+    }
+}
+
+# Для продакшена рекомендуется использовать Redis:
+# CACHES = {
+#     'default': {
+#         'BACKEND': 'django.core.cache.backends.redis.RedisCache',
+#         'LOCATION': os.getenv('REDIS_URL', 'redis://127.0.0.1:6379/1'),
+#         'OPTIONS': {
+#             'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+#         },
+#         'KEY_PREFIX': 'pitomets',
+#         'TIMEOUT': 300,
+#     }
+# }
+
+# Время жизни кэша для разных типов данных (в секундах)
+CACHE_TIMEOUTS = {
+    'products_list': 300,      # 5 минут - список товаров
+    'courses_list': 300,      # 5 минут - список курсов
+    'product_detail': 600,     # 10 минут - детали товара
+    'course_detail': 600,     # 10 минут - детали курса
+    'recommendations': 600,   # 10 минут - рекомендации
+    'admin_stats': 60,         # 1 минута - статистика админки
+    'admin_dashboard': 300,   # 5 минут - дашборд админки
+}
+
+# =============================================================================
 # ЛОГИРОВАНИЕ
 # =============================================================================
 
@@ -332,10 +377,25 @@ LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
     'formatters': {
+        'verbose': {
+            'format': '[{asctime}] {levelname} {name} {module} {funcName} {lineno}: {message}',
+            'style': '{',
+            'datefmt': '%Y-%m-%d %H:%M:%S',
+        },
         'simple': {
             'format': '[{asctime}] {levelname} {name}: {message}',
             'style': '{',
             'datefmt': '%Y-%m-%d %H:%M:%S',
+        },
+        # JSON форматтер (опционально, если установлен pythonjsonlogger)
+        # 'json': {
+        #     '()': 'pythonjsonlogger.jsonlogger.JsonFormatter',
+        #     'format': '%(asctime)s %(name)s %(levelname)s %(message)s %(pathname)s %(lineno)s',
+        # },
+    },
+    'filters': {
+        'require_debug_false': {
+            '()': 'django.utils.log.RequireDebugFalse',
         },
     },
     'handlers': {
@@ -344,16 +404,67 @@ LOGGING = {
             'class': 'logging.StreamHandler',
             'formatter': 'simple',
         },
+        'file': {
+            'level': 'INFO',
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': BASE_DIR / 'logs' / 'app.log',
+            'maxBytes': 1024 * 1024 * 10,  # 10 MB
+            'backupCount': 5,
+            'formatter': 'verbose',
+        },
+        'error_file': {
+            'level': 'ERROR',
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': BASE_DIR / 'logs' / 'error.log',
+            'maxBytes': 1024 * 1024 * 10,  # 10 MB
+            'backupCount': 5,
+            'formatter': 'verbose',
+        },
     },
     'loggers': {
         'django': {
-            'handlers': ['console'],
+            'handlers': ['console', 'file'],
             'level': 'WARNING',
+            'propagate': False,
+        },
+        'django.request': {
+            'handlers': ['error_file'],
+            'level': 'ERROR',
+            'propagate': False,
         },
         'apps': {
-            'handlers': ['console'],
+            'handlers': ['console', 'file'],
             'level': 'INFO',
             'propagate': False,
         },
+        'apps.shop': {
+            'handlers': ['console', 'file'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'apps.training': {
+            'handlers': ['console', 'file'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'apps.payments': {
+            'handlers': ['console', 'file', 'error_file'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'apps.users': {
+            'handlers': ['console', 'file'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'core': {
+            'handlers': ['console', 'file'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+    },
+    'root': {
+        'handlers': ['console', 'file'],
+        'level': 'INFO',
     },
 }

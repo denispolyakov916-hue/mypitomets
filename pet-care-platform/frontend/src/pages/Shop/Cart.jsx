@@ -154,11 +154,15 @@ function Cart() {
    */
   const handleAddRecommendation = async (product, quantity = 1) => {
     try {
-      await shopApi.addToCart(product.id, quantity)
-      await loadCart()
-      success(`${product.name} добавлен в корзину`)
-      // Перезагружаем рекомендации
-      await loadRecommendations()
+      // Используем store метод, который автоматически обновит состояние
+      const result = await useCartStore.getState().addItem(product.id, quantity)
+      if (result) {
+        success(`${product.name} добавлен в корзину`)
+        // Перезагружаем рекомендации
+        await loadRecommendations()
+      } else {
+        showError('Не удалось добавить товар в корзину')
+      }
     } catch (err) {
       showError(err.message || 'Не удалось добавить товар в корзину')
     }
@@ -243,9 +247,13 @@ function Cart() {
 
         // Пробуем удалить через DELETE с course_id (может не работать на бэкенде)
         try {
-          await shopApi.removeCourseFromCart(itemId)
-          await loadCart()
-          success('Курс удалён из корзины')
+          // Используем store метод, который автоматически обновит состояние
+          const result = await useCartStore.getState().removeCourse(itemId)
+          if (result) {
+            success('Курс удалён из корзины')
+          } else {
+            showError('Не удалось удалить курс из корзины')
+          }
         } catch (err) {
           // Если бэкенд не поддерживает, показываем ошибку
           // В будущем нужно добавить поддержку удаления курсов на бэкенде

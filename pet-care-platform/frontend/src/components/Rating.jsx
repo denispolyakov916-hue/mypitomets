@@ -8,6 +8,7 @@
  */
 
 import { useState } from 'react'
+import PropTypes from 'prop-types'
 
 /**
  * Компонент рейтинга
@@ -110,6 +111,14 @@ function Rating({
       )}
     </div>
   )
+}
+
+Rating.propTypes = {
+  rating: PropTypes.number,
+  reviewsCount: PropTypes.number,
+  readonly: PropTypes.bool,
+  onChange: PropTypes.func,
+  size: PropTypes.oneOf(['sm', 'md', 'lg']),
 }
 
 export default Rating

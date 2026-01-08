@@ -13,6 +13,8 @@
  */
 
 import { Link } from 'react-router-dom'
+import PropTypes from 'prop-types'
+import { PetPropTypes } from '../utils/propTypes'
 
 /**
  * Маппинг иконок видов животных
@@ -163,6 +165,14 @@ function PetCard({ pet, onClick, showActions = false, onEdit, onDelete }) {
       {cardContent}
     </Link>
   )
+}
+
+PetCard.propTypes = {
+  pet: PetPropTypes.isRequired,
+  onClick: PropTypes.func,
+  showActions: PropTypes.bool,
+  onEdit: PropTypes.func,
+  onDelete: PropTypes.func,
 }
 
 export default PetCard

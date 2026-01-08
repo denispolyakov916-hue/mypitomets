@@ -24,6 +24,11 @@ from django.conf import settings
 from decimal import Decimal
 from django.utils import timezone
 from core.utils import generate_uuid7
+from core.validators import (
+    validate_behavior_types, validate_activity_levels, validate_social_levels,
+    validate_string_list, validate_url_list, validate_lesson_content,
+    validate_content_block_content, validate_content_block_settings
+)
 from .managers import CourseManager
 
 
@@ -221,7 +226,8 @@ class Course(models.Model):
         default=list,
         blank=True,
         verbose_name='Рекомендуемые типы поведения',
-        help_text='Список типов поведения, для которых подходит курс (calm, active, aggressive, shy, playful)'
+        help_text='Список типов поведения, для которых подходит курс (calm, active, aggressive, shy, playful)',
+        validators=[validate_behavior_types]
     )
 
     # Рекомендуемые уровни активности
@@ -229,7 +235,8 @@ class Course(models.Model):
         default=list,
         blank=True,
         verbose_name='Рекомендуемые уровни активности',
-        help_text='Список уровней активности, для которых подходит курс (low, medium, high)'
+        help_text='Список уровней активности, для которых подходит курс (low, medium, high)',
+        validators=[validate_activity_levels]
     )
 
     # Рекомендуемые уровни социализации
@@ -237,7 +244,8 @@ class Course(models.Model):
         default=list,
         blank=True,
         verbose_name='Рекомендуемые уровни социализации',
-        help_text='Список уровней социализации, для которых подходит курс (home_only, street, social, mixed)'
+        help_text='Список уровней социализации, для которых подходит курс (home_only, street, social, mixed)',
+        validators=[validate_social_levels]
     )
 
     # Минимальный опыт дрессировки
@@ -261,7 +269,8 @@ class Course(models.Model):
         default=list,
         blank=True,
         verbose_name='Совместимые проблемы здоровья',
-        help_text='Список проблем здоровья, с которыми совместим курс'
+        help_text='Список проблем здоровья, с которыми совместим курс',
+        validators=[validate_string_list]
     )
 
     # Особые потребности, которые учитывает курс
@@ -269,7 +278,8 @@ class Course(models.Model):
         default=list,
         blank=True,
         verbose_name='Учитываемые особые потребности',
-        help_text='Список особых потребностей, которые учитывает курс'
+        help_text='Список особых потребностей, которые учитывает курс',
+        validators=[validate_string_list]
     )
 
     # Предпочитаемые активности питомца
@@ -277,7 +287,8 @@ class Course(models.Model):
         default=list,
         blank=True,
         verbose_name='Подходящие активности',
-        help_text='Виды активностей питомца, для которых подходит курс'
+        help_text='Виды активностей питомца, для которых подходит курс',
+        validators=[validate_string_list]
     )
 
     # Поведенческие проблемы, которые решает курс
@@ -285,7 +296,8 @@ class Course(models.Model):
         default=list,
         blank=True,
         verbose_name='Решаемые поведенческие проблемы',
-        help_text='Список поведенческих проблем, которые решает курс'
+        help_text='Список поведенческих проблем, которые решает курс',
+        validators=[validate_string_list]
     )
 
     # Популярность (количество покупок)
@@ -296,7 +308,8 @@ class Course(models.Model):
         default=list,
         blank=True,
         verbose_name='Дополнительные изображения',
-        help_text='Массив URL дополнительных изображений курса'
+        help_text='Массив URL дополнительных изображений курса',
+        validators=[validate_url_list]
     )
 
     is_active = models.BooleanField(default=True, verbose_name='Активен')
@@ -589,7 +602,39 @@ class Course(models.Model):
 
     def get_lesson_by_order(self, order):
         """Получить урок по порядковому номеру."""
-        return self.lessons.filter(order=order, is_active=True).first()
+        return self.get_lessons_ordered().filter(order=order).first()
+
+    # ===== МЕТОДЫ ДЛЯ РАБОТЫ С НОВОЙ АРХИТЕКТУРОЙ (CoursePage) =====
+
+    def get_pages_ordered(self):
+        """Получить страницы курса в правильном порядке (новая архитектура)."""
+        return CoursePage.objects.filter(course_id=self.id, is_active=True).order_by('order_number')
+
+    def get_first_page(self):
+        """Получить первую страницу курса (новая архитектура)."""
+        return self.get_pages_ordered().first()
+
+    def get_page_by_order(self, order_number):
+        """Получить страницу по порядковому номеру (новая архитектура)."""
+        return self.get_pages_ordered().filter(order_number=order_number).first()
+
+    def has_pages(self):
+        """Проверить, есть ли у курса страницы (новая архитектура)."""
+        return CoursePage.objects.filter(course_id=self.id, is_active=True).exists()
+
+    def has_lessons(self):
+        """Проверить, есть ли у курса уроки (старая архитектура)."""
+        return self.lessons.filter(is_active=True).exists()
+
+    def get_content_items(self):
+        """
+        Универсальный метод для получения контента курса.
+        Возвращает страницы (CoursePage), если они есть, иначе уроки (Lesson).
+        """
+        if self.has_pages():
+            return self.get_pages_ordered()
+        else:
+            return self.get_lessons_ordered()
     
     def to_dict(self, detailed=False):
         """Сериализация для API."""
@@ -752,7 +797,8 @@ class Lesson(models.Model):
     content = models.JSONField(
         default=dict,
         verbose_name='Контент урока',
-        help_text='JSON структура с контентом урока (зависит от типа)'
+        help_text='JSON структура с контентом урока (зависит от типа)',
+        validators=[validate_lesson_content]
     )
 
     # Метаданные урока
@@ -778,7 +824,8 @@ class Lesson(models.Model):
     additional_materials = models.JSONField(
         default=list,
         verbose_name='Дополнительные материалы',
-        help_text='Список дополнительных материалов (PDF, ссылки и т.д.)'
+        help_text='Список дополнительных материалов (PDF, ссылки и т.д.)',
+        validators=[validate_url_list]
     )
 
     is_active = models.BooleanField(
@@ -1148,7 +1195,8 @@ class Comment(models.Model):
     attachments = models.JSONField(
         default=list,
         verbose_name='Вложения',
-        help_text='Список URL вложений (фото, видео питомца и т.д.)'
+        help_text='Список URL вложений (фото, видео питомца и т.д.)',
+        validators=[validate_url_list]
     )
 
     # Рейтинг комментария
@@ -1533,14 +1581,16 @@ class ContentBlock(models.Model):
     content = models.JSONField(
         default=dict,
         verbose_name='Содержимое блока',
-        help_text='JSON с данными блока (зависит от типа)'
+        help_text='JSON с данными блока (зависит от типа)',
+        validators=[validate_content_block_content]
     )
 
     # Настройки конкретного блока
     settings = models.JSONField(
         default=dict,
         verbose_name='Настройки блока',
-        help_text='JSON с настройками блока'
+        help_text='JSON с настройками блока',
+        validators=[validate_content_block_settings]
     )
 
     # Порядок в странице
@@ -1606,13 +1656,15 @@ class BlockTemplate(models.Model):
     content = models.JSONField(
         default=dict,
         verbose_name='Содержимое',
-        help_text='JSON с данными блока'
+        help_text='JSON с данными блока',
+        validators=[validate_content_block_content]
     )
 
     settings = models.JSONField(
         default=dict,
         verbose_name='Настройки',
-        help_text='JSON с настройками блока'
+        help_text='JSON с настройками блока',
+        validators=[validate_content_block_settings]
     )
 
     # Категоризация шаблонов

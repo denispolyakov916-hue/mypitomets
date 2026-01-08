@@ -10,6 +10,7 @@
  */
 
 import { useState } from 'react'
+import PropTypes from 'prop-types'
 import { useFavoritesStore } from '../store/favoritesStore'
 import { useToastStore } from '../store/toastStore'
 
@@ -126,6 +127,15 @@ function FavoriteButton({
       />
     </button>
   )
+}
+
+FavoriteButton.propTypes = {
+  itemId: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
+  type: PropTypes.oneOf(['product', 'course']),
+  size: PropTypes.oneOf(['sm', 'md', 'lg']),
+  showBackground: PropTypes.bool,
+  className: PropTypes.string,
+  onToggle: PropTypes.func,
 }
 
 export default FavoriteButton

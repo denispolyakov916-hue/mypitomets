@@ -87,6 +87,10 @@ export const useCartStore = create((set, get) => ({
   selectedItems: new Set(),
   isLoading: false,
   error: null,
+  // Флаги для защиты от дублирования запросов
+  _loadingPromise: null,
+  _refreshPromise: null,
+  _lastLoadTime: 0,
   
   /**
    * Загрузка корзины из API
@@ -96,44 +100,69 @@ export const useCartStore = create((set, get) => ({
    * Бэкенд возвращает: {products: [...], courses: [...], totals: {...}, items_count}
    * Автоматически выбирает все элементы после загрузки.
    * 
+   * Защита от дублирования: если запрос уже выполняется, возвращает существующий промис.
+   * Также не выполняет запрос, если данные были загружены менее 2 секунд назад.
+   * 
+   * @param {boolean} force - Принудительно перезагрузить, игнорируя кэш
    * @returns {Promise<boolean>} True если загрузка успешна
    */
-  loadCart: async () => {
-    set({ isLoading: true, error: null })
-
-    try {
-      const response = await shopApi.getCart()
-
-      // Бэкенд уже возвращает правильную структуру с products/courses отдельно
-      const products = response.products || []
-      const courses = response.courses || []
-      const allItems = [...products, ...courses]
-
-      // Автоматически выбираем все элементы
-      const allIds = new Set(allItems.map(item => item.id))
-
-      set({
-        items: allItems,
-        total: response.totals?.total || 0,
-        itemsCount: response.items_count || 0,
-        selectedItems: allIds,
-        isLoading: false,
-        error: null
-      })
-
-      return true
-    } catch (error) {
-      console.error('Ошибка загрузки корзины:', error)
-      set({
-        items: [], // Сбрасываем items при ошибке
-        total: 0,
-        itemsCount: 0,
-        selectedItems: new Set(),
-        isLoading: false,
-        error: error.message || 'Не удалось загрузить корзину'
-      })
-      return false
+  loadCart: async (force = false) => {
+    const state = get()
+    
+    // Если запрос уже выполняется - возвращаем существующий промис
+    if (state._loadingPromise) {
+      return state._loadingPromise
     }
+    
+    // Если данные были загружены недавно и нет принудительной перезагрузки - пропускаем
+    const now = Date.now()
+    if (!force && state._lastLoadTime && (now - state._lastLoadTime) < 2000) {
+      return true
+    }
+
+    const loadPromise = (async () => {
+      set({ isLoading: true, error: null })
+
+      try {
+        const response = await shopApi.getCart()
+
+        // Бэкенд уже возвращает правильную структуру с products/courses отдельно
+        const products = response.products || []
+        const courses = response.courses || []
+        const allItems = [...products, ...courses]
+
+        // Автоматически выбираем все элементы
+        const allIds = new Set(allItems.map(item => item.id))
+
+        set({
+          items: allItems,
+          total: response.totals?.total || 0,
+          itemsCount: response.items_count || 0,
+          selectedItems: allIds,
+          isLoading: false,
+          error: null,
+          _loadingPromise: null,
+          _lastLoadTime: Date.now()
+        })
+
+        return true
+      } catch (error) {
+        console.error('Ошибка загрузки корзины:', error)
+        set({
+          items: [], // Сбрасываем items при ошибке
+          total: 0,
+          itemsCount: 0,
+          selectedItems: new Set(),
+          isLoading: false,
+          error: error.message || 'Не удалось загрузить корзину',
+          _loadingPromise: null
+        })
+        return false
+      }
+    })()
+    
+    set({ _loadingPromise: loadPromise })
+    return loadPromise
   },
   
   /**
@@ -407,19 +436,36 @@ export const useCartStore = create((set, get) => ({
   /**
    * Обновление только количества товаров (быстрое обновление для UI)
    * Используется для автоматического обновления бейджей без полной перезагрузки корзины
+   * 
+   * Защита от дублирования: если запрос уже выполняется, возвращает существующий промис.
    */
   refreshCount: async () => {
-    try {
-      const response = await shopApi.getCart()
-      set({
-        total: response.totals?.total || 0,
-        itemsCount: response.items_count || 0
-      })
-      return true
-    } catch (error) {
-      console.error('Ошибка обновления количества товаров:', error)
-      return false
+    const state = get()
+    
+    // Если запрос уже выполняется - возвращаем существующий промис
+    if (state._refreshPromise) {
+      return state._refreshPromise
     }
+    
+    const refreshPromise = (async () => {
+      try {
+        const response = await shopApi.getCart()
+        set({
+          total: response.totals?.total || 0,
+          itemsCount: response.items_count || 0,
+          _refreshPromise: null,
+          _lastLoadTime: Date.now()
+        })
+        return true
+      } catch (error) {
+        console.error('Ошибка обновления количества товаров:', error)
+        set({ _refreshPromise: null })
+        return false
+      }
+    })()
+    
+    set({ _refreshPromise: refreshPromise })
+    return refreshPromise
   },
   
   /**

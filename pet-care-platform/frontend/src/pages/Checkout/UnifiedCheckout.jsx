@@ -676,15 +676,16 @@ function PaymentMethodSection({ paymentMethod, onPaymentMethodChange }) {
 /**
  * Секция итогов и кнопка оплаты
  */
-function SummarySection({ 
-  totals, 
-  deliveryCost, 
+function SummarySection({
+  totals,
+  deliveryCost,
   hasProducts,
   hasCourses,
-  canSubmit, 
-  isSubmitting, 
+  canSubmit,
+  isSubmitting,
   onSubmit,
-  paymentMethod
+  paymentMethod,
+  formData
 }) {
   const grandTotal = (totals?.products || 0) + (totals?.courses || 0) + deliveryCost
 
@@ -732,6 +733,7 @@ function SummarySection({
         onClick={onSubmit}
         disabled={!canSubmit || isSubmitting}
         className="w-full btn-primary py-4 text-lg flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+        title={!canSubmit ? getDisabledReason(formData, hasProducts, hasCourses) : ''}
       >
         {isSubmitting ? (
           <>
@@ -756,10 +758,12 @@ function SummarySection({
         )}
       </button>
 
-      {!canSubmit && hasCourses && (
-        <p className="text-sm text-amber-600 mt-3 text-center">
-          Примите условия использования курсов для продолжения
-        </p>
+      {!canSubmit && (
+        <div className="mt-3 text-center">
+          <p className="text-sm text-amber-600">
+            {getDisabledReason(formData, hasProducts, hasCourses)}
+          </p>
+        </div>
       )}
 
       <p className="text-xs text-gray-500 mt-4 text-center">
@@ -774,6 +778,23 @@ function SummarySection({
 // =============================================================================
 
 /**
+ * Получить причину отключения кнопки оплаты
+ */
+const getDisabledReason = (formData, hasProducts, hasCourses) => {
+  const hasAddress = formData.address_id || formData.shipping_address.trim()
+
+  if (hasProducts && formData.delivery_type !== 'pickup' && !hasAddress) {
+    return 'Выберите адрес доставки'
+  }
+
+  if (hasCourses && !formData.courses_disclaimer_accepted) {
+    return 'Примите условия использования курсов'
+  }
+
+  return 'Заполните все необходимые поля'
+}
+
+/**
  * Страница единого оформления заказа
  */
 function UnifiedCheckout() {
@@ -784,7 +805,11 @@ function UnifiedCheckout() {
   
   // Получаем выбранные элементы из state (переданы из Cart)
   const selectedItemsFromCart = location.state?.selectedItems || []
-  
+
+  console.log('=== UnifiedCheckout INIT ===')
+  console.log('location.state:', location.state)
+  console.log('selectedItemsFromCart:', selectedItemsFromCart)
+
   const [checkoutData, setCheckoutData] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -809,9 +834,14 @@ function UnifiedCheckout() {
     setIsLoading(true)
     setError(null)
 
+    console.log('=== LOAD CHECKOUT STARTED ===')
+    console.log('selectedItemsFromCart:', selectedItemsFromCart)
+
     try {
       // Передаём выбранные элементы в API
       const response = await getUnifiedCheckout(selectedItemsFromCart)
+      console.log('getUnifiedCheckout response:', response)
+
       setCheckoutData(response)
       reservationIdRef.current = response.reservation?.id
 
@@ -819,14 +849,18 @@ function UnifiedCheckout() {
       const defaultAddress = response.addresses?.find(addr => addr.is_default)
       if (defaultAddress) {
         setFormData(prev => ({ ...prev, address_id: defaultAddress.id }))
+        console.log('Set default address:', defaultAddress.id)
       }
 
       // Редирект если нет выбранных элементов
       const hasProducts = response.products?.items?.length > 0
       const hasCourses = response.courses?.items?.length > 0
-      
+
+      console.log('hasProducts:', hasProducts, 'hasCourses:', hasCourses)
+
       if (!hasProducts && !hasCourses) {
-        navigate('/cart', { 
+        console.log('No items to checkout, redirecting to cart')
+        navigate('/cart', {
           state: { message: 'Не выбрано ни одного товара или курса для оформления' }
         })
         return
@@ -835,9 +869,13 @@ function UnifiedCheckout() {
       // Если нет товаров, сбрасываем тип доставки
       if (!hasProducts) {
         setFormData(prev => ({ ...prev, delivery_type: '' }))
+        console.log('No products, reset delivery_type to empty')
       }
 
+      console.log('=== LOAD CHECKOUT COMPLETED ===')
+
     } catch (err) {
+      console.error('loadCheckout error:', err)
       setError(err.message || 'Не удалось загрузить данные для оформления')
     } finally {
       setIsLoading(false)
@@ -910,7 +948,8 @@ function UnifiedCheckout() {
         submitData.selected_items = selectedItemsFromCart
       }
 
-      if (hasProducts) {
+      // Сценарий 1: Только товары
+      if (hasProducts && !hasCourses) {
         submitData.delivery_type = formData.delivery_type
         if (formData.address_id) {
           submitData.address_id = formData.address_id
@@ -927,7 +966,28 @@ function UnifiedCheckout() {
         }
       }
 
-      if (hasCourses) {
+      // Сценарий 2: Только курсы
+      if (!hasProducts && hasCourses) {
+        submitData.courses_disclaimer_accepted = formData.courses_disclaimer_accepted
+      }
+
+      // Сценарий 3: Товары и курсы
+      if (hasProducts && hasCourses) {
+        submitData.delivery_type = formData.delivery_type
+        if (formData.address_id) {
+          submitData.address_id = formData.address_id
+        } else if (formData.shipping_address.trim()) {
+          submitData.shipping_address = formData.shipping_address.trim()
+        }
+
+        // Добавляем стоимость доставки
+        const selectedDelivery = checkoutData.products?.delivery_options?.find(
+          opt => opt.type === formData.delivery_type
+        )
+        if (selectedDelivery) {
+          submitData.delivery_cost = selectedDelivery.cost
+        }
+
         submitData.courses_disclaimer_accepted = formData.courses_disclaimer_accepted
       }
 
@@ -939,28 +999,41 @@ function UnifiedCheckout() {
       // Перезагружаем корзину (удалены только выбранные элементы)
       await loadCart()
 
-      // Определяем order_id и amount из ответа
+      // Определяем параметры для оплаты из ответа
       const orders = response.orders || {}
       const productsOrder = orders.products_order
       const courses = orders.courses || []
-      
-      // Используем заказ товаров если есть, иначе первый курс
+
+      // Определяем тип заказа и параметры для оплаты
       let orderId = null
       let amount = 0
-      let orderType = 'unified_checkout'
-      
-      if (productsOrder) {
+      let orderType = null
+
+      const hasProductsResponse = !!productsOrder
+      const hasCoursesResponse = courses.length > 0
+
+      if (hasProductsResponse && hasCoursesResponse) {
+        // Сценарий 3: Заказ с товарами и курсами (unified_checkout)
+        orderId = productsOrder.id
+        amount = parseFloat(productsOrder.total_amount || 0)
+        // Суммируем стоимость курсов
+        for (const course of courses) {
+          amount += parseFloat(course.amount || 0)
+        }
+        orderType = 'unified_checkout'
+      } else if (hasProductsResponse) {
+        // Сценарий 1: Заказ только с товарами
         orderId = productsOrder.id
         amount = parseFloat(productsOrder.total_amount || 0)
         orderType = 'shop_order'
-      } else if (courses.length > 0) {
-        // Если только курсы, используем первый курс
+      } else if (hasCoursesResponse) {
+        // Сценарий 2: Заказ только с курсами
         orderId = courses[0].user_course_id
         amount = parseFloat(courses[0].amount || 0)
         orderType = 'course'
       }
 
-      if (!orderId) {
+      if (!orderId || !orderType) {
         setError('Не удалось создать заказ')
         setIsSubmitting(false)
         return
@@ -969,7 +1042,7 @@ function UnifiedCheckout() {
       // Перенаправляем на страницу оплаты с правильными параметрами
       const paymentMethod = formData.payment_method || 'card'
       console.log('Payment method from formData:', formData.payment_method, 'Using:', paymentMethod)
-      
+
       const params = new URLSearchParams({
         order_id: orderId,
         type: orderType,
@@ -983,7 +1056,7 @@ function UnifiedCheckout() {
 
     } catch (err) {
       if (err.message?.includes('резерв') || err.message?.includes('истекло')) {
-        navigate('/cart', { 
+        navigate('/cart', {
           state: { message: 'Время на оформление истекло. Попробуйте ещё раз.' }
         })
       } else {
@@ -1020,20 +1093,73 @@ function UnifiedCheckout() {
     )
   }
 
+  // Нет данных для оформления
+  if (!checkoutData) {
+    return (
+      <div className="page-container animate-fadeIn">
+        <div className="card text-center py-12 max-w-lg mx-auto">
+          <div className="text-5xl mb-4">📦</div>
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">Нет данных для оформления</h1>
+          <p className="text-gray-600 mb-6">
+            {selectedItemsFromCart.length === 0
+              ? 'Не выбраны товары для оформления. Вернитесь в корзину и выберите товары.'
+              : 'Данные загружаются...'
+            }
+          </p>
+          <div className="flex gap-4 justify-center">
+            {selectedItemsFromCart.length === 0 ? (
+              <Link to="/cart" className="btn-primary">
+                К корзине
+              </Link>
+            ) : (
+              <button onClick={loadCheckout} className="btn-primary">
+                Загрузить данные
+              </button>
+            )}
+            <Link to="/cart" className="btn-secondary">
+              К корзине
+            </Link>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   const hasProducts = checkoutData?.products?.items?.length > 0
   const hasCourses = checkoutData?.courses?.items?.length > 0
-  
+
+  console.log('=== CHECKOUT DATA DEBUG ===')
+  console.log('checkoutData:', checkoutData)
+  console.log('checkoutData?.products:', checkoutData?.products)
+  console.log('checkoutData?.courses:', checkoutData?.courses)
+  console.log('hasProducts:', hasProducts, 'hasCourses:', hasCourses)
+
   // Расчёт стоимости доставки
   const selectedDelivery = checkoutData?.products?.delivery_options?.find(
     opt => opt.type === formData.delivery_type
   )
   const deliveryCost = hasProducts ? (selectedDelivery?.cost || 0) : 0
 
-  // Проверка возможности отправки
-  const canSubmit = (
-    (!hasProducts || formData.delivery_type === 'pickup' || formData.address_id || formData.shipping_address.trim()) &&
-    (!hasCourses || formData.courses_disclaimer_accepted)
-  )
+  console.log('selectedDelivery:', selectedDelivery, 'deliveryCost:', deliveryCost)
+
+  // Проверка возможности отправки формы
+  const hasAddress = formData.address_id || formData.shipping_address.trim()
+  const deliveryCondition = !hasProducts || formData.delivery_type === 'pickup' || hasAddress
+  const coursesCondition = !hasCourses || formData.courses_disclaimer_accepted
+  const canSubmit = deliveryCondition && coursesCondition
+
+  // Отладка блокировки кнопки
+  console.log('=== CAN SUBMIT DEBUG ===')
+  console.log('hasProducts:', hasProducts, 'hasCourses:', hasCourses)
+  console.log('formData.delivery_type:', formData.delivery_type)
+  console.log('formData.address_id:', formData.address_id)
+  console.log('formData.shipping_address:', `'${formData.shipping_address}'`)
+  console.log('formData.courses_disclaimer_accepted:', formData.courses_disclaimer_accepted)
+  console.log('hasAddress:', hasAddress)
+  console.log('deliveryCondition:', deliveryCondition, '(товары проверены)')
+  console.log('coursesCondition:', coursesCondition, '(курсы проверены)')
+  console.log('canSubmit:', canSubmit, canSubmit ? '✅ Кнопка активна' : '❌ Кнопка заблокирована')
+  console.log('========================')
 
   return (
     <div className="page-container animate-fadeIn">
@@ -1119,6 +1245,7 @@ function UnifiedCheckout() {
               isSubmitting={isSubmitting}
               onSubmit={handleSubmit}
               paymentMethod={formData.payment_method}
+              formData={formData}
             />
           </div>
         </div>

@@ -26,6 +26,13 @@ class ErrorBoundary extends React.Component {
   componentDidCatch(error, errorInfo) {
     // Логируем ошибку для отладки
     console.error('ErrorBoundary caught an error:', error, errorInfo)
+    
+    // В продакшене можно отправлять ошибки в систему мониторинга
+    if (process.env.NODE_ENV === 'production') {
+      // TODO: Отправка ошибки в систему мониторинга (Sentry, LogRocket и т.д.)
+      // Example: Sentry.captureException(error, { contexts: { react: errorInfo } })
+    }
+    
     this.setState({
       error,
       errorInfo

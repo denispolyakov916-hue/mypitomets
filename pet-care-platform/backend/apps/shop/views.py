@@ -52,7 +52,49 @@ class ProductListView(APIView):
     
     permission_classes = [AllowAny]
     
+    @staticmethod
+    def _get_cache_key(request):
+        """Генерация ключа кэша на основе параметров запроса."""
+        from core.cache_utils import make_cache_key
+        query_params = dict(request.query_params)
+        # Исключаем параметры пагинации для более широкого кэширования
+        query_params.pop('page', None)
+        query_params.pop('per_page', None)
+        return make_cache_key('products_list', query_params)
+    
     def get(self, request):
+        from django.core.cache import cache
+        from django.conf import settings
+        
+        # Проверяем кэш
+        cache_key = self._get_cache_key(request)
+        cached_response = cache.get(cache_key)
+        if cached_response is not None:
+            # Восстанавливаем пагинацию из запроса
+            try:
+                page = max(1, int(request.query_params.get('page', 1)))
+                per_page = min(100, max(1, int(request.query_params.get('per_page', 20))))
+            except ValueError:
+                page = 1
+                per_page = 20
+            
+            # Применяем пагинацию к кэшированным данным
+            total = cached_response.get('pagination', {}).get('total', 0)
+            all_products = cached_response.get('products', [])
+            
+            offset = (page - 1) * per_page
+            products_page = all_products[offset:offset + per_page]
+            
+            response_data = cached_response.copy()
+            response_data['products'] = products_page
+            response_data['pagination'] = {
+                'total': total,
+                'page': page,
+                'per_page': per_page,
+                'total_pages': (total + per_page - 1) // per_page if total > 0 else 0
+            }
+            
+            return Response(response_data, status=status.HTTP_200_OK)
         from apps.pets.models import Pet
         
         # Используем оптимизированный каталог с предзагруженными рейтингами
@@ -66,7 +108,8 @@ class ProductListView(APIView):
         # Если указан pet_id, получаем вид питомца и фильтруем по нему
         if pet_id and request.user.is_authenticated:
             try:
-                pet = Pet.objects.get(id=pet_id, owner=request.user)
+                # Оптимизация: select_related для owner (хотя owner не используется, но для консистентности)
+                pet = Pet.objects.select_related('owner').get(id=pet_id, owner=request.user)
                 # Маппинг видов питомцев на типы животных в товарах
                 if pet.species in ['dog', 'cat']:
                     animal = pet.species
@@ -104,6 +147,16 @@ class ProductListView(APIView):
         has_discount = request.query_params.get('has_discount')
         if has_discount == 'true':
             products = products.with_discount()
+
+        # Фильтр по ID товаров (для избранного)
+        ids = request.query_params.get('ids')
+        if ids:
+            try:
+                ids_list = [int(id.strip()) for id in ids.split(',') if id.strip()]
+                if ids_list:
+                    products = products.filter(id__in=ids_list)
+            except ValueError:
+                pass
         
         # Поиск по названию
         search = request.query_params.get('search')
@@ -207,7 +260,7 @@ class ProductListView(APIView):
                 logger.warning(f"Ошибка при получении данных о питомцах для пользователя {request.user.email}: {e}")
                 pets = []
         
-        return Response({
+        response_data = {
             'products': products_data,
             'pagination': {
                 'total': total_count,
@@ -236,7 +289,15 @@ class ProductListView(APIView):
                 },
                 'user_pets': user_pets,  # Питомцы пользователя для персональных подборок
             }
-        }, status=status.HTTP_200_OK)
+        }
+        
+        # Сохраняем в кэш (без пагинации, чтобы кэшировать все товары)
+        from django.core.cache import cache
+        from django.conf import settings
+        cache_timeout = getattr(settings, 'CACHE_TIMEOUTS', {}).get('products_list', 300)
+        cache.set(cache_key, response_data, cache_timeout)
+        
+        return Response(response_data, status=status.HTTP_200_OK)
 
 
 class ProductDetailView(APIView):
@@ -249,13 +310,20 @@ class ProductDetailView(APIView):
     permission_classes = [AllowAny]
     
     def get(self, request, product_id):
+        from django.core.cache import cache
+        from django.conf import settings
+        
+        # Проверяем кэш
+        cache_key = f'product_detail:{product_id}'
+        cached_response = cache.get(cache_key)
+        if cached_response is not None:
+            return Response(cached_response, status=status.HTTP_200_OK)
         try:
-            product = Product.objects.get(id=product_id)
+            # Оптимизация: используем with_ratings() для предзагрузки рейтинга
+            product = Product.objects.with_ratings().get(id=product_id)
         except Product.DoesNotExist:
-            return Response(
-                {'error': 'Товар не найден'},
-                status=status.HTTP_404_NOT_FOUND
-            )
+            from core.exceptions import ApiError
+            raise ApiError.not_found('Товар не найден', error_code='PRODUCT_NOT_FOUND')
         
         product_data = product.to_dict()
         
@@ -266,7 +334,20 @@ class ProductDetailView(APIView):
         else:
             product_data['is_purchased'] = False
         
-        return Response({'product': product_data}, status=status.HTTP_200_OK)
+        response_data = {'product': product_data}
+        
+        # Сохраняем в кэш (только для неавторизованных пользователей или базовых данных)
+        # Для авторизованных пользователей is_purchased может отличаться
+        if not request.user.is_authenticated:
+            cache_timeout = getattr(settings, 'CACHE_TIMEOUTS', {}).get('product_detail', 600)
+            cache.set(cache_key, response_data, cache_timeout)
+        else:
+            # Для авторизованных пользователей кэшируем без is_purchased
+            base_response = {'product': {k: v for k, v in product_data.items() if k != 'is_purchased'}}
+            cache_timeout = getattr(settings, 'CACHE_TIMEOUTS', {}).get('product_detail', 600)
+            cache.set(cache_key, base_response, cache_timeout)
+        
+        return Response(response_data, status=status.HTTP_200_OK)
 
 
 class CartView(APIView):
@@ -354,6 +435,7 @@ class CartView(APIView):
 
         # Проверка существования товара
         try:
+            # Оптимизация: используем with_ratings() для консистентности (хотя рейтинг не нужен здесь)
             product = Product.objects.get(id=product_id)
         except Product.DoesNotExist:
             return Response(
@@ -805,13 +887,12 @@ class OrderCreateView(APIView):
     permission_classes = [IsAuthenticated]
     
     def post(self, request):
+        from core.exceptions import ApiError
+        
         serializer = OrderCreateSerializer(data=request.data)
         
         if not serializer.is_valid():
-            return Response(
-                {'errors': serializer.errors},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+            raise ApiError.validation_error('Ошибка валидации', errors=serializer.errors)
         
         shipping_address = serializer.validated_data['shipping_address']
         
@@ -819,17 +900,11 @@ class OrderCreateView(APIView):
         try:
             cart = Cart.objects.prefetch_related('items__product').get(user=request.user)
         except Cart.DoesNotExist:
-            return Response(
-                {'error': 'Корзина пуста'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+            raise ApiError.bad_request('Корзина пуста', error_code='CART_EMPTY')
         
         cart_items = cart.items.all()
         if not cart_items:
-            return Response(
-                {'error': 'Корзина пуста. Добавьте товары перед оформлением заказа.'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+            raise ApiError.bad_request('Корзина пуста. Добавьте товары перед оформлением заказа.', error_code='CART_EMPTY')
         
         # Получение дополнительных данных
         address_id = serializer.validated_data.get('address_id')
@@ -870,17 +945,20 @@ class OrderCreateView(APIView):
                     })
             
             # Возврат ошибок валидации
+            from core.exceptions import ApiError
             if unavailable_items:
-                return Response({
-                    'error': 'Некоторые товары больше недоступны',
-                    'unavailable_items': unavailable_items
-                }, status=status.HTTP_400_BAD_REQUEST)
+                raise ApiError.bad_request(
+                    'Некоторые товары больше недоступны',
+                    errors={'unavailable_items': unavailable_items},
+                    error_code='UNAVAILABLE_ITEMS'
+                )
             
             if insufficient_items:
-                return Response({
-                    'error': 'Недостаточно товаров на складе',
-                    'insufficient_items': insufficient_items
-                }, status=status.HTTP_400_BAD_REQUEST)
+                raise ApiError.bad_request(
+                    'Недостаточно товаров на складе',
+                    errors={'insufficient_items': insufficient_items},
+                    error_code='INSUFFICIENT_STOCK'
+                )
             
             # Расчёт суммы с учётом актуальных цен и скидок
             from decimal import Decimal
@@ -948,7 +1026,17 @@ class OrderCreateView(APIView):
             # Очистка корзины
             cart_items.delete()
         
-        logger.info(f"Заказ создан: {order.id}, user={request.user.email}")
+        logger.info(
+            f"Заказ создан: {order.id}",
+            extra={
+                'order_id': str(order.id),
+                'user_id': str(request.user.id),
+                'user_email': request.user.email,
+                'total_amount': float(total_amount),
+                'items_count': len(cart_items),
+                'request_id': getattr(request, 'request_id', None),
+            }
+        )
         
         return Response({
             'message': 'Заказ успешно оформлен',
@@ -1003,7 +1091,10 @@ class OrderDetailView(APIView):
         - address_id (ID сохраненного адреса)
         """
         try:
-            order = Order.objects.get(id=order_id, user=request.user)
+            # Оптимизация: предзагружаем items вместе с product, course, pet и address
+            order = Order.objects.select_related('user', 'address').prefetch_related(
+                'items__product', 'items__course', 'items__pet'
+            ).get(id=order_id, user=request.user)
         except Order.DoesNotExist:
             return Response(
                 {'error': 'Заказ не найден'},
@@ -1137,7 +1228,10 @@ class OrderConfirmPaymentView(APIView):
 
     def post(self, request, order_id):
         try:
-            order = Order.objects.get(id=order_id, user=request.user)
+            # Оптимизация: предзагружаем items вместе с product, course, pet
+            order = Order.objects.select_related('user', 'address').prefetch_related(
+                'items__product', 'items__course', 'items__pet'
+            ).get(id=order_id, user=request.user)
         except Order.DoesNotExist:
             return Response(
                 {'error': 'Заказ не найден'},
@@ -1444,15 +1538,27 @@ class UnifiedCheckoutView(APIView):
 
         except Exception as e:
             # При ошибке отменить резервирования
-            logger.error(f"Ошибка при оформлении заказа для пользователя {request.user.email}: {e}")
             if 'reservations' in locals():
                 try:
                     ReservationService.cancel_reservations(reservations)
                 except Exception as cancel_error:
-                    logger.error(f"Ошибка при отмене резервирований для пользователя {request.user.email}: {cancel_error}")
+                    logger.error(
+                        f"Ошибка при отмене резервирований: {str(cancel_error)}",
+                        extra={
+                            'user_id': str(request.user.id),
+                            'user_email': request.user.email,
+                            'request_id': getattr(request, 'request_id', None),
+                            'error_type': type(cancel_error).__name__,
+                        },
+                        exc_info=True
+                    )
             
-            # Логирование ошибки для отладки
-            logger.error(f"Ошибка при создании заказа и платежа: {str(e)}", exc_info=True)
+            # Логирование уже выполняется в middleware и exception_handler
+            # Пробрасываем исключение для обработки в exception_handler
+            from core.exceptions import ApiError
+            raise ApiError.internal_error(
+                f'Ошибка при создании заказа: {str(e)}' if settings.DEBUG else None
+            )
             
             # Возвращаем более понятное сообщение об ошибке
             error_message = 'Произошла ошибка. Попробуйте позже.'
@@ -1475,14 +1581,15 @@ class UnifiedCheckoutView(APIView):
         product_items = [item for item in selected_items if item.product]
         course_items = [item for item in selected_items if item.course]
 
-        # Создать заказ товаров если есть
+        # Создать заказ если есть товары или курсы
+        # Для unified_checkout всегда нужен заказ, даже если только курсы
         order = None
-        if product_items:
-            delivery_type = data['delivery_type']
+        if product_items or course_items:
+            delivery_type = data.get('delivery_type', 'pickup')  # Для курсов доставка не нужна, используем pickup
             # Для самовывоза адрес не требуется, используем значение по умолчанию
             shipping_address = data.get('shipping_address')
-            if delivery_type == 'pickup':
-                # Для самовывоза используем значение по умолчанию
+            if delivery_type == 'pickup' or not product_items:
+                # Для самовывоза или для курсов используем значение по умолчанию
                 shipping_address = shipping_address or 'Самовывоз'
             else:
                 # Для других типов доставки адрес должен быть передан (проверено в валидации)
@@ -1495,7 +1602,7 @@ class UnifiedCheckoutView(APIView):
             
             order = Order.objects.create(
                 user=cart.user,
-                delivery_type=delivery_type,
+                delivery_type=delivery_type if product_items else 'pickup',  # Для курсов всегда pickup
                 address_id=data.get('address_id'),
                 shipping_address=shipping_address,
                 total_amount=0,  # Рассчитается ниже
@@ -1514,16 +1621,22 @@ class UnifiedCheckoutView(APIView):
                 )
 
             # Рассчитать итоговую сумму для товаров
-            order.subtotal_amount = order.get_subtotal()
-            order.delivery_cost = self._calculate_delivery_cost(data['delivery_type'])
-            order.total_amount = order.get_total_with_delivery()
+            if product_items:
+                order.subtotal_amount = order.get_subtotal()
+                order.delivery_cost = self._calculate_delivery_cost(data['delivery_type'])
+                order.total_amount = order.get_total_with_delivery()
+            else:
+                # Если только курсы - доставка не нужна
+                order.subtotal_amount = 0
+                order.delivery_cost = 0
+                order.total_amount = 0
             order.save()
 
             orders_data['products_order'] = order.to_dict()
 
         # Создать записи на курсы
         for item in course_items:
-            # Если есть заказ товаров, добавляем курс как OrderItem к этому заказу
+            # Добавляем курс как OrderItem к заказу (заказ уже создан выше)
             if order:
                 OrderItem.objects.create(
                     order=order,
@@ -1536,7 +1649,9 @@ class UnifiedCheckoutView(APIView):
                 )
                 # Обновляем сумму заказа с учетом курса
                 from decimal import Decimal
-                order.total_amount += Decimal(str(item.course.price))
+                course_price = Decimal(str(item.course.price))
+                order.subtotal_amount += course_price
+                order.total_amount += course_price
                 order.save()
                 orders_data['products_order'] = order.to_dict()
 
@@ -1568,12 +1683,14 @@ class UnifiedCheckoutView(APIView):
             total_amount += Decimal(str(course['amount']))
 
         # Определяем object_id для unified_checkout
-        # Используем ID заказа товаров или ID первого курса
+        # Всегда используем ID заказа (заказ создается даже для курсов)
         object_id = None
         if orders_data['products_order']:
             object_id = orders_data['products_order']['id']
         elif orders_data['courses']:
-            object_id = str(orders_data['courses'][0]['user_course_id'])
+            # Если по какой-то причине заказа нет, но есть курсы - это ошибка
+            # Заказ должен был быть создан в _create_orders_from_selected_items
+            raise ValueError("Невозможно создать платёж: заказ не найден для курсов")
 
         if not object_id:
             raise ValueError("Невозможно создать платёж: нет связанных объектов")

@@ -15,9 +15,11 @@
 
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import PropTypes from 'prop-types'
 import { ButtonLoader } from './Loader'
 import Rating from './Rating'
 import FavoriteButton from './FavoriteButton'
+import { CoursePropTypes } from '../utils/propTypes'
 
 /**
  * Маппинг названий типов животных
@@ -295,6 +297,15 @@ function CourseCard({ course, onAddToCart, onEnrollFree, isOwned = false, isLoad
       </div>
     </div>
   )
+}
+
+CourseCard.propTypes = {
+  course: CoursePropTypes.isRequired,
+  onAddToCart: PropTypes.func,
+  onEnrollFree: PropTypes.func,
+  isOwned: PropTypes.bool,
+  isLoading: PropTypes.bool,
+  isInCart: PropTypes.bool,
 }
 
 export default CourseCard

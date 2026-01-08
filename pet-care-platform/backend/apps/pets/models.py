@@ -9,6 +9,7 @@ from django.db import models
 from django.conf import settings
 from django.utils import timezone
 from core.utils import generate_uuid7
+from core.validators import validate_string_list
 
 
 class Pet(models.Model):
@@ -108,13 +109,15 @@ class Pet(models.Model):
         default=list,
         blank=True,
         verbose_name='Любимые продукты/корма',
-        help_text='Список названий продуктов или кормов, которые любит питомец'
+        help_text='Список названий продуктов или кормов, которые любит питомец',
+        validators=[validate_string_list]
     )
     allergies = models.JSONField(
         default=list,
         blank=True,
         verbose_name='Аллергии',
-        help_text='Список продуктов или ингредиентов, на которые у питомца аллергия'
+        help_text='Список продуктов или ингредиентов, на которые у питомца аллергия',
+        validators=[validate_string_list]
     )
     
     # Проблемы здоровья для персонализированных рекомендаций
@@ -122,7 +125,8 @@ class Pet(models.Model):
         default=list,
         blank=True,
         verbose_name='Проблемы здоровья',
-        help_text='Список проблем здоровья питомца (лишний вес, чувствительное пищеварение и т.д.)'
+        help_text='Список проблем здоровья питомца (лишний вес, чувствительное пищеварение и т.д.)',
+        validators=[validate_string_list]
     )
     
     # Активность питомца
@@ -194,21 +198,24 @@ class Pet(models.Model):
         default=list,
         blank=True,
         verbose_name='Особые потребности',
-        help_text='Особые потребности питомца (инвалидность, хронические заболевания и т.д.)'
+        help_text='Особые потребности питомца (инвалидность, хронические заболевания и т.д.)',
+        validators=[validate_string_list]
     )
 
     preferred_activities = models.JSONField(
         default=list,
         blank=True,
         verbose_name='Предпочитаемые активности',
-        help_text='Виды активностей, которые предпочитает питомец'
+        help_text='Виды активностей, которые предпочитает питомец',
+        validators=[validate_string_list]
     )
 
     behavioral_problems = models.JSONField(
         default=list,
         blank=True,
         verbose_name='Поведенческие проблемы',
-        help_text='Поведенческие проблемы питомца для персонализированных курсов коррекции'
+        help_text='Поведенческие проблемы питомца для персонализированных курсов коррекции',
+        validators=[validate_string_list]
     )
 
     # ===== НОВЫЕ ПОЛЯ PETID =====
@@ -253,11 +260,21 @@ class Pet(models.Model):
     feeding_frequency = models.CharField(max_length=10, choices=FEEDING_FREQUENCY_CHOICES, blank=True, null=True, verbose_name='Частота кормления')
 
     sensitive_digestion = models.BooleanField(default=False, verbose_name='Чувствительное пищеварение')
-    excluded_ingredients = models.JSONField(default=list, blank=True, verbose_name='Исключаемые ингредиенты')
+    excluded_ingredients = models.JSONField(
+        default=list,
+        blank=True,
+        verbose_name='Исключаемые ингредиенты',
+        validators=[validate_string_list]
+    )
     vitamins_supplements = models.TextField(blank=True, verbose_name='Добавки и витамины')
 
     # ===== РАСШИРЕННОЕ ПОВЕДЕНИЕ =====
-    character_traits = models.JSONField(default=list, blank=True, verbose_name='Черты характера')
+    character_traits = models.JSONField(
+        default=list,
+        blank=True,
+        verbose_name='Черты характера',
+        validators=[validate_string_list]
+    )
     training_goals = models.TextField(blank=True, verbose_name='Цели дрессировки')
 
     # ===== РАСШИРЕННОЕ ЗДОРОВЬЕ =====

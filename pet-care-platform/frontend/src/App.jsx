@@ -35,6 +35,7 @@ import AdminRoute from './components/AdminRoute'
 
 // Скелетоны для ленивой загрузки
 import { CourseLearningPageSkeleton, LessonPageSkeleton } from './components/Skeletons'
+import Loader from './components/Loader'
 
 // Компоненты страниц (синхронные - критичные для первой загрузки)
 import Home from './pages/Home'
@@ -46,17 +47,20 @@ import PetProfile from './pages/PetProfile/PetProfile'
 import Shop from './pages/Shop/Shop'
 import ProductDetail from './pages/Shop/ProductDetail'
 import Cart from './pages/Shop/Cart'
-import UnifiedCheckout from './pages/Checkout/UnifiedCheckout'
-import PaymentMethodSelection from './pages/Checkout/PaymentMethodSelection'
 import Courses from './pages/Training/Courses'
 import CourseDetail from './pages/Training/CourseDetail'
 import Payment from './pages/Payment/Payment'
 import Profile from './pages/Dashboard/Profile'
-import Settings from './pages/Dashboard/Settings'
-import HealthDiary from './pages/HealthDiary/HealthDiary'
-import Orders from './pages/Orders/Orders'
-import OrderDetail from './pages/Orders/OrderDetail'
-import PetIdPage from './pages/PetId/PetIdPage'
+import Favorites from './pages/Favorites'
+
+// Ленивая загрузка некритичных страниц (улучшает время первой загрузки)
+const UnifiedCheckout = lazy(() => import('./pages/Checkout/UnifiedCheckout'))
+const PaymentMethodSelection = lazy(() => import('./pages/Checkout/PaymentMethodSelection'))
+const Settings = lazy(() => import('./pages/Dashboard/Settings'))
+const HealthDiary = lazy(() => import('./pages/HealthDiary/HealthDiary'))
+const Orders = lazy(() => import('./pages/Orders/Orders'))
+const OrderDetail = lazy(() => import('./pages/Orders/OrderDetail'))
+const PetIdPage = lazy(() => import('./pages/PetId/PetIdPage'))
 
 // Ленивая загрузка тяжёлых страниц обучения
 const CourseLearningPage = lazy(() => import('./pages/Training/Learning/CourseLearningPage'))
@@ -146,26 +150,78 @@ function App() {
                 <Route path="/pets/:id" element={<Navigate to="/pet-id" replace />} />
                 <Route path="/pets/:id/edit" element={<Navigate to="/pet-id" replace />} />
 
-                {/* Pet ID*/}
-                <Route path="/pet-id" element={<PetIdPage />} />
+                {/* Pet ID (ленивая загрузка) */}
+                <Route
+                  path="/pet-id"
+                  element={
+                    <Suspense fallback={<Loader />}>
+                      <PetIdPage />
+                    </Suspense>
+                  }
+                />
 
                 {/* Корзина */}
                 <Route path="/cart" element={<Cart />} />
 
-                {/* Единый Checkout - Защищённый */}
-                <Route path="/checkout" element={<UnifiedCheckout />} />
-                <Route path="/payment-method" element={<PaymentMethodSelection />} />
+                {/* Избранное */}
+                <Route path="/favorites" element={<Favorites />} />
+
+                {/* Единый Checkout - Защищённый (ленивая загрузка) */}
+                <Route
+                  path="/checkout"
+                  element={
+                    <Suspense fallback={<Loader />}>
+                      <UnifiedCheckout />
+                    </Suspense>
+                  }
+                />
+                <Route
+                  path="/payment-method"
+                  element={
+                    <Suspense fallback={<Loader />}>
+                      <PaymentMethodSelection />
+                    </Suspense>
+                  }
+                />
 
                 {/* Профиль */}
                 <Route path="/profile" element={<Profile />} />
-                <Route path="/settings" element={<Settings />} />
+                <Route
+                  path="/settings"
+                  element={
+                    <Suspense fallback={<Loader />}>
+                      <Settings />
+                    </Suspense>
+                  }
+                />
 
-                {/* Заказы */}
-                <Route path="/orders" element={<Orders />} />
-                <Route path="/orders/:id" element={<OrderDetail />} />
+                {/* Заказы (ленивая загрузка) */}
+                <Route
+                  path="/orders"
+                  element={
+                    <Suspense fallback={<Loader />}>
+                      <Orders />
+                    </Suspense>
+                  }
+                />
+                <Route
+                  path="/orders/:id"
+                  element={
+                    <Suspense fallback={<Loader />}>
+                      <OrderDetail />
+                    </Suspense>
+                  }
+                />
 
-                {/* Дневник здоровья */}
-                <Route path="/health-diary" element={<HealthDiary />} />
+                {/* Дневник здоровья (ленивая загрузка) */}
+                <Route
+                  path="/health-diary"
+                  element={
+                    <Suspense fallback={<Loader />}>
+                      <HealthDiary />
+                    </Suspense>
+                  }
+                />
 
                 {/* Система обучения (ленивая загрузка) */}
                 <Route

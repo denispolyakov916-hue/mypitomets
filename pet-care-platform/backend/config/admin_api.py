@@ -1438,12 +1438,20 @@ class AdminProductViewSet(AdminModelViewSet):
 
 class AdminOrderViewSet(AdminModelViewSet):
     """ViewSet для управления заказами."""
-    queryset = Order.objects.select_related('user', 'address').prefetch_related('items').all()
+    queryset = Order.objects.select_related('user', 'address').prefetch_related(
+        'items__product',
+        'items__course',
+        'items__pet'
+    ).all()
     ordering = ('-created_at',)
 
     def get_queryset(self):
         """Переопределяем get_queryset, чтобы избежать проблем с фильтрами."""
-        return Order.objects.select_related('user', 'address').prefetch_related('items').all()
+        return Order.objects.select_related('user', 'address').prefetch_related(
+            'items__product',
+            'items__course',
+            'items__pet'
+        ).all()
 
     def _serialize_order(self, order):
         """Сериализация заказа в формат для API."""
@@ -1503,7 +1511,11 @@ class AdminOrderViewSet(AdminModelViewSet):
     def retrieve(self, request, pk=None):
         """Получить один заказ."""
         try:
-            order = Order.objects.select_related('user', 'address').prefetch_related('items').get(id=pk)
+            order = Order.objects.select_related('user', 'address').prefetch_related(
+                'items__product',
+                'items__course',
+                'items__pet'
+            ).get(id=pk)
             return Response(self._serialize_order(order))
         except Order.DoesNotExist:
             return Response(
@@ -1552,7 +1564,7 @@ class AdminCourseViewSet(viewsets.ModelViewSet):
 
     def _serialize_course(self, course):
         """Сериализация курса в формат для API."""
-        # Сериализуем уроки
+        # Сериализуем уроки (уже предзагружены через prefetch_related)
         lessons = []
         for lesson in course.lessons.all().order_by('order'):
             lessons.append({
@@ -1589,7 +1601,8 @@ class AdminCourseViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         """Получить queryset с фильтрами."""
-        queryset = Course.objects.all()
+        # Оптимизация: предзагружаем уроки для избежания N+1
+        queryset = Course.objects.prefetch_related('lessons').all()
 
         # Поиск
         search = self.request.query_params.get('search', '')

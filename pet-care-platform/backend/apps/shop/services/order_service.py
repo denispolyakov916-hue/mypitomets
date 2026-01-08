@@ -8,9 +8,7 @@ OrderService - сервис для работы с заказами.
 - Обработка просроченных заказов
 """
 
-import logging
 from typing import Optional, Dict, Any, List, Tuple
-from dataclasses import dataclass
 from decimal import Decimal
 from datetime import timedelta
 
@@ -18,21 +16,9 @@ from django.db import transaction
 from django.utils import timezone
 from django.core.exceptions import ValidationError
 
+from core.services import BaseService, ServiceResult
 from apps.shop.models import Order, OrderItem, Cart, Address
 from apps.payments.models import Payment
-
-logger = logging.getLogger('apps.shop')
-
-
-@dataclass
-class OrderResult:
-    """Результат создания заказа."""
-    success: bool
-    message: str
-    order: Optional[Order] = None
-    payment: Optional[Payment] = None
-    error_code: Optional[str] = None
-    errors: Optional[List[str]] = None
 
 
 def process_expired_orders():
@@ -74,7 +60,7 @@ def process_expired_orders():
                         product.in_stock = True
                     product.save()
                     stats['products_returned'] += 1
-                    logger.info(f"Товар возвращен на склад: {product.name}, количество: {order_item.quantity}")
+                    OrderService.log_info(f"Товар возвращен на склад: {product.name}, количество: {order_item.quantity}")
                 
                 # Меняем статус заказа
                 order.status = 'expired'
@@ -93,21 +79,21 @@ def process_expired_orders():
                         payment.metadata = {}
                     payment.metadata['cancellation_reason'] = 'Истек срок оплаты заказа'
                     payment.save()
-                    logger.info(f"Платеж отменен: {payment.id}")
+                    OrderService.log_info(f"Платеж отменен: {payment.id}")
                 
                 stats['processed'] += 1
-                logger.info(f"Заказ помечен как просроченный: {order.id}")
+                OrderService.log_info(f"Заказ помечен как просроченный: {order.id}")
                 
         except Exception as e:
             stats['errors'] += 1
-            logger.error(f"Ошибка при обработке просроченного заказа {order.id}: {str(e)}")
+            OrderService.log_error(e, {'order_id': order.id})
     
-    logger.info(f"Обработано просроченных заказов: {stats['processed']}, товаров возвращено: {stats['products_returned']}, ошибок: {stats['errors']}")
+    OrderService.log_info(f"Обработано просроченных заказов: {stats['processed']}, товаров возвращено: {stats['products_returned']}, ошибок: {stats['errors']}")
     
     return stats
 
 
-class OrderService:
+class OrderService(BaseService):
     """
     Сервис для работы с заказами.
     
@@ -174,7 +160,7 @@ class OrderService:
         recipient_name: Optional[str] = None,
         recipient_phone: Optional[str] = None,
         courses_disclaimer_accepted: bool = False
-    ) -> OrderResult:
+    ) -> ServiceResult:
         """
         Создать заказ из элементов корзины.
         
@@ -189,7 +175,7 @@ class OrderService:
             courses_disclaimer_accepted: Согласие с условиями курсов
             
         Returns:
-            OrderResult: Результат создания
+            ServiceResult: Результат создания (data содержит order и payment)
         """
         from .reservation_service import ReservationService
         from .cart_service import CartService
@@ -207,7 +193,7 @@ class OrderService:
         errors = []
         
         if not cart_items:
-            return OrderResult(
+            return ServiceResult(
                 success=False,
                 message='Корзина пуста',
                 error_code='EMPTY_CART'
@@ -233,7 +219,7 @@ class OrderService:
                 errors.append('Необходимо принять условия для курсов')
         
         if errors:
-            return OrderResult(
+            return ServiceResult(
                 success=False,
                 message='Ошибки валидации',
                 error_code='VALIDATION_ERROR',
@@ -247,7 +233,8 @@ class OrderService:
                 try:
                     reservations = ReservationService.create_reservations_from_items(user, product_items)
                 except ValueError as e:
-                    return OrderResult(
+                    OrderService.log_error(e, {'user_id': user.id})
+                    return ServiceResult(
                         success=False,
                         message=str(e),
                         error_code='RESERVATION_ERROR'
@@ -319,23 +306,22 @@ class OrderService:
                 for item in cart_items:
                     item.delete()
             
-            logger.info(f"Заказ создан: {order.id}, сумма: {total}")
+            OrderService.log_info(f"Заказ создан: {order.id}, сумма: {total}", {'order_id': order.id, 'user_id': user.id})
             
-            return OrderResult(
+            return ServiceResult(
                 success=True,
                 message='Заказ создан успешно',
-                order=order,
-                payment=payment
+                data={'order': order, 'payment': payment}
             )
             
         except Exception as e:
-            logger.error(f"Ошибка создания заказа: {str(e)}")
+            OrderService.log_error(e, {'user_id': user.id})
             
             # Отменяем резервирования
             if reservations:
                 ReservationService.cancel_reservations(reservations)
             
-            return OrderResult(
+            return ServiceResult(
                 success=False,
                 message=f'Ошибка создания заказа: {str(e)}',
                 error_code='CREATION_ERROR'
@@ -372,7 +358,7 @@ class OrderService:
                     item.product.order_count += item.quantity
                     item.product.save()
                     
-                    logger.info(f"Товар куплен: {item.product.name}, количество: {item.quantity}")
+                    OrderService.log_info(f"Товар куплен: {item.product.name}, количество: {item.quantity}")
                     
                 elif item.course:
                     # Активируем доступ к курсу
@@ -389,13 +375,13 @@ class OrderService:
                     item.course.order_count += 1
                     item.course.save()
                     
-                    logger.info(f"Курс активирован: {item.course.title}")
+                    OrderService.log_info(f"Курс активирован: {item.course.title}")
             
-            logger.info(f"Заказ активирован: {order.id}")
+            OrderService.log_info(f"Заказ активирован: {order.id}", {'order_id': order.id})
             return True
             
         except Exception as e:
-            logger.error(f"Ошибка активации заказа {order.id}: {str(e)}")
+            OrderService.log_error(e, {'order_id': order.id})
             return False
     
     @classmethod
@@ -426,7 +412,7 @@ class OrderService:
                 product.in_stock = True
                 product.save()
                 
-                logger.info(f"Товар возвращён: {product.name}, количество: {item.quantity}")
+                OrderService.log_info(f"Товар возвращён: {product.name}, количество: {item.quantity}")
             
             # Обновляем статус
             order.status = 'cancelled'
@@ -440,11 +426,11 @@ class OrderService:
                 status='cancelled'
             )
             
-            logger.info(f"Заказ отменён: {order.id}, причина: {reason}")
+            OrderService.log_info(f"Заказ отменён: {order.id}, причина: {reason}", {'order_id': order.id, 'reason': reason})
             return True
             
         except Exception as e:
-            logger.error(f"Ошибка отмены заказа {order.id}: {str(e)}")
+            OrderService.log_error(e, {'order_id': order.id, 'reason': reason})
             return False
     
     @classmethod

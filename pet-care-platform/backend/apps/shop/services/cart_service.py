@@ -9,23 +9,13 @@ CartService - централизованный сервис для работы 
 - Расчёт итогов
 """
 
-import logging
 from typing import Optional, Dict, Any, List, Tuple
 from dataclasses import dataclass
 from decimal import Decimal
 from django.db import transaction
 from django.core.exceptions import ValidationError
 
-logger = logging.getLogger('apps.shop')
-
-
-@dataclass
-class CartItemResult:
-    """Результат операции с элементом корзины."""
-    success: bool
-    message: str
-    item: Optional[Any] = None
-    error_code: Optional[str] = None
+from core.services import BaseService, ServiceResult
 
 
 @dataclass
@@ -49,7 +39,7 @@ class CartSummary:
         }
 
 
-class CartService:
+class CartService(BaseService):
     """
     Сервис для работы с корзиной пользователя.
     
@@ -136,7 +126,7 @@ class CartService:
     
     @classmethod
     @transaction.atomic
-    def add_product(cls, user, product_id: int, quantity: int = 1) -> CartItemResult:
+    def add_product(cls, user, product_id: int, quantity: int = 1) -> ServiceResult:
         """
         Добавить товар в корзину.
         
@@ -154,7 +144,7 @@ class CartService:
         try:
             product = Product.objects.get(id=product_id)
         except Product.DoesNotExist:
-            return CartItemResult(
+            return ServiceResult(
                 success=False,
                 message='Товар не найден',
                 error_code='PRODUCT_NOT_FOUND'
@@ -162,7 +152,7 @@ class CartService:
         
         # Проверка наличия
         if not product.in_stock:
-            return CartItemResult(
+            return ServiceResult(
                 success=False,
                 message='Товар отсутствует в наличии',
                 error_code='OUT_OF_STOCK'
@@ -170,7 +160,7 @@ class CartService:
         
         # Проверка доступного количества
         if product.stock_count < quantity:
-            return CartItemResult(
+            return ServiceResult(
                 success=False,
                 message=f'Недостаточно товара на складе. Доступно: {product.stock_count}',
                 error_code='INSUFFICIENT_STOCK'
@@ -195,11 +185,11 @@ class CartService:
             existing_item.quantity = new_quantity
             existing_item.save()
             
-            logger.info(f"Товар обновлён в корзине: {product.name}, количество: {new_quantity}")
-            return CartItemResult(
+            CartService.log_info(f"Товар обновлён в корзине: {product.name}, количество: {new_quantity}")
+            return ServiceResult(
                 success=True,
                 message='Количество товара обновлено',
-                item=existing_item
+                data={'item': existing_item}
             )
         else:
             # Создаём новый элемент
@@ -209,17 +199,17 @@ class CartService:
                 quantity=quantity
             )
             
-            logger.info(f"Товар добавлен в корзину: {product.name}, количество: {quantity}")
-            return CartItemResult(
+            CartService.log_info(f"Товар добавлен в корзину: {product.name}, количество: {quantity}")
+            return ServiceResult(
                 success=True,
                 message='Товар добавлен в корзину',
-                item=item
+                data={'item': item}
             )
     
     @classmethod
     @transaction.atomic
     def add_course(cls, user, course_id: int, pet_id: Optional[str] = None,
-                   disclaimer_accepted: bool = False) -> CartItemResult:
+                   disclaimer_accepted: bool = False) -> ServiceResult:
         """
         Добавить курс в корзину.
         
@@ -240,7 +230,7 @@ class CartService:
         try:
             course = Course.objects.get(id=course_id, is_active=True)
         except Course.DoesNotExist:
-            return CartItemResult(
+            return ServiceResult(
                 success=False,
                 message='Курс не найден или недоступен',
                 error_code='COURSE_NOT_FOUND'
@@ -248,7 +238,7 @@ class CartService:
         
         # Проверка: уже куплен?
         if UserCourse.objects.filter(user=user, course=course).exists():
-            return CartItemResult(
+            return ServiceResult(
                 success=False,
                 message='Вы уже приобрели этот курс',
                 error_code='ALREADY_PURCHASED'
@@ -256,7 +246,7 @@ class CartService:
         
         # Проверка согласия для платных курсов
         if course.price > 0 and not disclaimer_accepted:
-            return CartItemResult(
+            return ServiceResult(
                 success=False,
                 message='Необходимо принять условия использования курса',
                 error_code='DISCLAIMER_REQUIRED'
@@ -270,13 +260,13 @@ class CartService:
                 
                 # Проверка совместимости курса с видом питомца
                 if course.pet_type != 'all' and course.pet_type != pet.species:
-                    return CartItemResult(
+                    return ServiceResult(
                         success=False,
                         message=f'Этот курс не подходит для {pet.get_species_display()}',
                         error_code='PET_TYPE_MISMATCH'
                     )
             except Pet.DoesNotExist:
-                return CartItemResult(
+                return ServiceResult(
                     success=False,
                     message='Питомец не найден',
                     error_code='PET_NOT_FOUND'
@@ -293,10 +283,10 @@ class CartService:
                 existing_item.pet = pet
                 existing_item.save()
             
-            return CartItemResult(
+            return ServiceResult(
                 success=True,
                 message='Курс уже в корзине',
-                item=existing_item
+                data={'item': existing_item}
             )
         
         # Создаём новый элемент
@@ -308,18 +298,18 @@ class CartService:
             disclaimer_accepted=disclaimer_accepted
         )
         
-        logger.info(f"Курс добавлен в корзину: {course.title}, пользователь: {user.email}")
-        return CartItemResult(
+        CartService.log_info(f"Курс добавлен в корзину: {course.title}, пользователь: {user.email}")
+        return ServiceResult(
             success=True,
             message='Курс добавлен в корзину',
-            item=item
+            data={'item': item}
         )
     
     @classmethod
     @transaction.atomic
     def update_product_quantity(cls, user, product_id: int, 
                                 quantity: Optional[int] = None,
-                                delta: Optional[int] = None) -> CartItemResult:
+                                delta: Optional[int] = None) -> ServiceResult:
         """
         Обновить количество товара в корзине.
         
@@ -339,7 +329,7 @@ class CartService:
         try:
             product = Product.objects.get(id=product_id)
         except Product.DoesNotExist:
-            return CartItemResult(
+            return ServiceResult(
                 success=False,
                 message='Товар не найден',
                 error_code='PRODUCT_NOT_FOUND'
@@ -348,7 +338,7 @@ class CartService:
         item = cart.items.filter(product=product).first()
         
         if not item:
-            return CartItemResult(
+            return ServiceResult(
                 success=False,
                 message='Товар не найден в корзине',
                 error_code='ITEM_NOT_IN_CART'
@@ -360,7 +350,7 @@ class CartService:
         elif delta is not None:
             new_quantity = item.quantity + delta
         else:
-            return CartItemResult(
+            return ServiceResult(
                 success=False,
                 message='Укажите quantity или delta',
                 error_code='INVALID_PARAMS'
@@ -369,15 +359,15 @@ class CartService:
         # Удаление при нулевом количестве
         if new_quantity <= 0:
             item.delete()
-            logger.info(f"Товар удалён из корзины: {product.name}")
-            return CartItemResult(
+            CartService.log_info(f"Товар удалён из корзины: {product.name}")
+            return ServiceResult(
                 success=True,
                 message='Товар удалён из корзины'
             )
         
         # Проверка наличия
         if new_quantity > product.stock_count:
-            return CartItemResult(
+            return ServiceResult(
                 success=False,
                 message=f'Недостаточно товара. Доступно: {product.stock_count}',
                 error_code='INSUFFICIENT_STOCK'
@@ -386,17 +376,17 @@ class CartService:
         item.quantity = new_quantity
         item.save()
         
-        logger.info(f"Количество товара обновлено: {product.name}, новое количество: {new_quantity}")
-        return CartItemResult(
+        CartService.log_info(f"Количество товара обновлено: {product.name}, новое количество: {new_quantity}")
+        return ServiceResult(
             success=True,
             message='Количество обновлено',
-            item=item
+            data={'item': item}
         )
     
     @classmethod
     @transaction.atomic
     def remove_item(cls, user, product_id: Optional[int] = None,
-                    course_id: Optional[int] = None) -> CartItemResult:
+                    course_id: Optional[int] = None) -> ServiceResult:
         """
         Удалить элемент из корзины.
         
@@ -417,23 +407,23 @@ class CartService:
             item = cart.items.filter(course_id=course_id).first()
             item_name = f"курс ID={course_id}"
         else:
-            return CartItemResult(
+            return ServiceResult(
                 success=False,
                 message='Укажите product_id или course_id',
                 error_code='INVALID_PARAMS'
             )
         
         if not item:
-            return CartItemResult(
+            return ServiceResult(
                 success=False,
                 message='Элемент не найден в корзине',
                 error_code='ITEM_NOT_IN_CART'
             )
         
         item.delete()
-        logger.info(f"Удалён из корзины: {item_name}, пользователь: {user.email}")
+        CartService.log_info(f"Удалён из корзины: {item_name}, пользователь: {user.email}")
         
-        return CartItemResult(
+        return ServiceResult(
             success=True,
             message='Элемент удалён из корзины'
         )
@@ -463,7 +453,7 @@ class CartService:
         count = items.count()
         items.delete()
         
-        logger.info(f"Корзина очищена: {count} элементов, тип: {item_type}, пользователь: {user.email}")
+        CartService.log_info(f"Корзина очищена: {count} элементов, тип: {item_type}, пользователь: {user.email}")
         
         return {'deleted_count': count}
     

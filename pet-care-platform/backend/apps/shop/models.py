@@ -10,6 +10,7 @@ from django.utils import timezone
 from datetime import timedelta
 from decimal import Decimal
 from core.utils import generate_uuid7
+from core.validators import validate_url_list, validate_product_params
 from .managers import ProductManager
 
 
@@ -80,7 +81,12 @@ class Product(models.Model):
     
     # URL и изображения
     url = models.URLField(max_length=1000, blank=True, null=True, verbose_name='URL товара')
-    images = models.JSONField(default=list, verbose_name='Изображения')  # Массив URL картинок
+    images = models.JSONField(
+        default=list,
+        verbose_name='Изображения',
+        validators=[validate_url_list],
+        help_text='Массив URL изображений товара'
+    )
     
     # Классификация
     animal = models.CharField(
@@ -122,7 +128,13 @@ class Product(models.Model):
     )
     
     # Дополнительные параметры
-    params = models.JSONField(default=dict, blank=True, verbose_name='Параметры')
+    params = models.JSONField(
+        default=dict,
+        blank=True,
+        verbose_name='Параметры',
+        validators=[validate_product_params],
+        help_text='Дополнительные параметры товара в формате словаря'
+    )
     
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

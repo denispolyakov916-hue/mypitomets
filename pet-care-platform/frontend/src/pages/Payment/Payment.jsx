@@ -123,9 +123,9 @@ function Payment() {
   /**
    * Создание платежа для заказа или курса
    */
-  const createPaymentForOrder = useCallback(async (orderIdParam, courseIdParam, paymentType, amount) => {
-    if (paymentCreating || paymentInfo) {
-      return // Уже создается или уже создан
+  const createPaymentForOrder = useCallback(async (objectId, paymentType, amount) => {
+    if (paymentCreating || paymentInfo || !objectId) {
+      return // Уже создается или уже создан, или нет ID
     }
 
     setPaymentCreating(true)
@@ -133,19 +133,10 @@ function Payment() {
     setError(null)
 
     try {
-      const objectId = orderIdParam || courseIdParam
-
-      if (!objectId) {
-        setError('Не указан ID заказа или курса')
-        setIsLoading(false)
-        setPaymentCreating(false)
-        return
-      }
-
       // Для 'sbp' сохраняем в metadata, так как в модели Payment нет 'sbp' в choices
       const paymentMethod = method === 'sbp' ? 'card' : (method || 'card')
       const paymentMetadata = method === 'sbp' ? { payment_method: 'sbp' } : {}
-      
+
       const paymentData = {
         payment_type: paymentType,
         object_id: objectId,
@@ -212,7 +203,7 @@ function Payment() {
     // Если платеж не найден - создаем новый
     setIsLoading(false)
     const paymentType = type === 'shop_order' ? 'shop_order' : type === 'course' ? 'course' : 'unified_checkout'
-    createPaymentForOrder(orderIdParam, null, paymentType, amountParam)
+    createPaymentForOrder(orderIdParam, paymentType, amountParam)
   }, [paymentCreating, paymentInfo, navigate, type, amountParam, createPaymentForOrder, method])
 
   /**
@@ -237,54 +228,53 @@ function Payment() {
       // Имитация обработки платежа (1 секунда)
       await new Promise(resolve => setTimeout(resolve, 1000))
 
-      // Для демо-режима всегда автоматически подтверждаем платеж
-      if (paymentId || paymentInfo?.id) {
-        const idToConfirm = paymentId || paymentInfo.id
-        const response = await confirmPayment(idToConfirm)
+      let paymentIdToConfirm = paymentId || paymentInfo?.id
 
-        if (response.payment?.status === 'completed' || response.message) {
-          setIsPaid(true)
-          // Обновляем информацию о платеже
-          if (response.payment) {
-            setPaymentInfo(response.payment)
-          }
-          setTimeout(() => {
-            navigateAfterPayment()
-          }, 3000)
-        } else {
-          // Даже если ответ не содержит статус completed, считаем оплату успешной в демо-режиме
-          setIsPaid(true)
-          setTimeout(() => {
-            navigateAfterPayment()
-          }, 3000)
+      // Если платеж еще не создан, создаем его
+      if (!paymentIdToConfirm) {
+        if (!orderId) {
+          setError('ID заказа не найден')
+          setIsProcessing(false)
+          return
         }
-      } else {
-        // Если платеж еще не создан, создаем его и сразу подтверждаем
-        if (orderId || courseId) {
-          const paymentType = type === 'shop_order' ? 'shop_order' : type === 'course' ? 'course' : 'unified_checkout'
-          const objectId = orderId || courseId
-          
-          const createResponse = await createPayment({
-            payment_type: paymentType,
-            object_id: objectId,
-            amount: amount,
-            payment_method: method || 'card'
-          })
-          
-          if (createResponse.payment) {
-            setPaymentInfo(createResponse.payment)
-            const confirmResponse = await confirmPayment(createResponse.payment.id)
-            setIsPaid(true)
-            setTimeout(() => {
-              navigateAfterPayment()
-            }, 3000)
-          } else {
-            setError('Не удалось создать платеж')
-          }
+
+        const createResponse = await createPayment({
+          payment_type: type,
+          object_id: orderId,
+          amount: amount,
+          payment_method: method || 'card'
+        })
+
+        if (createResponse.payment) {
+          setPaymentInfo(createResponse.payment)
+          paymentIdToConfirm = createResponse.payment.id
         } else {
-          setError('Платеж не создан. Попробуйте обновить страницу.')
+          setError('Не удалось создать платеж')
+          setIsProcessing(false)
+          return
         }
       }
+
+      // Подтверждаем платеж
+      const confirmResponse = await confirmPayment(paymentIdToConfirm)
+
+      if (confirmResponse.payment?.status === 'completed' || confirmResponse.message) {
+        setIsPaid(true)
+        // Обновляем информацию о платеже
+        if (confirmResponse.payment) {
+          setPaymentInfo(confirmResponse.payment)
+        }
+        setTimeout(() => {
+          navigateAfterPayment()
+        }, 3000)
+      } else {
+        // В демо-режиме считаем оплату успешной даже при проблемах
+        setIsPaid(true)
+        setTimeout(() => {
+          navigateAfterPayment()
+        }, 3000)
+      }
+
     } catch (err) {
       // В демо-режиме даже при ошибке считаем оплату успешной
       console.error('Ошибка при обработке платежа (демо-режим):', err)
@@ -324,7 +314,7 @@ function Payment() {
     // Если передан course_id, но нет payment_id и платеж еще не создается/не создан - создаем платеж
     else if (courseId && !paymentInfo && !paymentCreating && !isLoading) {
       const paymentType = type === 'shop_order' ? 'shop_order' : 'course'
-      createPaymentForOrder(null, courseId, paymentType, amountParam)
+      createPaymentForOrder(courseId, paymentType, amountParam)
     }
   }, [isAuthenticated, paymentId, orderId, courseId, paymentInfo, paymentCreating, isLoading, loadPaymentInfo, checkExistingPaymentForOrder, createPaymentForOrder, type, amountParam, navigate])
 
@@ -332,15 +322,21 @@ function Payment() {
    * Перенаправление после успешной оплаты
    */
   const navigateAfterPayment = () => {
-    // Для unified_checkout или если есть payment_id - всегда в заказы
-    if (paymentId || paymentInfo?.payment_type === 'unified_checkout') {
+    const paymentType = paymentInfo?.payment_type || type
+
+    // Для unified_checkout - всегда в заказы
+    if (paymentType === 'unified_checkout') {
       navigate('/profile?tab=orders')
-    } else if (type === 'shop_order') {
+    }
+    // Для заказов товаров - в заказы
+    else if (paymentType === 'shop_order') {
       navigate('/profile?tab=orders')
-    } else if (type === 'course' && courseId) {
-      // Для курса - сразу переход к обучению
+    }
+    // Для курсов - сразу переход к обучению
+    else if (paymentType === 'course' && (courseId || orderId)) {
+      const courseIdToUse = courseId || orderId
       setTimeout(() => {
-        navigate(`/training/courses/${courseId}/learn`)
+        navigate(`/training/courses/${courseIdToUse}/learn`)
       }, 1000)
     } else {
       navigate('/profile?tab=courses')
@@ -468,10 +464,10 @@ function Payment() {
                   <span className="text-gray-600">Тип заказа:</span>
                   <span className="text-gray-900 font-medium">
                     {paymentInfo?.payment_type === 'unified_checkout'
-                      ? 'Единый заказ'
-                      : type === 'shop_order'
+                      ? 'Единый заказ (товары + курсы)'
+                      : paymentInfo?.payment_type === 'shop_order' || type === 'shop_order'
                         ? 'Товары'
-                        : courseId
+                        : paymentInfo?.payment_type === 'course' || type === 'course'
                           ? 'Курс'
                           : 'Заказ'}
                   </span>
@@ -653,7 +649,7 @@ function Payment() {
             </button>
 
             <Link
-              to={paymentId ? '/cart' : type === 'shop_order' ? '/cart' : courseId ? `/courses/${courseId}` : '/courses'}
+              to={type === 'unified_checkout' ? '/cart' : type === 'shop_order' ? '/cart' : courseId ? `/courses/${courseId}` : '/courses'}
               className="block text-center text-sm text-gray-500 hover:text-gray-700 mt-4"
             >
               Отменить

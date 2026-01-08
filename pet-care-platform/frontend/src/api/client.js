@@ -17,8 +17,7 @@ import axios from 'axios'
 import { refreshToken } from './auth'
 
 // Базовый URL API - использует прокси из vite.config.js
-// НЕ используем VITE_API_URL чтобы избежать CORS проблем в разработке
-// Все запросы на /api/* будут проксироваться Vite на бэкенд
+// Все запросы на /api/* проксируются на localhost:8077
 const API_BASE_URL = '/api'
 
 /**

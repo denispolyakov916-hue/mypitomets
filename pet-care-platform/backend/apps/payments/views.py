@@ -40,19 +40,38 @@ class PaymentCreateView(APIView):
         except ValueError as e:
             # Обработка ошибок недоступных товаров
             error_msg = str(e)
-            if 'Недоступные товары' in error_msg:
-                return Response(
-                    {'error': error_msg, 'code': 'UNAVAILABLE_ITEMS'},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-            return Response(
-                {'error': error_msg},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+            from core.exceptions import ApiError
+            if 'Недоступные товары' in error_msg or 'Недоступные товары или курсы' in error_msg:
+                raise ApiError.bad_request(error_msg, error_code='UNAVAILABLE_ITEMS')
+            raise ApiError.bad_request(error_msg)
         
         if amount is None:
+            # Пытаемся определить причину для более информативного сообщения
+            error_message = 'Связанный объект не найден или недоступен'
+            if payment_type == 'shop_order' or payment_type == 'unified_checkout':
+                from apps.shop.models import Order
+                try:
+                    order = Order.objects.get(id=object_id, user=request.user)
+                    if order.status not in ['pending', 'expired']:
+                        if order.status == 'processing':
+                            error_message = 'Заказ уже оплачен'
+                        elif order.status == 'cancelled':
+                            error_message = 'Заказ отменен'
+                        else:
+                            error_message = f'Заказ недоступен для оплаты (статус: {order.get_status_display()})'
+                except Order.DoesNotExist:
+                    pass
+            elif payment_type == 'course':
+                from apps.training.models import Course, UserCourse
+                try:
+                    course = Course.objects.get(id=object_id, is_active=True)
+                    if UserCourse.objects.filter(user=request.user, course=course).exists():
+                        error_message = 'Курс уже приобретен'
+                except Course.DoesNotExist:
+                    pass
+            
             return Response(
-                {'error': 'Связанный объект не найден или недоступен'},
+                {'error': error_message},
                 status=status.HTTP_404_NOT_FOUND
             )
 
@@ -94,6 +113,12 @@ class PaymentCreateView(APIView):
             
             try:
                 order = Order.objects.select_related('user').prefetch_related('items__product').get(id=object_id, user=user)
+                
+                # Проверяем, можно ли оплатить заказ
+                # Можно оплатить только заказы со статусом 'pending' или 'expired'
+                if order.status not in ['pending', 'expired']:
+                    logger.warning(f"Попытка оплаты заказа с недопустимым статусом: {order.id}, статус: {order.status}")
+                    return None  # Заказ уже оплачен или отменен
                 
                 # Если заказ просрочен - проверяем доступность товаров перед восстановлением
                 if order.status == 'expired':
@@ -141,6 +166,97 @@ class PaymentCreateView(APIView):
                     order.expires_at = timezone.now() + timedelta(minutes=10)
                     order.save()
                     logger.info(f"Просроченный заказ восстановлен для оплаты: {order.id}")
+                
+                return order.total_amount
+            except Order.DoesNotExist:
+                return None
+
+        elif payment_type == 'unified_checkout':
+            from apps.shop.models import Order
+            from apps.training.models import Course, UserCourse
+            from django.utils import timezone
+            from datetime import timedelta
+            import logging
+            logger = logging.getLogger('apps.payments')
+            
+            try:
+                # Для unified_checkout object_id может быть ID заказа товаров
+                order = Order.objects.select_related('user').prefetch_related('items__product', 'items__course').get(id=object_id, user=user)
+                
+                # Проверяем, можно ли оплатить заказ
+                # Можно оплатить только заказы со статусом 'pending' или 'expired'
+                if order.status not in ['pending', 'expired']:
+                    logger.warning(f"Попытка оплаты unified_checkout заказа с недопустимым статусом: {order.id}, статус: {order.status}")
+                    return None  # Заказ уже оплачен или отменен
+                
+                # Если заказ просрочен - проверяем доступность товаров и курсов перед восстановлением
+                if order.status == 'expired':
+                    unavailable_items = []
+                    insufficient_items = []
+                    
+                    # Проверяем товары
+                    for order_item in order.items.filter(product__isnull=False):
+                        try:
+                            product = order_item.product
+                            if not product:
+                                unavailable_items.append({
+                                    'product_id': order_item.product_id,
+                                    'product_name': order_item.product_name,
+                                    'quantity': order_item.quantity
+                                })
+                            elif product.stock_count < order_item.quantity:
+                                insufficient_items.append({
+                                    'product_id': product.id,
+                                    'product_name': order_item.product_name,
+                                    'required': order_item.quantity,
+                                    'available': product.stock_count
+                                })
+                        except Exception:
+                            unavailable_items.append({
+                                'product_id': order_item.product_id,
+                                'product_name': order_item.product_name,
+                                'quantity': order_item.quantity
+                            })
+                    
+                    # Проверяем курсы - они должны быть активны и не куплены
+                    for order_item in order.items.filter(course__isnull=False):
+                        try:
+                            course = order_item.course
+                            if not course or not course.is_active:
+                                unavailable_items.append({
+                                    'course_id': order_item.course_id,
+                                    'course_name': order_item.product_name,
+                                    'quantity': 1
+                                })
+                            elif UserCourse.objects.filter(user=user, course=course).exists():
+                                # Курс уже куплен - нельзя оплатить заказ с этим курсом
+                                unavailable_items.append({
+                                    'course_id': course.id,
+                                    'course_name': course.title,
+                                    'quantity': 1,
+                                    'reason': 'already_purchased'
+                                })
+                        except Exception:
+                            unavailable_items.append({
+                                'course_id': order_item.course_id,
+                                'course_name': order_item.product_name,
+                                'quantity': 1
+                            })
+                    
+                    # Если есть недоступные товары/курсы - возвращаем ошибку
+                    if unavailable_items or insufficient_items:
+                        error_data = {}
+                        if unavailable_items:
+                            error_data['unavailable_items'] = unavailable_items
+                        if insufficient_items:
+                            error_data['insufficient_items'] = insufficient_items
+                        raise ValueError(f"Недоступные товары или курсы в заказе: {error_data}")
+                    
+                    # Все товары и курсы доступны - восстанавливаем заказ
+                    order.status = 'pending'
+                    order.expires_at = timezone.now() + timedelta(minutes=10)
+                    order.save()
+                    logger.info(f"Просроченный unified_checkout заказ восстановлен для оплаты: {order.id}")
                 
                 return order.total_amount
             except Order.DoesNotExist:
@@ -404,8 +520,44 @@ class PaymentPageView(APIView):
         """Получение суммы платежа для разных типов объектов."""
         if payment_type == 'shop_order':
             from apps.shop.models import Order
+            import logging
+            logger = logging.getLogger('apps.payments')
+            
             try:
                 order = Order.objects.get(id=object_id, user=user)
+                # Проверяем, можно ли оплатить заказ
+                # Можно оплатить только заказы со статусом 'pending' или 'expired'
+                if order.status not in ['pending', 'expired']:
+                    logger.warning(f"Попытка оплаты заказа с недопустимым статусом: {order.id}, статус: {order.status}")
+                    return None  # Заказ уже оплачен или отменен
+                return order.total_amount
+            except Order.DoesNotExist:
+                return None
+        
+        elif payment_type == 'unified_checkout':
+            from apps.shop.models import Order
+            from apps.training.models import Course, UserCourse
+            import logging
+            logger = logging.getLogger('apps.payments')
+            
+            try:
+                order = Order.objects.select_related('user').prefetch_related('items__product', 'items__course').get(id=object_id, user=user)
+                # Проверяем, можно ли оплатить заказ
+                # Можно оплатить только заказы со статусом 'pending' или 'expired'
+                if order.status not in ['pending', 'expired']:
+                    logger.warning(f"Попытка оплаты unified_checkout заказа с недопустимым статусом: {order.id}, статус: {order.status}")
+                    return None  # Заказ уже оплачен или отменен
+                
+                # Проверяем, что курсы в заказе еще не куплены
+                for order_item in order.items.filter(course__isnull=False):
+                    try:
+                        course = order_item.course
+                        if course and UserCourse.objects.filter(user=user, course=course).exists():
+                            logger.warning(f"Курс {course.id} уже куплен пользователем {user.id}")
+                            return None  # Курс уже куплен
+                    except Exception:
+                        pass
+                
                 return order.total_amount
             except Order.DoesNotExist:
                 return None

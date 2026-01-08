@@ -28,7 +28,7 @@ import { Eye, EyeOff } from 'lucide-react'
 function Login() {
   const navigate = useNavigate()
   const location = useLocation()
-  const { login, isLoading, error, clearError } = useAuthStore()
+  const { login, isLoading, error, clearError, user } = useAuthStore()
   
   // Состояние формы
   const [formData, setFormData] = useState({
@@ -42,6 +42,26 @@ function Login() {
   useEffect(() => {
     clearError()
   }, [clearError])
+  
+  // Редирект после успешного логина
+  useEffect(() => {
+    if (user && !isLoading) {
+      // Редирект на целевую страницу или в зависимости от роли
+      let redirectPath = location.state?.from?.pathname || 
+                         new URLSearchParams(location.search).get('redirect')
+      
+      if (!redirectPath) {
+        // Если нет целевой страницы, редиректим в зависимости от роли
+        if (user.is_staff || user.is_superuser) {
+          redirectPath = '/admin/dashboard'
+        } else {
+          redirectPath = '/pet-id'
+        }
+      }
+      
+      navigate(redirectPath, { replace: true })
+    }
+  }, [user, isLoading, navigate, location])
   
   /**
    * Валидация полей формы
@@ -85,13 +105,8 @@ function Login() {
     
     if (!validateForm()) return
     
-    const success = await login(formData.email, formData.password)
-    
-    if (success) {
-      // Редирект на целевую страницу или список питомцев
-      const from = location.state?.from?.pathname || '/pet-id'
-      navigate(from, { replace: true })
-    }
+    await login(formData.email, formData.password)
+    // Редирект будет выполнен в useEffect при обновлении user
   }
   
   return (

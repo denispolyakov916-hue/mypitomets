@@ -40,7 +40,7 @@ export const getProducts = async (filters = {}) => {
   const params = new URLSearchParams()
   
   // Добавляем только непустые фильтры
-  const filterKeys = ['animal', 'pet_id', 'category', 'subcategory', 'vendor', 'min_price', 'max_price', 'in_stock', 'has_discount', 'min_rating', 'min_orders', 'sort_by', 'search', 'page', 'per_page']
+  const filterKeys = ['animal', 'pet_id', 'category', 'subcategory', 'vendor', 'min_price', 'max_price', 'in_stock', 'has_discount', 'min_rating', 'min_orders', 'sort_by', 'search', 'page', 'per_page', 'ids']
   
   filterKeys.forEach(key => {
     if (filters[key]) {

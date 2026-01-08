@@ -10,6 +10,8 @@
  *   fullScreen: Если true, центрируется во viewport с оверлеем
  */
 
+import PropTypes from 'prop-types'
+
 /**
  * Компонент Loader с анимацией спиннера
  * 
@@ -68,6 +70,12 @@ export function PageLoader() {
  */
 export function ButtonLoader() {
   return <Loader size="sm" className="border-white border-t-transparent" />
+}
+
+Loader.propTypes = {
+  size: PropTypes.oneOf(['sm', 'md', 'lg']),
+  className: PropTypes.string,
+  fullScreen: PropTypes.bool,
 }
 
 export default Loader

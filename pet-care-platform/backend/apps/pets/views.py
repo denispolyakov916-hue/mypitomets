@@ -29,7 +29,8 @@ class PetListCreateView(APIView):
     
     def get(self, request):
         """Список питомцев пользователя."""
-        pets = Pet.objects.filter(owner=request.user)
+        # Оптимизация: select_related для owner (хотя owner уже известен, но для консистентности)
+        pets = Pet.objects.select_related('owner').filter(owner=request.user)
         pets_data = [pet.to_dict() for pet in pets]
         
         return Response({
@@ -136,7 +137,8 @@ class PetDetailView(APIView):
     def _get_pet(self, request, pet_id):
         """Получение питомца с проверкой владения."""
         try:
-            pet = Pet.objects.get(id=pet_id)
+            # Оптимизация: select_related для owner
+            pet = Pet.objects.select_related('owner').get(id=pet_id)
         except Pet.DoesNotExist:
             return None, Response(
                 {'error': 'Питомец не найден'},

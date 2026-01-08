@@ -15,9 +15,9 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
   
   // URL бэкенда для прокси
-  // Используем localhost для разработки
-  const backendHost = env.VITE_BACKEND_HOST || 'localhost'
-  const backendPort = env.VITE_BACKEND_PORT || '8077'
+  // Жестко указываем localhost для разработки
+  const backendHost = 'localhost'
+  const backendPort = '8077'
   const proxyTarget = `http://${backendHost}:${backendPort}`
   
   console.log(`[Vite] API proxy target: ${proxyTarget}`)
@@ -33,33 +33,23 @@ export default defineConfig(({ mode }) => {
       strictPort: false, // Если порт занят, попробовать следующий
 
       // Проксирование API запросов к Django бэкенду
-      // Все запросы на /api/* перенаправляются на бэкенд
-      // Это позволяет избежать CORS проблем в разработке
+      // Все запросы на /api/* перенаправляются на localhost:8077
       proxy: {
         '/api': {
-          target: proxyTarget,
+          target: 'http://localhost:8077',
           changeOrigin: true,
           secure: false,
-          ws: false, // Отключаем WebSocket прокси
-          // Не переписываем путь - оставляем /api/* как есть
+          ws: false,
+          rewrite: (path) => path, // Оставляем путь как есть
           configure: (proxy, options) => {
             proxy.on('proxyReq', (proxyReq, req, res) => {
-              console.log('[Proxy Request]', req.method, req.url)
-              console.log('[Proxy Target]', proxyTarget + req.url)
-              console.log('[Proxy Headers]', {
-                'host': proxyReq.getHeader('host'),
-                'origin': req.headers.origin,
-                'user-agent': req.headers['user-agent']
-              })
+              console.log(`[Vite Proxy] ${req.method} ${req.url} -> http://localhost:8077${req.url}`)
             })
             proxy.on('error', (err, req, res) => {
-              console.error('[Proxy Error]', err.message)
-              console.error('[Proxy Error] Code:', err.code)
-              console.error('[Proxy Error] Target:', proxyTarget)
-              console.error('[Proxy Error] Request URL:', req.url)
+              console.error('[Vite Proxy Error]', err.message, 'for', req.url)
             })
             proxy.on('proxyRes', (proxyRes, req, res) => {
-              console.log('[Proxy Response]', req.url, 'Status:', proxyRes.statusCode)
+              console.log(`[Vite Proxy] ${req.url} -> ${proxyRes.statusCode}`)
             })
           }
         }
@@ -69,7 +59,47 @@ export default defineConfig(({ mode }) => {
     // Конфигурация сборки
     build: {
       outDir: 'dist',
-      sourcemap: true, // Включить source maps для отладки
+      sourcemap: false, // Отключить source maps в продакшене для уменьшения размера
+      minify: 'terser',
+      terserOptions: {
+        compress: {
+          drop_console: true, // Удалить console.log в продакшене
+          drop_debugger: true,
+        },
+      },
+      // Разделение на chunks для оптимизации загрузки
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            // React и React DOM в отдельный chunk
+            'react-vendor': ['react', 'react-dom', 'react-router-dom'],
+            // Chart библиотеки
+            'chart-vendor': ['chart.js', 'react-chartjs-2'],
+            // D3
+            'd3-vendor': ['d3'],
+            // TipTap редактор
+            'tiptap-vendor': [
+              '@tiptap/react',
+              '@tiptap/starter-kit',
+              '@tiptap/extension-image',
+              '@tiptap/extension-link',
+              '@tiptap/pm'
+            ],
+            // Zustand
+            'zustand-vendor': ['zustand'],
+            // Axios
+            'axios-vendor': ['axios'],
+            // DnD Kit
+            'dnd-vendor': [
+              '@dnd-kit/core',
+              '@dnd-kit/sortable',
+              '@dnd-kit/utilities'
+            ],
+          },
+        },
+      },
+      // Размер предупреждений (в KB)
+      chunkSizeWarningLimit: 1000,
     }
   }
 })

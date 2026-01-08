@@ -23,6 +23,9 @@ from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
 
+# Health check и мониторинг
+from core.views import health_check, health_check_detailed, metrics
+
 # =============================================================================
 # URL МАРШРУТЫ
 # =============================================================================
@@ -78,6 +81,12 @@ urlpatterns = [
     # Обрабатывает: аналитика, управление данными, CRUD операций
     # Доступ: только для пользователей с is_staff=True
     path('api/admin/', include('config.urls_admin')),
+    
+    # Health check и мониторинг
+    # Health check доступен без аутентификации для использования в мониторинге
+    path('api/health/', health_check, name='health-check'),
+    path('api/health/detailed/', health_check_detailed, name='health-check-detailed'),
+    path('api/metrics/', metrics, name='metrics'),
 ]
 
 # Обслуживание медиа файлов в режиме разработки

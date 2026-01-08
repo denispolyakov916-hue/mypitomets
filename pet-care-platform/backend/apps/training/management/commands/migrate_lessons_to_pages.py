@@ -118,7 +118,7 @@ class Command(BaseCommand):
         blocks_created = 0
 
         # Проверяем, есть ли уже страницы для этого курса
-        existing_pages = CoursePage.objects.filter(course=course)
+        existing_pages = CoursePage.objects.filter(course_id=course.id)
         if existing_pages.exists() and not force:
             raise CommandError(
                 f'Курс "{course.title}" уже имеет страницы. '
@@ -181,7 +181,7 @@ class Command(BaseCommand):
                 settings['allow_skipping'] = lesson.content['allow_skip']
 
         return {
-            'course': lesson.course,
+            'course_id': lesson.course.id,  # Используем course_id вместо ForeignKey
             'title': lesson.title,
             'order_number': lesson.order,
             'page_type': page_type,

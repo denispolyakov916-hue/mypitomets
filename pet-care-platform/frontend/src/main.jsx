@@ -33,8 +33,12 @@ function AppInitializer({ children }) {
     hasInitialized.current = true
 
     const initializeApp = async () => {
+      // Проверяем наличие токена в localStorage (для случая refresh страницы)
+      const hasToken = typeof window !== 'undefined' && 
+        (localStorage.getItem('access_token') || localStorage.getItem('refresh_token'))
+      
       // Если есть токен, но нет данных пользователя - валидируем токен (он загрузит профиль)
-      if (isAuthenticated && !user) {
+      if (hasToken && !user) {
         try {
           // Валидируем токен (он загрузит профиль)
           const isValid = await validateToken()

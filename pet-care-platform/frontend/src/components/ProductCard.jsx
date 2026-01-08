@@ -21,10 +21,12 @@
 
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import PropTypes from 'prop-types'
 import { ButtonLoader } from './Loader'
 import Rating from './Rating'
 import FavoriteButton from './FavoriteButton'
 import { useCartStore } from '../store/cartStore'
+import { ProductPropTypes } from '../utils/propTypes'
 
 /**
  * Маппинг названий животных
@@ -310,6 +312,12 @@ function ProductCard({ product, onAddToCart, isLoading = false }) {
       </div>
     </div>
   )
+}
+
+ProductCard.propTypes = {
+  product: ProductPropTypes.isRequired,
+  onAddToCart: PropTypes.func,
+  isLoading: PropTypes.bool,
 }
 
 export default ProductCard

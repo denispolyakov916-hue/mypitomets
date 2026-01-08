@@ -4,7 +4,6 @@
 Включает: PaymentService - единая точка входа для всех платежей
 """
 
-import logging
 from decimal import Decimal
 from typing import Optional, Dict, Any
 from django.conf import settings
@@ -12,12 +11,11 @@ from django.utils import timezone
 from django.db import transaction
 from django.db.models import Sum
 
+from core.services import BaseService
 from .models import Payment
 
-logger = logging.getLogger('apps.payments')
 
-
-class PaymentService:
+class PaymentService(BaseService):
     """
     Единая служба для обработки всех платежей на платформе.
 
@@ -65,7 +63,11 @@ class PaymentService:
             metadata=metadata or {},
         )
 
-        logger.info(f"Создан платеж: {payment.id}, тип={payment_type}, сумма={amount} {currency}")
+        PaymentService.log_info(f"Создан платеж: {payment.id}, тип={payment_type}, сумма={amount} {currency}", {
+            'payment_id': payment.id,
+            'user_id': user.id,
+            'payment_type': payment_type
+        })
         return payment
 
     @staticmethod
@@ -82,7 +84,10 @@ class PaymentService:
             bool: True если платеж успешен
         """
         if payment.status != 'pending':
-            logger.warning(f"Попытка обработать платеж в статусе {payment.status}: {payment.id}")
+            PaymentService.log_info(f"Попытка обработать платеж в статусе {payment.status}: {payment.id}", {
+                'payment_id': payment.id,
+                'status': payment.status
+            })
             return False
 
         # Имитация обработки платежа
@@ -92,7 +97,7 @@ class PaymentService:
         payment.external_payment_id = f"mock_{payment.id}"
         payment.save()
 
-        logger.info(f"Начата обработка платежа: {payment.id}")
+        PaymentService.log_info(f"Начата обработка платежа: {payment.id}", {'payment_id': payment.id})
 
         # Имитация успешной оплаты (в реальности это будет webhook/callback)
         PaymentService._simulate_payment_success(payment)
@@ -113,7 +118,7 @@ class PaymentService:
         time.sleep(0.1)  # В реальности webhook приходит асинхронно
 
         payment.mark_as_completed()
-        logger.info(f"Платеж успешно завершён: {payment.id}")
+        PaymentService.log_info(f"Платеж успешно завершён: {payment.id}", {'payment_id': payment.id})
 
         # Выполнение пост-платежных действий
         PaymentService._execute_post_payment_actions(payment)
@@ -133,7 +138,7 @@ class PaymentService:
         try:
             payment = Payment.objects.get(id=payment_id)
         except Payment.DoesNotExist:
-            logger.error(f"Платеж не найден: {payment_id}")
+            PaymentService.log_error(Exception(f"Платеж не найден: {payment_id}"), {'payment_id': payment_id})
             return False
 
         # Если платёж в статусе pending - сначала обрабатываем его
@@ -142,9 +147,12 @@ class PaymentService:
             payment.payment_gateway = 'mock_gateway'
             payment.external_payment_id = external_payment_id or f"mock_{payment.id}"
             payment.save()
-            logger.info(f"Платеж переведён в processing: {payment.id}")
+            PaymentService.log_info(f"Платеж переведён в processing: {payment.id}", {'payment_id': payment.id})
         elif payment.status != 'processing':
-            logger.warning(f"Попытка подтвердить платеж в статусе {payment.status}: {payment.id}")
+            PaymentService.log_info(f"Попытка подтвердить платеж в статусе {payment.status}: {payment.id}", {
+                'payment_id': payment.id,
+                'status': payment.status
+            })
             return False
 
         payment.mark_as_completed(external_payment_id)
@@ -169,11 +177,14 @@ class PaymentService:
         try:
             payment = Payment.objects.get(id=payment_id)
         except Payment.DoesNotExist:
-            logger.error(f"Платеж не найден: {payment_id}")
+            PaymentService.log_error(Exception(f"Платеж не найден: {payment_id}"), {'payment_id': payment_id})
             return False
 
         if not payment.can_be_cancelled():
-            logger.warning(f"Невозможно отменить платеж в статусе {payment.status}: {payment.id}")
+            PaymentService.log_info(f"Невозможно отменить платеж в статусе {payment.status}: {payment.id}", {
+                'payment_id': payment.id,
+                'status': payment.status
+            })
             return False
 
         payment.status = 'cancelled'
@@ -182,7 +193,7 @@ class PaymentService:
             payment.metadata['cancellation_reason'] = reason
         payment.save()
 
-        logger.info(f"Платеж отменён: {payment.id}")
+        PaymentService.log_info(f"Платеж отменён: {payment.id}", {'payment_id': payment.id, 'reason': reason})
         return True
 
     @staticmethod
@@ -201,11 +212,14 @@ class PaymentService:
         try:
             payment = Payment.objects.get(id=payment_id)
         except Payment.DoesNotExist:
-            logger.error(f"Платеж не найден: {payment_id}")
+            PaymentService.log_error(Exception(f"Платеж не найден: {payment_id}"), {'payment_id': payment_id})
             return False
 
         if payment.status != 'completed':
-            logger.warning(f"Невозможно вернуть платеж в статусе {payment.status}: {payment.id}")
+            PaymentService.log_info(f"Невозможно вернуть платеж в статусе {payment.status}: {payment.id}", {
+                'payment_id': payment.id,
+                'status': payment.status
+            })
             return False
 
         refund_amount = amount or payment.amount
@@ -217,7 +231,10 @@ class PaymentService:
         payment.metadata['refund_reason'] = reason
         payment.save()
 
-        logger.info(f"Платеж возвращён: {payment.id}, сумма={refund_amount}")
+        PaymentService.log_info(f"Платеж возвращён: {payment.id}, сумма={refund_amount}", {
+            'payment_id': payment.id,
+            'refund_amount': float(refund_amount)
+        })
         return True
 
     @staticmethod
@@ -245,7 +262,9 @@ class PaymentService:
         from datetime import timedelta
 
         if not payment.user:
-            logger.warning(f"Невозможно активировать заказ: пользователь удалён для платежа {payment.id}")
+            PaymentService.log_info(f"Невозможно активировать заказ: пользователь удалён для платежа {payment.id}", {
+                'payment_id': payment.id
+            })
             return
 
         try:
@@ -257,7 +276,10 @@ class PaymentService:
                 if order.status == 'expired':
                     order.status = 'pending'
                     order.expires_at = timezone.now() + timedelta(minutes=10)
-                    logger.info(f"Просроченный заказ восстановлен: {order.id}")
+                    PaymentService.log_info(f"Просроченный заказ восстановлен: {order.id}", {
+                        'order_id': order.id,
+                        'payment_id': payment.id
+                    })
                 
                 # Проверяем доступность товаров перед списанием
                 unavailable_items = []
@@ -297,7 +319,15 @@ class PaymentService:
                     if insufficient_items:
                         error_msg += f": недостаточно {len(insufficient_items)} товар(ов)"
                     
-                    logger.error(f"{error_msg} для заказа {order.id}")
+                    PaymentService.log_error(
+                        ValueError(error_msg),
+                        {
+                            'order_id': order.id,
+                            'payment_id': payment.id,
+                            'unavailable_items': unavailable_items,
+                            'insufficient_items': insufficient_items
+                        }
+                    )
                     raise ValueError(error_msg)
                 
                 # Все товары доступны - списываем со склада
@@ -309,7 +339,7 @@ class PaymentService:
                     if product.stock_count == 0:
                         product.in_stock = False
                     product.save()
-                    logger.info(f"Списан товар: {product.name}, количество: {order_item.quantity}, остаток: {product.stock_count}")
+                    PaymentService.log_info(f"Списан товар: {product.name}, количество: {order_item.quantity}, остаток: {product.stock_count}")
 
                 # Обновляем счетчики популярности товаров
                 for order_item in order.items.filter(product__isnull=False):
@@ -320,10 +350,15 @@ class PaymentService:
                 order.status = 'processing'
                 order.expires_at = None  # Убираем срок истечения после успешной оплаты
                 order.save()
-                logger.info(f"Заказ активирован после оплаты и товары списаны: {order.id}")
+                PaymentService.log_info(f"Заказ активирован после оплаты и товары списаны: {order.id}", {
+                    'order_id': order.id,
+                    'payment_id': payment.id
+                })
 
         except Order.DoesNotExist:
-            logger.error(f"Заказ не найден для платежа: {payment.id}")
+            PaymentService.log_error(Exception(f"Заказ не найден для платежа: {payment.id}"), {
+                'payment_id': payment.id
+            })
 
     @staticmethod
     def _activate_course_access(payment: Payment):
@@ -332,7 +367,9 @@ class PaymentService:
         from apps.pets.models import Pet
 
         if not payment.user:
-            logger.warning(f"Невозможно предоставить доступ к курсу: пользователь удалён для платежа {payment.id}")
+            PaymentService.log_info(f"Невозможно предоставить доступ к курсу: пользователь удалён для платежа {payment.id}", {
+                'payment_id': payment.id
+            })
             return
 
         try:
@@ -344,7 +381,9 @@ class PaymentService:
                 try:
                     pet = Pet.objects.get(id=payment.metadata['pet_id'], owner=payment.user)
                 except Pet.DoesNotExist:
-                    logger.warning(f"Питомец не найден для платежа {payment.id}, курс будет привязан без питомца")
+                    PaymentService.log_info(f"Питомец не найден для платежа {payment.id}, курс будет привязан без питомца", {
+                        'payment_id': payment.id
+                    })
             
             # Создание связи пользователь-курс (если ещё не существует)
             UserCourse.objects.get_or_create(
@@ -359,15 +398,21 @@ class PaymentService:
             course.save(update_fields=['order_count'])
 
             pet_info = f" для {pet.name}" if pet else ""
-            logger.info(f"Доступ к курсу предоставлен: user={payment.user.email}, course={course.title}{pet_info}")
+            PaymentService.log_info(f"Доступ к курсу предоставлен: user={payment.user.email}, course={course.title}{pet_info}", {
+                'payment_id': payment.id,
+                'user_id': payment.user.id,
+                'course_id': course.id
+            })
         except Course.DoesNotExist:
-            logger.error(f"Курс не найден для платежа: {payment.id}")
+            PaymentService.log_error(Exception(f"Курс не найден для платежа: {payment.id}"), {
+                'payment_id': payment.id
+            })
 
     @staticmethod
     def _activate_subscription(payment: Payment):
         """Активация подписки после оплаты."""
         # Будущая функциональность
-        logger.info(f"Подписка активирована: {payment.id}")
+        PaymentService.log_info(f"Подписка активирована: {payment.id}", {'payment_id': payment.id})
 
     @staticmethod
     def _activate_unified_checkout(payment: Payment):
@@ -377,7 +422,9 @@ class PaymentService:
         from apps.pets.models import Pet
 
         if not payment.user:
-            logger.warning(f"Невозможно активировать unified checkout: пользователь удалён для платежа {payment.id}")
+            PaymentService.log_info(f"Невозможно активировать unified checkout: пользователь удалён для платежа {payment.id}", {
+                'payment_id': payment.id
+            })
             return
 
         metadata = payment.metadata or {}
@@ -399,16 +446,29 @@ class PaymentService:
                             if product.stock_count == 0:
                                 product.in_stock = False
                             product.save()
-                            logger.info(f"Списан товар в unified checkout: {product.name}, количество: {order_item.quantity}, остаток: {product.stock_count}")
+                            PaymentService.log_info(f"Списан товар в unified checkout: {product.name}, количество: {order_item.quantity}, остаток: {product.stock_count}")
                         else:
                             # Это не должно происходить, если проверки были сделаны при создании заказа
-                            logger.error(f"Недостаточно товара на складе в unified checkout: {product.name}, требуется: {order_item.quantity}, доступно: {product.stock_count}")
+                            PaymentService.log_error(
+                                Exception(f"Недостаточно товара на складе в unified checkout: {product.name}"),
+                                {
+                                    'payment_id': payment.id,
+                                    'product_name': product.name,
+                                    'required': order_item.quantity,
+                                    'available': product.stock_count
+                                }
+                            )
 
                     order.status = 'processing'
                     order.save()
-                    logger.info(f"Заказ товаров активирован в unified checkout и товары списаны: {order.id}")
+                    PaymentService.log_info(f"Заказ товаров активирован в unified checkout и товары списаны: {order.id}", {
+                        'order_id': order.id,
+                        'payment_id': payment.id
+                    })
             except Order.DoesNotExist:
-                logger.error(f"Заказ товаров не найден для unified checkout платежа: {payment.id}")
+                PaymentService.log_error(Exception(f"Заказ товаров не найден для unified checkout платежа: {payment.id}"), {
+                    'payment_id': payment.id
+                })
 
         # Активация доступа к курсам
         course_ids = metadata.get('course_ids', [])
@@ -416,11 +476,18 @@ class PaymentService:
             try:
                 user_course = UserCourse.objects.get(id=user_course_id, user=payment.user)
                 # Доступ к курсу уже предоставлен при создании UserCourse
-                logger.info(f"Доступ к курсу подтверждён в unified checkout: user={payment.user.email}, course={user_course.course.title}")
+                PaymentService.log_info(f"Доступ к курсу подтверждён в unified checkout: user={payment.user.email}, course={user_course.course.title}", {
+                    'payment_id': payment.id,
+                    'user_id': payment.user.id,
+                    'course_id': user_course.course.id
+                })
             except UserCourse.DoesNotExist:
-                logger.error(f"UserCourse не найден для unified checkout платежа: {payment.id}, course_id={user_course_id}")
+                PaymentService.log_error(
+                    Exception(f"UserCourse не найден для unified checkout платежа: {payment.id}"),
+                    {'payment_id': payment.id, 'course_id': user_course_id}
+                )
 
-        logger.info(f"Unified checkout активирован: {payment.id}")
+        PaymentService.log_info(f"Unified checkout активирован: {payment.id}", {'payment_id': payment.id})
 
     @staticmethod
     def get_payment_statistics(user=None):

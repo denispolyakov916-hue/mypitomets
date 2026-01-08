@@ -33,7 +33,7 @@ export const getCourses = async (filters = {}) => {
   const params = new URLSearchParams()
 
   // Добавляем только непустые фильтры
-  const filterKeys = ['pet_type', 'pet_id', 'category', 'subcategory', 'level', 'format_type', 'personal', 'price_type', 'min_price', 'max_price', 'search', 'page', 'per_page']
+  const filterKeys = ['pet_type', 'pet_id', 'category', 'subcategory', 'level', 'format_type', 'personal', 'price_type', 'min_price', 'max_price', 'search', 'page', 'per_page', 'ids']
 
   filterKeys.forEach(key => {
     if (filters[key]) {

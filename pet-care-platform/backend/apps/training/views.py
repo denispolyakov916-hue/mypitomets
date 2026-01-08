@@ -36,7 +36,49 @@ class CourseListView(APIView):
     
     permission_classes = [AllowAny]
     
+    @staticmethod
+    def _get_cache_key(request):
+        """Генерация ключа кэша на основе параметров запроса."""
+        from core.cache_utils import make_cache_key
+        query_params = dict(request.query_params)
+        # Исключаем параметры пагинации для более широкого кэширования
+        query_params.pop('page', None)
+        query_params.pop('per_page', None)
+        return make_cache_key('courses_list', query_params)
+    
     def get(self, request):
+        from django.core.cache import cache
+        from django.conf import settings
+        
+        # Проверяем кэш
+        cache_key = self._get_cache_key(request)
+        cached_response = cache.get(cache_key)
+        if cached_response is not None:
+            # Восстанавливаем пагинацию из запроса
+            try:
+                page = max(1, int(request.query_params.get('page', 1)))
+                per_page = min(50, max(1, int(request.query_params.get('per_page', 12))))
+            except ValueError:
+                page = 1
+                per_page = 12
+            
+            # Применяем пагинацию к кэшированным данным
+            total = cached_response.get('pagination', {}).get('total', 0)
+            all_courses = cached_response.get('courses', [])
+            
+            offset = (page - 1) * per_page
+            courses_page = all_courses[offset:offset + per_page]
+            
+            response_data = cached_response.copy()
+            response_data['courses'] = courses_page
+            response_data['pagination'] = {
+                'total': total,
+                'page': page,
+                'per_page': per_page,
+                'total_pages': (total + per_page - 1) // per_page if total > 0 else 0
+            }
+            
+            return Response(response_data, status=status.HTTP_200_OK)
         from django.db.models import Min, Max
         
         # Используем оптимизированный каталог с предзагруженными рейтингами
@@ -121,6 +163,16 @@ class CourseListView(APIView):
         search = request.query_params.get('search')
         courses = courses.search(search)
 
+        # Фильтр по ID курсов (для избранного)
+        ids = request.query_params.get('ids')
+        if ids:
+            try:
+                ids_list = [int(id.strip()) for id in ids.split(',') if id.strip()]
+                if ids_list:
+                    courses = courses.filter(id__in=ids_list)
+            except ValueError:
+                pass
+
         # Фильтр по рейтингу (оптимизировано - используем SQL аннотацию)
         min_rating = request.query_params.get('min_rating')
         if min_rating:
@@ -199,7 +251,7 @@ class CourseListView(APIView):
             except Exception:
                 pass
 
-        return Response({
+        response_data = {
             'courses': courses_data,
             'pagination': {
                 'total': total_count,
@@ -247,7 +299,15 @@ class CourseListView(APIView):
                 },
                 'user_pets': user_pets,
             }
-        }, status=status.HTTP_200_OK)
+        }
+        
+        # Сохраняем в кэш (без пагинации, чтобы кэшировать все курсы)
+        from django.core.cache import cache
+        from django.conf import settings
+        cache_timeout = getattr(settings, 'CACHE_TIMEOUTS', {}).get('courses_list', 300)
+        cache.set(cache_key, response_data, cache_timeout)
+        
+        return Response(response_data, status=status.HTTP_200_OK)
 
     def _get_personalization_info(self, request, pet_id=None):
         """
@@ -331,12 +391,11 @@ class CourseDetailView(APIView):
     
     def get(self, request, course_id):
         try:
-            course = Course.objects.get(id=course_id, is_active=True)
+            # Оптимизация: используем with_ratings() для предзагрузки рейтинга
+            course = Course.objects.with_ratings().get(id=course_id, is_active=True)
         except Course.DoesNotExist:
-            return Response(
-                {'error': 'Курс не найден'},
-                status=status.HTTP_404_NOT_FOUND
-            )
+            from core.exceptions import ApiError
+            raise ApiError.not_found('Курс не найден', error_code='COURSE_NOT_FOUND')
         
         # Используем detailed=True для полной информации
         course_data = course.to_dict(detailed=True)
@@ -346,7 +405,8 @@ class CourseDetailView(APIView):
         pet_id = request.query_params.get('pet_id')
         if pet_id and request.user.is_authenticated:
             try:
-                pet = Pet.objects.get(id=pet_id, owner=request.user)
+                # Оптимизация: select_related для owner
+                pet = Pet.objects.select_related('owner').get(id=pet_id, owner=request.user)
                 personalization = course.get_personalized_recommendations(pet)
                 response_data['personalization'] = personalization
             except Pet.DoesNotExist:
@@ -380,10 +440,8 @@ class CourseCheckoutView(APIView):
         try:
             course = Course.objects.get(id=course_id, is_active=True)
         except Course.DoesNotExist:
-            return Response(
-                {'error': 'Курс не найден'},
-                status=status.HTTP_404_NOT_FOUND
-            )
+            from core.exceptions import ApiError
+            raise ApiError.not_found('Курс не найден', error_code='COURSE_NOT_FOUND')
         
         # Проверка, не куплен ли уже
         is_owned = UserCourse.objects.filter(user=request.user, course=course).exists()
@@ -618,7 +676,8 @@ class UserCoursesView(APIView):
         pet_id = request.query_params.get('pet_id')
         if pet_id:
             try:
-                pet = Pet.objects.get(id=pet_id, owner=request.user)
+                # Оптимизация: select_related для owner
+                pet = Pet.objects.select_related('owner').get(id=pet_id, owner=request.user)
                 user_courses = user_courses.filter(pet=pet)
             except Pet.DoesNotExist:
                 return Response(
@@ -652,10 +711,8 @@ class FreeCourseEnrollView(APIView):
         try:
             course = Course.objects.get(id=course_id, is_active=True)
         except Course.DoesNotExist:
-            return Response(
-                {'error': 'Курс не найден'},
-                status=status.HTTP_404_NOT_FOUND
-            )
+            from core.exceptions import ApiError
+            raise ApiError.not_found('Курс не найден', error_code='COURSE_NOT_FOUND')
 
         # Проверка, что курс бесплатный
         if course.price > 0:
@@ -749,54 +806,84 @@ class CourseLessonsView(APIView):
 
     def get(self, request, course_id):
         try:
-            course = Course.objects.get(id=course_id, is_active=True)
+            # Оптимизация: используем with_ratings() для консистентности
+            course = Course.objects.with_ratings().get(id=course_id, is_active=True)
         except Course.DoesNotExist:
-            return Response(
-                {'error': 'Курс не найден'},
-                status=status.HTTP_404_NOT_FOUND
-            )
+            from core.exceptions import ApiError
+            raise ApiError.not_found('Курс не найден', error_code='COURSE_NOT_FOUND')
 
-        lessons = course.get_lessons_ordered()
-        lessons_data = []
+        # Поддержка обеих архитектур: CoursePage (новая) и Lesson (старая)
+        use_new_architecture = course.has_pages()
+        
+        if use_new_architecture:
+            # Новая архитектура: CoursePage
+            pages = course.get_pages_ordered().prefetch_related('blocks')
+            items_data = []
+            
+            for page in pages:
+                page_data = {
+                    'id': page.id,
+                    'title': page.title,
+                    'page_type': page.page_type,
+                    'order': page.order_number,
+                    'is_required': page.settings.get('required_completion', False),
+                    'blocks_count': page.blocks.filter(is_active=True).count(),
+                    'architecture': 'page'  # Указываем тип архитектуры
+                }
+                items_data.append(page_data)
+        else:
+            # Старая архитектура: Lesson
+            lessons = course.get_lessons_ordered()
+            items_data = []
 
-        for lesson in lessons:
-            lesson_data = {
-                'id': lesson.id,
-                'title': lesson.title,
-                'content_type': lesson.content_type,
-                'content_type_display': lesson.get_content_type_display_name(),
-                'duration': lesson.duration,
-                'order': lesson.order,
-                'is_required': lesson.is_required,
-            }
-
-            # Для авторизованных пользователей добавляем статус прогресса
+            # Оптимизация: предзагружаем прогресс для всех уроков одним запросом
+            lesson_progresses = {}
             if request.user.is_authenticated:
+                pet_id = request.query_params.get('pet_id')
                 try:
-                    course_progress = UserCourseProgress.objects.get(
+                    course_progress = UserCourseProgress.objects.select_related('user', 'course', 'pet').get(
                         user=request.user,
                         course=course,
-                        pet_id=request.query_params.get('pet_id')
+                        pet_id=pet_id
                     )
-                    lesson_progress = UserLessonProgress.objects.filter(
+                    # Предзагружаем прогресс всех уроков одним запросом
+                    progresses = UserLessonProgress.objects.filter(
                         course_progress=course_progress,
-                        lesson=lesson
-                    ).first()
-
-                    if lesson_progress:
-                        lesson_data['progress'] = {
-                            'status': lesson_progress.status,
-                            'time_spent': lesson_progress.time_spent,
-                            'completed_at': lesson_progress.completed_at.isoformat() if lesson_progress.completed_at else None,
-                        }
+                        lesson__in=lessons
+                    ).select_related('lesson')
+                    lesson_progresses = {p.lesson_id: p for p in progresses}
                 except UserCourseProgress.DoesNotExist:
                     pass
 
-            lessons_data.append(lesson_data)
+            for lesson in lessons:
+                lesson_data = {
+                    'id': lesson.id,
+                    'title': lesson.title,
+                    'content_type': lesson.content_type,
+                    'content_type_display': lesson.get_content_type_display_name(),
+                    'duration': lesson.duration,
+                    'order': lesson.order,
+                    'is_required': lesson.is_required,
+                    'architecture': 'lesson'  # Указываем тип архитектуры
+                }
+
+                # Для авторизованных пользователей добавляем статус прогресса
+                if request.user.is_authenticated and lesson.id in lesson_progresses:
+                    lesson_progress = lesson_progresses[lesson.id]
+
+                    lesson_data['progress'] = {
+                        'status': lesson_progress.status,
+                        'time_spent': lesson_progress.time_spent,
+                        'completed_at': lesson_progress.completed_at.isoformat() if lesson_progress.completed_at else None,
+                    }
+
+                items_data.append(lesson_data)
 
         return Response({
-            'lessons': lessons_data,
-            'count': len(lessons_data)
+            'items': items_data,  # Универсальное название для обеих архитектур
+            'lessons': items_data,  # Обратная совместимость
+            'count': len(items_data),
+            'architecture': 'page' if use_new_architecture else 'lesson'
         }, status=status.HTTP_200_OK)
 
 
@@ -959,10 +1046,8 @@ class UserCourseProgressView(APIView):
         try:
             course = Course.objects.get(id=course_id, is_active=True)
         except Course.DoesNotExist:
-            return Response(
-                {'error': 'Курс не найден'},
-                status=status.HTTP_404_NOT_FOUND
-            )
+            from core.exceptions import ApiError
+            raise ApiError.not_found('Курс не найден', error_code='COURSE_NOT_FOUND')
 
         # Проверка доступа к курсу
         if not UserCourse.objects.filter(
@@ -1251,10 +1336,8 @@ class CourseCommentsView(APIView):
         try:
             course = Course.objects.get(id=course_id, is_active=True)
         except Course.DoesNotExist:
-            return Response(
-                {'error': 'Курс не найден'},
-                status=status.HTTP_404_NOT_FOUND
-            )
+            from core.exceptions import ApiError
+            raise ApiError.not_found('Курс не найден', error_code='COURSE_NOT_FOUND')
 
         comments = Comment.objects.filter(
             course=course,
@@ -1369,10 +1452,8 @@ class CourseRatingsView(APIView):
         try:
             course = Course.objects.get(id=course_id, is_active=True)
         except Course.DoesNotExist:
-            return Response(
-                {'error': 'Курс не найден'},
-                status=status.HTTP_404_NOT_FOUND
-            )
+            from core.exceptions import ApiError
+            raise ApiError.not_found('Курс не найден', error_code='COURSE_NOT_FOUND')
 
         ratings = Rating.objects.filter(
             course=course,
@@ -1418,10 +1499,8 @@ class CourseRatingsView(APIView):
         try:
             course = Course.objects.get(id=course_id, is_active=True)
         except Course.DoesNotExist:
-            return Response(
-                {'error': 'Курс не найден'},
-                status=status.HTTP_404_NOT_FOUND
-            )
+            from core.exceptions import ApiError
+            raise ApiError.not_found('Курс не найден', error_code='COURSE_NOT_FOUND')
 
         # Проверка, что пользователь имеет доступ к курсу
         if not UserCourse.objects.filter(
@@ -1777,10 +1856,8 @@ class CourseRatingListView(APIView):
         try:
             course = Course.objects.get(id=course_id, is_active=True)
         except Course.DoesNotExist:
-            return Response(
-                {'error': 'Курс не найден'},
-                status=status.HTTP_404_NOT_FOUND
-            )
+            from core.exceptions import ApiError
+            raise ApiError.not_found('Курс не найден', error_code='COURSE_NOT_FOUND')
 
         # Получаем одобренные оценки с пагинацией
         ratings = Rating.objects.filter(
@@ -1848,10 +1925,8 @@ class CourseRatingCreateView(APIView):
         try:
             course = Course.objects.get(id=course_id, is_active=True)
         except Course.DoesNotExist:
-            return Response(
-                {'error': 'Курс не найден'},
-                status=status.HTTP_404_NOT_FOUND
-            )
+            from core.exceptions import ApiError
+            raise ApiError.not_found('Курс не найден', error_code='COURSE_NOT_FOUND')
 
         # Проверяем доступ к курсу
         if not UserCourse.objects.filter(user=request.user, course=course).exists():
@@ -1970,10 +2045,8 @@ class CourseBuilderView(APIView):
         try:
             course = Course.objects.get(id=course_id)
         except Course.DoesNotExist:
-            return Response(
-                {'error': 'Курс не найден'},
-                status=status.HTTP_404_NOT_FOUND
-            )
+            from core.exceptions import ApiError
+            raise ApiError.not_found('Курс не найден', error_code='COURSE_NOT_FOUND')
 
         # TODO: Добавить проверку прав доступа (админ или владелец курса)
 

@@ -516,15 +516,10 @@ function Courses() {
   useEffect(() => {
     if (isAuthenticated) {
       fetchUserCourses()
-    }
-  }, [isAuthenticated])
-
-  // Загрузка корзины при монтировании для определения состояния курсов
-  useEffect(() => {
-    if (isAuthenticated) {
+      // Загружаем корзину для определения состояния курсов (с защитой от дублирования)
       loadCart()
     }
-  }, [isAuthenticated, loadCart])
+  }, [isAuthenticated])
   
   /**
    * Загрузка приобретённых курсов пользователя
