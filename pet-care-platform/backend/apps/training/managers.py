@@ -19,21 +19,21 @@ class CourseQuerySet(models.QuerySet):
     def with_ratings(self):
         """
         Добавляет аннотации среднего рейтинга и количества отзывов.
-        
+
         Использует подзапросы для вычисления рейтинга на уровне SQL,
         что устраняет N+1 проблему при загрузке списка курсов.
-        
+
         Returns:
             QuerySet: QuerySet с аннотированными полями _avg_rating и _reviews_count
         """
         return self.annotate(
             _avg_rating=Avg(
-                'ratings__rating',
-                filter=Q(ratings__is_approved=True)
+                'reviews__rating',
+                filter=Q(reviews__is_approved=True)
             ),
             _reviews_count=Count(
-                'ratings',
-                filter=Q(ratings__is_approved=True)
+                'reviews',
+                filter=Q(reviews__is_approved=True)
             )
         )
     

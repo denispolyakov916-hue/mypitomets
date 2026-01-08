@@ -8,7 +8,7 @@ from django.urls import reverse
 from django.utils import timezone
 from .models import (
     Course, UserCourse, Lesson, UserCourseProgress,
-    UserLessonProgress, Comment, Rating, CommentLike
+    UserLessonProgress, Comment, CommentLike
 )
 
 
@@ -572,81 +572,7 @@ class CommentAdmin(admin.ModelAdmin):
     unmoderate_comments.short_description = 'Снять модерацию'
 
 
-@admin.register(Rating)
-class RatingAdmin(admin.ModelAdmin):
-    """Админка для оценок курсов."""
-
-    list_display = (
-        'user_link', 'course_link', 'pet_name', 'rating_display',
-        'review_preview', 'is_approved', 'created_at'
-    )
-    list_filter = ('rating', 'is_approved', 'created_at', 'course__category')
-    search_fields = ('user__email', 'course__title', 'review')
-    ordering = ('-created_at',)
-    readonly_fields = ('created_at', 'updated_at')
-
-    fieldsets = (
-        ('Основная информация', {
-            'fields': ('user', 'course', 'pet', 'rating')
-        }),
-        ('Отзыв', {
-            'fields': ('review', 'is_approved')
-        }),
-        ('Временные метки', {
-            'fields': ('created_at', 'updated_at'),
-            'classes': ('collapse',)
-        }),
-    )
-
-    actions = ['approve_ratings', 'reject_ratings']
-
-    def user_link(self, obj):
-        """Ссылка на пользователя."""
-        url = reverse('admin:users_user_change', args=[obj.user.id])
-        return format_html('<a href="{}">{}</a>', url, obj.user.email)
-    user_link.short_description = 'Пользователь'
-    user_link.admin_order_field = 'user__email'
-
-    def course_link(self, obj):
-        """Ссылка на курс."""
-        url = reverse('admin:training_course_change', args=[obj.course.id])
-        return format_html('<a href="{}">{}</a>', url, obj.course.title)
-    course_link.short_description = 'Курс'
-    course_link.admin_order_field = 'course__title'
-
-    def pet_name(self, obj):
-        """Имя питомца."""
-        return obj.pet.name if obj.pet else '-'
-    pet_name.short_description = 'Питомец'
-    pet_name.admin_order_field = 'pet__name'
-
-    def rating_display(self, obj):
-        """Отображение рейтинга со звездами."""
-        stars = '★' * obj.rating + '☆' * (5 - obj.rating)
-        return format_html('<span style="font-size: 16px;">{}</span> ({})', stars, obj.rating)
-    rating_display.short_description = 'Оценка'
-
-    def review_preview(self, obj):
-        """Превью отзыва."""
-        if not obj.review:
-            return '-'
-        preview = obj.review[:30]
-        if len(obj.review) > 30:
-            preview += '...'
-        return preview
-    review_preview.short_description = 'Отзыв'
-
-    def approve_ratings(self, request, queryset):
-        """Одобрить оценки."""
-        updated = queryset.update(is_approved=True)
-        self.message_user(request, f'Одобрено оценок: {updated}')
-    approve_ratings.short_description = 'Одобрить %(verbose_name_plural)s'
-
-    def reject_ratings(self, request, queryset):
-        """Отклонить оценки."""
-        updated = queryset.update(is_approved=False)
-        self.message_user(request, f'Отклонено оценок: {updated}')
-    reject_ratings.short_description = 'Отклонить %(verbose_name_plural)s'
+# RatingAdmin удален - система заменена на единую Review
 
 
 @admin.register(CommentLike)

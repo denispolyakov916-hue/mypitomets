@@ -53,20 +53,17 @@ from .views import (
     CourseCommentsView,
     CommentLikeView,
     CommentReactionView,
-    CourseRatingsView,
     # Новые вьюсы для комментариев и оценок
     CommentListView,
     CommentCreateView,
     CommentDetailView,
-    CourseRatingListView,
-    CourseRatingCreateView,
-    RatingDetailView,
     # Новые вьюсы для конструктора курсов
     CourseBuilderView,
     CoursePageViewSet,
     ContentBlockViewSet,
     BlockTemplateViewSet
 )
+
 
 urlpatterns = [
     # Каталог курсов
@@ -108,9 +105,7 @@ urlpatterns = [
     path('<int:course_id>/comments/', CourseCommentsView.as_view(), name='course-comments'),
 
     # Оценки курса
-    # GET /api/courses/{course_id}/ratings/
-    # POST /api/courses/{course_id}/ratings/
-    path('<int:course_id>/ratings/', CourseRatingsView.as_view(), name='course-ratings'),
+    # Отзывы курсов теперь обрабатываются в reviews app (/api/reviews/courses/...)
 
     # Детали урока
     # GET /api/lessons/{id}/
@@ -159,17 +154,7 @@ urlpatterns = [
     # POST /api/comments/{id}/dislike/
     path('comments/<uuid:comment_id>/<str:action>/', CommentReactionView.as_view(), name='comment-reaction'),
 
-    # Оценки курса (улучшенные)
-    # GET /api/courses/{course_id}/ratings/
-    # POST /api/courses/{course_id}/ratings/
-    path('<int:course_id>/ratings/', CourseRatingListView.as_view(), name='course-ratings-list'),
-    path('<int:course_id>/ratings/create/', CourseRatingCreateView.as_view(), name='course-ratings-create'),
-
-    # Управление оценками
-    # GET /api/ratings/{id}/
-    # PUT /api/ratings/{id}/
-    # DELETE /api/ratings/{id}/
-    path('ratings/<uuid:rating_id>/', RatingDetailView.as_view(), name='rating-detail'),
+    # Отзывы курсов теперь обрабатываются в reviews app (/api/reviews/courses/...)
 
     # ===== МАРШРУТЫ КОНСТРУКТОРА КУРСОВ =====
 

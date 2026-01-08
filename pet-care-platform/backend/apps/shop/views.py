@@ -60,7 +60,7 @@ class ProductListView(APIView):
         # Исключаем параметры пагинации для более широкого кэширования
         query_params.pop('page', None)
         query_params.pop('per_page', None)
-        return make_cache_key('products_list', query_params)
+        return make_cache_key('products', query_params)
     
     def get(self, request):
         from django.core.cache import cache
@@ -294,7 +294,7 @@ class ProductListView(APIView):
         # Сохраняем в кэш (без пагинации, чтобы кэшировать все товары)
         from django.core.cache import cache
         from django.conf import settings
-        cache_timeout = getattr(settings, 'CACHE_TIMEOUTS', {}).get('products_list', 300)
+        cache_timeout = getattr(settings, 'CACHE_TIMEOUTS', {}).get('products', 300)
         cache.set(cache_key, response_data, cache_timeout)
         
         return Response(response_data, status=status.HTTP_200_OK)

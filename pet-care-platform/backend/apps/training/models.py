@@ -370,7 +370,7 @@ class Course(models.Model):
 
         # Fallback на запрос к БД (для единичных объектов)
         from django.db.models import Avg
-        result = self.ratings.filter(is_approved=True).aggregate(avg=Avg('rating'))
+        result = self.reviews.filter(is_approved=True).aggregate(avg=Avg('rating'))
         return result['avg'] or 0.0
     
     def get_reviews_count(self):
@@ -385,7 +385,7 @@ class Course(models.Model):
             return self._reviews_count
 
         # Fallback на запрос к БД (для единичных объектов)
-        return self.ratings.filter(is_approved=True).count()
+        return self.reviews.filter(is_approved=True).count()
 
     def is_compatible_with_pet(self, pet):
         """
@@ -1386,89 +1386,7 @@ class CommentLike(models.Model):
         return f"{self.user.email} {action} комментарий {self.comment.id}"
 
 
-class Rating(models.Model):
-    """
-    Оценки курсов пользователями.
-    """
-
-    id = models.CharField(
-        primary_key=True,
-        max_length=36,
-        default=generate_uuid7,
-        editable=False,
-        help_text="UUIDv7 идентификатор оценки"
-    )
-
-    user = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        related_name='course_ratings',
-        verbose_name='Пользователь'
-    )
-
-    course = models.ForeignKey(
-        Course,
-        on_delete=models.CASCADE,
-        related_name='ratings',
-        verbose_name='Курс'
-    )
-
-    rating = models.PositiveIntegerField(
-        choices=[(i, str(i)) for i in range(1, 6)],
-        verbose_name='Оценка',
-        help_text='Оценка от 1 до 5 звезд'
-    )
-
-    review = models.TextField(
-        blank=True,
-        null=True,
-        verbose_name='Отзыв',
-        help_text='Текст отзыва о курсе'
-    )
-
-    # Привязка к питомцу для контекста
-    pet = models.ForeignKey(
-        'pets.Pet',
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name='course_ratings',
-        verbose_name='Питомец',
-        help_text='Питомец, в контексте которого дана оценка'
-    )
-
-    is_approved = models.BooleanField(
-        default=True,
-        verbose_name='Одобрен',
-        help_text='Прошел ли модерацию'
-    )
-
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    class Meta:
-        db_table = 'course_ratings'
-        verbose_name = 'Оценка курса'
-        verbose_name_plural = 'Оценки курсов'
-        unique_together = [['user', 'course', 'pet']]
-        ordering = ['-created_at']
-        indexes = [
-            models.Index(fields=['course', 'rating']),
-            models.Index(fields=['course', '-created_at']),
-            models.Index(fields=['user', '-created_at']),
-            models.Index(fields=['rating']),
-        ]
-
-    def __str__(self):
-        return f"{self.user.email} - {self.course.title}: {self.rating}★"
-
-    def can_edit(self, user):
-        """Проверяет, может ли пользователь редактировать оценку."""
-        return self.user == user
-
-    def can_delete(self, user):
-        """Проверяет, может ли пользователь удалить оценку."""
-        return self.user == user
+# Модель Rating удалена - система заменена на единую Review
 
 
 # ===== НОВЫЕ МОДЕЛИ ДЛЯ КОНСТРУКТОРА КУРСОВ =====
