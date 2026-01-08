@@ -155,7 +155,7 @@ TEMPLATES = [
 WSGI_APPLICATION = 'config.wsgi.application'
 
 # =============================================================================
-# БАЗА ДАННЫХ - PostgreSQL
+# БАЗА ДАННЫХ - PostgreSQL или SQLite
 # =============================================================================
 
 DATABASES = {
@@ -168,6 +168,13 @@ DATABASES = {
         'PORT': os.getenv('DB_PORT', '5432'),
     }
 }
+
+# Для SQLite используем упрощенную конфигурацию
+if DATABASES['default']['ENGINE'] == 'django.db.backends.sqlite3':
+    DATABASES['default'] = {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / DATABASES['default']['NAME'],
+    }
 
 # =============================================================================
 # КАСТОМНАЯ МОДЕЛЬ ПОЛЬЗОВАТЕЛЯ

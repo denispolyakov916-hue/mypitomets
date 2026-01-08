@@ -10,11 +10,15 @@ def setup_database():
     print("Начинаем настройку базы данных PostgreSQL...")
 
     # Параметры для подключения к системной базе
+    # Сначала попробуем с текущим пользователем
+    import getpass
+    current_user = getpass.getuser()
+
     db_config = {
         'host': 'localhost',
         'port': '5432',
-        'user': 'postgres',
-        'password': '',  # Возможно нужно будет изменить
+        'user': current_user,
+        'password': '',  # Для trust аутентификации
     }
 
     try:

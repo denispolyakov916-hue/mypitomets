@@ -347,13 +347,27 @@ class PaymentService(BaseService):
                     product.order_count += order_item.quantity
                     product.save(update_fields=['order_count'])
 
-                order.status = 'processing'
+                # Проверяем, содержит ли заказ только курсы (без физических товаров)
+                has_only_courses = (
+                    order.items.filter(product__isnull=False).count() == 0 and
+                    order.items.filter(course__isnull=False).count() > 0
+                )
+
+                if has_only_courses:
+                    order.status = 'delivered'
+                    PaymentService.log_info(f"Заказ курсов доставлен автоматически: {order.id}", {
+                        'order_id': order.id,
+                        'payment_id': payment.id
+                    })
+                else:
+                    order.status = 'processing'
+                    PaymentService.log_info(f"Заказ активирован после оплаты и товары списаны: {order.id}", {
+                        'order_id': order.id,
+                        'payment_id': payment.id
+                    })
+
                 order.expires_at = None  # Убираем срок истечения после успешной оплаты
                 order.save()
-                PaymentService.log_info(f"Заказ активирован после оплаты и товары списаны: {order.id}", {
-                    'order_id': order.id,
-                    'payment_id': payment.id
-                })
 
         except Order.DoesNotExist:
             PaymentService.log_error(Exception(f"Заказ не найден для платежа: {payment.id}"), {

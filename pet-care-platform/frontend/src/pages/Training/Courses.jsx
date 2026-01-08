@@ -100,14 +100,16 @@ function FilterSidebar({ filters, availableFilters, onFilterChange, onReset }) {
     <div className="bg-white rounded-xl shadow-sm p-5 sticky top-4">
       <div className="flex justify-between items-center mb-4">
         <h3 className="font-semibold text-gray-900">Фильтры</h3>
-        {(filters.pet_type || filters.personal || filters.category || filters.subcategory || filters.level || filters.format_type || filters.min_price || filters.max_price) && (
-          <button
-            onClick={onReset}
-            className="text-sm text-primary-600 hover:text-primary-700"
-          >
-            Сбросить
-          </button>
-        )}
+        <button
+          onClick={onReset}
+          className={`text-sm transition-colors ${
+            (filters.pet_type || filters.personal || filters.category || filters.subcategory || filters.level || filters.format_type || filters.min_price || filters.max_price)
+              ? 'text-primary-600 hover:text-primary-700'
+              : 'text-gray-400 hover:text-gray-600'
+          }`}
+        >
+          Очистить фильтры
+        </button>
       </div>
       
       {/* Персональные подборки для питомцев */}
@@ -674,6 +676,19 @@ function Courses() {
         <main className="flex-1 min-w-0">
           {/* Мобильные фильтры */}
           <div className="lg:hidden mb-4">
+            {/* Кнопка сброса фильтров */}
+            <div className="mb-3">
+              <button
+                onClick={handleReset}
+                className={`w-full py-2 px-4 rounded-lg text-sm font-medium transition-colors ${
+                  (filters.pet_type || filters.personal || filters.category || filters.subcategory || filters.level || filters.format_type || filters.min_price || filters.max_price)
+                    ? 'bg-primary-100 text-primary-700 hover:bg-primary-200'
+                    : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                }`}
+              >
+                🧹 Очистить фильтры
+              </button>
+            </div>
             <div className="flex gap-2 overflow-x-auto pb-2">
               {pets && pets.length > 0 && (
                 <label className="flex items-center cursor-pointer px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white whitespace-nowrap">

@@ -312,18 +312,24 @@ class ProductDetailView(APIView):
     def get(self, request, product_id):
         from django.core.cache import cache
         from django.conf import settings
-        
-        # Проверяем кэш
-        cache_key = f'product_detail:{product_id}'
-        cached_response = cache.get(cache_key)
-        if cached_response is not None:
-            return Response(cached_response, status=status.HTTP_200_OK)
+
+        # Сначала получаем продукт (нужен для проверки is_purchased)
         try:
             # Оптимизация: используем with_ratings() для предзагрузки рейтинга
             product = Product.objects.with_ratings().get(id=product_id)
         except Product.DoesNotExist:
             from core.exceptions import ApiError
             raise ApiError.not_found('Товар не найден', error_code='PRODUCT_NOT_FOUND')
+
+        # Проверяем кэш
+        cache_key = f'product_detail:{product_id}'
+        cached_response = cache.get(cache_key)
+        if cached_response is not None:
+            # Для авторизованных пользователей добавляем is_purchased, если его нет в кэше
+            if request.user.is_authenticated and 'is_purchased' not in cached_response.get('product', {}):
+                from apps.reviews.utils import can_user_review_product
+                cached_response['product']['is_purchased'] = can_user_review_product(request.user, product)
+            return Response(cached_response, status=status.HTTP_200_OK)
         
         product_data = product.to_dict()
         

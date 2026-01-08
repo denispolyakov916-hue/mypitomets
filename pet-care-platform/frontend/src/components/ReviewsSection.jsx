@@ -4,17 +4,18 @@
  * Объединяет форму отзыва и список отзывов для товаров и курсов.
  */
 
-import { useState, useEffect } from 'react'
+import React, { useState, useEffect } from 'react'
 import ReviewForm from './ReviewForm'
 import ReviewList from './ReviewList'
 import Rating from './Rating'
-import { 
-  getProductReviews, 
-  getCourseReviews, 
-  createProductReview, 
+import {
+  getProductReviews,
+  getCourseReviews,
+  createProductReview,
   createCourseReview,
   updateProductReview,
   updateCourseReview,
+  deleteReview,
   checkReviewEligibility
 } from '../api/reviews'
 import { useToastStore } from '../store/toastStore'
@@ -74,19 +75,14 @@ function ReviewsSection({ type, itemId, isPurchased = false }) {
    * Проверка возможности оставить отзыв
    */
   const checkEligibility = async () => {
-    if (!isPurchased) {
-      setCanReview(false)
-      setEligibilityLoading(false)
-      return
-    }
-    
     setEligibilityLoading(true)
     try {
       const response = await checkReviewEligibility(type === 'product' ? 'products' : 'courses', itemId)
       setCanReview(response.can_review || false)
     } catch (err) {
       console.error('Ошибка проверки возможности отзыва:', err)
-      // Если API недоступен, используем isPurchased как fallback
+      // При ошибке API (например, 401) доверяем isPurchased из надежного API товара
+      // isPurchased проверяется на backend с валидной аутентификацией
       setCanReview(isPurchased)
     } finally {
       setEligibilityLoading(false)
@@ -100,7 +96,7 @@ function ReviewsSection({ type, itemId, isPurchased = false }) {
     setIsSubmitting(true)
     try {
       let response
-      
+
       if (existingReview) {
         // Обновление существующего отзыва
         if (type === 'product') {
@@ -118,15 +114,44 @@ function ReviewsSection({ type, itemId, isPurchased = false }) {
         }
         success('Отзыв опубликован')
       }
-      
+
       // Обновляем список отзывов
       await fetchReviews()
       setExistingReview(response.review)
     } catch (err) {
-      const errorMessage = err.response?.data?.error || 
-                          err.response?.data?.message || 
-                          err.message || 
+      const errorMessage = err.response?.data?.error ||
+                          err.response?.data?.message ||
+                          err.message ||
                           'Не удалось опубликовать отзыв'
+      showError(errorMessage)
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  /**
+   * Обработчик удаления отзыва
+   */
+  const handleDeleteReview = async () => {
+    if (!existingReview) return
+
+    // Подтверждение удаления
+    const confirmed = window.confirm('Вы уверены, что хотите удалить свой отзыв? Это действие нельзя отменить.')
+    if (!confirmed) return
+
+    setIsSubmitting(true)
+    try {
+      await deleteReview(type === 'product' ? 'products' : 'courses', itemId, existingReview.id)
+      success('Отзыв удален')
+
+      // Обновляем список отзывов и сбрасываем состояние
+      await fetchReviews()
+      setExistingReview(null)
+    } catch (err) {
+      const errorMessage = err.response?.data?.error ||
+                          err.response?.data?.message ||
+                          err.message ||
+                          'Не удалось удалить отзыв'
       showError(errorMessage)
     } finally {
       setIsSubmitting(false)
@@ -191,6 +216,7 @@ function ReviewsSection({ type, itemId, isPurchased = false }) {
           <ReviewForm
             isPurchased={isPurchased}
             onSubmit={handleSubmitReview}
+            onDelete={handleDeleteReview}
             isLoading={isSubmitting}
             existingReview={existingReview}
           />

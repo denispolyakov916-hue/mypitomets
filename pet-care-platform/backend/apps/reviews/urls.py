@@ -23,8 +23,9 @@ urlpatterns = [
     # GET /api/reviews/products/{product_id}/eligibility/
     path('products/<int:product_id>/eligibility/', ProductReviewEligibilityView.as_view(), name='product-review-eligibility'),
     
-    # PUT, DELETE /api/reviews/products/{product_id}/reviews/{review_id}/
+    # PUT /api/reviews/products/{product_id}/reviews/{review_id}/
     path('products/<int:product_id>/reviews/<int:review_id>/', UpdateProductReviewView.as_view(), name='update-product-review'),
+    # DELETE /api/reviews/products/{product_id}/reviews/{review_id}/
     path('products/<int:product_id>/reviews/<int:review_id>/delete/', DeleteProductReviewView.as_view(), name='delete-product-review'),
     
     # Отзывы на курсы

@@ -145,11 +145,12 @@ class ProductReviewsView(APIView):
 
 class UpdateProductReviewView(APIView):
     """
-    Обновление отзыва на товар.
-    
+    Обновление и удаление отзыва на товар.
+
     PUT /api/reviews/products/{product_id}/reviews/{review_id}/
+    DELETE /api/reviews/products/{product_id}/reviews/{review_id}/
     """
-    
+
     permission_classes = [IsAuthenticated]
     
     def put(self, request, product_id, review_id):
@@ -191,6 +192,31 @@ class UpdateProductReviewView(APIView):
         return Response({
             'message': 'Отзыв успешно обновлен',
             'review': review.to_dict()
+        }, status=status.HTTP_200_OK)
+
+    def delete(self, request, product_id, review_id):
+        try:
+            review = Review.objects.get(
+                id=review_id,
+                product_id=product_id
+            )
+        except Review.DoesNotExist:
+            return Response(
+                {'error': 'Отзыв не найден'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        # Проверка прав
+        if review.user != request.user:
+            return Response(
+                {'error': 'Нет прав на удаление этого отзыва'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        review.delete()
+
+        return Response({
+            'message': 'Отзыв успешно удален'
         }, status=status.HTTP_200_OK)
 
 
@@ -416,11 +442,12 @@ class CourseReviewsView(APIView):
 
 class UpdateCourseReviewView(APIView):
     """
-    Обновление отзыва на курс.
-    
+    Обновление и удаление отзыва на курс.
+
     PUT /api/reviews/courses/{course_id}/reviews/{review_id}/
+    DELETE /api/reviews/courses/{course_id}/reviews/{review_id}/
     """
-    
+
     permission_classes = [IsAuthenticated]
     
     def put(self, request, course_id, review_id):
@@ -462,6 +489,31 @@ class UpdateCourseReviewView(APIView):
         return Response({
             'message': 'Отзыв успешно обновлен',
             'review': review.to_dict()
+        }, status=status.HTTP_200_OK)
+
+    def delete(self, request, course_id, review_id):
+        try:
+            review = Review.objects.get(
+                id=review_id,
+                course_id=course_id
+            )
+        except Review.DoesNotExist:
+            return Response(
+                {'error': 'Отзыв не найден'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        # Проверка прав
+        if review.user != request.user:
+            return Response(
+                {'error': 'Нет прав на удаление этого отзыва'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        review.delete()
+
+        return Response({
+            'message': 'Отзыв успешно удален'
         }, status=status.HTTP_200_OK)
 
 

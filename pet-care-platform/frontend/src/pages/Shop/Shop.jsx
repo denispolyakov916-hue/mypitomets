@@ -38,14 +38,16 @@ function FilterSidebar({ filters, availableFilters, onFilterChange, onReset }) {
     <div className="bg-white/95 backdrop-blur-sm rounded-xl shadow-lg border border-white/20 p-5 sticky top-4">
       <div className="flex justify-between items-center mb-4">
         <h3 className="font-semibold text-gray-900">Фильтры</h3>
-        {(filters.animal || filters.pet_id || filters.category || filters.subcategory || filters.vendor || filters.min_price || filters.max_price || filters.in_stock || filters.has_discount || filters.search) && (
-          <button
-            onClick={onReset}
-            className="text-sm text-purple-600 hover:text-purple-700 transition-colors"
-          >
-            Сбросить
-          </button>
-        )}
+        <button
+          onClick={onReset}
+          className={`text-sm transition-colors ${
+            (filters.animal || filters.pet_id || filters.category || filters.subcategory || filters.vendor || filters.min_price || filters.max_price || filters.in_stock || filters.has_discount || filters.search)
+              ? 'text-purple-600 hover:text-purple-700'
+              : 'text-gray-400 hover:text-gray-600'
+          }`}
+        >
+          Очистить фильтры
+        </button>
       </div>
       
       {/* Персональные подборки для питомцев */}
@@ -553,6 +555,19 @@ function Shop() {
         <main className="flex-1 min-w-0 animate-fadeIn">
           {/* Мобильные фильтры */}
           <div className="lg:hidden mb-4">
+            {/* Кнопка сброса фильтров */}
+            <div className="mb-3">
+              <button
+                onClick={handleReset}
+                className={`w-full py-2 px-4 rounded-lg text-sm font-medium transition-colors ${
+                  (filters.animal || filters.pet_id || filters.category || filters.subcategory || filters.vendor || filters.min_price || filters.max_price || filters.in_stock || filters.has_discount || filters.search)
+                    ? 'bg-purple-100 text-purple-700 hover:bg-purple-200'
+                    : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                }`}
+              >
+                🧹 Очистить фильтры
+              </button>
+            </div>
             <div className="flex gap-2 overflow-x-auto pb-2 bg-white/50 backdrop-blur-sm rounded-lg p-2">
               {/* Персональные подборки для питомцев */}
               {availableFilters.user_pets && availableFilters.user_pets.length > 0 && (
