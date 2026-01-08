@@ -8,6 +8,7 @@ import sys
 import subprocess
 
 # Устанавливаем переменные окружения
+os.environ['DB_ENGINE'] = 'django.db.backends.postgresql'
 os.environ['DB_NAME'] = 'pitomets_db'
 os.environ['DB_USER'] = 'pitomets'
 os.environ['DB_PASSWORD'] = '578321'
@@ -33,19 +34,11 @@ try:
         print("База данных создана успешно!")
     else:
         print(f"Ошибка создания базы данных: {result.stderr}")
-        print("Используем SQLite для тестирования...")
-
-        # Переключаемся на SQLite
-        os.environ['DB_ENGINE'] = 'django.db.backends.sqlite3'
-        os.environ['DB_NAME'] = 'db.sqlite3'
+        print("Убедитесь, что PostgreSQL запущен и доступен")
 
 except Exception as e:
-    print(f"Ошибка: {e}")
-    print("Используем SQLite для тестирования...")
-
-    # Переключаемся на SQLite
-    os.environ['DB_ENGINE'] = 'django.db.backends.sqlite3'
-    os.environ['DB_NAME'] = 'db.sqlite3'
+    print(f"Ошибка создания базы данных: {e}")
+    print("Убедитесь, что PostgreSQL запущен и доступен")
 
 print("\nНастройки:")
 print(f"База данных: {os.environ.get('DB_NAME')}")
