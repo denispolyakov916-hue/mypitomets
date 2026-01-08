@@ -337,6 +337,151 @@ class Pet(models.Model):
     def __str__(self):
         return f"{self.name} ({self.get_species_display()})"
     
+    # ===== ВЫЧИСЛЯЕМЫЕ СВОЙСТВА PetID =====
+    
+    @property
+    def age(self):
+        """Возраст питомца в годах (вычисляется из date_of_birth)."""
+        if not self.date_of_birth:
+            return None
+        from datetime import date
+        today = date.today()
+        age = today.year - self.date_of_birth.year
+        # Проверяем, был ли уже день рождения в этом году
+        if today.month < self.date_of_birth.month or \
+           (today.month == self.date_of_birth.month and today.day < self.date_of_birth.day):
+            age -= 1
+        return max(0, age)
+    
+    @property
+    def age_months(self):
+        """Возраст питомца в месяцах (для щенков/котят)."""
+        if not self.date_of_birth:
+            return None
+        from datetime import date
+        today = date.today()
+        months = (today.year - self.date_of_birth.year) * 12 + today.month - self.date_of_birth.month
+        if today.day < self.date_of_birth.day:
+            months -= 1
+        return max(0, months)
+    
+    @property
+    def age_category(self):
+        """Категория возраста: puppy/kitten, adult, senior."""
+        age = self.age
+        if age is None:
+            return None
+        
+        if self.species == 'dog':
+            if age < 1:
+                return 'puppy'
+            elif age >= 7:
+                return 'senior'
+            else:
+                return 'adult'
+        elif self.species == 'cat':
+            if age < 1:
+                return 'kitten'
+            elif age >= 10:
+                return 'senior'
+            else:
+                return 'adult'
+        else:
+            # Для других видов
+            if age < 1:
+                return 'young'
+            elif age >= 7:
+                return 'senior'
+            else:
+                return 'adult'
+    
+    @property
+    def calculated_size(self):
+        """Автоматический расчёт размера по весу."""
+        if not self.weight:
+            return self.size  # Возвращаем заданный размер
+        
+        weight = float(self.weight)
+        if self.species == 'dog':
+            if weight < 5:
+                return 'toy'
+            elif weight < 10:
+                return 'small'
+            elif weight < 25:
+                return 'medium'
+            elif weight < 45:
+                return 'large'
+            else:
+                return 'giant'
+        elif self.species == 'cat':
+            if weight < 3:
+                return 'small'
+            elif weight < 6:
+                return 'medium'
+            else:
+                return 'large'
+        return self.size
+    
+    @property
+    def profile_completeness(self):
+        """Процент заполненности профиля (0-100)."""
+        # Обязательные поля (базовый профиль) - 70% веса
+        required_fields = [
+            self.name,
+            self.species,
+            self.date_of_birth,
+            self.breed,
+            self.weight,
+            self.gender != 'unknown',
+        ]
+        
+        # Поля здоровья и питания - важны для персонализации
+        health_fields = [
+            bool(self.health_issues),
+            bool(self.allergies) or bool(self.excluded_ingredients),
+            self.activity_level,
+        ]
+        
+        # Поведенческие поля - важны для курсов
+        if self.species in ['dog', 'cat']:
+            behavior_fields = [
+                bool(self.behavioral_problems) or self.behavior_type,
+            ]
+        else:
+            behavior_fields = []
+        
+        # Опциональные поля - дают дополнительные баллы
+        optional_fields = [
+            self.is_neutered is not None,
+            bool(self.photo),
+            self.behavior_type,
+            self.social_level,
+            self.training_experience,
+            self.diet_type,
+            self.housing_type,
+            bool(self.owner_phone) or bool(self.owner_email),
+        ]
+        
+        # Расчёт
+        required_filled = sum(1 for f in required_fields if f)
+        health_filled = sum(1 for f in health_fields if f)
+        behavior_filled = sum(1 for f in behavior_fields if f)
+        optional_filled = sum(1 for f in optional_fields if f)
+        
+        # Веса категорий
+        required_weight = 50  # 50% за базовые поля
+        health_weight = 20    # 20% за здоровье
+        behavior_weight = 10  # 10% за поведение
+        optional_weight = 20  # 20% за опциональные
+        
+        required_score = (required_filled / max(len(required_fields), 1)) * required_weight
+        health_score = (health_filled / max(len(health_fields), 1)) * health_weight
+        behavior_score = (behavior_filled / max(len(behavior_fields), 1)) * behavior_weight if behavior_fields else behavior_weight
+        optional_score = (optional_filled / max(len(optional_fields), 1)) * optional_weight
+        
+        total = required_score + health_score + behavior_score + optional_score
+        return min(100, int(total))
+    
     def to_dict(self):
         """Сериализация для API."""
         # Обработка date_of_birth - может быть date объектом или строкой
@@ -403,6 +548,12 @@ class Pet(models.Model):
             'owner_email': self.owner_email,
             'owner_city': self.owner_city,
             'is_extended_profile': self.is_extended_profile,
+            # Вычисляемые поля PetID
+            'age': self.age,
+            'age_months': self.age_months,
+            'age_category': self.age_category,
+            'calculated_size': self.calculated_size,
+            'profile_completeness': self.profile_completeness,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None
         }
@@ -410,3 +561,6 @@ class Pet(models.Model):
 
 # Импортируем модель Reminder для регистрации в Django
 from .reminder_models import Reminder, ReminderCategory, ReminderFrequency
+
+# Импортируем модель Breed (справочник пород)
+from .breed_models import Breed

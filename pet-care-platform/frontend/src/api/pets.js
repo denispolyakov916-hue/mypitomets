@@ -154,3 +154,139 @@ export const ACTIVITY_LEVEL_OPTIONS = [
   { value: 'medium', label: 'Средняя' },
   { value: 'high', label: 'Высокая' },
 ]
+
+// ===== API СПРАВОЧНИКА ПОРОД =====
+
+/**
+ * Получение списка пород с фильтрацией
+ * 
+ * @param {Object} params - Параметры фильтрации
+ * @param {string} [params.species] - Вид животного (dog, cat)
+ * @param {string} [params.search] - Поиск по названию
+ * @param {string} [params.order_by] - Сортировка (name, -name, popularity_rank)
+ * @param {number} [params.limit] - Лимит результатов (по умолчанию 50)
+ * @returns {Promise<Object>} Объект с массивом пород и количеством
+ */
+export const getBreeds = async (params = {}) => {
+  const queryParams = new URLSearchParams()
+  if (params.species) queryParams.append('species', params.species)
+  if (params.search) queryParams.append('search', params.search)
+  if (params.order_by) queryParams.append('order_by', params.order_by)
+  if (params.limit) queryParams.append('limit', params.limit)
+  
+  const queryString = queryParams.toString()
+  return await api.get(`/pets/breeds/${queryString ? `?${queryString}` : ''}`)
+}
+
+/**
+ * Получение детальной информации о породе
+ * 
+ * @param {string} breedId - UUID породы
+ * @returns {Promise<Object>} Полные данные породы
+ */
+export const getBreed = async (breedId) => {
+  return await api.get(`/pets/breeds/${breedId}/`)
+}
+
+/**
+ * Получение подсказок для автозаполнения PetID на основе породы
+ * 
+ * @param {string} breedId - UUID породы
+ * @returns {Promise<Object>} Подсказки для заполнения профиля
+ */
+export const getBreedSuggestions = async (breedId) => {
+  return await api.get(`/pets/breeds/${breedId}/suggestions/`)
+}
+
+/**
+ * Получение анализа профиля питомца
+ * 
+ * @param {string} petId - UUID питомца
+ * @returns {Promise<Object>} Анализ здоровья и рекомендации
+ */
+export const getPetAnalysis = async (petId) => {
+  return await api.get(`/pets/${petId}/analysis/`)
+}
+
+// ===== ДОПОЛНИТЕЛЬНЫЕ КОНСТАНТЫ =====
+
+/**
+ * Варианты размера питомца
+ */
+export const SIZE_OPTIONS = [
+  { value: 'toy', label: 'Миниатюрный (до 5 кг)' },
+  { value: 'small', label: 'Маленький (5-10 кг)' },
+  { value: 'medium', label: 'Средний (10-25 кг)' },
+  { value: 'large', label: 'Крупный (25-45 кг)' },
+  { value: 'giant', label: 'Гигантский (45+ кг)' },
+]
+
+/**
+ * Варианты типа телосложения
+ */
+export const BODY_TYPE_OPTIONS = [
+  { value: 'slim', label: 'Худой' },
+  { value: 'normal', label: 'Нормальный' },
+  { value: 'overweight', label: 'Полный' },
+  { value: 'obese', label: 'Ожирение' },
+]
+
+/**
+ * Варианты типа питания
+ */
+export const DIET_TYPE_OPTIONS = [
+  { value: 'dry', label: 'Сухой корм' },
+  { value: 'wet', label: 'Влажный корм' },
+  { value: 'mixed', label: 'Смешанное' },
+  { value: 'raw', label: 'Натуральное (BARF)' },
+  { value: 'home', label: 'Домашняя еда' },
+]
+
+/**
+ * Варианты частоты кормления
+ */
+export const FEEDING_FREQUENCY_OPTIONS = [
+  { value: '1', label: '1 раз в день' },
+  { value: '2', label: '2 раза в день' },
+  { value: '3', label: '3 раза в день' },
+  { value: 'free', label: 'Свободный доступ' },
+]
+
+/**
+ * Варианты типа жилья
+ */
+export const HOUSING_TYPE_OPTIONS = [
+  { value: 'apartment', label: 'Квартира' },
+  { value: 'house', label: 'Частный дом' },
+  { value: 'cottage', label: 'Дача/Коттедж' },
+  { value: 'other', label: 'Другое' },
+]
+
+/**
+ * Варианты состояния зубов
+ */
+export const DENTAL_HEALTH_OPTIONS = [
+  { value: 'excellent', label: 'Отличное' },
+  { value: 'good', label: 'Хорошее' },
+  { value: 'fair', label: 'Удовлетворительное' },
+  { value: 'needs_attention', label: 'Требует лечения' },
+]
+
+/**
+ * Стандартные черты характера
+ */
+export const CHARACTER_TRAITS = [
+  'Дружелюбный', 'Активный', 'Спокойный', 'Игривый', 
+  'Застенчивый', 'Любопытный', 'Независимый', 'Ласковый',
+  'Упрямый', 'Умный', 'Преданный', 'Общительный'
+]
+
+/**
+ * Стандартные поведенческие проблемы
+ */
+export const BEHAVIORAL_PROBLEMS = [
+  'Лает/мяукает без причины', 'Грызёт вещи', 'Агрессия к другим животным',
+  'Агрессия к людям', 'Страх громких звуков', 'Боязнь одиночества',
+  'Метит территорию', 'Не приучен к туалету', 'Тянет поводок',
+  'Не слушается команд', 'Прыгает на людей', 'Царапает мебель'
+]

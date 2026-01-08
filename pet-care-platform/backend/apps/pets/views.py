@@ -1,7 +1,8 @@
 """
-Views для управления питомцами (PetID)
+Views для управления питомцами (PetID) и справочником пород.
 
 CRUD API для профилей питомцев.
+API справочника пород для автозаполнения.
 """
 
 import logging
@@ -9,10 +10,15 @@ from datetime import datetime
 from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, AllowAny
+from django.db.models import Q
 
 from .models import Pet
-from .serializers import PetCreateSerializer, PetUpdateSerializer
+from .breed_models import Breed
+from .serializers import (
+    PetCreateSerializer, PetUpdateSerializer,
+    BreedSerializer, BreedListSerializer
+)
 
 logger = logging.getLogger('apps.pets')
 
@@ -237,3 +243,292 @@ class PetDetailView(APIView):
         logger.info(f"Питомец удалён: {pet_id}")
         
         return Response({'message': 'Питомец удалён'}, status=status.HTTP_200_OK)
+
+
+# ===== СПРАВОЧНИК ПОРОД =====
+
+class BreedListView(APIView):
+    """
+    Список пород для автодополнения.
+    
+    GET /api/pets/breeds/ - все породы
+    GET /api/pets/breeds/?species=dog - породы собак
+    GET /api/pets/breeds/?search=лабрадор - поиск по названию
+    """
+    
+    permission_classes = [AllowAny]  # Справочник доступен всем
+    
+    def get(self, request):
+        """Список пород с фильтрацией."""
+        breeds = Breed.objects.filter(is_active=True)
+        
+        # Фильтр по виду животного
+        species = request.query_params.get('species')
+        if species in ['dog', 'cat']:
+            breeds = breeds.filter(species=species)
+        
+        # Поиск по названию
+        search = request.query_params.get('search')
+        if search:
+            breeds = breeds.filter(name__icontains=search)
+        
+        # Сортировка
+        order_by = request.query_params.get('order_by', '-popularity_rank')
+        if order_by in ['name', '-name', 'popularity_rank', '-popularity_rank']:
+            breeds = breeds.order_by(order_by)
+        else:
+            breeds = breeds.order_by('-popularity_rank', 'name')
+        
+        # Лимит (по умолчанию 50 для автодополнения)
+        limit = request.query_params.get('limit', 50)
+        try:
+            limit = min(int(limit), 200)
+        except (TypeError, ValueError):
+            limit = 50
+        
+        breeds = breeds[:limit]
+        serializer = BreedListSerializer(breeds, many=True)
+        
+        return Response({
+            'breeds': serializer.data,
+            'count': len(serializer.data)
+        }, status=status.HTTP_200_OK)
+
+
+class BreedDetailView(APIView):
+    """
+    Детальная информация о породе.
+    
+    GET /api/pets/breeds/{id}/ - полные данные породы
+    GET /api/pets/breeds/by-slug/{slug}/ - поиск по slug
+    """
+    
+    permission_classes = [AllowAny]
+    
+    def get(self, request, breed_id=None, slug=None):
+        """Детали породы с подсказками для автозаполнения."""
+        try:
+            if breed_id:
+                breed = Breed.objects.get(id=breed_id, is_active=True)
+            elif slug:
+                breed = Breed.objects.get(slug=slug, is_active=True)
+            else:
+                return Response(
+                    {'error': 'Укажите ID или slug породы'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+        except Breed.DoesNotExist:
+            return Response(
+                {'error': 'Порода не найдена'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        serializer = BreedSerializer(breed)
+        return Response({'breed': serializer.data}, status=status.HTTP_200_OK)
+
+
+class BreedSuggestionsView(APIView):
+    """
+    Получение подсказок для автозаполнения PetID на основе породы.
+    
+    GET /api/pets/breeds/{id}/suggestions/ - подсказки для создания PetID
+    """
+    
+    permission_classes = [AllowAny]
+    
+    def get(self, request, breed_id):
+        """Подсказки для автозаполнения на основе породы."""
+        try:
+            breed = Breed.objects.get(id=breed_id, is_active=True)
+        except Breed.DoesNotExist:
+            return Response(
+                {'error': 'Порода не найдена'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        suggestions = breed.get_suggestions_for_pet()
+        
+        return Response({
+            'breed_id': str(breed.id),
+            'breed_name': breed.name,
+            'species': breed.species,
+            'suggestions': suggestions,
+            'description': breed.description,
+            'health_warnings': breed.genetic_risks,
+        }, status=status.HTTP_200_OK)
+
+
+class PetAnalysisView(APIView):
+    """
+    Анализ профиля питомца.
+    
+    GET /api/pets/{id}/analysis/ - анализ здоровья и рекомендации
+    """
+    
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request, pet_id):
+        """Получение анализа профиля питомца."""
+        try:
+            pet = Pet.objects.select_related('owner').get(id=pet_id, owner=request.user)
+        except Pet.DoesNotExist:
+            return Response(
+                {'error': 'Питомец не найден'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        # Базовый анализ профиля
+        analysis = {
+            'pet_id': str(pet.id),
+            'pet_name': pet.name,
+            'profile_completeness': pet.profile_completeness,
+            'basic_info': {
+                'age': pet.age,
+                'age_months': pet.age_months,
+                'age_category': pet.age_category,
+                'calculated_size': pet.calculated_size,
+            },
+        }
+        
+        # Анализ веса (если есть порода в справочнике)
+        weight_analysis = self._analyze_weight(pet)
+        if weight_analysis:
+            analysis['weight_analysis'] = weight_analysis
+        
+        # Рекомендации
+        analysis['recommendations'] = self._get_recommendations(pet)
+        
+        # Риски здоровья
+        analysis['health_risks'] = self._get_health_risks(pet)
+        
+        # Предупреждения
+        analysis['alerts'] = self._get_alerts(pet)
+        
+        return Response({'analysis': analysis}, status=status.HTTP_200_OK)
+    
+    def _analyze_weight(self, pet):
+        """Анализ веса относительно породы."""
+        if not pet.weight or not pet.breed:
+            return None
+        
+        # Пытаемся найти породу в справочнике
+        try:
+            breed = Breed.objects.get(name__iexact=pet.breed, species=pet.species)
+        except Breed.DoesNotExist:
+            return None
+        
+        avg_weight = breed.average_weight
+        pet_weight = float(pet.weight)
+        ratio = pet_weight / avg_weight
+        
+        if ratio < 0.8:
+            status_text = 'underweight'
+            risk = 'medium'
+            message = f'Вес {pet_weight} кг ниже нормы для породы {breed.name}'
+        elif ratio > 1.2:
+            status_text = 'overweight'
+            risk = 'high'
+            message = f'Вес {pet_weight} кг выше нормы для породы {breed.name}'
+        else:
+            status_text = 'normal'
+            risk = 'low'
+            message = 'Вес в пределах нормы для породы'
+        
+        return {
+            'current_weight': pet_weight,
+            'breed_average': avg_weight,
+            'breed_range': f'{breed.weight_min}-{breed.weight_max} кг',
+            'ratio': round(ratio, 2),
+            'status': status_text,
+            'risk_level': risk,
+            'message': message
+        }
+    
+    def _get_recommendations(self, pet):
+        """Генерация рекомендаций."""
+        recommendations = {
+            'products': [],
+            'courses': [],
+            'actions': []
+        }
+        
+        # Рекомендации по заполнению профиля
+        if pet.profile_completeness < 50:
+            recommendations['actions'].append({
+                'type': 'profile',
+                'priority': 'high',
+                'message': 'Заполните профиль питомца для получения персонализированных рекомендаций'
+            })
+        
+        # Рекомендации по возрасту
+        if pet.age_category == 'senior':
+            recommendations['products'].append('senior_food')
+            recommendations['products'].append('joint_supplements')
+            recommendations['courses'].append('senior_care')
+        elif pet.age_category in ['puppy', 'kitten']:
+            recommendations['products'].append('puppy_food')
+            recommendations['courses'].append('basic_training')
+        
+        # Рекомендации по проблемам здоровья
+        if pet.health_issues:
+            for issue in pet.health_issues:
+                if 'weight' in issue.lower() or 'ожирение' in issue.lower():
+                    recommendations['products'].append('diet_food')
+                elif 'сустав' in issue.lower() or 'joint' in issue.lower():
+                    recommendations['products'].append('joint_supplements')
+        
+        # Рекомендации по поведению
+        if pet.behavioral_problems:
+            recommendations['courses'].append('behavior_correction')
+        
+        return recommendations
+    
+    def _get_health_risks(self, pet):
+        """Определение рисков здоровья."""
+        risks = []
+        
+        # Риски по возрасту
+        if pet.age and pet.age > 10:
+            risks.append({
+                'type': 'age',
+                'level': 'medium',
+                'message': f'Пожилой возраст ({pet.age} лет) - рекомендуются частые ветеринарные осмотры'
+            })
+        
+        # Риски породы
+        if pet.breed:
+            try:
+                breed = Breed.objects.get(name__iexact=pet.breed, species=pet.species)
+                if breed.health_risk_level == 'high':
+                    risks.append({
+                        'type': 'breed',
+                        'level': 'high',
+                        'message': f'Порода {breed.name} имеет повышенные риски здоровья',
+                        'genetic_risks': breed.genetic_risks
+                    })
+            except Breed.DoesNotExist:
+                pass
+        
+        return risks
+    
+    def _get_alerts(self, pet):
+        """Генерация предупреждений."""
+        alerts = []
+        
+        # Предупреждение о низкой заполненности
+        if pet.profile_completeness < 30:
+            alerts.append({
+                'type': 'profile',
+                'priority': 'warning',
+                'message': 'Профиль питомца заполнен менее чем на 30%'
+            })
+        
+        # Предупреждение о хронических заболеваниях
+        if pet.chronic_conditions:
+            alerts.append({
+                'type': 'health',
+                'priority': 'info',
+                'message': 'Есть хронические заболевания - следите за регулярностью лечения'
+            })
+        
+        return alerts

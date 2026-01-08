@@ -83,17 +83,26 @@ class PetContext:
         species: Вид (dog, cat)
         breed: Порода
         age: Возраст в годах
+        age_category: Категория возраста (puppy/kitten, adult, senior)
         weight: Вес в кг
         gender: Пол
         is_neutered: Стерилизован/кастрирован
         favorite_foods: Список любимых продуктов
         allergies: Список аллергенов
+        health_issues: Проблемы здоровья
+        activity_level: Уровень активности
+        behavior_type: Тип поведения (для курсов)
+        social_level: Уровень социализации
+        training_experience: Опыт дрессировки
+        behavioral_problems: Поведенческие проблемы
+        profile_completeness: Процент заполненности профиля
     """
     pet_id: str
     name: str
     species: str
     breed: Optional[str] = None
     age: Optional[int] = None
+    age_category: Optional[str] = None
     weight: Optional[float] = None
     gender: Optional[str] = None
     is_neutered: bool = False
@@ -101,6 +110,16 @@ class PetContext:
     allergies: List[str] = field(default_factory=list)
     health_issues: List[str] = field(default_factory=list)
     activity_level: str = 'medium'
+    # Новые поля PetID для персонализации курсов
+    behavior_type: Optional[str] = None
+    social_level: Optional[str] = None
+    training_experience: Optional[str] = None
+    behavioral_problems: List[str] = field(default_factory=list)
+    profile_completeness: int = 0
+    # Данные породы (из справочника)
+    breed_energy_level: Optional[str] = None
+    breed_trainability: Optional[str] = None
+    breed_health_risks: List[str] = field(default_factory=list)
     
     @property
     def life_stage(self) -> str:
@@ -226,6 +245,7 @@ class PersonalizationService:
             PersonalizationContext: Контекст персонализации
         """
         from .models import Pet
+        from .breed_models import Breed
         
         context = PersonalizationContext(user_id=str(user.id))
         
@@ -235,19 +255,41 @@ class PersonalizationService:
         pets = Pet.objects.filter(owner=user)
         
         for pet in pets:
+            # Получаем данные породы из справочника
+            breed_data = {}
+            if pet.breed and pet.species in ['dog', 'cat']:
+                try:
+                    breed = Breed.objects.get(name__iexact=pet.breed, species=pet.species)
+                    breed_data = {
+                        'breed_energy_level': breed.energy_level,
+                        'breed_trainability': breed.trainability,
+                        'breed_health_risks': breed.genetic_risks or [],
+                    }
+                except Breed.DoesNotExist:
+                    pass
+            
             pet_context = PetContext(
                 pet_id=str(pet.id),
                 name=pet.name,
                 species=pet.species,
                 breed=pet.breed,
                 age=pet.age,
+                age_category=pet.age_category,
                 weight=float(pet.weight) if pet.weight else None,
                 gender=pet.gender,
                 is_neutered=getattr(pet, 'is_neutered', False),
                 favorite_foods=pet.favorite_foods or [],
                 allergies=pet.allergies or [],
                 health_issues=getattr(pet, 'health_issues', []) or [],
-                activity_level=getattr(pet, 'activity_level', 'medium') or 'medium'
+                activity_level=getattr(pet, 'activity_level', 'medium') or 'medium',
+                # Новые поля PetID
+                behavior_type=getattr(pet, 'behavior_type', None),
+                social_level=getattr(pet, 'social_level', None),
+                training_experience=getattr(pet, 'training_experience', None),
+                behavioral_problems=getattr(pet, 'behavioral_problems', []) or [],
+                profile_completeness=pet.profile_completeness,
+                # Данные породы
+                **breed_data
             )
             context.pets.append(pet_context)
         
@@ -466,6 +508,12 @@ class PersonalizationService:
         """
         Получить персонализированные рекомендации курсов.
         
+        Учитывает:
+        - Вид и возраст питомца
+        - Поведенческие проблемы
+        - Опыт дрессировки
+        - Тип поведения
+        
         Args:
             user: Объект пользователя
             limit: Максимальное количество рекомендаций
@@ -498,28 +546,132 @@ class PersonalizationService:
                 id__in=seen_ids
             )
             
-            # Рекомендации по уровню (для новых питомцев - начальный)
-            if pet.age and pet.age < 2:
-                beginner_courses = courses.filter(level='beginner')[:2]
-                for course in beginner_courses:
+            # 1. ПЕРСОНАЛИЗАЦИЯ ПО ПОВЕДЕНЧЕСКИМ ПРОБЛЕМАМ (высший приоритет)
+            if pet.behavioral_problems:
+                problem_keywords = {
+                    'Лает/мяукает без причины': ['лай', 'вокализация', 'bark', 'quiet'],
+                    'Грызёт вещи': ['деструктивное', 'грызёт', 'жевание'],
+                    'Агрессия': ['агрессия', 'aggression', 'социализация'],
+                    'Страх громких звуков': ['страх', 'фобия', 'десенсибилизация'],
+                    'Боязнь одиночества': ['одиночество', 'сепарация', 'separation'],
+                    'Тянет поводок': ['поводок', 'leash', 'прогулка'],
+                    'Не слушается команд': ['послушание', 'команды', 'obedience'],
+                }
+                
+                for problem in pet.behavioral_problems[:2]:
+                    keywords = problem_keywords.get(problem, [problem.lower()])
+                    q_filter = Q()
+                    for kw in keywords:
+                        q_filter |= Q(title__icontains=kw) | Q(description__icontains=kw)
+                    
+                    problem_courses = courses.filter(q_filter).exclude(id__in=seen_ids)[:1]
+                    for course in problem_courses:
+                        recommendations.append({
+                            'course': course.to_dict(),
+                            'reason': f'Поможет с проблемой "{problem}" у {pet.name}',
+                            'pet_id': pet.pet_id,
+                            'pet_name': pet.name,
+                            'priority': 'high',
+                            'match_type': 'behavioral_problem'
+                        })
+                        seen_ids.add(course.id)
+            
+            # 2. ПЕРСОНАЛИЗАЦИЯ ПО ОПЫТУ ДРЕССИРОВКИ
+            training_level_map = {
+                'none': 'beginner',
+                'basic': 'beginner',
+                'intermediate': 'intermediate',
+                'advanced': 'advanced',
+                'professional': 'advanced',
+            }
+            
+            target_level = training_level_map.get(pet.training_experience, None)
+            if target_level:
+                level_courses = courses.filter(level=target_level).exclude(id__in=seen_ids)[:1]
+                for course in level_courses:
                     recommendations.append({
                         'course': course.to_dict(),
-                        'reason': f'Базовый курс для {pet.name}',
+                        'reason': f'Подходит по уровню опыта {pet.name}',
                         'pet_id': pet.pet_id,
-                        'pet_name': pet.name
+                        'pet_name': pet.name,
+                        'priority': 'medium',
+                        'match_type': 'training_level'
                     })
                     seen_ids.add(course.id)
             
-            # Популярные курсы
-            popular = courses.exclude(id__in=seen_ids).order_by('-order_count')[:2]
-            for course in popular:
-                recommendations.append({
-                    'course': course.to_dict(),
-                    'reason': f'Рекомендовано для {pet.name}',
-                    'pet_id': pet.pet_id,
-                    'pet_name': pet.name
-                })
-                seen_ids.add(course.id)
+            # 3. ПЕРСОНАЛИЗАЦИЯ ПО ТИПУ ПОВЕДЕНИЯ
+            behavior_keywords = {
+                'calm': ['релакс', 'спокой', 'медитация'],
+                'active': ['активн', 'спорт', 'энерг', 'игр'],
+                'aggressive': ['агрессия', 'коррекция', 'социализация'],
+                'shy': ['застенч', 'социализация', 'уверен'],
+                'playful': ['игр', 'трюки', 'активн'],
+            }
+            
+            if pet.behavior_type and pet.behavior_type in behavior_keywords:
+                keywords = behavior_keywords[pet.behavior_type]
+                q_filter = Q()
+                for kw in keywords:
+                    q_filter |= Q(title__icontains=kw) | Q(description__icontains=kw)
+                
+                behavior_courses = courses.filter(q_filter).exclude(id__in=seen_ids)[:1]
+                for course in behavior_courses:
+                    recommendations.append({
+                        'course': course.to_dict(),
+                        'reason': f'Учитывает темперамент {pet.name}',
+                        'pet_id': pet.pet_id,
+                        'pet_name': pet.name,
+                        'priority': 'medium',
+                        'match_type': 'behavior_type'
+                    })
+                    seen_ids.add(course.id)
+            
+            # 4. Рекомендации по возрасту (для молодых - базовые)
+            if pet.age_category in ['puppy', 'kitten']:
+                beginner_courses = courses.filter(level='beginner').exclude(id__in=seen_ids)[:1]
+                for course in beginner_courses:
+                    recommendations.append({
+                        'course': course.to_dict(),
+                        'reason': f'Базовый курс для молодого {pet.name}',
+                        'pet_id': pet.pet_id,
+                        'pet_name': pet.name,
+                        'priority': 'medium',
+                        'match_type': 'age'
+                    })
+                    seen_ids.add(course.id)
+            elif pet.age_category == 'senior':
+                # Для пожилых - спокойные курсы
+                senior_courses = courses.filter(
+                    Q(title__icontains='senior') | Q(description__icontains='пожил')
+                ).exclude(id__in=seen_ids)[:1]
+                for course in senior_courses:
+                    recommendations.append({
+                        'course': course.to_dict(),
+                        'reason': f'Подходит для пожилого {pet.name}',
+                        'pet_id': pet.pet_id,
+                        'pet_name': pet.name,
+                        'priority': 'medium',
+                        'match_type': 'age'
+                    })
+                    seen_ids.add(course.id)
+            
+            # 5. Популярные курсы (если мало рекомендаций)
+            if len(recommendations) < limit:
+                popular = courses.exclude(id__in=seen_ids).order_by('-order_count')[:2]
+                for course in popular:
+                    recommendations.append({
+                        'course': course.to_dict(),
+                        'reason': f'Популярный курс для {pet.name}',
+                        'pet_id': pet.pet_id,
+                        'pet_name': pet.name,
+                        'priority': 'low',
+                        'match_type': 'popular'
+                    })
+                    seen_ids.add(course.id)
+        
+        # Сортируем по приоритету
+        priority_order = {'high': 0, 'medium': 1, 'low': 2}
+        recommendations.sort(key=lambda x: priority_order.get(x.get('priority', 'low'), 2))
         
         return recommendations[:limit]
     

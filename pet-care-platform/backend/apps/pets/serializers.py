@@ -8,6 +8,8 @@
     - PetCreateSerializer: Валидация данных для создания нового питомца
     - PetUpdateSerializer: Валидация данных для обновления существующего питомца
     - PetSerializer: Сериализация данных питомца для API ответов
+    - BreedSerializer: Сериализация данных пород для справочника
+    - BreedListSerializer: Упрощённый сериализатор для списка пород
 
 Допустимые виды животных:
     - dog (собака)
@@ -21,6 +23,7 @@
 
 from rest_framework import serializers
 from datetime import datetime
+from .breed_models import Breed
 
 # Допустимые виды животных
 SPECIES_CHOICES = [
@@ -659,3 +662,78 @@ class PetSerializer(serializers.Serializer):
     preferred_activities = serializers.ListField(child=serializers.CharField(), read_only=True)
     behavioral_problems = serializers.ListField(child=serializers.CharField(), read_only=True)
     is_extended_profile = serializers.BooleanField(read_only=True)
+    
+    # ===== ВЫЧИСЛЯЕМЫЕ ПОЛЯ PETID =====
+    age = serializers.IntegerField(read_only=True, allow_null=True)
+    age_months = serializers.IntegerField(read_only=True, allow_null=True)
+    age_category = serializers.CharField(read_only=True, allow_null=True)
+    calculated_size = serializers.CharField(read_only=True, allow_null=True)
+    profile_completeness = serializers.IntegerField(read_only=True)
+
+
+# ===== СЕРИАЛИЗАТОРЫ СПРАВОЧНИКА ПОРОД =====
+
+class BreedListSerializer(serializers.ModelSerializer):
+    """
+    Упрощённый сериализатор для списка пород.
+    Используется в выпадающих списках и автодополнении.
+    """
+    average_weight = serializers.FloatField(read_only=True)
+    
+    class Meta:
+        model = Breed
+        fields = [
+            'id', 'name', 'slug', 'species', 
+            'size_category', 'weight_min', 'weight_max', 'average_weight',
+            'energy_level', 'trainability', 'popularity_rank'
+        ]
+
+
+class BreedSerializer(serializers.ModelSerializer):
+    """
+    Полный сериализатор породы.
+    Включает все характеристики для автозаполнения PetID.
+    """
+    average_weight = serializers.FloatField(read_only=True)
+    average_lifespan = serializers.FloatField(read_only=True)
+    suggestions = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = Breed
+        fields = [
+            # Основные
+            'id', 'name', 'slug', 'species', 'description',
+            # Здоровье
+            'health_risk_level', 'genetic_risks', 
+            'lifespan_min', 'lifespan_max', 'average_lifespan',
+            'dental_health_notes',
+            # Вес и размер
+            'weight_min', 'weight_max', 'average_weight', 'size_category',
+            'diet_recommendations', 'digestion_sensitivity', 'metabolism_notes',
+            # Активность
+            'energy_level', 'exercise_needs', 'favorite_activities', 'activity_notes',
+            # Уход
+            'grooming_level', 'bathing_frequency', 'grooming_notes',
+            # Поведение
+            'temperament', 'trainability', 'children_compatibility', 'socialization_notes',
+            # Мета
+            'popularity_rank', 'suggestions'
+        ]
+    
+    def get_suggestions(self, obj):
+        """Возвращает рекомендуемые значения для автозаполнения Pet."""
+        return obj.get_suggestions_for_pet()
+
+
+class BreedSuggestionsSerializer(serializers.Serializer):
+    """
+    Сериализатор для подсказок при выборе породы.
+    Возвращает только ключевые данные для автозаполнения формы создания PetID.
+    """
+    activity_level = serializers.CharField()
+    size = serializers.CharField()
+    health_issues = serializers.ListField(child=serializers.CharField())
+    diet_recommendations = serializers.CharField()
+    grooming_needs = serializers.CharField()
+    trainability = serializers.CharField()
+    temperament = serializers.ListField(child=serializers.CharField())
