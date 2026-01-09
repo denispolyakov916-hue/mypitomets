@@ -288,6 +288,7 @@ function Payment() {
    */
   const handlePayment = async () => {
     setIsProcessing(true)
+    setSbpProcessing(method === 'sbp')
     setError(null)
 
     try {
@@ -314,11 +315,16 @@ function Payment() {
           return
         }
 
+        // Для 'sbp' сохраняем в metadata, так как в модели Payment нет 'sbp' в choices
+        const paymentMethodForBackend = method === 'sbp' ? 'card' : (method || 'card')
+        const paymentMetadata = method === 'sbp' ? { payment_method: 'sbp' } : {}
+
         const createResponse = await createPayment({
           payment_type: type,
           object_id: orderId,
           amount: amount,
-          payment_method: method || 'card'
+          payment_method: paymentMethodForBackend,
+          metadata: paymentMetadata
         })
 
         if (createResponse.payment) {
