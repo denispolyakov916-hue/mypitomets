@@ -172,7 +172,7 @@ function Payment() {
    * Проверка существующего платежа для заказа
    */
   const checkExistingPaymentForOrder = useCallback(async (orderIdParam) => {
-    if (!orderIdParam || paymentCreating || paymentInfo) {
+    if (!orderIdParam || paymentInfo) {
       return
     }
 
@@ -193,18 +193,17 @@ function Payment() {
           method: method || 'card'
         })
         navigate(`/payment?${params.toString()}`, { replace: true })
+        setIsLoading(false)
         return
       }
     } catch (err) {
-      // Платеж не найден - это нормально, создадим новый
-      console.log('Существующий платеж не найден, создаем новый')
+      // Платеж не найден - это нормально, будем создавать при оплате
+      console.log('Существующий платеж не найден, будет создан при оплате')
     }
 
-    // Если платеж не найден - создаем новый
+    // Платеж не найден - просто завершаем загрузку, платеж будет создан при нажатии кнопки
     setIsLoading(false)
-    const paymentType = type === 'shop_order' ? 'shop_order' : type === 'course' ? 'course' : 'unified_checkout'
-    createPaymentForOrder(orderIdParam, paymentType, amountParam)
-  }, [paymentCreating, paymentInfo, navigate, type, amountParam, createPaymentForOrder, method])
+  }, [paymentInfo, navigate, method])
 
   /**
    * Обработчик оплаты
@@ -308,15 +307,15 @@ function Payment() {
       loadPaymentInfo(paymentId)
     }
     // Если передан order_id - сначала проверяем, есть ли уже платеж
-    else if (orderId && !paymentInfo && !paymentCreating && !isLoading) {
+    else if (orderId && !paymentInfo && !isLoading) {
       checkExistingPaymentForOrder(orderId)
     }
-    // Если передан course_id, но нет payment_id и платеж еще не создается/не создан - создаем платеж
-    else if (courseId && !paymentInfo && !paymentCreating && !isLoading) {
+    // Если передан course_id, но нет payment_id - создаем платеж
+    else if (courseId && !paymentInfo && !isLoading) {
       const paymentType = type === 'shop_order' ? 'shop_order' : 'course'
       createPaymentForOrder(courseId, paymentType, amountParam)
     }
-  }, [isAuthenticated, paymentId, orderId, courseId, paymentInfo, paymentCreating, isLoading, loadPaymentInfo, checkExistingPaymentForOrder, createPaymentForOrder, type, amountParam, navigate])
+  }, [isAuthenticated, paymentId, orderId, courseId, paymentInfo, isLoading, loadPaymentInfo, checkExistingPaymentForOrder, createPaymentForOrder, type, amountParam, navigate])
 
   /**
    * Перенаправление после успешной оплаты

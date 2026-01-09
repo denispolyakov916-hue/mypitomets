@@ -153,6 +153,7 @@ export const StatusBadge = ({ status, labels = {}, ...props }) => {
     // Заказы
     pending: { variant: 'warning', label: 'Ожидает' },
     processing: { variant: 'info', label: 'В обработке' },
+    partially_delivered: { variant: 'purple', label: 'Частично доставлен' },
     shipped: { variant: 'purple', label: 'Отправлен' },
     delivered: { variant: 'success', label: 'Доставлен' },
     cancelled: { variant: 'default', label: 'Отменён' },

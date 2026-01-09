@@ -52,8 +52,8 @@ class CourseListView(APIView):
         
         # Проверяем кэш
         cache_key = self._get_cache_key(request)
-        cached_response = cache.get(cache_key)
-        if cached_response is not None:
+        cached_data = cache.get(cache_key)
+        if cached_data is not None:
             # Восстанавливаем пагинацию из запроса
             try:
                 page = max(1, int(request.query_params.get('page', 1)))
@@ -61,23 +61,26 @@ class CourseListView(APIView):
             except ValueError:
                 page = 1
                 per_page = 12
-            
+
             # Применяем пагинацию к кэшированным данным
-            total = cached_response.get('pagination', {}).get('total', 0)
-            all_courses = cached_response.get('courses', [])
-            
+            total = cached_data.get('total_count', 0)
+            all_courses_data = cached_data.get('all_courses_data', [])
+            filters_data = cached_data.get('filters', {})
+
             offset = (page - 1) * per_page
-            courses_page = all_courses[offset:offset + per_page]
-            
-            response_data = cached_response.copy()
-            response_data['courses'] = courses_page
-            response_data['pagination'] = {
-                'total': total,
-                'page': page,
-                'per_page': per_page,
-                'total_pages': (total + per_page - 1) // per_page if total > 0 else 0
+            courses_page_data = all_courses_data[offset:offset + per_page]
+
+            response_data = {
+                'courses': courses_page_data,
+                'pagination': {
+                    'total': total,
+                    'page': page,
+                    'per_page': per_page,
+                    'total_pages': (total + per_page - 1) // per_page if total > 0 else 0
+                },
+                'filters': filters_data
             }
-            
+
             return Response(response_data, status=status.HTTP_200_OK)
         from django.db.models import Min, Max
         
@@ -208,6 +211,9 @@ class CourseListView(APIView):
         # Общее количество до пагинации
         total_count = courses.count()
         
+        # Получаем все данные до пагинации для кэширования
+        all_courses_data = [c.to_dict() for c in courses]
+
         # Пагинация
         try:
             page = max(1, int(request.query_params.get('page', 1)))
@@ -215,11 +221,9 @@ class CourseListView(APIView):
         except ValueError:
             page = 1
             per_page = 12
-        
-        offset = (page - 1) * per_page
-        courses = courses[offset:offset + per_page]
 
-        courses_data = [c.to_dict() for c in courses]
+        offset = (page - 1) * per_page
+        courses_data = all_courses_data[offset:offset + per_page]
         
         # Сбор доступных фильтров
         filter_query = Course.objects.filter(is_active=True)
@@ -301,11 +305,18 @@ class CourseListView(APIView):
             }
         }
         
-        # Сохраняем в кэш (без пагинации, чтобы кэшировать все курсы)
+        # Сохраняем в кэш все курсы и фильтры (без пагинации)
         from django.core.cache import cache
         from django.conf import settings
+
+        cache_data = {
+            'total_count': total_count,
+            'all_courses_data': all_courses_data,
+            'filters': response_data['filters']
+        }
+
         cache_timeout = getattr(settings, 'CACHE_TIMEOUTS', {}).get('courses', 300)
-        cache.set(cache_key, response_data, cache_timeout)
+        cache.set(cache_key, cache_data, cache_timeout)
         
         return Response(response_data, status=status.HTTP_200_OK)
 

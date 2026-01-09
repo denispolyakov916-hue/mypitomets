@@ -231,6 +231,7 @@ const FilterPanel = ({ filters, onChange }) => {
                 <option value="">Все статусы</option>
                 <option value="pending">Ожидает</option>
                 <option value="processing">В обработке</option>
+                <option value="partially_delivered">Частично доставлен</option>
                 <option value="shipped">Отправлен</option>
                 <option value="delivered">Доставлен</option>
                 <option value="cancelled">Отменен</option>

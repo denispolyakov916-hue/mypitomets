@@ -52,6 +52,7 @@ const statusLabels = {
   pending: { label: 'Ожидает', class: 'bg-yellow-100 text-yellow-700' },
   processing: { label: 'В обработке', class: 'bg-blue-100 text-blue-700' },
   shipped: { label: 'Отправлен', class: 'bg-purple-100 text-purple-700' },
+  partially_delivered: { label: 'Частично доставлен', class: 'bg-purple-100 text-purple-700' },
   delivered: { label: 'Доставлен', class: 'bg-green-100 text-green-700' },
 }
 

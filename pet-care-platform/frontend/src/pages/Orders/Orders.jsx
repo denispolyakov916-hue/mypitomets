@@ -90,6 +90,15 @@ const statusConfig = {
       </svg>
     )
   },
+  partially_delivered: {
+    label: 'Частично доставлен',
+    class: 'bg-purple-100 text-purple-800 border-purple-200',
+    icon: (
+      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7 8h10M7 12h4m-4 4h6" />
+      </svg>
+    )
+  },
   shipped: {
     label: 'Отправлен',
     class: 'bg-purple-100 text-purple-800 border-purple-200',

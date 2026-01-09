@@ -1,6 +1,6 @@
 """
-Команда для добавления 20 новых курсов для собак и кошек
-10 бесплатных + 10 платных курсов
+Команда для добавления 30 новых курсов для собак и кошек
+10 бесплатных + 20 платных курсов
 
 Использование:
     python manage.py add_new_courses
@@ -8,7 +8,8 @@
 
 from django.core.management.base import BaseCommand
 from django.contrib.auth import get_user_model
-from apps.training.models import Course, Lesson, Comment, Rating
+from apps.training.models import Course, Lesson, Comment
+from apps.reviews.models import Review
 from apps.pets.models import Pet
 import random
 
@@ -386,13 +387,12 @@ class Command(BaseCommand):
                 selected_pet = random.choice(user_pets) if user_pets else None
 
                 # Создаем оценку (если не существует)
-                rating_obj, created = Rating.objects.get_or_create(
+                rating_obj, created = Review.objects.get_or_create(
                     user=user,
                     course=course,
-                    pet=selected_pet,
                     defaults={
                         'rating': random.randint(3, 5),  # Только положительные оценки для теста
-                        'review': self.generate_random_review(),
+                        'comment': self.generate_random_review(),
                         'is_approved': True
                     }
                 )
@@ -493,7 +493,7 @@ class Command(BaseCommand):
         return random.choice(comments)
 
     def handle(self, *args, **options):
-        self.stdout.write('Добавление 20 новых курсов для собак и кошек...')
+        self.stdout.write('Добавление 30 новых курсов для собак и кошек...')
 
         new_courses_data = [
             # ========== 10 БЕСПЛАТНЫХ КУРСОВ ==========
@@ -899,6 +899,207 @@ class Command(BaseCommand):
                 "completion_time": "2 месяца",
                 "requirements": "Любовь к животным и интерес к психологии",
                 "image_url": "https://images.unsplash.com/photo-1601758228041-f3b2795255f1?w=400"
+            },
+            # ДОПОЛНИТЕЛЬНЫЕ 10 ПЛАТНЫХ КУРСОВ
+            {
+                "title": "Спортивная дрессировка собак: аджилити",
+                "description": "Подготовка собаки к соревнованиям по аджилити. Преодоление препятствий, скорость, координация.",
+                "duration": 160,
+                "price": 2790,
+                "pet_type": "dog",
+                "category": "training",
+                "subcategory": "agility",
+                "level": "intermediate",
+                "format_type": "workshop",
+                "lessons_count": 14,
+                "videos_count": 12,
+                "materials_count": 10,
+                "instructor_name": "Чемпион по аджилити Петр Быстрый",
+                "instructor_bio": "Многократный чемпион по аджилити, тренер спортивных собак",
+                "what_you_will_learn": "Барьеры и заборы\nТоннели и слалом\nПреодоление препятствий\nТактика соревнований",
+                "completion_time": "3-4 месяца",
+                "requirements": "Собака должна быть активной и здоровой",
+                "image_url": "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400"
+            },
+            {
+                "title": "Курс поводыря для незрячих",
+                "description": "Подготовка собаки-поводыря. Обучение ориентированию в пространстве, помощь при передвижении.",
+                "duration": 240,
+                "price": 4990,
+                "pet_type": "dog",
+                "category": "training",
+                "subcategory": "guide_dog",
+                "level": "expert",
+                "format_type": "workshop",
+                "lessons_count": 20,
+                "videos_count": 18,
+                "materials_count": 15,
+                "instructor_name": "Инструктор собак-поводырей Анна Видящая",
+                "instructor_bio": "Специалист по подготовке собак-поводырей, работает с незрячими",
+                "what_you_will_learn": "Ориентирование в пространстве\nПомощь при передвижении\nРабота с препятствиями\nБезопасность на улице",
+                "completion_time": "6-8 месяцев",
+                "requirements": "Собака должна быть спокойной и послушной",
+                "image_url": "https://images.unsplash.com/photo-1583512603805-3cc6b41f3edb?w=400"
+            },
+            {
+                "title": "Музыкальная дрессировка кошек",
+                "description": "Обучение кошки музыкальным командам. Синхронизация с музыкой, танцевальные элементы.",
+                "duration": 100,
+                "price": 1690,
+                "pet_type": "cat",
+                "category": "training",
+                "subcategory": "music_training",
+                "level": "intermediate",
+                "format_type": "interactive",
+                "lessons_count": 8,
+                "videos_count": 6,
+                "materials_count": 6,
+                "instructor_name": "Музыкальный фелинолог Мария Мурр",
+                "instructor_bio": "Специалист по музыкальной дрессировке кошек",
+                "what_you_will_learn": "Реакция на музыку\nСинхронизация движений\nМузыкальные команды\nВыступления",
+                "completion_time": "2 месяца",
+                "requirements": "Кошка должна быть контактной",
+                "image_url": "https://images.unsplash.com/photo-1574158622682-e40e69881006?w=400"
+            },
+            {
+                "title": "Курс терапевтической кошки",
+                "description": "Подготовка кошки к терапевтической работе. Работа в больницах, домах престарелых, школах.",
+                "duration": 140,
+                "price": 2290,
+                "pet_type": "cat",
+                "category": "specialized",
+                "subcategory": "therapy_cat",
+                "level": "intermediate",
+                "format_type": "webinar",
+                "lessons_count": 12,
+                "videos_count": 10,
+                "materials_count": 8,
+                "instructor_name": "Терапевт животных Ольга Ласка",
+                "instructor_bio": "Специалист по канистерапии, работает с кошками-терапевтами",
+                "what_you_will_learn": "Адаптация к новым местам\nКонтакт с людьми\nТерапевтические техники\nБезопасность работы",
+                "completion_time": "3 месяца",
+                "requirements": "Кошка должна быть спокойной и ласковой",
+                "image_url": "https://images.unsplash.com/photo-1596854407944-bf87f6fdd49e?w=400"
+            },
+            {
+                "title": "Профессиональный груминг собак",
+                "description": "Мастер-класс по профессиональному грумингу. Сложные стрижки, уход за шерстью, подготовка к выставкам.",
+                "duration": 180,
+                "price": 3490,
+                "pet_type": "dog",
+                "category": "care",
+                "subcategory": "professional_grooming",
+                "level": "advanced",
+                "format_type": "workshop",
+                "lessons_count": 16,
+                "videos_count": 14,
+                "materials_count": 12,
+                "instructor_name": "Мастер-грумер Ольга Красивая",
+                "instructor_bio": "Чемпион мира по грумингу собак, владелец салона",
+                "what_you_will_learn": "Сложные стрижки\nУкладка шерсти\nПодготовка к выставкам\nРабота с инструментами",
+                "completion_time": "4 месяца",
+                "requirements": "Базовые навыки груминга",
+                "image_url": "https://images.unsplash.com/photo-1551717743-49959800b1f6?w=400"
+            },
+            {
+                "title": "Ветеринарная стоматология для питомцев",
+                "description": "Профилактика и лечение стоматологических заболеваний. Чистка зубов, лечение заболеваний десен.",
+                "duration": 120,
+                "price": 2490,
+                "pet_type": "all",
+                "category": "health",
+                "subcategory": "dental_care",
+                "level": "intermediate",
+                "format_type": "webinar",
+                "lessons_count": 10,
+                "videos_count": 8,
+                "materials_count": 9,
+                "instructor_name": "Ветеринар-стоматолог Дмитрий Зубов",
+                "instructor_bio": "Специалист по стоматологии животных, кандидат ветеринарных наук",
+                "what_you_will_learn": "Профилактика зубных заболеваний\nЧистка зубов\nЛечение десен\nХирургические вмешательства",
+                "completion_time": "2-3 месяца",
+                "requirements": "Базовые знания ветеринарии",
+                "image_url": "https://images.unsplash.com/photo-1629909613654-28e377c37b09?w=400"
+            },
+            {
+                "title": "Разведение собак: профессиональный подход",
+                "description": "Профессиональное разведение собак. Подбор пар, ведение племенной работы, стандарты пород.",
+                "duration": 200,
+                "price": 3990,
+                "pet_type": "dog",
+                "category": "specialized",
+                "subcategory": "breeding",
+                "level": "expert",
+                "format_type": "webinar",
+                "lessons_count": 18,
+                "videos_count": 16,
+                "materials_count": 14,
+                "instructor_name": "Кинолог-разведенец Сергей Породистый",
+                "instructor_bio": "Заводчик, эксперт по разведению, судья выставок",
+                "what_you_will_learn": "Подбор племенных пар\nВедение документации\nСтандарты пород\nЗдоровье потомства",
+                "completion_time": "4-6 месяцев",
+                "requirements": "Опыт работы с собаками, знание породы",
+                "image_url": "https://images.unsplash.com/photo-1587300003388-59208cc962cb?w=400"
+            },
+            {
+                "title": "Ароматерапия и фитотерапия для кошек",
+                "description": "Использование эфирных масел и трав для лечения и профилактики заболеваний кошек.",
+                "duration": 110,
+                "price": 1890,
+                "pet_type": "cat",
+                "category": "health",
+                "subcategory": "aromatherapy",
+                "level": "intermediate",
+                "format_type": "mixed",
+                "lessons_count": 9,
+                "videos_count": 7,
+                "materials_count": 8,
+                "instructor_name": "Натуропат ветеринар Анна Трава",
+                "instructor_bio": "Специалист по альтернативной ветеринарии, ароматерапевт",
+                "what_you_will_learn": "Безопасные эфирные масла\nЛечебные травы\nМетоды применения\nПрофилактика заболеваний",
+                "completion_time": "2 месяца",
+                "requirements": "Базовые знания анатомии кошек",
+                "image_url": "https://images.unsplash.com/photo-1596854407944-bf87f6fdd49e?w=400"
+            },
+            {
+                "title": "Курс собаки-спасателя: водные спасения",
+                "description": "Подготовка собаки к спасательным работам на воде. Плавание, буксировка, поиск в водоемах.",
+                "duration": 170,
+                "price": 3190,
+                "pet_type": "dog",
+                "category": "training",
+                "subcategory": "water_rescue",
+                "level": "advanced",
+                "format_type": "workshop",
+                "lessons_count": 15,
+                "videos_count": 13,
+                "materials_count": 11,
+                "instructor_name": "Спасатель МЧС Алексей Волна",
+                "instructor_bio": "Инструктор водных спасательных работ с собаками",
+                "what_you_will_learn": "Техника плавания\nБуксировка на воде\nПоиск в водоемах\nБезопасность на воде",
+                "completion_time": "4 месяца",
+                "requirements": "Собака должна любить воду и быть физически развитой",
+                "image_url": "https://images.unsplash.com/photo-1583512603805-3cc6b41f3edb?w=400"
+            },
+            {
+                "title": "Нутригенетика: персонализированное питание",
+                "description": "Анализ генетики питомца для составления индивидуального рациона. Генетические тесты и диеты.",
+                "duration": 140,
+                "price": 2990,
+                "pet_type": "all",
+                "category": "nutrition",
+                "subcategory": "nutrigenetics",
+                "level": "advanced",
+                "format_type": "webinar",
+                "lessons_count": 12,
+                "videos_count": 10,
+                "materials_count": 10,
+                "instructor_name": "Генетик-нутрициолог Ольга Генова",
+                "instructor_bio": "Специалист по нутригенетике, доктор биологических наук",
+                "what_you_will_learn": "Генетические тесты\nПерсонализированные рационы\nМетаболические особенности\nПрофилактика заболеваний",
+                "completion_time": "3 месяца",
+                "requirements": "Базовые знания генетики и питания",
+                "image_url": "https://images.unsplash.com/photo-1589941013453-ec89f33b5e95?w=400"
             }
         ]
 
@@ -967,7 +1168,7 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS('=' * 50))
         self.stdout.write(self.style.SUCCESS('НОВЫЕ КУРСЫ ДОБАВЛЕНЫ!'))
         self.stdout.write(self.style.SUCCESS('=' * 50))
-        self.stdout.write(self.style.SUCCESS(f'Добавлено курсов: {courses_created}'))
+        self.stdout.write(self.style.SUCCESS(f'Добавлено курсов: {courses_created} (10 бесплатных + 20 платных)'))
         self.stdout.write(self.style.SUCCESS(f'Добавлено уроков: {lessons_created}'))
         self.stdout.write(self.style.SUCCESS(f'Добавлено комментариев: {comments_created}'))
         self.stdout.write(self.style.SUCCESS(f'Добавлено оценок: {ratings_created}'))

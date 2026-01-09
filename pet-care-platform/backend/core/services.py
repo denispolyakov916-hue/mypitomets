@@ -34,14 +34,26 @@ class BaseService(ABC):
     def log_info(cls, message: str, context: Optional[Dict[str, Any]] = None):
         """
         Логирование информационных сообщений.
-        
+
         Args:
             message: Сообщение для логирования
             context: Дополнительный контекст
         """
         context_str = f" Context: {context}" if context else ""
         logger.info(f"{cls.__name__}: {message}{context_str}")
-    
+
+    @classmethod
+    def log_warning(cls, message: str, context: Optional[Dict[str, Any]] = None):
+        """
+        Логирование предупреждений.
+
+        Args:
+            message: Сообщение для логирования
+            context: Дополнительный контекст
+        """
+        context_str = f" Context: {context}" if context else ""
+        logger.warning(f"{cls.__name__}: {message}{context_str}")
+
     @classmethod
     def validate_required_fields(cls, data: Dict[str, Any], required_fields: List[str]) -> bool:
         """

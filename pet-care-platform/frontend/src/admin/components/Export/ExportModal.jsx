@@ -43,6 +43,7 @@ const ExportModal = ({
       orders: [
         { value: 'pending', label: 'Ожидают' },
         { value: 'processing', label: 'В обработке' },
+        { value: 'partially_delivered', label: 'Частично доставлены' },
         { value: 'shipped', label: 'Отправлены' },
         { value: 'delivered', label: 'Доставлены' },
         { value: 'cancelled', label: 'Отменены' }

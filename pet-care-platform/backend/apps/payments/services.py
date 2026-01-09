@@ -117,11 +117,22 @@ class PaymentService(BaseService):
         # Имитация задержки обработки
         time.sleep(0.1)  # В реальности webhook приходит асинхронно
 
-        payment.mark_as_completed()
-        PaymentService.log_info(f"Платеж успешно завершён: {payment.id}", {'payment_id': payment.id})
-
-        # Выполнение пост-платежных действий
-        PaymentService._execute_post_payment_actions(payment)
+        # Выполнение пост-платежных действий ДО отметки платежа как completed
+        try:
+            PaymentService._execute_post_payment_actions(payment)
+            # Только после успешной активации отмечаем платеж как completed
+            payment.mark_as_completed()
+            PaymentService.log_info(f"Платеж успешно завершён: {payment.id}", {'payment_id': payment.id})
+        except Exception as e:
+            # Если активация заказа провалилась - отмечаем платеж как failed
+            payment.mark_as_failed(str(e))
+            PaymentService.log_error(e, {
+                'payment_id': payment.id,
+                'error_type': type(e).__name__,
+                'action': 'post_payment_activation_failed'
+            })
+            # Пробрасываем исключение выше, чтобы OrderConfirmPaymentView вернул ошибку
+            raise
 
     @staticmethod
     def confirm_payment(payment_id: str, external_payment_id: str = None) -> bool:
@@ -256,8 +267,9 @@ class PaymentService(BaseService):
 
     @staticmethod
     def _activate_shop_order(payment: Payment):
-        """Активация заказа товаров после оплаты."""
+        """Активация заказа товаров и курсов после оплаты."""
         from apps.shop.models import Order, OrderItem, Product
+        from apps.training.models import UserCourse
         from django.db import transaction
         from datetime import timedelta
 
@@ -268,7 +280,32 @@ class PaymentService(BaseService):
             return
 
         try:
-            order = Order.objects.get(id=payment.object_id, user=payment.user)
+            order = Order.objects.prefetch_related(
+                'items__product', 'items__course', 'items__pet'
+            ).get(id=payment.object_id, user=payment.user)
+
+            # Анализируем состав заказа
+            total_items = order.items.count()
+            product_items = order.items.filter(product__isnull=False).count()
+            course_items = order.items.filter(course__isnull=False).count()
+            invalid_items = order.items.filter(product__isnull=True, course__isnull=True).count()
+
+            PaymentService.log_info(f"Начинаем активацию заказа {order.id} для платежа {payment.id}", {
+                'order_id': order.id,
+                'payment_id': payment.id,
+                'order_status': order.status,
+                'total_items': total_items,
+                'product_items': product_items,
+                'course_items': course_items,
+                'invalid_items': invalid_items
+            })
+
+            if invalid_items > 0:
+                PaymentService.log_error(f"Заказ {order.id} содержит некорректные элементы", {
+                    'order_id': order.id,
+                    'invalid_items': invalid_items
+                })
+                raise ValueError(f"Заказ содержит {invalid_items} некорректных элементов")
 
             # Используем транзакцию для атомарности операции
             with transaction.atomic():
@@ -280,11 +317,11 @@ class PaymentService(BaseService):
                         'order_id': order.id,
                         'payment_id': payment.id
                     })
-                
+
                 # Проверяем доступность товаров перед списанием
                 unavailable_items = []
                 insufficient_items = []
-                
+
                 for order_item in order.items.filter(product__isnull=False):
                     try:
                         product = order_item.product
@@ -310,7 +347,7 @@ class PaymentService(BaseService):
                             'product_name': order_item.product_name,
                             'quantity': order_item.quantity
                         })
-                
+
                 # Если есть недоступные товары - откатываем транзакцию и возвращаем ошибку
                 if unavailable_items or insufficient_items:
                     error_msg = "Недоступные товары в заказе"
@@ -318,7 +355,7 @@ class PaymentService(BaseService):
                         error_msg += f": недоступны {len(unavailable_items)} товар(ов)"
                     if insufficient_items:
                         error_msg += f": недостаточно {len(insufficient_items)} товар(ов)"
-                    
+
                     PaymentService.log_error(
                         ValueError(error_msg),
                         {
@@ -329,7 +366,7 @@ class PaymentService(BaseService):
                         }
                     )
                     raise ValueError(error_msg)
-                
+
                 # Все товары доступны - списываем со склада
                 # Для просроченных заказов товары уже возвращены на склад, так что списываем снова
                 for order_item in order.items.filter(product__isnull=False):
@@ -347,32 +384,96 @@ class PaymentService(BaseService):
                     product.order_count += order_item.quantity
                     product.save(update_fields=['order_count'])
 
-                # Проверяем, содержит ли заказ только курсы (без физических товаров)
-                has_only_courses = (
-                    order.items.filter(product__isnull=False).count() == 0 and
-                    order.items.filter(course__isnull=False).count() > 0
-                )
+                # Активируем курсы в заказе
+                courses_activated = 0
+                for order_item in order.items.filter(course__isnull=False):
+                    try:
+                        # Проверяем согласие с условиями для платных курсов
+                        if order_item.course.price > 0 and not order_item.disclaimer_accepted:
+                            PaymentService.log_warning(f"Курс {order_item.course.title} не имеет согласия с условиями при активации, пропускаем")
+                            continue  # Пропускаем курс без согласия
 
-                if has_only_courses:
+                        # Создаем UserCourse для предоставления доступа к курсу
+                        user_course, created = UserCourse.objects.get_or_create(
+                            user=payment.user,
+                            course=order_item.course,
+                            pet=order_item.pet,
+                            defaults={'purchased_at': order.created_at}
+                        )
+
+                        if created:
+                            PaymentService.log_info(f"Создан UserCourse для курса {order_item.course.title}")
+                        else:
+                            PaymentService.log_info(f"UserCourse уже существует для курса {order_item.course.title}")
+
+                        # Обновляем счетчик популярности курса
+                        order_item.course.order_count += 1
+                        order_item.course.save(update_fields=['order_count'])
+
+                        courses_activated += 1
+                        PaymentService.log_info(f"Доступ к курсу предоставлен: user={payment.user.email}, course={order_item.course.title}", {
+                            'payment_id': payment.id,
+                            'user_id': payment.user.id,
+                            'course_id': order_item.course.id,
+                            'order_id': order.id
+                        })
+
+                    except Exception as e:
+                        PaymentService.log_error(f"Ошибка активации курса {order_item.course.title}: {e}", {
+                            'payment_id': payment.id,
+                            'order_id': order.id,
+                            'course_id': order_item.course.id,
+                            'error': str(e)
+                        })
+                        raise  # Пробрасываем исключение, чтобы транзакция откатилась
+
+                # Определяем статус заказа в зависимости от состава
+                if course_items > 0 and product_items == 0:
+                    # Только курсы - доставлены сразу
                     order.status = 'delivered'
-                    PaymentService.log_info(f"Заказ курсов доставлен автоматически: {order.id}", {
+                    PaymentService.log_info(f"Заказ курсов доставлен автоматически: {order.id} (активировано {courses_activated} курсов)", {
+                        'order_id': order.id,
+                        'payment_id': payment.id,
+                        'courses_activated': courses_activated
+                    })
+                elif product_items > 0 and course_items == 0:
+                    # Только товары - в обработке
+                    order.status = 'processing'
+                    PaymentService.log_info(f"Заказ товаров активирован после оплаты и товары списаны: {order.id}", {
                         'order_id': order.id,
                         'payment_id': payment.id
+                    })
+                elif product_items > 0 and course_items > 0:
+                    # Товары И курсы - курсы активированы, товары в обработке
+                    order.status = 'partially_delivered'
+                    PaymentService.log_info(f"Заказ с товарами и курсами: активировано {courses_activated} курсов, товары в обработке: {order.id}", {
+                        'order_id': order.id,
+                        'payment_id': payment.id,
+                        'courses_activated': courses_activated
                     })
                 else:
-                    order.status = 'processing'
-                    PaymentService.log_info(f"Заказ активирован после оплаты и товары списаны: {order.id}", {
+                    # Неверный состав заказа
+                    PaymentService.log_error(f"Заказ {order.id} имеет некорректный состав", {
                         'order_id': order.id,
-                        'payment_id': payment.id
+                        'product_items': product_items,
+                        'course_items': course_items
                     })
+                    raise ValueError(f"Заказ имеет некорректный состав: {product_items} товаров, {course_items} курсов")
 
                 order.expires_at = None  # Убираем срок истечения после успешной оплаты
                 order.save()
 
-        except Order.DoesNotExist:
-            PaymentService.log_error(Exception(f"Заказ не найден для платежа: {payment.id}"), {
-                'payment_id': payment.id
+        except ValueError:
+            # Бизнес-логика ошибки (недоступные товары) - пробрасываем выше
+            raise
+        except Exception as e:
+            # Неожиданная ошибка активации - логируем и пробрасываем
+            PaymentService.log_error(e, {
+                'payment_id': payment.id,
+                'order_id': payment.object_id,
+                'error_type': type(e).__name__
             })
+            raise
 
     @staticmethod
     def _activate_course_access(payment: Payment):
@@ -431,7 +532,7 @@ class PaymentService(BaseService):
     @staticmethod
     def _activate_unified_checkout(payment: Payment):
         """Активация единого чекаута после оплаты (товары + курсы)."""
-        from apps.shop.models import Order
+        from apps.shop.models import Order, OrderItem
         from apps.training.models import Course, UserCourse
         from apps.pets.models import Pet
 
@@ -443,65 +544,167 @@ class PaymentService(BaseService):
 
         metadata = payment.metadata or {}
 
-        # Активация заказа товаров
-        products_order_id = metadata.get('products_order_id')
-        if products_order_id:
-            try:
-                order = Order.objects.get(id=products_order_id, user=payment.user)
+        # Получаем заказ (для unified_checkout object_id - это ID заказа)
+        try:
+            order = Order.objects.prefetch_related(
+                'items__product', 'items__course', 'items__pet'
+            ).get(id=payment.object_id, user=payment.user)
 
-                # Используем транзакцию для атомарности операции
-                with transaction.atomic():
-                    # Списываем товары со склада
-                    for order_item in order.items.filter(product__isnull=False):
-                        product = order_item.product
-                        if product.stock_count >= order_item.quantity:
-                            product.stock_count -= order_item.quantity
-                            # Если товаров не осталось, устанавливаем in_stock=False
-                            if product.stock_count == 0:
-                                product.in_stock = False
-                            product.save()
-                            PaymentService.log_info(f"Списан товар в unified checkout: {product.name}, количество: {order_item.quantity}, остаток: {product.stock_count}")
-                        else:
-                            # Это не должно происходить, если проверки были сделаны при создании заказа
-                            PaymentService.log_error(
-                                Exception(f"Недостаточно товара на складе в unified checkout: {product.name}"),
-                                {
-                                    'payment_id': payment.id,
-                                    'product_name': product.name,
-                                    'required': order_item.quantity,
-                                    'available': product.stock_count
-                                }
-                            )
+            # Анализируем состав заказа
+            total_items = order.items.count()
+            product_items = order.items.filter(product__isnull=False).count()
+            course_items = order.items.filter(course__isnull=False).count()
+            invalid_items = order.items.filter(product__isnull=True, course__isnull=True).count()
 
-                    order.status = 'processing'
-                    order.save()
-                    PaymentService.log_info(f"Заказ товаров активирован в unified checkout и товары списаны: {order.id}", {
+            PaymentService.log_info(f"Начинаем активацию unified checkout заказа {order.id} для платежа {payment.id}", {
+                'order_id': order.id,
+                'payment_id': payment.id,
+                'order_status': order.status,
+                'total_items': total_items,
+                'product_items': product_items,
+                'course_items': course_items,
+                'invalid_items': invalid_items
+            })
+
+            if invalid_items > 0:
+                PaymentService.log_error(f"Unified checkout заказ {order.id} содержит некорректные элементы", {
+                    'order_id': order.id,
+                    'invalid_items': invalid_items
+                })
+                raise ValueError(f"Заказ содержит {invalid_items} некорректных элементов")
+
+            # Используем транзакцию для атомарности операции
+            with transaction.atomic():
+                # Если заказ был просрочен - возвращаем его в pending и устанавливаем новый срок
+                if order.status == 'expired':
+                    order.status = 'pending'
+                    order.expires_at = timezone.now() + timedelta(minutes=10)
+                    PaymentService.log_info(f"Просроченный unified checkout заказ восстановлен: {order.id}", {
                         'order_id': order.id,
                         'payment_id': payment.id
                     })
-            except Order.DoesNotExist:
-                PaymentService.log_error(Exception(f"Заказ товаров не найден для unified checkout платежа: {payment.id}"), {
-                    'payment_id': payment.id
-                })
 
-        # Активация доступа к курсам
-        course_ids = metadata.get('course_ids', [])
-        for user_course_id in course_ids:
-            try:
-                user_course = UserCourse.objects.get(id=user_course_id, user=payment.user)
-                # Доступ к курсу уже предоставлен при создании UserCourse
-                PaymentService.log_info(f"Доступ к курсу подтверждён в unified checkout: user={payment.user.email}, course={user_course.course.title}", {
-                    'payment_id': payment.id,
-                    'user_id': payment.user.id,
-                    'course_id': user_course.course.id
-                })
-            except UserCourse.DoesNotExist:
-                PaymentService.log_error(
-                    Exception(f"UserCourse не найден для unified checkout платежа: {payment.id}"),
-                    {'payment_id': payment.id, 'course_id': user_course_id}
-                )
+                # Списываем товары со склада
+                for order_item in order.items.filter(product__isnull=False):
+                    product = order_item.product
+                    if product.stock_count >= order_item.quantity:
+                        product.stock_count -= order_item.quantity
+                        # Если товаров не осталось, устанавливаем in_stock=False
+                        if product.stock_count == 0:
+                            product.in_stock = False
+                        product.save()
+                        PaymentService.log_info(f"Списан товар в unified checkout: {product.name}, количество: {order_item.quantity}, остаток: {product.stock_count}")
+                    else:
+                        # Это не должно происходить, если проверки были сделаны при создании заказа
+                        PaymentService.log_error(
+                            Exception(f"Недостаточно товара на складе в unified checkout: {product.name}"),
+                            {
+                                'payment_id': payment.id,
+                                'product_name': product.name,
+                                'required': order_item.quantity,
+                                'available': product.stock_count
+                            }
+                        )
+                        raise ValueError(f"Недостаточно товара {product.name} на складе")
 
-        PaymentService.log_info(f"Unified checkout активирован: {payment.id}", {'payment_id': payment.id})
+                # Активируем курсы в заказе
+                courses_activated = 0
+                for order_item in order.items.filter(course__isnull=False):
+                    try:
+                        # Проверяем согласие с условиями для платных курсов
+                        if order_item.course.price > 0 and not order_item.disclaimer_accepted:
+                            PaymentService.log_warning(f"Курс {order_item.course.title} не имеет согласия с условиями при активации, пропускаем")
+                            continue  # Пропускаем курс без согласия
+
+                        # Доступ к курсу уже должен быть предоставлен при создании UserCourse
+                        # Просто проверяем, что UserCourse существует
+                        user_course_exists = UserCourse.objects.filter(
+                            user=payment.user,
+                            course=order_item.course,
+                            pet=order_item.pet
+                        ).exists()
+
+                        if user_course_exists:
+                            PaymentService.log_info(f"Доступ к курсу подтверждён: user={payment.user.email}, course={order_item.course.title}", {
+                                'payment_id': payment.id,
+                                'user_id': payment.user.id,
+                                'course_id': order_item.course.id,
+                                'order_id': order.id
+                            })
+                        else:
+                            PaymentService.log_error(f"UserCourse не найден для курса {order_item.course.title}", {
+                                'payment_id': payment.id,
+                                'order_id': order.id,
+                                'course_id': order_item.course.id
+                            })
+
+                        # Обновляем счетчик популярности курса
+                        order_item.course.order_count += 1
+                        order_item.course.save(update_fields=['order_count'])
+
+                        courses_activated += 1
+
+                    except Exception as e:
+                        PaymentService.log_error(f"Ошибка активации курса {order_item.course.title}: {e}", {
+                            'payment_id': payment.id,
+                            'order_id': order.id,
+                            'course_id': order_item.course.id,
+                            'error': str(e)
+                        })
+                        raise  # Пробрасываем исключение, чтобы транзакция откатилась
+
+                # Определяем статус заказа в зависимости от состава
+                if course_items > 0 and product_items == 0:
+                    # Только курсы - доставлены сразу
+                    order.status = 'delivered'
+                    PaymentService.log_info(f"Unified checkout заказ курсов доставлен автоматически: {order.id} (активировано {courses_activated} курсов)", {
+                        'order_id': order.id,
+                        'payment_id': payment.id,
+                        'courses_activated': courses_activated
+                    })
+                elif product_items > 0 and course_items == 0:
+                    # Только товары - в обработке
+                    order.status = 'processing'
+                    PaymentService.log_info(f"Unified checkout заказ товаров активирован после оплаты и товары списаны: {order.id}", {
+                        'order_id': order.id,
+                        'payment_id': payment.id
+                    })
+                elif product_items > 0 and course_items > 0:
+                    # Товары И курсы - курсы активированы, товары в обработке
+                    order.status = 'partially_delivered'
+                    PaymentService.log_info(f"Unified checkout заказ с товарами и курсами: активировано {courses_activated} курсов, товары в обработке: {order.id}", {
+                        'order_id': order.id,
+                        'payment_id': payment.id,
+                        'courses_activated': courses_activated
+                    })
+                else:
+                    # Неверный состав заказа
+                    PaymentService.log_error(f"Unified checkout заказ {order.id} имеет некорректный состав", {
+                        'order_id': order.id,
+                        'product_items': product_items,
+                        'course_items': course_items
+                    })
+                    raise ValueError(f"Заказ имеет некорректный состав: {product_items} товаров, {course_items} курсов")
+
+                order.expires_at = None  # Убираем срок истечения после успешной оплаты
+                order.save()
+
+        except Order.DoesNotExist:
+            PaymentService.log_error(Exception(f"Заказ не найден для unified checkout платежа: {payment.id}"), {
+                'payment_id': payment.id,
+                'object_id': payment.object_id
+            })
+        except ValueError:
+            # Бизнес-логика ошибки - пробрасываем выше
+            raise
+        except Exception as e:
+            # Неожиданная ошибка активации - логируем и пробрасываем
+            PaymentService.log_error(e, {
+                'payment_id': payment.id,
+                'order_id': payment.object_id,
+                'error_type': type(e).__name__
+            })
+            raise
 
     @staticmethod
     def get_payment_statistics(user=None):
