@@ -989,3 +989,4 @@ class Command(BaseCommand):
         self.stdout.write(f'  [EXPERT] Эксперт: {new_expert_courses}')
         self.stdout.write('')
         self.stdout.write(self.style.SUCCESS('Новые курсы успешно добавлены в систему!'))
+

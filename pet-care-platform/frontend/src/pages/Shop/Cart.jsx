@@ -75,6 +75,9 @@ function Cart() {
   const [recommendations, setRecommendations] = useState([])
   const [recommendationsLoading, setRecommendationsLoading] = useState(false)
 
+  // Состояние для ошибок загрузки изображений
+  const [imageErrors, setImageErrors] = useState(new Set())
+
   /**
    * Проверка, является ли элемент курсом
    */
@@ -122,6 +125,13 @@ function Cart() {
       setRecommendationsLoading(false)
     }
   }, [products.length])
+
+  /**
+   * Обработчик ошибки загрузки изображения
+   */
+  const handleImageError = (cartItemId) => {
+    setImageErrors(prev => new Set(prev).add(cartItemId))
+  }
 
   /**
    * Загрузка корзины при монтировании и обработка сообщений
@@ -470,12 +480,29 @@ function Cart() {
                           />
                         </label>
 
-                        {/* Заглушка изображения товара */}
-                        <div className="w-20 h-20 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                          <span className="text-3xl opacity-50">
-                            {itemPetType === 'dog' ? '🐕' : itemPetType === 'cat' ? '🐱' : '🐾'}
-                          </span>
-                        </div>
+                        {/* Изображение товара */}
+                        {(() => {
+                          const mainImage = item.product?.main_image || (item.product?.images && item.product.images[0])
+                          const hasImageError = imageErrors.has(cartItemId)
+
+                          return (
+                            <div className="w-20 h-20 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden">
+                              {mainImage && !hasImageError ? (
+                                <img
+                                  src={mainImage}
+                                  alt={itemName}
+                                  className="w-full h-full object-contain p-1"
+                                  loading="lazy"
+                                  onError={() => handleImageError(cartItemId)}
+                                />
+                              ) : (
+                                <span className="text-3xl opacity-50">
+                                  {itemPetType === 'dog' ? '🐕' : itemPetType === 'cat' ? '🐱' : '🐾'}
+                                </span>
+                              )}
+                            </div>
+                          )
+                        })()}
 
                         {/* Информация о товаре */}
                         <div className="flex-1 min-w-0">
@@ -588,12 +615,29 @@ function Cart() {
                           />
                         </label>
 
-                        {/* Заглушка изображения курса */}
-                        <div className="w-20 h-20 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                          <span className="text-3xl opacity-50">
-                            📚
-                          </span>
-                        </div>
+                        {/* Изображение курса */}
+                        {(() => {
+                          const courseImage = item.course?.image || item.course?.main_image
+                          const hasImageError = imageErrors.has(cartItemId)
+
+                          return (
+                            <div className="w-20 h-20 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden">
+                              {courseImage && !hasImageError ? (
+                                <img
+                                  src={courseImage}
+                                  alt={itemName}
+                                  className="w-full h-full object-contain p-1"
+                                  loading="lazy"
+                                  onError={() => handleImageError(cartItemId)}
+                                />
+                              ) : (
+                                <span className="text-3xl opacity-50">
+                                  📚
+                                </span>
+                              )}
+                            </div>
+                          )
+                        })()}
 
                         {/* Информация о курсе */}
                         <div className="flex-1 min-w-0">
