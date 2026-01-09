@@ -10,7 +10,7 @@
  * - Персональные подборки по питомцам
  */
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate, Link, useSearchParams } from 'react-router-dom'
 import { getCourses, getUserCourses, enrollFreeCourse } from '../../api/courses'
 import { useAuthStore } from '../../store/authStore'
@@ -90,14 +90,50 @@ function FilterSidebar({ filters, availableFilters, onFilterChange, onReset }) {
     min: filters.min_price || '',
     max: filters.max_price || ''
   })
-  
+
+  const sidebarRef = useRef(null)
+
+  useEffect(() => {
+    const handleWheel = (e) => {
+      // Проверяем, находится ли target внутри боковой панели
+      if (sidebarRef.current && sidebarRef.current.contains(e.target)) {
+        const sidebar = sidebarRef.current
+        const isAtTop = sidebar.scrollTop === 0
+        const isAtBottom = sidebar.scrollTop + sidebar.clientHeight >= sidebar.scrollHeight
+
+        // Предотвращаем прокрутку страницы только если панель не может прокручиваться дальше
+        if ((e.deltaY < 0 && isAtTop) || (e.deltaY > 0 && isAtBottom)) {
+          // Панель достигла конца, позволяем прокрутку страницы
+          return
+        }
+
+        // Панель может прокручиваться, предотвращаем прокрутку страницы
+        e.stopPropagation()
+      }
+    }
+
+    // Добавляем обработчик на document с passive: false для возможности preventDefault
+    document.addEventListener('wheel', handleWheel, { passive: false })
+
+    return () => {
+      document.removeEventListener('wheel', handleWheel)
+    }
+  }, [])
+
   const handlePriceApply = () => {
     onFilterChange('min_price', priceRange.min)
     onFilterChange('max_price', priceRange.max)
   }
   
   return (
-    <div className="bg-white rounded-xl shadow-sm p-5 sticky top-4">
+    <div
+      ref={sidebarRef}
+      className="bg-white rounded-xl shadow-sm p-5 overflow-y-auto"
+      style={{
+        overscrollBehavior: 'contain',
+        height: 'calc(100vh - 6rem)' // 100vh минус header + top offset
+      }}
+    >
       <div className="flex justify-between items-center mb-4">
         <h3 className="font-semibold text-gray-900">Фильтры</h3>
         <button
@@ -644,10 +680,10 @@ function Courses() {
     <div className="page-container animate-fadeIn">
       {/* Заголовок и поиск */}
       <div className="mb-6">
-        <h1 className="page-title mb-4">Обучающие курсы</h1>
-        
+        <h1 className="page-title mb-4 lg:ml-80">Обучающие курсы</h1>
+
         {/* Поиск */}
-        <form onSubmit={handleSearch} className="flex gap-2 max-w-xl">
+        <form onSubmit={handleSearch} className="flex gap-2 max-w-xl lg:ml-80">
           <input
             type="text"
             value={searchQuery}
@@ -663,7 +699,7 @@ function Courses() {
       
       <div className="flex gap-6">
         {/* Боковая панель с фильтрами */}
-        <aside className="w-64 flex-shrink-0 hidden lg:block">
+        <aside className="w-64 flex-shrink-0 hidden lg:block fixed left-4 top-24 z-10">
           <FilterSidebar
             filters={filters}
             availableFilters={availableFilters}
@@ -673,7 +709,7 @@ function Courses() {
         </aside>
         
         {/* Основной контент */}
-        <main className="flex-1 min-w-0">
+        <main className="flex-1 min-w-0 lg:pl-72">
           {/* Мобильные фильтры */}
           <div className="lg:hidden mb-4">
             {/* Кнопка сброса фильтров */}
