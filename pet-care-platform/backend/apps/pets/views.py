@@ -36,9 +36,18 @@ class PetListCreateView(APIView):
     def get(self, request):
         """Список питомцев пользователя."""
         # Оптимизация: select_related для owner (хотя owner уже известен, но для консистентности)
-        pets = Pet.objects.select_related('owner').filter(owner=request.user)
+        pets_query = Pet.objects.select_related('owner').filter(owner=request.user)
+
+        # Фильтр по черновикам
+        is_draft = request.query_params.get('is_draft')
+        if is_draft == 'true':
+            pets_query = pets_query.filter(is_draft=True)
+        elif is_draft == 'false':
+            pets_query = pets_query.filter(is_draft=False)
+
+        pets = pets_query
         pets_data = [pet.to_dict() for pet in pets]
-        
+
         return Response({
             'pets': pets_data,
             'count': len(pets_data)
@@ -46,9 +55,11 @@ class PetListCreateView(APIView):
     
     def post(self, request):
         """Создание нового питомца."""
+        logger.info(f"Creating pet with data: {request.data}")
         serializer = PetCreateSerializer(data=request.data)
-        
+
         if not serializer.is_valid():
+            logger.error(f"Serializer validation errors: {serializer.errors}")
             return Response(
                 {'errors': serializer.errors},
                 status=status.HTTP_400_BAD_REQUEST
@@ -76,13 +87,14 @@ class PetListCreateView(APIView):
             is_neutered=serializer.validated_data.get('is_neutered', False),
             favorite_foods=serializer.validated_data.get('favorite_foods', []),
             allergies=serializer.validated_data.get('allergies', []),
+            health_issues=serializer.validated_data.get('health_issues', []),
+            behavioral_problems=serializer.validated_data.get('behavioral_problems', []),
             # Расширенные поля для курсов
             behavior_type=serializer.validated_data.get('behavior_type'),
             social_level=serializer.validated_data.get('social_level'),
             training_experience=serializer.validated_data.get('training_experience'),
             special_needs=serializer.validated_data.get('special_needs', []),
             preferred_activities=serializer.validated_data.get('preferred_activities', []),
-            behavioral_problems=serializer.validated_data.get('behavioral_problems', []),
             # Новые поля PetID
             size=serializer.validated_data.get('size'),
             body_type=serializer.validated_data.get('body_type'),
@@ -92,23 +104,23 @@ class PetListCreateView(APIView):
             feeding_frequency=serializer.validated_data.get('feeding_frequency'),
             sensitive_digestion=serializer.validated_data.get('sensitive_digestion', False),
             excluded_ingredients=serializer.validated_data.get('excluded_ingredients', []),
-            vitamins_supplements=serializer.validated_data.get('vitamins_supplements', ''),
+            vitamins_supplements=serializer.validated_data.get('vitamins_supplements', []),
             # Поведение
             character_traits=serializer.validated_data.get('character_traits', []),
-            training_goals=serializer.validated_data.get('training_goals', ''),
+            training_goals=serializer.validated_data.get('training_goals', []),
             # Здоровье
-            chronic_conditions=serializer.validated_data.get('chronic_conditions', ''),
-            vaccinations=serializer.validated_data.get('vaccinations', ''),
-            medications=serializer.validated_data.get('medications', ''),
+            chronic_conditions=serializer.validated_data.get('chronic_conditions', []),
+            vaccinations=serializer.validated_data.get('vaccinations', []),
+            medications=serializer.validated_data.get('medications', []),
             dental_health=serializer.validated_data.get('dental_health'),
             vet_visits=serializer.validated_data.get('vet_visits', ''),
             # Образ жизни
             housing_type=serializer.validated_data.get('housing_type'),
             has_yard=serializer.validated_data.get('has_yard', False),
-            other_pets=serializer.validated_data.get('other_pets', ''),
+            other_pets=serializer.validated_data.get('other_pets', []),
             has_children=serializer.validated_data.get('has_children', False),
-            walk_frequency=serializer.validated_data.get('walk_frequency', ''),
-            walk_duration=serializer.validated_data.get('walk_duration', ''),
+            walk_frequency=serializer.validated_data.get('walk_frequency'),
+            walk_duration=serializer.validated_data.get('walk_duration'),
             # Контакты владельца
             owner_phone=owner_phone,
             owner_email=owner_email,

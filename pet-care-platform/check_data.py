@@ -30,3 +30,4 @@ course_stats = Course.objects.values('pet_type').annotate(count=Count('id'))
 for stat in course_stats:
     print(f'{stat["pet_type"]}: {stat["count"]}')
 
+

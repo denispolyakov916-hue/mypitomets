@@ -22,3 +22,4 @@ print('\nПервые 3 курса:')
 for course in Course.objects.all()[:3]:
     print(f'  - {course.title[:50]}... ({course.price}₽)')
 
+

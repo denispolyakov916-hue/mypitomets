@@ -266,7 +266,13 @@ class Pet(models.Model):
         verbose_name='Исключаемые ингредиенты',
         validators=[validate_string_list]
     )
-    vitamins_supplements = models.TextField(blank=True, verbose_name='Добавки и витамины')
+    vitamins_supplements = models.JSONField(
+        default=list,
+        blank=True,
+        verbose_name='Добавки и витамины',
+        help_text='Список витаминов и добавок из справочника',
+        validators=[validate_string_list]
+    )
 
     # ===== РАСШИРЕННОЕ ПОВЕДЕНИЕ =====
     character_traits = models.JSONField(
@@ -275,12 +281,34 @@ class Pet(models.Model):
         verbose_name='Черты характера',
         validators=[validate_string_list]
     )
-    training_goals = models.TextField(blank=True, verbose_name='Цели дрессировки')
+    training_goals = models.JSONField(
+        default=list,
+        blank=True,
+        verbose_name='Цели дрессировки',
+        help_text='Список целей дрессировки из предопределённого списка',
+        validators=[validate_string_list]
+    )
 
     # ===== РАСШИРЕННОЕ ЗДОРОВЬЕ =====
-    chronic_conditions = models.TextField(blank=True, verbose_name='Хронические заболевания')
-    vaccinations = models.TextField(blank=True, verbose_name='Вакцинации')
-    medications = models.TextField(blank=True, verbose_name='Принимаемые препараты')
+    chronic_conditions = models.JSONField(
+        default=list,
+        blank=True,
+        verbose_name='Хронические заболевания',
+        help_text='Список хронических заболеваний из справочника',
+        validators=[validate_string_list]
+    )
+    vaccinations = models.JSONField(
+        default=list,
+        blank=True,
+        verbose_name='Вакцинации',
+        help_text='Список вакцинаций с датами и следующими датами'
+    )
+    medications = models.JSONField(
+        default=list,
+        blank=True,
+        verbose_name='Принимаемые препараты',
+        help_text='Список препаратов с дозировками и частотой приёма'
+    )
 
     DENTAL_HEALTH_CHOICES = [
         ('excellent', 'Отличное'),
@@ -289,7 +317,6 @@ class Pet(models.Model):
         ('needs_attention', 'Требует лечения'),
     ]
     dental_health = models.CharField(max_length=20, choices=DENTAL_HEALTH_CHOICES, blank=True, null=True, verbose_name='Состояние зубов')
-    vet_visits = models.TextField(blank=True, verbose_name='Посещения ветеринара')
 
     # ===== ОБРАЗ ЖИЗНИ =====
     HOUSING_TYPE_CHOICES = [
@@ -300,10 +327,91 @@ class Pet(models.Model):
     ]
     housing_type = models.CharField(max_length=20, choices=HOUSING_TYPE_CHOICES, blank=True, null=True, verbose_name='Тип жилья')
     has_yard = models.BooleanField(default=False, verbose_name='Есть двор')
-    other_pets = models.TextField(blank=True, verbose_name='Другие питомцы дома')
+    other_pets = models.JSONField(
+        default=list,
+        blank=True,
+        verbose_name='Другие питомцы дома',
+        help_text='Список других питомцев с типом и кличкой'
+    )
     has_children = models.BooleanField(default=False, verbose_name='В доме есть дети')
-    walk_frequency = models.CharField(max_length=50, blank=True, verbose_name='Частота прогулок')
-    walk_duration = models.CharField(max_length=50, blank=True, verbose_name='Длительность прогулки')
+    
+    WALK_FREQUENCY_CHOICES = [
+        ('none', 'Не гуляет'),
+        ('1_day', '1 раз в день'),
+        ('2_day', '2 раза в день'),
+        ('3_day', '3 раза в день'),
+        ('4_plus', '4+ раз в день'),
+        ('free_access', 'Свободный выгул'),
+    ]
+    walk_frequency = models.CharField(
+        max_length=20, 
+        choices=WALK_FREQUENCY_CHOICES, 
+        blank=True, 
+        null=True, 
+        verbose_name='Частота прогулок'
+    )
+    
+    WALK_DURATION_CHOICES = [
+        ('under_15', 'Менее 15 минут'),
+        ('15_30', '15-30 минут'),
+        ('30_60', '30-60 минут'),
+        ('60_90', '1-1.5 часа'),
+        ('90_120', '1.5-2 часа'),
+        ('over_120', 'Более 2 часов'),
+    ]
+    walk_duration = models.CharField(
+        max_length=20, 
+        choices=WALK_DURATION_CHOICES, 
+        blank=True, 
+        null=True, 
+        verbose_name='Длительность прогулки'
+    )
+    
+    # ===== ДАННЫЕ ВЕТЕРИНАРНОГО ОСМОТРА =====
+    last_vet_visit = models.DateField(
+        null=True, 
+        blank=True, 
+        verbose_name='Дата последнего осмотра'
+    )
+    
+    BODY_CONDITION_SCORE_CHOICES = [(str(i), f'{i} - ' + {
+        1: 'Истощение', 2: 'Очень худой', 3: 'Худой', 
+        4: 'Недостаток веса', 5: 'Идеальный вес', 6: 'Избыток веса',
+        7: 'Полнота', 8: 'Ожирение', 9: 'Тяжёлое ожирение'
+    }[i]) for i in range(1, 10)]
+    body_condition_score = models.CharField(
+        max_length=2,
+        choices=BODY_CONDITION_SCORE_CHOICES,
+        blank=True,
+        null=True,
+        verbose_name='Оценка упитанности (BCS)',
+        help_text='Шкала от 1 до 9'
+    )
+    
+    heart_rate = models.PositiveIntegerField(
+        null=True, 
+        blank=True, 
+        verbose_name='ЧСС (уд/мин)',
+        help_text='Частота сердечных сокращений'
+    )
+    respiratory_rate = models.PositiveIntegerField(
+        null=True, 
+        blank=True, 
+        verbose_name='ЧДД (дых/мин)',
+        help_text='Частота дыхательных движений'
+    )
+    temperature = models.DecimalField(
+        max_digits=4, 
+        decimal_places=1, 
+        null=True, 
+        blank=True, 
+        verbose_name='Температура (°C)'
+    )
+    vet_notes = models.TextField(
+        blank=True, 
+        verbose_name='Заметки ветеринара',
+        help_text='Дополнительные наблюдения и рекомендации врача'
+    )
 
     # Флаг заполненности расширенного профиля
     is_extended_profile = models.BooleanField(
@@ -529,25 +637,33 @@ class Pet(models.Model):
             'feeding_frequency': self.feeding_frequency,
             'sensitive_digestion': self.sensitive_digestion,
             'excluded_ingredients': self.excluded_ingredients if self.excluded_ingredients else [],
-            'vitamins_supplements': self.vitamins_supplements,
+            'vitamins_supplements': self.vitamins_supplements if self.vitamins_supplements else [],
             'character_traits': self.character_traits if self.character_traits else [],
-            'training_goals': self.training_goals,
-            'chronic_conditions': self.chronic_conditions,
-            'vaccinations': self.vaccinations,
-            'medications': self.medications,
+            'training_goals': self.training_goals if self.training_goals else [],
+            'chronic_conditions': self.chronic_conditions if self.chronic_conditions else [],
+            'vaccinations': self.vaccinations if self.vaccinations else [],
+            'medications': self.medications if self.medications else [],
             'dental_health': self.dental_health,
-            'vet_visits': self.vet_visits,
             'housing_type': self.housing_type,
             'has_yard': self.has_yard,
-            'other_pets': self.other_pets,
+            'other_pets': self.other_pets if self.other_pets else [],
             'has_children': self.has_children,
             'walk_frequency': self.walk_frequency,
             'walk_duration': self.walk_duration,
+            # Данные ветеринарного осмотра
+            'last_vet_visit': self.last_vet_visit.isoformat() if self.last_vet_visit else None,
+            'body_condition_score': self.body_condition_score,
+            'heart_rate': self.heart_rate,
+            'respiratory_rate': self.respiratory_rate,
+            'temperature': float(self.temperature) if self.temperature else None,
+            'vet_notes': self.vet_notes,
             # Контакты владельца
             'owner_phone': self.owner_phone,
             'owner_email': self.owner_email,
             'owner_city': self.owner_city,
             'is_extended_profile': self.is_extended_profile,
+            'is_draft': self.is_draft,
+            'draft_step': self.draft_step,
             # Вычисляемые поля PetID
             'age': self.age,
             'age_months': self.age_months,

@@ -98,6 +98,64 @@ export const deletePet = async (petId) => {
 }
 
 /**
+ * Сохранение черновика питомца
+ * 
+ * Создаёт или обновляет черновик профиля питомца.
+ * Черновики отображаются отдельно от готовых профилей.
+ * 
+ * @param {Object} draftData - Данные черновика
+ * @param {string} [draftId] - ID существующего черновика для обновления
+ * @returns {Promise<Object>} Данные сохранённого черновика
+ */
+export const savePetDraft = async (draftData, draftId = null) => {
+  const formData = new FormData()
+  
+  // Добавляем все поля в FormData
+  Object.keys(draftData).forEach(key => {
+    if (key === 'photo' && draftData[key] instanceof File) {
+      formData.append('photo', draftData[key])
+    } else if (key === 'photoPreview') {
+      // Пропускаем preview URL
+    } else if (Array.isArray(draftData[key])) {
+      formData.append(key, JSON.stringify(draftData[key]))
+    } else if (draftData[key] !== null && draftData[key] !== undefined) {
+      formData.append(key, draftData[key])
+    }
+  })
+  
+  // Помечаем как черновик
+  formData.append('is_draft', 'true')
+  
+  if (draftId) {
+    return await api.put(`/pets/${draftId}/`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
+  }
+  return await api.post('/pets/', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  })
+}
+
+/**
+ * Получение черновиков питомцев пользователя
+ * 
+ * @returns {Promise<Object>} Объект с массивом черновиков
+ */
+export const getPetDrafts = async () => {
+  return await api.get('/pets/?is_draft=true')
+}
+
+/**
+ * Удаление черновика питомца
+ * 
+ * @param {string} draftId - ID черновика
+ * @returns {Promise<Object>} Сообщение об успехе
+ */
+export const deletePetDraft = async (draftId) => {
+  return await api.delete(`/pets/${draftId}/`)
+}
+
+/**
  * Доступные варианты видов животных для формы создания питомца
  *
  * Соответствует SPECIES_CHOICES на бэкенде для консистентности.
@@ -214,11 +272,9 @@ export const getPetAnalysis = async (petId) => {
  * Варианты размера питомца
  */
 export const SIZE_OPTIONS = [
-  { value: 'toy', label: 'Миниатюрный (до 5 кг)' },
-  { value: 'small', label: 'Маленький (5-10 кг)' },
+  { value: 'small', label: 'Маленький (до 10 кг)' },
   { value: 'medium', label: 'Средний (10-25 кг)' },
-  { value: 'large', label: 'Крупный (25-45 кг)' },
-  { value: 'giant', label: 'Гигантский (45+ кг)' },
+  { value: 'large', label: 'Крупный (более 25 кг)' },
 ]
 
 /**
@@ -279,6 +335,41 @@ export const CHARACTER_TRAITS = [
   'Дружелюбный', 'Активный', 'Спокойный', 'Игривый', 
   'Застенчивый', 'Любопытный', 'Независимый', 'Ласковый',
   'Упрямый', 'Умный', 'Преданный', 'Общительный'
+]
+
+/**
+ * Стандартные проблемы здоровья
+ */
+export const HEALTH_ISSUES_OPTIONS = [
+  { value: 'overweight', label: 'Избыточный вес' },
+  { value: 'underweight', label: 'Недостаточный вес' },
+  { value: 'skin_problems', label: 'Проблемы с кожей/шерстью' },
+  { value: 'digestive_issues', label: 'Проблемы с пищеварением' },
+  { value: 'joint_problems', label: 'Проблемы с суставами' },
+  { value: 'dental_problems', label: 'Проблемы с зубами' },
+  { value: 'urinary_problems', label: 'Проблемы с мочеиспусканием' },
+  { value: 'allergies', label: 'Аллергия' },
+  { value: 'chronic_disease', label: 'Хроническое заболевание' },
+  { value: 'none', label: 'Нет проблем со здоровьем' }
+]
+
+/**
+ * Стандартные аллергии/исключаемые ингредиенты
+ */
+export const EXCLUDED_INGREDIENTS_OPTIONS = [
+  { value: 'chicken', label: 'Курица' },
+  { value: 'beef', label: 'Говядина' },
+  { value: 'fish', label: 'Рыба' },
+  { value: 'lamb', label: 'Баранина' },
+  { value: 'pork', label: 'Свинина' },
+  { value: 'eggs', label: 'Яйца' },
+  { value: 'dairy', label: 'Молочные продукты' },
+  { value: 'wheat', label: 'Пшеница/злаки' },
+  { value: 'corn', label: 'Кукуруза' },
+  { value: 'soy', label: 'Соя' },
+  { value: 'artificial_colors', label: 'Искусственные красители' },
+  { value: 'artificial_preservatives', label: 'Искусственные консерванты' },
+  { value: 'none', label: 'Нет аллергий' }
 ]
 
 /**
