@@ -268,7 +268,7 @@ function Profile() {
         <button
           onClick={async () => {
             await logout()
-            window.location.href = '/'
+            navigate('/')
           }}
           className="btn-secondary"
         >

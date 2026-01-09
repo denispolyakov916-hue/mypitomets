@@ -121,55 +121,6 @@ const deliveryTypeLabels = {
   pickup: 'Самовывоз'
 }
 
-/**
- * Обработчик оплаты заказа
- * @param {string} orderId - ID заказа
- * @param {number} amount - Сумма оплаты
- * @param {string} paymentMethod - Способ оплаты ('card' или 'sbp')
- */
-const handlePayOrder = async (orderId, amount, paymentMethod = 'card') => {
-  try {
-    // Определяем тип платежа на основе заказа
-    const paymentType = 'shop_order' // Для заказов товаров
-    
-    // Для 'sbp' сохраняем в metadata, так как в модели Payment нет 'sbp' в choices
-    const paymentMethodForBackend = paymentMethod === 'sbp' ? 'card' : paymentMethod
-    const paymentMetadata = paymentMethod === 'sbp' ? { payment_method: 'sbp' } : {}
-    
-    // Создаем платеж для существующего заказа
-    const response = await createPayment({
-      payment_type: paymentType,
-      object_id: orderId,
-      amount: amount,
-      payment_method: paymentMethodForBackend,
-      metadata: paymentMetadata
-    })
-
-    if (response.payment) {
-      // Перенаправляем на страницу оплаты с payment_id и методом оплаты
-      const params = new URLSearchParams({
-        payment_id: response.payment.id,
-        amount: response.payment.amount.toString(),
-        method: paymentMethod
-      })
-      window.location.href = `/payment?${params.toString()}`
-    } else {
-      throw new Error('Не удалось создать платеж')
-    }
-  } catch (error) {
-    console.error('Ошибка создания платежа:', error)
-    
-    // Обработка ошибок недоступных товаров
-    const errorMessage = error.response?.data?.error || error.message || 'Не удалось создать платеж'
-    const errorCode = error.response?.data?.code
-    
-    if (errorCode === 'UNAVAILABLE_ITEMS' || errorMessage.includes('Недоступные товары')) {
-      alert('Некоторые товары из заказа больше недоступны. Пожалуйста, обновите заказ или обратитесь в поддержку.')
-    } else {
-      alert(`Не удалось создать платеж: ${errorMessage}`)
-    }
-  }
-}
 
 /**
  * Компонент деталей заказа
@@ -207,6 +158,56 @@ function OrderDetail() {
   })
   const [addresses, setAddresses] = useState([])
   const [isSavingDelivery, setIsSavingDelivery] = useState(false)
+
+  /**
+   * Обработчик оплаты заказа
+   * @param {string} orderId - ID заказа
+   * @param {number} amount - Сумма оплаты
+   * @param {string} paymentMethod - Способ оплаты ('card' или 'sbp')
+   */
+  const handlePayOrder = async (orderId, amount, paymentMethod = 'card') => {
+    try {
+      // Определяем тип платежа на основе заказа
+      const paymentType = 'shop_order' // Для заказов товаров
+
+      // Для 'sbp' сохраняем в metadata, так как в модели Payment нет 'sbp' в choices
+      const paymentMethodForBackend = paymentMethod === 'sbp' ? 'card' : paymentMethod
+      const paymentMetadata = paymentMethod === 'sbp' ? { payment_method: 'sbp' } : {}
+
+      // Создаем платеж для существующего заказа
+      const response = await createPayment({
+        payment_type: paymentType,
+        object_id: orderId,
+        amount: amount,
+        payment_method: paymentMethodForBackend,
+        metadata: paymentMetadata
+      })
+
+      if (response.payment) {
+        // Перенаправляем на страницу оплаты с payment_id и методом оплаты
+        const params = new URLSearchParams({
+          payment_id: response.payment.id,
+          amount: response.payment.amount.toString(),
+          method: paymentMethod
+        })
+        navigate(`/payment?${params.toString()}`)
+      } else {
+        throw new Error('Не удалось создать платеж')
+      }
+    } catch (error) {
+      console.error('Ошибка создания платежа:', error)
+
+      // Обработка ошибок недоступных товаров
+      const errorMessage = error.response?.data?.error || error.message || 'Не удалось создать платеж'
+      const errorCode = error.response?.data?.code
+
+      if (errorCode === 'UNAVAILABLE_ITEMS' || errorMessage.includes('Недоступные товары')) {
+        alert('Некоторые товары из заказа больше недоступны. Пожалуйста, обновите заказ или обратитесь в поддержку.')
+      } else {
+        alert(`Не удалось создать платеж: ${errorMessage}`)
+      }
+    }
+  }
 
   const fetchOrder = async () => {
     setIsLoading(true)
