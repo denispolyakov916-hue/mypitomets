@@ -170,7 +170,7 @@ function Favorites() {
   }
 
   return (
-    <div className="page-container animate-fadeIn">
+    <div className="animate-fadeIn max-w-none px-4 sm:px-6 lg:px-8 xl:px-12 2xl:px-16">
       {/* Заголовок */}
       <div className="mb-6">
         <h1 className="page-title">Избранное</h1>
@@ -191,7 +191,7 @@ function Favorites() {
             </Link>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          <div className="grid responsive-grid gap-6">
             {favoriteProducts.map((product) => (
               <div key={product.id} className="relative group">
                 {/* Кнопка удаления из избранного */}
@@ -227,7 +227,7 @@ function Favorites() {
             </Link>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid responsive-grid gap-6">
             {favoriteCourses.map((course) => (
               <div key={course.id} className="relative group">
                 {/* Кнопка удаления из избранного */}
