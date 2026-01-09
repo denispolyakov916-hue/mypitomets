@@ -555,7 +555,7 @@ function Shop() {
   }
   
   return (
-    <div className="page-container animate-fadeIn relative">
+    <div className="animate-fadeIn relative max-w-none px-4 sm:px-6 lg:px-8 xl:px-12 2xl:px-16">
       {/* Заголовок и поиск */}
       <div className="mb-6">
         <h1 className="page-title mb-4 lg:ml-80">Магазин товаров для питомцев</h1>
@@ -696,7 +696,7 @@ function Shop() {
               </p>
               
               {/* Сетка товаров */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+              <div className="grid responsive-grid gap-4">
                 {products.map((product, index) => (
                   <div
                     key={product.id}

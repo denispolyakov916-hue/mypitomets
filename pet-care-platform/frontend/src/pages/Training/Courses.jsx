@@ -677,7 +677,7 @@ function Courses() {
   }
   
   return (
-    <div className="page-container animate-fadeIn">
+    <div className="animate-fadeIn max-w-none px-4 sm:px-6 lg:px-8 xl:px-12 2xl:px-16">
       {/* Заголовок и поиск */}
       <div className="mb-6">
         <h1 className="page-title mb-4 lg:ml-80">Обучающие курсы</h1>
@@ -825,7 +825,7 @@ function Courses() {
               </p>
               
               {/* Сетка курсов */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+              <div className="grid responsive-grid gap-4">
                 {courses.map(course => (
                   <CourseCard
                     key={course.id}

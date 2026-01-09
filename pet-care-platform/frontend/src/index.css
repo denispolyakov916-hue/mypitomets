@@ -910,3 +910,38 @@ button {
 ::-webkit-scrollbar-thumb:hover {
   background: #94a3b8;
 }
+
+/* Адаптивная сетка для товаров и курсов */
+.responsive-grid {
+  grid-template-columns: repeat(2, minmax(280px, 1fr)) !important;
+}
+
+@media (min-width: 1240px) {
+  .responsive-grid {
+    grid-template-columns: repeat(3, minmax(280px, 1fr)) !important;
+  }
+}
+
+@media (min-width: 1550px) {
+  .responsive-grid {
+    grid-template-columns: repeat(4, minmax(280px, 1fr)) !important;
+  }
+}
+
+@media (min-width: 1870px) {
+  .responsive-grid {
+    grid-template-columns: repeat(5, minmax(280px, 1fr)) !important;
+  }
+}
+
+@media (min-width: 2160px) {
+  .responsive-grid {
+    grid-template-columns: repeat(6, minmax(280px, 1fr)) !important;
+  }
+}
+
+@media (min-width: 2470px) {
+  .responsive-grid {
+    grid-template-columns: repeat(7, minmax(280px, 1fr)) !important;
+  }
+}
