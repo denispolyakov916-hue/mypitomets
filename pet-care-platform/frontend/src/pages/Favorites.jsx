@@ -12,6 +12,7 @@ import { useCartStore } from '../store/cartStore'
 import { useToastStore } from '../store/toastStore'
 import { getProducts } from '../api/shop'
 import { getCourses } from '../api/courses'
+import { apiCache } from '../utils/apiCache'
 import ProductCard from '../components/ProductCard'
 import CourseCard from '../components/CourseCard'
 import { PageLoader } from '../components/Loader'
@@ -351,10 +352,11 @@ function Favorites() {
     try {
       // Загружаем все товары и фильтруем по избранным
       if (favoriteProductIdsMemo.length > 0) {
-        const productsResponse = await getProducts({
+        const productsCacheKey = `products-${favoriteProductIdsMemo.sort().join(',')}`
+        const productsResponse = await apiCache.get(productsCacheKey, () => getProducts({
           ids: favoriteProductIdsMemo.join(','),
           per_page: favoriteProductIdsMemo.length
-        })
+        }), 60000) // Кэш на 1 минуту для избранного
         setFavoriteProducts(productsResponse.products || [])
       } else {
         setFavoriteProducts([])
@@ -362,10 +364,11 @@ function Favorites() {
 
       // Загружаем все курсы и фильтруем по избранным
       if (favoriteCourseIdsMemo.length > 0) {
-        const coursesResponse = await getCourses({
+        const coursesCacheKey = `courses-${favoriteCourseIdsMemo.sort().join(',')}`
+        const coursesResponse = await apiCache.get(coursesCacheKey, () => getCourses({
           ids: favoriteCourseIdsMemo.join(','),
           per_page: favoriteCourseIdsMemo.length
-        })
+        }), 60000) // Кэш на 1 минуту для избранного
         setFavoriteCourses(coursesResponse.courses || [])
       } else {
         setFavoriteCourses([])
@@ -541,6 +544,8 @@ function Favorites() {
   const handleRemoveProduct = (productId) => {
     removeProduct(productId)
     setFavoriteProducts(prev => prev.filter(p => p.id !== productId))
+    // Инвалидируем кэш товаров
+    apiCache.clearByPrefix('products-')
   }
 
   /**
@@ -549,6 +554,8 @@ function Favorites() {
   const handleRemoveCourse = (courseId) => {
     removeCourse(courseId)
     setFavoriteCourses(prev => prev.filter(c => c.id !== courseId))
+    // Инвалидируем кэш курсов
+    apiCache.clearByPrefix('courses-')
   }
 
   // Состояние загрузки

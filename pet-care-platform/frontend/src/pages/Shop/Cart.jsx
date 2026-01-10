@@ -11,13 +11,14 @@
  * - Оформлением заказа
  */
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useCartStore } from '../../store/cartStore'
 import { useToastStore } from '../../store/toastStore'
 import { PageLoader, ButtonLoader } from '../../components/Loader'
 import RecommendationBlock from '../../components/RecommendationBlock'
 import * as shopApi from '../../api/shop'
+import { apiCache } from '../../utils/apiCache'
 
 /**
  * Форматирование цены с символом рубля
@@ -74,6 +75,7 @@ function Cart() {
   // Рекомендации для корзины
   const [recommendations, setRecommendations] = useState([])
   const [recommendationsLoading, setRecommendationsLoading] = useState(false)
+  const lastRecommendationsLoadRef = useRef(null)
 
   // Состояние для ошибок загрузки изображений
   const [imageErrors, setImageErrors] = useState(new Set())
@@ -109,12 +111,22 @@ function Cart() {
    * Загрузка рекомендаций для корзины
    */
   const loadRecommendations = useCallback(async () => {
-    if (products.length === 0) {
+    const currentProducts = items.filter(item => !isCourse(item))
+    if (currentProducts.length === 0) {
       setRecommendations([])
+      lastRecommendationsLoadRef.current = null
       return
     }
-    
+
+    // Проверяем, не загружали ли уже рекомендации для этого состояния корзины
+    const currentStateKey = `${items.length}-${currentProducts.length}`
+    if (lastRecommendationsLoadRef.current === currentStateKey && !recommendationsLoading) {
+      return
+    }
+
+    lastRecommendationsLoadRef.current = currentStateKey
     setRecommendationsLoading(true)
+
     try {
       const response = await shopApi.getCartRecommendations(6)
       setRecommendations(response.recommendations || [])
@@ -124,7 +136,7 @@ function Cart() {
     } finally {
       setRecommendationsLoading(false)
     }
-  }, [products.length])
+  }, [items, recommendationsLoading])
 
   /**
    * Обработчик ошибки загрузки изображения
@@ -147,8 +159,7 @@ function Cart() {
     }
 
     return () => clearError()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location.state?.message, location.pathname])
+  }, [loadCart, location.state?.message, location.pathname, clearError, navigate])
 
   /**
    * Загрузка рекомендаций когда корзина загружена
@@ -157,7 +168,7 @@ function Cart() {
     if (!isLoading && items.length > 0) {
       loadRecommendations()
     }
-  }, [isLoading, items.length, loadRecommendations])
+  }, [isLoading, items.length])
   
   /**
    * Обработчик добавления рекомендованного товара в корзину

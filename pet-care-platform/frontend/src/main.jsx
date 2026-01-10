@@ -15,7 +15,14 @@ import App from './App'
 import ErrorBoundary from './components/ErrorBoundary'
 import ScrollToTop from './components/ScrollToTop'
 import { useAuthStore } from './store/authStore'
+import { apiCache } from './utils/apiCache'
 import './index.css'
+
+// Глобальная функция для отладки кэша (можно вызвать в консоли браузера)
+if (typeof window !== 'undefined') {
+  window.apiCacheStats = () => apiCache.logStats()
+  window.apiCacheClear = () => apiCache.clear()
+}
 
 /**
  * Компонент инициализации приложения

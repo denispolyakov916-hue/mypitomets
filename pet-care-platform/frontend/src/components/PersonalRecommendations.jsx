@@ -10,6 +10,7 @@ import { getPersonalRecommendations } from '../api/shop'
 import { useAuthStore } from '../store/authStore'
 import { PageLoader } from './Loader'
 import Rating from './Rating'
+import { apiCache } from '../utils/apiCache'
 
 /**
  * Форматирование цены
@@ -39,7 +40,8 @@ function PersonalRecommendations() {
     setError(null)
 
     try {
-      const response = await getPersonalRecommendations()
+      // Используем кэширование с TTL 5 минут для персональных рекомендаций
+      const response = await apiCache.get('personal-recommendations', getPersonalRecommendations, 300000)
       // API возвращает объект с products и courses, объединяем их в один массив с метками типа
       const products = (response.products || []).map(item => ({ ...item, itemType: 'product' }))
       const courses = (response.courses || []).map(item => ({

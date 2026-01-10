@@ -11,10 +11,7 @@ import { Link, useLocation } from 'react-router-dom'
 import { getOrders } from '../api/shop'
 import { useCartStore } from '../store/cartStore'
 import { useFavoritesStore } from '../store/favoritesStore'
-
-// Кэш для запросов заказов (защита от дублирования)
-let ordersLoadPromise = null
-let lastOrdersLoadTime = 0
+import { apiCache } from '../utils/apiCache'
 
 // Иконка Заказы (коробка/накладная)
 const OrdersIcon = ({ className = '' }) => (
@@ -91,35 +88,14 @@ export default function HeaderCounters() {
 		let mounted = true
 
 		const loadOrders = async () => {
-			// Защита от дублирования: если запрос уже выполняется, ждём его
-			const now = Date.now()
-			
-			// Если уже есть активный запрос - ждём его
-			if (ordersLoadPromise) {
-				try {
-					const data = await ordersLoadPromise
-					const count = (data.orders || []).reduce((acc, o) => acc + (o.status === 'pending' ? 1 : 0), 0)
-					if (mounted) setPendingCount(count)
-				} catch {}
-				return
-			}
-			
-			// Если данные загружены недавно (< 2 сек), пропускаем
-			if (lastOrdersLoadTime && (now - lastOrdersLoadTime) < 2000 && hasInitialized.current) {
-				return
-			}
-
 			try {
-				ordersLoadPromise = getOrders()
-				const data = await ordersLoadPromise
-				lastOrdersLoadTime = Date.now()
+				// Используем глобальное кэширование с TTL 30 секунд
+				const data = await apiCache.get('orders-history', getOrders, 30000)
 				// считаем только ожидающие оплаты
 				const count = (data.orders || []).reduce((acc, o) => acc + (o.status === 'pending' ? 1 : 0), 0)
 				if (mounted) setPendingCount(count)
 			} catch {
 				if (mounted) setPendingCount(0)
-			} finally {
-				ordersLoadPromise = null
 			}
 		}
 
@@ -134,8 +110,9 @@ export default function HeaderCounters() {
 
 		load()
 		hasInitialized.current = true
-		
-		const interval = setInterval(load, 60000)
+
+		// Увеличиваем интервал обновления до 2 минут (было 1 минута)
+		const interval = setInterval(load, 120000)
 		return () => {
 			mounted = false
 			clearInterval(interval)

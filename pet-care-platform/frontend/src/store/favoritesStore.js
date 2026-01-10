@@ -7,6 +7,7 @@
 
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import { apiCache } from '../utils/apiCache'
 
 /**
  * Store избранного
@@ -30,6 +31,8 @@ export const useFavoritesStore = create(
         const existingIndex = products.findIndex(p => p.id === productId)
         if (existingIndex === -1) {
           set({ products: [...products, { id: productId, addedAt: new Date().toISOString() }] })
+          // Инвалидируем кэш товаров при изменении избранного
+          apiCache.clearByPrefix('products-')
         }
       },
       
@@ -39,6 +42,8 @@ export const useFavoritesStore = create(
       removeProduct: (productId) => {
         const { products } = get()
         set({ products: products.filter(p => p.id !== productId) })
+        // Инвалидируем кэш товаров при изменении избранного
+        apiCache.clearByPrefix('products-')
       },
       
       /**
@@ -71,6 +76,8 @@ export const useFavoritesStore = create(
         const existingIndex = courses.findIndex(c => c.id === courseId)
         if (existingIndex === -1) {
           set({ courses: [...courses, { id: courseId, addedAt: new Date().toISOString() }] })
+          // Инвалидируем кэш курсов при изменении избранного
+          apiCache.clearByPrefix('courses-')
         }
       },
       
@@ -80,6 +87,8 @@ export const useFavoritesStore = create(
       removeCourse: (courseId) => {
         const { courses } = get()
         set({ courses: courses.filter(c => c.id !== courseId) })
+        // Инвалидируем кэш курсов при изменении избранного
+        apiCache.clearByPrefix('courses-')
       },
       
       /**
