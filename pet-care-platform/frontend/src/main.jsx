@@ -90,13 +90,25 @@ function AppWrapper() {
 }
 
 // Создание корня и рендеринг приложения
+// StrictMode отключаем в dev режиме для предотвращения двойного рендера
+const isProduction = import.meta.env.PROD
+
 ReactDOM.createRoot(document.getElementById('root')).render(
-  <React.StrictMode>
+  isProduction ? (
+    <React.StrictMode>
+      <ErrorBoundary>
+        <BrowserRouter>
+          <ScrollToTop />
+          <AppWrapper />
+        </BrowserRouter>
+      </ErrorBoundary>
+    </React.StrictMode>
+  ) : (
     <ErrorBoundary>
       <BrowserRouter>
         <ScrollToTop />
         <AppWrapper />
       </BrowserRouter>
     </ErrorBoundary>
-  </React.StrictMode>
+  )
 )
