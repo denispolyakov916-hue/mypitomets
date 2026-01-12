@@ -212,6 +212,10 @@ docker-compose.override.yml
 local_settings.py
 settings_local.py
 
+# Локальные файлы проекта (не коммитятся)
+backend/.env
+backend/setup_db_final.py
+
 # ============================================
 # Logs
 # ============================================
