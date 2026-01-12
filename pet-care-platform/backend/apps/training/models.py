@@ -361,31 +361,19 @@ class Course(models.Model):
         """
         Средний рейтинг курса.
 
-        Оптимизация: если объект имеет аннотированное поле _avg_rating,
-        используем его вместо дополнительного запроса к БД.
+        Система рейтингов удалена - возвращаем 0.0
         """
-        # Используем предзагруженное значение если доступно
-        if hasattr(self, '_avg_rating') and self._avg_rating is not None:
-            return float(self._avg_rating)
-
-        # Fallback на запрос к БД (для единичных объектов)
-        from django.db.models import Avg
-        result = self.reviews.filter(is_approved=True).aggregate(avg=Avg('rating'))
-        return result['avg'] or 0.0
+        # Система рейтингов удалена
+        return 0.0
     
     def get_reviews_count(self):
         """
         Количество одобренных отзывов.
 
-        Оптимизация: если объект имеет аннотированное поле _reviews_count,
-        используем его вместо дополнительного запроса к БД.
+        Система рейтингов удалена - возвращаем 0
         """
-        # Используем предзагруженное значение если доступно
-        if hasattr(self, '_reviews_count') and self._reviews_count is not None:
-            return self._reviews_count
-
-        # Fallback на запрос к БД (для единичных объектов)
-        return self.reviews.filter(is_approved=True).count()
+        # Система рейтингов удалена
+        return 0
 
     def is_compatible_with_pet(self, pet):
         """

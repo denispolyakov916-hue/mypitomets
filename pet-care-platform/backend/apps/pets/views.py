@@ -59,7 +59,7 @@ class PetListCreateView(BaseListCreateView):
 
     GET  /api/pets/ - список питомцев пользователя
     POST /api/pets/ - создание питомца
-    
+
     Query params:
         is_draft: true/false - фильтр по черновикам
     """
@@ -84,7 +84,9 @@ class PetListCreateView(BaseListCreateView):
     @safe_api_operation("create_pet")
     def perform_create(self, serializer):
         """Создание питомца через PetService."""
-        logger.info(f"Creating pet with data: {serializer.validated_data}")
+        logger.info(f"Raw request data: {self.request.data}")
+        logger.info(f"Raw breed value: {self.request.data.get('breed')} (type: {type(self.request.data.get('breed'))})")
+        logger.info(f"Creating pet with validated data: {serializer.validated_data}")
 
         # Конвертация даты из строки
         data = serializer.validated_data.copy()

@@ -84,12 +84,10 @@ class PetCreateSerializer(serializers.Serializer):
         help_text="Вид животного (dog, cat, bird, rodent, fish, reptile, other)"
     )
     
-    breed = serializers.CharField(
+    breed = serializers.IntegerField(
         required=False,
-        max_length=100,
-        allow_blank=True,
         allow_null=True,
-        help_text="Порода питомца (опционально)"
+        help_text="ID породы из справочника (опционально)"
     )
     
     date_of_birth = serializers.CharField(
@@ -283,6 +281,7 @@ class PetCreateSerializer(serializers.Serializer):
             ('high', 'Высокая'),
         ],
         required=False,
+        default='medium',
         help_text="Уровень активности"
     )
 
@@ -355,12 +354,10 @@ class PetUpdateSerializer(serializers.Serializer):
         help_text="Новый вид животного"
     )
     
-    breed = serializers.CharField(
+    breed = serializers.IntegerField(
         required=False,
-        max_length=100,
-        allow_blank=True,
         allow_null=True,
-        help_text="Новая порода"
+        help_text="ID новой породы из справочника"
     )
     
     date_of_birth = serializers.CharField(
@@ -777,13 +774,11 @@ class BreedListSerializer(serializers.ModelSerializer):
     Упрощённый сериализатор для списка пород.
     Используется в выпадающих списках и автодополнении.
     """
-    average_weight = serializers.FloatField(read_only=True)
-    
     class Meta:
         model = Breed
         fields = [
-            'id', 'name', 'slug', 'species', 
-            'size_category', 'weight_min', 'weight_max', 'average_weight',
+            'id', 'name', 'slug', 'species',
+            'size_category', 'weight_min', 'weight_max',
             'energy_level', 'trainability', 'popularity_rank'
         ]
 

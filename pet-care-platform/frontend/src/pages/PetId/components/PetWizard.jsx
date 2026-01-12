@@ -503,7 +503,7 @@ const Step2Info = ({ formData, onChange, errors, breeds, loadingBreeds, onBreedS
     setBreedSearch(breed.name);
     setShowBreedDropdown(false);
     onChange('breed', breed.name);
-    onChange('breedId', breed.id);
+    onChange('breedId', parseInt(breed.id, 10));
     // Установим размер из породы если есть
     if (breed.size) {
       onChange('size', breed.size);
@@ -1495,10 +1495,30 @@ export default function PetWizard({ onClose, onSubmit, isLoading, editingDraft =
     
     setIsSavingDraft(true);
     try {
+    // Если breedId не установлен, но есть название породы, попробуем найти ID
+    let finalBreedId = formData.breedId;
+    let foundBreed = null;
+    if ((!finalBreedId || finalBreedId === '') && formData.breed && formData.breed.trim()) {
+      // Ищем породу по названию в массиве breeds (гибкий поиск)
+      const breedName = formData.breed.toLowerCase().trim();
+      foundBreed = breeds.find(b => {
+        const dbName = b.name.toLowerCase();
+        // Проверяем различные варианты совпадений
+        return dbName.includes(breedName) || // "лабрадор" в "лабрадор ретривер"
+               breedName.includes(dbName.split(' ')[0]) || // "лабрадор" в "лабрадор"
+               dbName.replace(' ', '').includes(breedName) || // "лабрадорретрiever" содержит "лабрадор"
+               breedName.replace(' ', '').includes(dbName.split(' ')[0]); // "лабрадорретрiever" содержит "лабрадор"
+      });
+
+      if (foundBreed) {
+        finalBreedId = parseInt(foundBreed.id, 10);
+      }
+    }
+
       const draftData = {
         name: formData.name || 'Без имени',
         species: formData.species || 'dog',
-        breed: formData.breed || null,
+        breed: (finalBreedId && finalBreedId !== '') ? finalBreedId : null,
         date_of_birth: formData.date_of_birth 
           ? formData.date_of_birth.toISOString().split('T')[0] 
           : null,
@@ -1506,7 +1526,7 @@ export default function PetWizard({ onClose, onSubmit, isLoading, editingDraft =
         gender: formData.gender || null,
         health_issues: formData.health_issues || [],
         excluded_ingredients: formData.excluded_ingredients || [],
-        activity_level: formData.activity_level || null,
+        activity_level: formData.activity_level || 'medium',
         housing_type: formData.housing_type || null,
         behavioral_problems: formData.behavioral_problems || [],
         is_draft: true,
@@ -1536,10 +1556,81 @@ export default function PetWizard({ onClose, onSubmit, isLoading, editingDraft =
   const handleSubmit = async () => {
     if (!validateStep(4)) return;
 
+    // Если breedId не установлен, но есть название породы, попробуем найти ID
+    let finalBreedId = formData.breedId;
+    let foundBreed = null;
+    if ((!finalBreedId || finalBreedId === '') && formData.breed && formData.breed.trim()) {
+      // Ищем породу по названию в массиве breeds (гибкий поиск)
+      let breedName = formData.breed.toLowerCase().trim();
+
+      // Заменяем распространенные слова для лучшего поиска
+      const replacements = {
+        'french': 'english',
+        'американский': 'американская',
+        'немецкий': 'немецкая',
+        'английский': 'английская',
+        '_': ' ', // Заменяем подчеркивания на пробелы
+      };
+
+      for (const [from, to] of Object.entries(replacements)) {
+        breedName = breedName.replace(new RegExp(from, 'gi'), to);
+      }
+
+      foundBreed = breeds.find(b => {
+        const dbName = b.name.toLowerCase();
+        const dbNameEn = (b.name_en || '').toLowerCase();
+        // Проверяем различные варианты совпадений
+        const match1 = dbName.includes(breedName);
+        const match2 = breedName.includes(dbName.split(' ')[0]);
+        const match3 = dbName.replace(' ', '').includes(breedName);
+        const match4 = breedName.replace(' ', '').includes(dbName.split(' ')[0]);
+        const match5 = dbNameEn.includes(breedName); // Поиск по английскому названию
+        const match6 = breedName.includes(dbNameEn.split(' ')[0]); // Поиск по английскому названию
+
+        return match1 || match2 || match3 || match4 || match5 || match6;
+      });
+
+      // Если не найдено, попробуем транслитерацию английских названий
+      if (!foundBreed && /^[a-z\s]+$/.test(breedName)) {
+        const translitMap = {
+          'labrador': 'лабрадор',
+          'retriever': 'ретривер',
+          'german': 'немецкая',
+          'shepherd': 'овчарка',
+          'golden': 'золотистый',
+          'bulldog': 'бульдог',
+          'poodle': 'пудель',
+          'beagle': 'бигль',
+          'husky': 'хаски',
+          'pug': 'мопс',
+          'chihuahua': 'чихуахуа',
+          'yorkshire': 'йоркширский',
+          'terrier': 'терьер'
+        };
+
+        let translatedName = breedName;
+        for (const [eng, rus] of Object.entries(translitMap)) {
+          translatedName = translatedName.replace(new RegExp('\\b' + eng + '\\b', 'gi'), rus);
+        }
+
+        if (translatedName !== breedName) {
+          foundBreed = breeds.find(b => {
+            const dbName = b.name.toLowerCase();
+            return dbName.includes(translatedName) ||
+                   translatedName.includes(dbName.split(' ')[0]);
+          });
+        }
+      }
+
+      if (foundBreed) {
+        finalBreedId = parseInt(foundBreed.id, 10);
+      }
+    }
+
     const submitData = {
       name: formData.name.trim(),
       species: formData.species,
-      breed: formData.breed || null,
+      breed: (finalBreedId && finalBreedId !== '') ? finalBreedId : null,
       date_of_birth: formData.date_of_birth
         ? formData.date_of_birth.toISOString().split('T')[0]
         : null,
@@ -1547,7 +1638,7 @@ export default function PetWizard({ onClose, onSubmit, isLoading, editingDraft =
       gender: formData.gender,
       health_issues: formData.health_issues.includes('none') ? [] : formData.health_issues,
       excluded_ingredients: formData.excluded_ingredients.includes('none') ? [] : formData.excluded_ingredients,
-      activity_level: formData.activity_level || null,
+      activity_level: formData.activity_level || 'medium',
       housing_type: formData.housing_type || null,
       behavioral_problems: formData.behavioral_problems.includes('Нет проблем') ? [] : formData.behavioral_problems,
       size: formData.size,

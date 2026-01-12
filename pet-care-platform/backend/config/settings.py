@@ -31,7 +31,7 @@ SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'django-insecure-change-in-productio
 
 DEBUG = os.getenv('DEBUG', 'True').lower() == 'true'
 
-ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1,0.0.0.0,192.168.1.139,192.168.1.11').split(',')
+ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1,0.0.0.0,192.168.1.139,192.168.1.11,testserver').split(',')
 
 # URL клиентского приложения для редиректов
 # ПОРТ 5199 - уникальный порт для фронтенда, чтобы избежать конфликтов в локальной сети
@@ -161,7 +161,7 @@ DATABASES = {
         'ENGINE': os.getenv('DB_ENGINE', 'django.db.backends.postgresql'),
         'NAME': os.getenv('DB_NAME', 'pitomets_db'),
         'USER': os.getenv('DB_USER', 'pitomets'),
-        'PASSWORD': os.getenv('DB_PASSWORD', '578321'),
+        'PASSWORD': os.getenv('DB_PASSWORD', 'pitomets_password'),
         'HOST': os.getenv('DB_HOST', 'localhost'),
         'PORT': os.getenv('DB_PORT', '5432'),
     }

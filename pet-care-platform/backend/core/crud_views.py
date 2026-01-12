@@ -199,6 +199,8 @@ class BaseListCreateView(BaseCRUDMixin, APIView):
             )
 
         try:
+            logger.info(f"Creating {self.model.__name__} - Raw request data: {request.data}")
+            logger.info(f"Breed value: {request.data.get('breed')} (type: {type(request.data.get('breed'))})")
             serializer = self.get_serializer(data=request.data)
             serializer.is_valid(raise_exception=True)
             self.perform_create(serializer)
