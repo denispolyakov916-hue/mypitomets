@@ -1,39 +1,48 @@
 /**
  * Модуль API питомцев
- * 
+ *
  * Предоставляет функции для управления питомцами (PetID):
- * - Получение всех питомцев пользователя
- * - Получение деталей одного питомца
- * - Создание нового питомца
- * - Обновление питомца
- * - Удаление питомца
- * 
- * Все функции требуют аутентификации.
+ * - CRUD операции с питомцами
+ * - Управление черновиками
+ * - Справочник пород
+ * - Анализ профилей питомцев
+ *
+ * Все функции требуют аутентификации кроме справочника пород.
  */
 
 import api from './client'
+import { createCrudApi, createReadOnlyApi } from './baseApi'
+
+// Создаем CRUD API клиент для питомцев
+const petsApi = createCrudApi('/pets/')
+
+// Создаем клиент для справочника пород (только чтение)
+const breedsApi = createReadOnlyApi('/pets/breeds/')
+
+// ===== CRUD ОПЕРАЦИИ С ПИТОМЦАМИ =====
 
 /**
  * Получение всех питомцев текущего пользователя
- * 
+ *
+ * @param {Object} filters - Фильтры для запроса
  * @returns {Promise<Object>} Объект с массивом питомцев и количеством
- * 
+ *
  * @example
- *   const { pets, count } = await getPets()
+ *   const { data: pets, count } = await getPets({ is_draft: 'false' })
  */
-export const getPets = async () => {
-  return await api.get('/pets/')
+export const getPets = async (filters = {}) => {
+  return await petsApi.getList(filters)
 }
 
 /**
  * Получение одного питомца по ID
- * 
+ *
  * @param {number} petId - Уникальный идентификатор питомца
  * @returns {Promise<Object>} Данные питомца
  * @throws {Object} 404 если питомец не найден, 403 если не владелец
  */
 export const getPet = async (petId) => {
-  return await api.get(`/pets/${petId}/`)
+  return await petsApi.getById(petId)
 }
 
 /**
@@ -54,7 +63,7 @@ export const getPet = async (petId) => {
  * @returns {Promise<Object>} Данные созданного питомца
  *
  * @example
- *   const { pet } = await createPet({
+ *   const { data } = await createPet({
  *     name: 'Барсик',
  *     species: 'cat',
  *     breed: 'Персидская',
@@ -64,37 +73,37 @@ export const getPet = async (petId) => {
  *   })
  */
 export const createPet = async (petData) => {
-  return await api.post('/pets/', petData)
+  return await petsApi.create(petData)
 }
 
 /**
  * Обновление существующего питомца
- * 
+ *
  * Поддерживает частичное обновление - изменяются только предоставленные поля.
- * 
+ *
  * @param {number} petId - Уникальный идентификатор питомца
  * @param {Object} petData - Поля для обновления
  * @returns {Promise<Object>} Данные обновлённого питомца
  * @throws {Object} 403 если не владелец, 404 если не найден
- * 
+ *
  * @example
- *   const { pet } = await updatePet(1, { weight: 5.5 })
+ *   const { data } = await updatePet(1, { weight: 5.5 })
  */
 export const updatePet = async (petId, petData) => {
-  return await api.put(`/pets/${petId}/`, petData)
+  return await petsApi.update(petId, petData)
 }
 
 /**
  * Удаление профиля питомца
- * 
+ *
  * Необратимо удаляет питомца. Действие нельзя отменить.
- * 
+ *
  * @param {number} petId - Уникальный идентификатор питомца
  * @returns {Promise<Object>} Сообщение об успехе
  * @throws {Object} 403 если не владелец, 404 если не найден
  */
 export const deletePet = async (petId) => {
-  return await api.delete(`/pets/${petId}/`)
+  return await petsApi.delete(petId)
 }
 
 /**

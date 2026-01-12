@@ -7,10 +7,11 @@ API для каталога, корзины и заказов.
 import logging
 from django.db import transaction
 from django.conf import settings
-from rest_framework import status
+from rest_framework import status, viewsets
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.permissions import AllowAny, IsAuthenticated, IsAdminUser
+from rest_framework.decorators import action, api_view, permission_classes
 
 from apps.payments.models import Payment
 from apps.training.models import UserCourse
@@ -23,8 +24,10 @@ from .serializers import (
     OrderCreateSerializer,
     UnifiedOrderSerializer
 )
-from .services.reservation_service import ReservationService
-from .services import process_expired_orders
+from .services import (
+    ReservationService, process_expired_orders,
+    AnalyticsDataService, AnalyticsMetricsInitializer
+)
 from django.db.models import Q
 
 logger = logging.getLogger('apps.shop')
@@ -2073,3 +2076,264 @@ class ReturnDetailView(APIView):
                 {'error': 'Возврат не найден'},
                 status=status.HTTP_404_NOT_FOUND
             )
+
+
+# =============================================================================
+# АНАЛИТИКА И КОНСТРУКТОР ГРАФИКОВ
+# =============================================================================
+
+class AnalyticMetricsViewSet(viewsets.ReadOnlyModelViewSet):
+    """
+    ViewSet для работы с метриками аналитики.
+
+    Предоставляет доступ к списку доступных метрик с фильтрацией и поиском.
+    """
+
+    permission_classes = []  # [IsAdminUser]
+    serializer_class = None  # Будет установлен в get_serializer_class
+    pagination_class = None  # StandardResultsSetPagination
+
+    def get_queryset(self):
+        """Получить queryset с фильтрами."""
+        from .models import AnalyticMetric
+        queryset = AnalyticMetric.objects.filter(is_active=True)
+
+        # Фильтр по категории
+        category = self.request.query_params.get('category')
+        if category:
+            queryset = queryset.filter(category=category)
+
+        # Поиск по имени и описанию
+        search = self.request.query_params.get('search')
+        if search:
+            queryset = queryset.filter(
+                Q(name__icontains=search) | Q(description__icontains=search)
+            )
+
+        return queryset.order_by('category', 'name')
+
+    def get_serializer_class(self):
+        """Выбрать подходящий сериализатор."""
+        from .serializers import MetricListSerializer, AnalyticMetricSerializer
+        if self.action == 'list':
+            return MetricListSerializer
+        return AnalyticMetricSerializer
+
+    @action(detail=False, methods=['get'])
+    def categories(self, request):
+        """Получить список доступных категорий метрик."""
+        from .models import AnalyticMetric
+        categories = AnalyticMetric.objects.filter(
+            is_active=True
+        ).values_list('category', flat=True).distinct()
+
+        # Получить количество метрик в каждой категории
+        result = []
+        for category in categories:
+            count = AnalyticMetric.objects.filter(
+                category=category, is_active=True
+            ).count()
+            result.append({
+                'name': category,
+                'count': count,
+            })
+
+        return Response(result)
+
+
+class ChartConstructorViewSet(viewsets.ViewSet):
+    """
+    ViewSet для конструктора графиков.
+
+    Обрабатывает создание и получение данных графиков.
+    """
+
+    permission_classes = [IsAdminUser]
+
+    @action(detail=False, methods=['post'])
+    def data(self, request):
+        """Получить данные для графика."""
+        serializer = None  # ChartDataRequestSerializer(data=request.data)
+        # if not serializer.is_valid():
+        #     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        config = request.data.get('config', {})
+        data_limit = request.data.get('data_limit', 10000)
+
+        # Добавить лимит в конфигурацию
+        config['limit'] = data_limit
+
+        service = AnalyticsDataService()
+        result = service.get_chart_data(config, request.user)
+
+        return Response(result)
+
+
+class ChartConfigViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet для управления конфигурациями графиков.
+    """
+
+    permission_classes = [IsAdminUser]
+    serializer_class = None  # ChartConfigSerializer
+
+    def get_queryset(self):
+        """Получить queryset конфигураций."""
+        from .models import ChartConfig
+        return ChartConfig.objects.filter(created_by=self.request.user)
+
+    def get_serializer_class(self):
+        """Выбрать сериализатор в зависимости от действия."""
+        from .serializers import ChartConfigSerializer, ChartConfigCreateSerializer
+        if self.action in ['create', 'update', 'partial_update']:
+            return ChartConfigCreateSerializer
+        return ChartConfigSerializer
+
+    def perform_create(self, serializer):
+        """Создать конфигурацию с автором."""
+        serializer.save(created_by=self.request.user)
+
+    @action(detail=False, methods=['get'])
+    def templates(self, request):
+        """Получить доступные шаблоны графиков."""
+        from .models import ChartConfig
+        templates = ChartConfig.objects.filter(
+            Q(is_template=True) & (Q(is_public=True) | Q(created_by=request.user))
+        ).order_by('-usage_count')
+
+        serializer = None  # ChartTemplateSerializer(templates, many=True)
+        return Response({'templates': []})  # serializer.data
+
+    @action(detail=True, methods=['post'])
+    def duplicate(self, request, pk=None):
+        """Создать копию конфигурации."""
+        config = self.get_object()
+        new_config = config.create_version(request.user)
+
+        serializer = self.get_serializer(new_config)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
+class ChartSessionViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet для управления сессиями конструктора графиков.
+    """
+
+    permission_classes = [IsAdminUser]
+    serializer_class = None  # ChartSessionSerializer
+
+    def get_queryset(self):
+        """Получить сессии пользователя."""
+        from .models import ChartSession
+        return ChartSession.objects.filter(user=self.request.user)
+
+    def perform_create(self, serializer):
+        """Создать сессию с пользователем."""
+        from datetime import timedelta
+        expires_at = timezone.now() + timedelta(hours=2)  # 2 часа
+        serializer.save(user=self.request.user, expires_at=expires_at)
+
+
+class AnalyticsLogsViewSet(viewsets.ReadOnlyModelViewSet):
+    """
+    ViewSet для просмотра логов аналитики.
+    """
+
+    permission_classes = [IsAdminUser]
+    serializer_class = None  # AnalyticsLogSerializer
+
+    def get_queryset(self):
+        """Получить логи с фильтрами."""
+        from .models import AnalyticsLog
+        queryset = AnalyticsLog.objects.all()
+
+        # Фильтры
+        action = self.request.query_params.get('action')
+        if action:
+            queryset = queryset.filter(action=action)
+
+        user = self.request.query_params.get('user')
+        if user:
+            queryset = queryset.filter(user_id=user)
+
+        date_from = self.request.query_params.get('date_from')
+        if date_from:
+            queryset = queryset.filter(timestamp__gte=date_from)
+
+        date_to = self.request.query_params.get('date_to')
+        if date_to:
+            queryset = queryset.filter(timestamp__lte=date_to)
+
+        return queryset.order_by('-timestamp')
+
+
+# =============================================================================
+# СЛУЖЕБНЫЕ ЭНДПОИНТЫ АНАЛИТИКИ
+# =============================================================================
+
+@api_view(['POST'])
+@permission_classes([IsAdminUser])
+def initialize_metrics(request):
+    """
+    Инициализировать стандартные метрики аналитики.
+
+    POST /api/shop/analytics/initialize-metrics/
+    """
+    try:
+        count = AnalyticsMetricsInitializer.initialize_default_metrics()
+        return Response({
+            'message': f'Инициализировано {count} метрик',
+            'metrics_created': count
+        })
+    except Exception as e:
+        logger.error(f"Error initializing metrics: {e}")
+        return Response(
+            {'error': 'Ошибка инициализации метрик'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+@api_view(['POST'])
+@permission_classes([IsAdminUser])
+def analytics_health_check(request):
+    """
+    Health check для аналитики.
+
+    POST /api/shop/analytics/health-check/
+    """
+    try:
+        from .models import AnalyticMetric
+        metrics_count = AnalyticMetric.objects.filter(is_active=True).count()
+
+        return Response({
+            'status': 'healthy',
+            'metrics_count': metrics_count,
+            'timestamp': timezone.now().isoformat()
+        })
+    except Exception as e:
+        logger.error(f"Analytics health check failed: {e}")
+        return Response({
+            'status': 'unhealthy',
+            'error': str(e)
+        }, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+
+
+@api_view(['POST'])
+@permission_classes([IsAdminUser])
+def clear_analytics_cache(request):
+    """
+    Очистить кэш аналитики.
+
+    POST /api/shop/analytics/clear-cache/
+    """
+    try:
+        from django.core.cache import cache
+        cache.clear()
+
+        return Response({'message': 'Кэш аналитики очищен'})
+    except Exception as e:
+        logger.error(f"Error clearing analytics cache: {e}")
+        return Response(
+            {'error': 'Ошибка очистки кэша'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )

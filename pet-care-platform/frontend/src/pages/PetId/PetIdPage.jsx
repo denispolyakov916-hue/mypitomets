@@ -202,6 +202,28 @@ const PetCard = React.memo(({ pet, index, onEdit, onDelete, onViewAnalysis }) =>
 // ============================================
 
 const DraftCard = React.memo(({ draft, onContinue, onDelete }) => {
+  // Расчёт реального прогресса на основе заполненных полей
+  const calculateDraftProgress = () => {
+    let filled = 0;
+    let total = 10; // Всего базовых полей
+    
+    if (draft.name) filled++;
+    if (draft.species) filled++;
+    if (draft.breed) filled++;
+    if (draft.gender) filled++;
+    if (draft.date_of_birth) filled++;
+    if (draft.weight) filled++;
+    if (draft.health_issues?.length > 0) filled++;
+    if (draft.excluded_ingredients?.length > 0) filled++;
+    if (draft.activity_level || draft.housing_type) filled++;
+    if (draft.behavioral_problems?.length > 0) filled++;
+    
+    return Math.round((filled / total) * 100);
+  };
+  
+  const progress = calculateDraftProgress();
+  const draftStep = draft.draft_step || 1;
+  
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -236,13 +258,16 @@ const DraftCard = React.memo(({ draft, onContinue, onDelete }) => {
               <div className="flex-1 h-1.5 bg-amber-100 rounded-full overflow-hidden">
                 <div 
                   className="h-full bg-gradient-to-r from-amber-400 to-orange-400 transition-all"
-                  style={{ width: `${draft.draft_step ? (draft.draft_step / 4) * 100 : 25}%` }}
+                  style={{ width: `${progress}%` }}
                 />
               </div>
               <span className="text-xs text-amber-600 font-medium">
-                Шаг {draft.draft_step || 1} из 4
+                {progress}%
               </span>
             </div>
+            <p className="text-xs text-amber-500 mt-1">
+              Шаг {draftStep} из 4
+            </p>
           </div>
         </div>
 
@@ -402,28 +427,24 @@ export default function PetIdPage() {
     try {
       let result;
       if (isDraft) {
+        // Сохранение черновика
         result = await savePetDraft(formData, editingDraft?.id);
+        // Обновляем данные после сохранения черновика
+        await fetchPets();
       } else {
+        // Создание готового профиля
         if (editingDraft?.id) {
           result = await updatePet(editingDraft.id, { ...formData, is_draft: false });
         } else {
           result = await createPet(formData);
         }
+        // Обновляем данные после успешного создания
+        await fetchPets();
       }
-
-      // Обновляем данные после успешного создания, но не закрываем модальное окно -
-      // это сделает success modal в PetWizard
-      await fetchPets(); // Обновляем данные после успешного создания
 
       return result; // Возвращаем результат для обработки в PetWizard
     } catch (err) {
       console.error('Ошибка:', err);
-      // Вместо alert используем более современный подход
-      // Можно добавить toast notification или состояние ошибки
-      alert(isDraft
-        ? 'Не удалось сохранить черновик. Попробуйте ещё раз.'
-        : 'Не удалось создать питомца. Попробуйте ещё раз.'
-      );
       throw err; // Перебрасываем ошибку, чтобы PetWizard мог её обработать
     } finally {
       setIsSubmitting(false);
@@ -500,15 +521,21 @@ export default function PetIdPage() {
   const handleCloseCreateModal = useCallback(async (openEditor = false) => {
     setShowCreateModal(false);
     setEditingDraft(null);
+    
+    // Всегда обновляем список питомцев после закрытия
+    await fetchPets();
 
     if (openEditor) {
-      await fetchPets();
       // Открываем редактор для последнего созданного питомца
       const response = await getPets();
       const allPets = response.pets || [];
       const completedPets = allPets.filter(p => !p.is_draft);
       if (completedPets.length > 0) {
-        setEditingPet(completedPets[0]);
+        // Сортируем по дате создания и берём последнего
+        const sortedPets = completedPets.sort((a, b) => 
+          new Date(b.created_at || 0) - new Date(a.created_at || 0)
+        );
+        setEditingPet(sortedPets[0]);
       }
     }
   }, [fetchPets]);

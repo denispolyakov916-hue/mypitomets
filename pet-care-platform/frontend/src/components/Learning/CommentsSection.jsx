@@ -4,8 +4,11 @@ import { Card } from '../ui'
 import { Textarea } from '../ui'
 import {
   getLessonComments, addLessonComment, likeComment, dislikeComment, removeCommentReaction,
-  getCourseComments, addCourseComment, updateComment, deleteComment, addCommentReaction
+  updateComment, deleteComment, addCommentReaction
 } from '../../api/comments'
+import {
+  getCourseComments, addCourseComment
+} from '../../api/courses'
 import { useAuthStore } from '../../store/authStore'
 
 /**

@@ -89,12 +89,12 @@ function AppWrapper() {
 }
 
 // Создание корня и рендеринг приложения
+// ПРИМЕЧАНИЕ: StrictMode убран, чтобы избежать двойных запросов в dev-режиме
+// В production это не влияет на работу приложения
 ReactDOM.createRoot(document.getElementById('root')).render(
-  <React.StrictMode>
-    <ErrorBoundary>
-      <BrowserRouter>
-        <AppWrapper />
-      </BrowserRouter>
-    </ErrorBoundary>
-  </React.StrictMode>
+  <ErrorBoundary>
+    <BrowserRouter>
+      <AppWrapper />
+    </BrowserRouter>
+  </ErrorBoundary>
 )

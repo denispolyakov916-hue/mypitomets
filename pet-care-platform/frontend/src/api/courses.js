@@ -168,7 +168,7 @@ export const getCourseLessons = async (courseId, petId = null) => {
  */
 export const getLesson = async (lessonId, petId = null) => {
   const params = petId ? `?pet_id=${petId}` : ''
-  return await api.get(`/lessons/${lessonId}/${params}`)
+  return await api.get(`/courses/lessons/${lessonId}/${params}`)
 }
 
 /**
@@ -185,7 +185,7 @@ export const completeLesson = async (lessonId, petId = null, timeSpent = 0) => {
     time_spent: timeSpent
   }
 
-  return await api.post(`/lessons/${lessonId}/complete/`, body)
+  return await api.post(`/courses/lessons/${lessonId}/complete/`, body)
 }
 
 /**
@@ -222,7 +222,7 @@ export const updateLessonProgress = async (lessonId, petId, progressData) => {
     ...progressData
   }
 
-  return await api.put(`/lessons/${lessonId}/progress/`, body)
+  return await api.put(`/courses/lessons/${lessonId}/progress/`, body)
 }
 
 /**
@@ -321,7 +321,7 @@ export const deleteCoursePage = async (courseId, pageId) => {
  * @returns {Promise<Object>} Созданный блок
  */
 export const createContentBlock = async (pageId, blockData) => {
-  return await api.post(`/pages/${pageId}/blocks/`, blockData)
+  return await api.post(`/courses/pages/${pageId}/blocks/`, blockData)
 }
 
 /**
@@ -332,7 +332,7 @@ export const createContentBlock = async (pageId, blockData) => {
  * @returns {Promise<Object>} Обновленный блок
  */
 export const updateContentBlock = async (blockId, blockData) => {
-  return await api.put(`/blocks/${blockId}/`, blockData)
+  return await api.put(`/courses/blocks/${blockId}/`, blockData)
 }
 
 /**
@@ -342,7 +342,7 @@ export const updateContentBlock = async (blockId, blockData) => {
  * @returns {Promise<Object>} Результат удаления
  */
 export const deleteContentBlock = async (blockId) => {
-  return await api.delete(`/blocks/${blockId}/`)
+  return await api.delete(`/courses/blocks/${blockId}/`)
 }
 
 /**
@@ -352,7 +352,7 @@ export const deleteContentBlock = async (blockId) => {
  * @returns {Promise<Object>} Созданный дубликат блока
  */
 export const duplicateContentBlock = async (blockId) => {
-  return await api.post(`/blocks/${blockId}/duplicate/`)
+  return await api.post(`/courses/blocks/${blockId}/duplicate/`)
 }
 
 /**
@@ -368,7 +368,7 @@ export const getBlockTemplates = async (filters = {}) => {
   if (filters.category) params.append('category', filters.category)
 
   const queryString = params.toString()
-  const url = queryString ? `/block-templates/?${queryString}` : '/block-templates/'
+  const url = queryString ? `/courses/block-templates/?${queryString}` : '/courses/block-templates/'
 
   return await api.get(url)
 }
@@ -380,7 +380,7 @@ export const getBlockTemplates = async (filters = {}) => {
  * @returns {Promise<Object>} Созданный шаблон
  */
 export const createBlockTemplate = async (templateData) => {
-  return await api.post('/block-templates/', templateData)
+  return await api.post('/courses/block-templates/', templateData)
 }
 
 /**
@@ -391,7 +391,59 @@ export const createBlockTemplate = async (templateData) => {
  * @returns {Promise<Object>} Созданный блок
  */
 export const useBlockTemplate = async (templateId, pageId) => {
-  return await api.post(`/block-templates/${templateId}/use/`, { page_id: pageId })
+  return await api.post(`/courses/block-templates/${templateId}/use/`, { page_id: pageId })
+}
+
+/**
+ * Добавление комментария к курсу
+ *
+ * @param {number} courseId - ID курса
+ * @param {string} content - Текст комментария
+ * @param {string} [parentId] - ID родительского комментария
+ * @param {Array} [attachments] - Массив вложений
+ * @returns {Promise<Object>} Созданный комментарий
+ */
+export const addCourseComment = async (courseId, content, parentId = null, attachments = []) => {
+  const body = {
+    content: content,
+    attachments: attachments
+  }
+
+  if (parentId) {
+    body.parent = parentId
+  }
+
+  return await api.post(`/courses/${courseId}/comments/create/`, body)
+}
+
+/**
+ * Получение шаблонов страниц
+ *
+ * @returns {Promise<Array>} Список шаблонов страниц
+ */
+export const getPageTemplates = async () => {
+  return await api.get('/courses/page-templates/')
+}
+
+/**
+ * Создание шаблона страницы
+ *
+ * @param {Object} templateData - Данные шаблона
+ * @returns {Promise<Object>} Созданный шаблон
+ */
+export const createPageTemplate = async (templateData) => {
+  return await api.post('/courses/page-templates/', templateData)
+}
+
+/**
+ * Использование шаблона страницы
+ *
+ * @param {number} templateId - ID шаблона
+ * @param {number} courseId - ID курса
+ * @returns {Promise<Object>} Созданная страница
+ */
+export const usePageTemplate = async (templateId, courseId) => {
+  return await api.post(`/courses/page-templates/${templateId}/use/`, { course_id: courseId })
 }
 
 /**
@@ -436,50 +488,14 @@ export const previewCourse = async (courseId) => {
  * @returns {Promise<Object>} Результат завершения
  */
 export const completeCoursePage = async (pageId, petId, progressData = {}) => {
-  return await api.post(`/pages/${pageId}/complete/`, {
+  return await api.post(`/courses/pages/${pageId}/complete/`, {
     pet_id: petId,
     ...progressData
   })
 }
 
-/**
- * Получение шаблонов страниц
- *
- * @param {Object} [filters] - Фильтры для шаблонов
- * @returns {Promise<Object>} Список шаблонов страниц
- */
-export const getPageTemplates = async (filters = {}) => {
-  const params = new URLSearchParams()
-
-  if (filters.category) params.append('category', filters.category)
-  if (filters.page_type) params.append('page_type', filters.page_type)
-
-  const queryString = params.toString()
-  const url = queryString ? `/page-templates/?${queryString}` : '/page-templates/'
-
-  return await api.get(url)
-}
-
-/**
- * Создание шаблона страницы
- *
- * @param {Object} templateData - Данные шаблона
- * @returns {Promise<Object>} Созданный шаблон
- */
-export const createPageTemplate = async (templateData) => {
-  return await api.post('/page-templates/', templateData)
-}
-
-/**
- * Использование шаблона страницы
- *
- * @param {number} templateId - ID шаблона
- * @param {number} courseId - ID курса для создания страницы
- * @returns {Promise<Object>} Созданная страница
- */
-export const usePageTemplate = async (templateId, courseId) => {
-  return await api.post(`/page-templates/${templateId}/use/`, { course_id: courseId })
-}
+// Примечание: шаблоны страниц (page-templates) не реализованы на бекенде.
+// При необходимости они могут быть добавлены аналогично block-templates.
 
 /**
  * Получение страниц курса

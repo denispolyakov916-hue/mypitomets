@@ -1,21 +1,33 @@
 """
-PersonalizationService - центральный сервис персонализации на основе PetID.
+Сервисы для работы с питомцами (PetID) и персонализацией.
 
-Обеспечивает единую точку входа для формирования персонализированного контекста
-во всех модулях системы (магазин, курсы, рекомендации, контент).
+Этот модуль предоставляет сервисы для управления питомцами и персонализированными рекомендациями:
+- PersonalizationService: Центральный сервис персонализации на основе PetID
+- PetService: CRUD операции с питомцами через BaseCRUDService
+- ReminderService: CRUD операции с напоминаниями через BaseCRUDService
 
 Основные функции:
-- Формирование контекста персонализации по питомцам пользователя
-- Фильтрация товаров и курсов по характеристикам питомцев
-- Учёт аллергий, предпочтений и возраста
-- Генерация персонализированных рекомендаций
+    - Формирование персонализированного контекста по питомцам пользователя
+    - Фильтрация товаров и курсов по характеристикам питомцев
+    - Учёт аллергий, предпочтений, возраста, активности
+    - Управление напоминаниями о вакцинации, лечении, прогулках
+    - Генерация персонализированных рекомендаций товаров и курсов
+
+Используется в:
+    - Каталоге товаров для персонализированных рекомендаций
+    - Каталоге курсов для подбора по питомцам
+    - Профиле пользователя для управления питомцами
+    - Системе напоминаний для отслеживания здоровья
 """
 
 import logging
 from typing import Optional, List, Dict, Any, Set
 from dataclasses import dataclass, field
 from django.db.models import QuerySet, Q
+from django.utils import timezone
 from decimal import Decimal
+
+from core.services import BaseCRUDService, ServiceResult
 
 logger = logging.getLogger('apps.pets')
 
@@ -245,7 +257,7 @@ class PersonalizationService:
             PersonalizationContext: Контекст персонализации
         """
         from .models import Pet
-        from .breed_models import Breed
+        from .models import Breed
         
         context = PersonalizationContext(user_id=str(user.id))
         
@@ -774,6 +786,159 @@ class PersonalizationService:
         }
 
 
+# =============================================================================
+# CRUD СЕРВИСЫ НА БАЗЕ BaseCRUDService
+# =============================================================================
+
+class PetService(BaseCRUDService):
+    """
+    Сервис для CRUD операций с питомцами.
+
+    Использует BaseCRUDService для стандартизации операций.
+    Дополнительно предоставляет методы валидации и персонализации.
+    """
+
+    def __init__(self):
+        from .models import Pet
+        super().__init__(Pet)
+
+    def get_queryset(self, user=None):
+        """Переопределение для фильтрации по владельцу."""
+        if user:
+            return self.model.objects.filter(owner=user)
+        return super().get_queryset(user)
+
+    def create_pet(self, data, user, validator=None):
+        """
+        Создать питомца с дополнительной валидацией.
+
+        @param data: Данные питомца
+        @param user: Владелец
+        @param validator: Дополнительная валидация
+        @return: Созданный питомец
+        """
+        # Валидация обязательных полей
+        required_fields = ['name', 'species']
+        for field in required_fields:
+            if not data.get(field):
+                raise ValueError(f"Поле '{field}' обязательно для заполнения")
+
+        # Проверка лимита питомцев на пользователя
+        pets_count = self.model.objects.filter(owner=user).count()
+        if pets_count >= 50:  # Максимум 50 питомцев на пользователя
+            raise ValueError("Превышен лимит количества питомцев")
+
+        # Создание через базовый сервис
+        return self.create(data, user, validator)
+
+    def update_pet_profile(self, pet_id, data, user):
+        """
+        Обновить профиль питомца с пересчетом completeness.
+
+        @param pet_id: ID питомца
+        @param data: Данные для обновления
+        @param user: Владелец
+        @return: Обновленный питомец
+        """
+        # Получаем питомца
+        pet = self.get_by_id(pet_id, user)
+
+        # Обновляем данные
+        updated_pet = self.update(pet_id, data, user)
+
+        # Пересчитываем completeness профиля
+        updated_pet.calculate_profile_completeness()
+        updated_pet.save(update_fields=['profile_completeness'])
+
+        return updated_pet
+
+    def delete_pet(self, pet_id, user):
+        """
+        Удалить питомца с проверкой зависимостей.
+
+        @param pet_id: ID питомца
+        @param user: Владелец
+        @return: True если удалено
+        """
+        pet = self.get_by_id(pet_id, user)
+
+        # Проверяем, есть ли активные напоминания
+        if hasattr(pet, 'calendar_events') and pet.calendar_events.filter(status='scheduled').exists():
+            raise ValueError("Нельзя удалить питомца с активными напоминаниями")
+
+        # Проверяем, есть ли купленные курсы для этого питомца
+        from apps.training.models import UserCourse
+        if UserCourse.objects.filter(pet=pet).exists():
+            raise ValueError("Нельзя удалить питомца с активными курсами")
+
+        return self.delete(pet_id, user)
+
+
+class ReminderService(BaseCRUDService):
+    """
+    Сервис для CRUD операций с напоминаниями.
+
+    Использует BaseCRUDService для стандартизации операций.
+    """
+
+    def __init__(self):
+        from .reminder_models import Reminder
+        super().__init__(Reminder)
+
+    def get_queryset(self, user=None):
+        """Переопределение для фильтрации по владельцу питомца."""
+        if user:
+            # Получаем напоминания только для питомцев пользователя
+            from .models import Pet
+            user_pet_ids = Pet.objects.filter(owner=user).values_list('id', flat=True)
+            return self.model.objects.filter(pet_id__in=user_pet_ids)
+        return super().get_queryset(user)
+
+    def create_reminder(self, data, user):
+        """
+        Создать напоминание с валидацией прав доступа.
+
+        @param data: Данные напоминания
+        @param user: Пользователь
+        @return: Созданное напоминание
+        """
+        # Проверяем, что питомец принадлежит пользователю
+        pet_id = data.get('pet')
+        if pet_id:
+            from .models import Pet
+            try:
+                pet = Pet.objects.get(id=pet_id, owner=user)
+            except Pet.DoesNotExist:
+                raise ValueError("Питомец не найден или не принадлежит вам")
+
+        return self.create(data, user)
+
+    def get_upcoming_reminders(self, user, days=7):
+        """
+        Получить предстоящие напоминания.
+
+        @param user: Пользователь
+        @param days: Количество дней вперед
+        @return: QuerySet предстоящих напоминаний
+        """
+        from datetime import timedelta
+        end_date = timezone.now() + timedelta(days=days)
+
+        return self.get_queryset(user).filter(
+            is_active=True,
+            next_reminder__lte=end_date,
+            next_reminder__gte=timezone.now()
+        ).order_by('next_reminder')
+
+
+# =============================================================================
+# ГЛОБАЛЬНЫЕ ЭКЗЕМПЛЯРЫ СЕРВИСОВ
+# =============================================================================
+
 # Сокращённый импорт для удобства
 personalization_service = PersonalizationService()
+
+# CRUD сервисы
+pet_service = PetService()
+reminder_service = ReminderService()
 

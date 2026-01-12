@@ -35,11 +35,11 @@ ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1,0.0.0.0,192.168.
 
 # URL клиентского приложения для редиректов
 # ПОРТ 5199 - уникальный порт для фронтенда, чтобы избежать конфликтов в локальной сети
-CLIENT_URL = os.getenv('CLIENT_URL', 'http://192.168.1.11:5199')
+CLIENT_URL = os.getenv('CLIENT_URL', 'http://localhost:5199')
 
 # URL API для формирования ссылок активации
 # ПОРТ 8077 - уникальный порт для бекенда, чтобы избежать конфликтов в локальной сети
-API_URL = os.getenv('API_URL', 'http://192.168.1.11:8077')
+API_URL = os.getenv('API_URL', 'http://localhost:8077')
 
 # =============================================================================
 # НАСТРОЙКИ EMAIL
@@ -109,8 +109,6 @@ INSTALLED_APPS = [
     'apps.training',
     'apps.payments',
     'apps.reviews',
-    'apps.calendar',
-    'apps.analytics',
 ]
 
 # =============================================================================

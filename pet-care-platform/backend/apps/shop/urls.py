@@ -16,7 +16,8 @@ URL маршруты для эндпоинтов магазина.
 Все пути имеют префикс /api/shop/ в главном urls.py
 """
 
-from django.urls import path
+from django.urls import path, include
+from rest_framework.routers import DefaultRouter
 from .views import (
     ProductListView,
     ProductDetailView,
@@ -36,8 +37,27 @@ from .views import (
     AddressSearchView,
     ReturnCreateView,
     ReturnListView,
-    ReturnDetailView
+    ReturnDetailView,
+    AnalyticMetricsViewSet,
+    ChartConstructorViewSet,
+    ChartConfigViewSet,
+    ChartSessionViewSet,
+    AnalyticsLogsViewSet,
+    initialize_metrics,
+    analytics_health_check,
+    clear_analytics_cache
 )
+
+# Создаем роутер для ViewSet'ов аналитики
+router = DefaultRouter()
+router.register(r'metrics', AnalyticMetricsViewSet, basename='analytics-metrics')
+router.register(r'configs', ChartConfigViewSet, basename='chart-configs')
+router.register(r'sessions', ChartSessionViewSet, basename='chart-sessions')
+router.register(r'logs', AnalyticsLogsViewSet, basename='analytics-logs')
+
+# Конструктор графиков (отдельный ViewSet)
+constructor_router = DefaultRouter()
+constructor_router.register(r'constructor', ChartConstructorViewSet, basename='chart-constructor')
 
 urlpatterns = [
     # Каталог товаров
@@ -109,4 +129,17 @@ urlpatterns = [
 
     # GET /api/shop/returns/{return_id}/ - детали возврата
     path('returns/<str:return_id>/', ReturnDetailView.as_view(), name='return-detail'),
+
+    # Аналитика и конструктор графиков
+    # GET /api/shop/analytics/metrics/ - метрики
+    path('analytics/', include([
+        # REST API через роутеры
+        path('', include(router.urls)),
+        path('', include(constructor_router.urls)),
+
+        # Служебные эндпоинты
+        path('initialize-metrics/', initialize_metrics, name='initialize-metrics'),
+        path('health-check/', analytics_health_check, name='analytics-health-check'),
+        path('clear-cache/', clear_analytics_cache, name='clear-analytics-cache'),
+    ])),
 ]

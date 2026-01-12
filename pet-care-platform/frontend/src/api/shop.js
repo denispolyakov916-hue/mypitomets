@@ -10,6 +10,13 @@
  */
 
 import api from './client'
+import { createCrudApi, createReadOnlyApi } from './baseApi'
+
+// Создаем CRUD API клиенты для разных сущностей
+const productsApi = createReadOnlyApi('/shop/products/')  // Товары - только чтение для обычных пользователей
+const cartApi = createCrudApi('/shop/cart/')             // Корзина - CRUD
+const ordersApi = createCrudApi('/shop/orders/')         // Заказы - CRUD
+const addressesApi = createCrudApi('/shop/addresses/')   // Адреса - CRUD
 
 // =============================================================================
 // ТОВАРЫ
@@ -37,21 +44,7 @@ import api from './client'
  *   const { products, pagination, filters } = await getProducts({ animal: 'dog', category: 'food' })
  */
 export const getProducts = async (filters = {}) => {
-  const params = new URLSearchParams()
-  
-  // Добавляем только непустые фильтры
-  const filterKeys = ['animal', 'pet_id', 'category', 'subcategory', 'vendor', 'min_price', 'max_price', 'in_stock', 'has_discount', 'min_rating', 'min_orders', 'sort_by', 'search', 'page', 'per_page', 'ids']
-  
-  filterKeys.forEach(key => {
-    if (filters[key]) {
-      params.append(key, filters[key])
-    }
-  })
-  
-  const queryString = params.toString()
-  const url = queryString ? `/shop/products/?${queryString}` : '/shop/products/'
-  
-  return await api.get(url)
+  return await productsApi.getList(filters)
 }
 
 /**
@@ -61,7 +54,7 @@ export const getProducts = async (filters = {}) => {
  * @returns {Promise<Object>} Данные товара
  */
 export const getProduct = async (productId) => {
-  return await api.get(`/shop/products/${productId}/`)
+  return await productsApi.getById(productId)
 }
 
 /**
@@ -143,7 +136,7 @@ export const getHealthFilters = async () => {
  * @returns {Promise<Object>} Элементы корзины, общая сумма, количество позиций
  */
 export const getCart = async () => {
-  return await api.get('/shop/cart/')
+  return await cartApi.getList()
 }
 
 /**

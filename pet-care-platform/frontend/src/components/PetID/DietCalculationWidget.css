@@ -1,0 +1,258 @@
+.diet-calculation-widget {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.diet-widget.loading,
+.diet-widget.error {
+  padding: 40px;
+  text-align: center;
+  background: white;
+  border-radius: 12px;
+  font-size: 16px;
+}
+
+.diet-widget.error {
+  color: #e74c3c;
+}
+
+.widget-header {
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 2px solid #f0f0f0;
+}
+
+.widget-header h3 {
+  margin: 0 0 8px 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+.breed-name {
+  font-size: 14px;
+  color: #7f8c8d;
+}
+
+.diet-section {
+  margin-bottom: 24px;
+}
+
+.diet-section h4 {
+  margin: 0 0 16px 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+.diet-section h5 {
+  margin: 12px 0 8px 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #495057;
+}
+
+/* Калории */
+.calories-display {
+  padding: 20px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 12px;
+  color: white;
+}
+
+.calories-main {
+  display: flex;
+  align-items: baseline;
+  margin-bottom: 12px;
+}
+
+.calories-value {
+  font-size: 48px;
+  font-weight: 700;
+}
+
+.calories-unit {
+  font-size: 18px;
+  margin-left: 8px;
+  opacity: 0.9;
+}
+
+.calories-details {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.calorie-item {
+  display: flex;
+  justify-content: space-between;
+  font-size: 14px;
+  opacity: 0.95;
+}
+
+.factors-list {
+  margin-top: 16px;
+  padding: 16px;
+  background: #f8f9fa;
+  border-radius: 8px;
+}
+
+.factors-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.factor {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: white;
+  border-radius: 6px;
+  font-size: 13px;
+}
+
+.factor-name {
+  color: #6c757d;
+}
+
+.factor-value {
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+/* БЖУ */
+.macros-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+}
+
+.macro-card {
+  padding: 20px;
+  border-radius: 12px;
+  text-align: center;
+  transition: transform 0.2s;
+}
+
+.macro-card:hover {
+  transform: translateY(-4px);
+}
+
+.macro-card.protein {
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  color: white;
+}
+
+.macro-card.fat {
+  background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+  color: white;
+}
+
+.macro-card.carbs {
+  background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+  color: white;
+}
+
+.macro-icon {
+  font-size: 32px;
+  margin-bottom: 8px;
+}
+
+.macro-name {
+  font-size: 14px;
+  font-weight: 500;
+  opacity: 0.9;
+  margin-bottom: 8px;
+}
+
+.macro-grams {
+  font-size: 28px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.macro-percent {
+  font-size: 16px;
+  font-weight: 600;
+  opacity: 0.9;
+  margin-bottom: 4px;
+}
+
+.macro-calories {
+  font-size: 13px;
+  opacity: 0.8;
+}
+
+/* Порции */
+.portions-info {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.portion-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background: #f8f9fa;
+  border-radius: 8px;
+}
+
+.portion-label {
+  font-size: 14px;
+  color: #6c757d;
+  font-weight: 500;
+}
+
+.portion-value {
+  font-size: 16px;
+  color: #2c3e50;
+  font-weight: 600;
+}
+
+.portion-item.meals .portion-value {
+  color: #3498db;
+}
+
+.portion-item.times .portion-value {
+  color: #9b59b6;
+}
+
+.portion-item.size .portion-value {
+  color: #e74c3c;
+}
+
+/* Заметки */
+.notes-list {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.notes-list li {
+  margin: 8px 0;
+  font-size: 14px;
+  color: #495057;
+  line-height: 1.5;
+}
+
+.notes-list li::marker {
+  color: #3498db;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .macros-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .factors-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+

@@ -16,7 +16,7 @@ import 'react-datepicker/dist/react-datepicker.css';
 import {
   X, ChevronLeft, ChevronRight, Check, AlertCircle,
   Dog, Cat, Search, Camera, Sparkles, Heart, Calendar,
-  CheckCircle2, PartyPopper, ArrowRight
+  CheckCircle2, PartyPopper, ArrowRight, RefreshCw, Trash2
 } from 'lucide-react';
 import {
   getBreeds,
@@ -57,16 +57,52 @@ const initialFormState = {
   size: null,
 };
 
-// Популярные породы для быстрого выбора
-const POPULAR_DOG_BREEDS = [
-  'Лабрадор Ретривер', 'Немецкая овчарка', 'Золотистый ретривер',
-  'Французский бульдог', 'Йоркширский терьер', 'Мопс', 'Чихуахуа', 'Такса'
+// Полные fallback-данные пород (когда API недоступен)
+const FALLBACK_DOG_BREEDS = [
+  { id: 'labrador', name: 'Лабрадор ретривер', size: 'large' },
+  { id: 'german_shepherd', name: 'Немецкая овчарка', size: 'large' },
+  { id: 'golden_retriever', name: 'Золотистый ретривер', size: 'large' },
+  { id: 'french_bulldog', name: 'Французский бульдог', size: 'medium' },
+  { id: 'yorkshire_terrier', name: 'Йоркширский терьер', size: 'small' },
+  { id: 'pug', name: 'Мопс', size: 'small' },
+  { id: 'chihuahua', name: 'Чихуахуа', size: 'small' },
+  { id: 'dachshund', name: 'Такса', size: 'small' },
+  { id: 'beagle', name: 'Бигль', size: 'medium' },
+  { id: 'poodle', name: 'Пудель', size: 'medium' },
+  { id: 'husky', name: 'Сибирский хаски', size: 'large' },
+  { id: 'corgi', name: 'Вельш-корги', size: 'medium' },
+  { id: 'shih_tzu', name: 'Ши-тцу', size: 'small' },
+  { id: 'boxer', name: 'Боксёр', size: 'large' },
+  { id: 'spitz', name: 'Шпиц', size: 'small' },
+  { id: 'jack_russell', name: 'Джек-рассел-терьер', size: 'small' },
+  { id: 'cocker_spaniel', name: 'Кокер-спаниель', size: 'medium' },
+  { id: 'border_collie', name: 'Бордер-колли', size: 'medium' },
+  { id: 'rottweiler', name: 'Ротвейлер', size: 'large' },
+  { id: 'mixed', name: 'Метис / Беспородная', size: 'medium' },
 ];
 
-const POPULAR_CAT_BREEDS = [
-  'Британская короткошерстная', 'Шотландская вислоухая', 'Мейн-кун',
-  'Персидская', 'Сфинкс', 'Бенгальская', 'Сиамская', 'Русская голубая'
+const FALLBACK_CAT_BREEDS = [
+  { id: 'british_shorthair', name: 'Британская короткошерстная', size: 'medium' },
+  { id: 'scottish_fold', name: 'Шотландская вислоухая', size: 'medium' },
+  { id: 'maine_coon', name: 'Мейн-кун', size: 'large' },
+  { id: 'persian', name: 'Персидская', size: 'medium' },
+  { id: 'sphynx', name: 'Сфинкс', size: 'medium' },
+  { id: 'bengal', name: 'Бенгальская', size: 'medium' },
+  { id: 'siamese', name: 'Сиамская', size: 'medium' },
+  { id: 'russian_blue', name: 'Русская голубая', size: 'medium' },
+  { id: 'ragdoll', name: 'Рэгдолл', size: 'large' },
+  { id: 'abyssinian', name: 'Абиссинская', size: 'medium' },
+  { id: 'siberian', name: 'Сибирская', size: 'large' },
+  { id: 'devon_rex', name: 'Девон-рекс', size: 'small' },
+  { id: 'norwegian_forest', name: 'Норвежская лесная', size: 'large' },
+  { id: 'burmese', name: 'Бурманская', size: 'medium' },
+  { id: 'exotic_shorthair', name: 'Экзотическая короткошерстная', size: 'medium' },
+  { id: 'mixed_cat', name: 'Метис / Беспородная', size: 'medium' },
 ];
+
+// Популярные породы для быстрого выбора (первые 4)
+const POPULAR_DOG_BREEDS = FALLBACK_DOG_BREEDS.slice(0, 4);
+const POPULAR_CAT_BREEDS = FALLBACK_CAT_BREEDS.slice(0, 4);
 
 // Валидация веса по породе
 const BREED_WEIGHT_RANGES = {
@@ -346,26 +382,44 @@ const Step1Species = ({ formData, onChange, errors }) => {
         <input
           type="text"
           value={formData.name}
-          onChange={(e) => onChange('name', e.target.value)}
+          onChange={(e) => {
+            // Ограничиваем ввод
+            const value = e.target.value;
+            if (value.length <= 50) {
+              // Убираем лишние пробелы в начале, разрешаем только буквы, пробелы и дефисы
+              const cleaned = value.replace(/^\s+/, '').replace(/[^a-zA-Zа-яА-ЯёЁ\s\-]/g, '');
+              onChange('name', cleaned);
+            }
+          }}
           placeholder={formData.species === 'dog' ? 'Например: Барон, Рекс, Лаки' : 
                        formData.species === 'cat' ? 'Например: Мурка, Барсик, Снежок' : 
                        'Введите кличку'}
+          maxLength={50}
           className={`
             w-full px-4 py-3.5 rounded-xl border-2 transition-all text-lg
             focus:outline-none focus:ring-4 focus:ring-purple-500/20
             ${errors.name 
               ? 'border-red-300 bg-red-50' 
-              : formData.name 
+              : formData.name && formData.name.trim().length >= 2
                 ? 'border-green-300 bg-green-50' 
                 : 'border-gray-200 focus:border-purple-500'
             }
           `}
         />
-        {errors.name && (
-          <p className="mt-2 text-sm text-red-500 flex items-center gap-1">
-            <AlertCircle className="w-4 h-4" /> {errors.name}
-          </p>
-        )}
+        <div className="flex justify-between mt-1">
+          {errors.name ? (
+            <p className="text-sm text-red-500 flex items-center gap-1">
+              <AlertCircle className="w-4 h-4" /> {errors.name}
+            </p>
+          ) : formData.name && formData.name.trim().length >= 2 ? (
+            <p className="text-sm text-green-600 flex items-center gap-1">
+              <Check className="w-4 h-4" /> Отличное имя!
+            </p>
+          ) : (
+            <span />
+          )}
+          <span className="text-xs text-gray-400">{formData.name?.length || 0}/50</span>
+        </div>
       </div>
 
       {/* Фото (опционально) */}
@@ -427,51 +481,106 @@ const Step1Species = ({ formData, onChange, errors }) => {
 const Step2Info = ({ formData, onChange, errors, breeds, loadingBreeds, onBreedSelect }) => {
   const [breedSearch, setBreedSearch] = useState(formData.breed || '');
   const [showBreedDropdown, setShowBreedDropdown] = useState(false);
+  const dropdownRef = useRef(null);
+  const inputRef = useRef(null);
 
+  // Используем API породы или fallback
+  const fallbackBreeds = formData.species === 'dog' ? FALLBACK_DOG_BREEDS : FALLBACK_CAT_BREEDS;
+  const availableBreeds = breeds.length > 0 ? breeds : fallbackBreeds;
   const popularBreeds = formData.species === 'dog' ? POPULAR_DOG_BREEDS : POPULAR_CAT_BREEDS;
   
+  // Фильтрация пород
   const filteredBreeds = useMemo(() => {
-    if (!breedSearch) return breeds;
-    return breeds.filter(b => 
-      b.name.toLowerCase().includes(breedSearch.toLowerCase())
+    if (!breedSearch.trim()) return availableBreeds;
+    const search = breedSearch.toLowerCase().trim();
+    return availableBreeds.filter(b => 
+      b.name.toLowerCase().includes(search)
     );
-  }, [breeds, breedSearch]);
+  }, [availableBreeds, breedSearch]);
 
-  const handleBreedSelect = (breed) => {
+  // Обработчик выбора породы
+  const handleBreedSelect = useCallback((breed) => {
     setBreedSearch(breed.name);
     setShowBreedDropdown(false);
+    onChange('breed', breed.name);
+    onChange('breedId', breed.id);
+    // Установим размер из породы если есть
+    if (breed.size) {
+      onChange('size', breed.size);
+    }
+    // Вызываем callback для загрузки подсказок
     onBreedSelect(breed);
-  };
+  }, [onChange, onBreedSelect]);
 
-  // Валидация веса
-  const getWeightValidation = () => {
+  // Закрытие dropdown при клике вне
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target) &&
+          inputRef.current && !inputRef.current.contains(e.target)) {
+        setShowBreedDropdown(false);
+      }
+    };
+    
+    if (showBreedDropdown) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [showBreedDropdown]);
+
+  // Валидация веса с учётом вида и размера
+  const getWeightValidation = useCallback(() => {
     if (!formData.weight) return null;
     const weight = parseFloat(formData.weight);
     if (isNaN(weight) || weight <= 0) return { type: 'error', message: 'Введите корректный вес' };
+    if (weight < 0.3) return { type: 'error', message: 'Минимальный вес 0.3 кг' };
     
-    const breedRange = BREED_WEIGHT_RANGES[formData.breed];
-    if (breedRange) {
-      if (weight < breedRange.min) return { type: 'warning', message: `Вес ниже нормы для породы (${breedRange.min}-${breedRange.max} кг)` };
-      if (weight > breedRange.obesity) return { type: 'error', message: `Вес превышает норму (макс ${breedRange.obesity} кг)` };
-      if (weight > breedRange.max) return { type: 'warning', message: 'Возможный избыточный вес' };
-      return { type: 'success', message: 'Вес в норме для породы' };
+    // Лимиты по виду
+    if (formData.species === 'dog') {
+      if (weight > 100) return { type: 'error', message: 'Максимальный вес собаки 100 кг' };
+      if (weight > 80) return { type: 'warning', message: 'Очень крупная собака' };
+    } else if (formData.species === 'cat') {
+      if (weight > 15) return { type: 'error', message: 'Максимальный вес кошки 15 кг' };
+      if (weight > 10) return { type: 'warning', message: 'Крупная кошка или избыточный вес' };
     }
     
-    // Общие лимиты
-    if (formData.species === 'dog' && weight > 90) return { type: 'error', message: 'Вес слишком большой' };
-    if (formData.species === 'cat' && weight > 15) return { type: 'error', message: 'Вес слишком большой для кошки' };
+    // Проверка по известным породам
+    const breedRange = BREED_WEIGHT_RANGES[formData.breed];
+    if (breedRange) {
+      if (weight < breedRange.min * 0.7) return { type: 'warning', message: `Вес ниже нормы для породы (${breedRange.min}-${breedRange.max} кг)` };
+      if (weight > breedRange.obesity) return { type: 'warning', message: 'Возможен избыточный вес' };
+      return { type: 'success', message: `Вес в норме для ${formData.breed}` };
+    }
     
     return { type: 'success', message: '' };
-  };
+  }, [formData.weight, formData.species, formData.breed]);
 
   const weightValidation = getWeightValidation();
 
   // Синхронизация поиска с выбранной породой
   useEffect(() => {
-    if (formData.breed && !breedSearch) {
+    if (formData.breed && breedSearch !== formData.breed) {
       setBreedSearch(formData.breed);
     }
   }, [formData.breed]);
+
+  // Расчёт возраста для отображения
+  const calculateAge = useCallback((birthDate) => {
+    if (!birthDate) return null;
+    const today = new Date();
+    const birth = new Date(birthDate);
+    const months = (today.getFullYear() - birth.getFullYear()) * 12 + today.getMonth() - birth.getMonth();
+    
+    if (months < 1) return 'меньше месяца';
+    if (months < 12) return `${months} мес.`;
+    
+    const years = Math.floor(months / 12);
+    const remainingMonths = months % 12;
+    
+    if (remainingMonths === 0) {
+      return `${years} ${years === 1 ? 'год' : years < 5 ? 'года' : 'лет'}`;
+    }
+    return `${years} ${years === 1 ? 'год' : years < 5 ? 'года' : 'лет'} ${remainingMonths} мес.`;
+  }, []);
 
   return (
     <div className="space-y-5">
@@ -481,82 +590,101 @@ const Step2Info = ({ formData, onChange, errors, breeds, loadingBreeds, onBreedS
           Порода <span className="text-red-500">*</span>
         </label>
         
-        {/* Популярные породы */}
-        {!formData.breedId && (
+        {/* Популярные породы (когда ничего не выбрано) */}
+        {!formData.breed && (
           <div className="mb-3">
             <p className="text-xs text-gray-500 mb-2">Популярные породы:</p>
             <div className="flex flex-wrap gap-2">
-              {popularBreeds.slice(0, 4).map(breedName => {
-                const breed = breeds.find(b => b.name === breedName);
-                return breed ? (
-                  <button
-                    key={breedName}
-                    type="button"
-                    onClick={() => handleBreedSelect(breed)}
-                    className="px-3 py-1.5 text-sm bg-purple-50 text-purple-700 rounded-full hover:bg-purple-100 transition-colors"
-                  >
-                    {breedName}
-                  </button>
-                ) : null;
-              })}
+              {popularBreeds.map(breed => (
+                <button
+                  key={breed.id}
+                  type="button"
+                  onClick={() => handleBreedSelect(breed)}
+                  className="px-3 py-1.5 text-sm bg-purple-50 text-purple-700 rounded-full hover:bg-purple-100 transition-colors"
+                >
+                  {breed.name}
+                </button>
+              ))}
             </div>
           </div>
         )}
 
         {/* Поиск породы */}
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+        <div className="relative" ref={inputRef}>
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
           <input
             type="text"
             value={breedSearch}
             onChange={(e) => {
               setBreedSearch(e.target.value);
               setShowBreedDropdown(true);
-              if (!e.target.value) {
+              if (!e.target.value.trim()) {
                 onChange('breed', '');
                 onChange('breedId', null);
               }
             }}
             onFocus={() => setShowBreedDropdown(true)}
-            placeholder={loadingBreeds ? 'Загрузка пород...' : 'Начните вводить название'}
+            placeholder={loadingBreeds ? 'Загрузка пород...' : 'Начните вводить или выберите из списка'}
             className={`
               w-full pl-10 pr-10 py-3 rounded-xl border-2 transition-all
               focus:outline-none focus:ring-4 focus:ring-purple-500/20
               ${errors.breed 
                 ? 'border-red-300 bg-red-50' 
-                : formData.breedId 
+                : formData.breed 
                   ? 'border-green-300 bg-green-50' 
                   : 'border-gray-200 focus:border-purple-500'
               }
             `}
           />
-          {formData.breedId && (
-            <Check className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-green-500" />
-          )}
+          {formData.breed ? (
+            <button
+              type="button"
+              onClick={() => {
+                setBreedSearch('');
+                onChange('breed', '');
+                onChange('breedId', null);
+              }}
+              className="absolute right-3 top-1/2 -translate-y-1/2 p-1 hover:bg-gray-100 rounded-full"
+            >
+              <X className="w-4 h-4 text-gray-400" />
+            </button>
+          ) : loadingBreeds ? (
+            <div className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />
+          ) : null}
         </div>
 
         {/* Dropdown пород */}
         <AnimatePresence>
-          {showBreedDropdown && filteredBreeds.length > 0 && (
+          {showBreedDropdown && (
             <motion.div
+              ref={dropdownRef}
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
-              className="absolute z-20 w-full mt-1 bg-white rounded-xl border border-gray-200 shadow-xl max-h-48 overflow-y-auto"
+              className="absolute z-50 w-full mt-1 bg-white rounded-xl border border-gray-200 shadow-xl max-h-60 overflow-y-auto"
             >
-              {filteredBreeds.slice(0, 15).map(breed => (
-                <button
-                  key={breed.id}
-                  type="button"
-                  onClick={() => handleBreedSelect(breed)}
-                  className="w-full px-4 py-2.5 text-left hover:bg-purple-50 transition-colors flex items-center justify-between"
-                >
-                  <span className="font-medium text-gray-700">{breed.name}</span>
-                  {formData.breedId === breed.id && (
-                    <Check className="w-4 h-4 text-purple-500" />
-                  )}
-                </button>
-              ))}
+              {filteredBreeds.length > 0 ? (
+                filteredBreeds.slice(0, 20).map(breed => (
+                  <button
+                    key={breed.id}
+                    type="button"
+                    onClick={() => handleBreedSelect(breed)}
+                    className={`
+                      w-full px-4 py-2.5 text-left transition-colors flex items-center justify-between
+                      ${formData.breed === breed.name ? 'bg-purple-50' : 'hover:bg-gray-50'}
+                    `}
+                  >
+                    <span className="font-medium text-gray-700">{breed.name}</span>
+                    {formData.breed === breed.name && (
+                      <Check className="w-4 h-4 text-purple-500" />
+                    )}
+                  </button>
+                ))
+              ) : (
+                <div className="px-4 py-3 text-center text-gray-500 text-sm">
+                  Порода не найдена. Выберите "Метис" или введите название вручную.
+                </div>
+              )}
             </motion.div>
           )}
         </AnimatePresence>
@@ -631,6 +759,12 @@ const Step2Info = ({ formData, onChange, errors, breeds, loadingBreeds, onBreedS
             />
             <Calendar className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
           </div>
+          {formData.date_of_birth && (
+            <p className="mt-1 text-xs text-green-600 flex items-center gap-1">
+              <Check className="w-3 h-3" />
+              Возраст: {calculateAge(formData.date_of_birth)}
+            </p>
+          )}
           {errors.date_of_birth && (
             <p className="mt-2 text-sm text-red-500">{errors.date_of_birth}</p>
           )}
@@ -640,28 +774,38 @@ const Step2Info = ({ formData, onChange, errors, breeds, loadingBreeds, onBreedS
       {/* Вес */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">
-          Вес (кг) <span className="text-red-500">*</span>
+          Текущий вес (кг) <span className="text-red-500">*</span>
         </label>
-        <input
-          type="number"
-          step="0.1"
-          min="0.1"
-          value={formData.weight}
-          onChange={(e) => onChange('weight', e.target.value)}
-          placeholder="Например: 5.5"
-          className={`
-            w-full px-4 py-3 rounded-xl border-2 transition-all
-            focus:outline-none focus:ring-4 focus:ring-purple-500/20
-            ${weightValidation?.type === 'error'
-              ? 'border-red-300 bg-red-50'
-              : weightValidation?.type === 'warning'
-                ? 'border-yellow-300 bg-yellow-50'
-                : weightValidation?.type === 'success'
-                  ? 'border-green-300 bg-green-50'
-                  : 'border-gray-200 focus:border-purple-500'
-            }
-          `}
-        />
+        <div className="relative">
+          <input
+            type="number"
+            step="0.1"
+            min="0.3"
+            max={formData.species === 'cat' ? 15 : 100}
+            value={formData.weight}
+            onChange={(e) => {
+              const val = e.target.value;
+              // Ограничиваем ввод
+              if (val === '' || (parseFloat(val) >= 0 && parseFloat(val) <= (formData.species === 'cat' ? 15 : 100))) {
+                onChange('weight', val);
+              }
+            }}
+            placeholder={formData.species === 'cat' ? 'От 0.3 до 15 кг' : 'От 0.3 до 100 кг'}
+            className={`
+              w-full px-4 py-3 rounded-xl border-2 transition-all
+              focus:outline-none focus:ring-4 focus:ring-purple-500/20
+              ${weightValidation?.type === 'error'
+                ? 'border-red-300 bg-red-50'
+                : weightValidation?.type === 'warning'
+                  ? 'border-yellow-300 bg-yellow-50'
+                  : weightValidation?.type === 'success' && weightValidation?.message
+                    ? 'border-green-300 bg-green-50'
+                    : 'border-gray-200 focus:border-purple-500'
+              }
+            `}
+          />
+          <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 text-sm pointer-events-none">кг</span>
+        </div>
         {weightValidation?.message && (
           <p className={`mt-2 text-sm flex items-center gap-1 ${
             weightValidation.type === 'error' ? 'text-red-500' :
@@ -676,14 +820,6 @@ const Step2Info = ({ formData, onChange, errors, breeds, loadingBreeds, onBreedS
           <p className="mt-2 text-sm text-red-500">{errors.weight}</p>
         )}
       </div>
-
-      {/* Закрытие dropdown при клике вне */}
-      {showBreedDropdown && (
-        <div 
-          className="fixed inset-0 z-10"
-          onClick={() => setShowBreedDropdown(false)}
-        />
-      )}
     </div>
   );
 };
@@ -1101,8 +1237,23 @@ const Step4Behavior = ({ formData, onChange, errors }) => {
 // ОСНОВНОЙ КОМПОНЕНТ WIZARD
 // ============================================
 
+// Локальный ключ для автосохранения
+const DRAFT_STORAGE_KEY = 'pet_wizard_draft';
+
 export default function PetWizard({ onClose, onSubmit, isLoading, editingDraft = null }) {
-  const [currentStep, setCurrentStep] = useState(editingDraft?.draft_step || 1);
+  // Восстановление данных из localStorage при первой загрузке
+  const [currentStep, setCurrentStep] = useState(() => {
+    if (editingDraft?.draft_step) return editingDraft.draft_step;
+    const saved = localStorage.getItem(DRAFT_STORAGE_KEY);
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        return parsed.draft_step || 1;
+      } catch (e) { return 1; }
+    }
+    return 1;
+  });
+  
   const [formData, setFormData] = useState(() => {
     if (editingDraft) {
       return {
@@ -1111,15 +1262,62 @@ export default function PetWizard({ onClose, onSubmit, isLoading, editingDraft =
         date_of_birth: editingDraft.date_of_birth ? new Date(editingDraft.date_of_birth) : null,
       };
     }
+    // Проверяем localStorage
+    const saved = localStorage.getItem(DRAFT_STORAGE_KEY);
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        return {
+          ...initialFormState,
+          ...parsed,
+          date_of_birth: parsed.date_of_birth ? new Date(parsed.date_of_birth) : null,
+        };
+      } catch (e) { return initialFormState; }
+    }
     return initialFormState;
   });
+  
   const [errors, setErrors] = useState({});
   const [breeds, setBreeds] = useState([]);
   const [loadingBreeds, setLoadingBreeds] = useState(false);
   const [breedSuggestions, setBreedSuggestions] = useState(null);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [createdPetName, setCreatedPetName] = useState('');
-  const [isSubmittingFinal, setIsSubmittingFinal] = useState(false); // Локальное состояние для финального сохранения
+  const [isSubmittingFinal, setIsSubmittingFinal] = useState(false);
+  const [isSavingDraft, setIsSavingDraft] = useState(false);
+  const [showCloseConfirm, setShowCloseConfirm] = useState(false);
+  const [draftSavedMessage, setDraftSavedMessage] = useState(false);
+  const [restoredFromStorage, setRestoredFromStorage] = useState(() => {
+    if (editingDraft) return false;
+    const saved = localStorage.getItem(DRAFT_STORAGE_KEY);
+    return !!saved;
+  });
+  
+  // Очистить восстановленные данные из localStorage
+  const handleClearRestoredData = () => {
+    localStorage.removeItem(DRAFT_STORAGE_KEY);
+    setFormData(initialFormState);
+    setCurrentStep(1);
+    setRestoredFromStorage(false);
+  };
+
+  // Автосохранение в localStorage при изменении данных
+  useEffect(() => {
+    const hasData = formData.name || formData.species;
+    if (hasData) {
+      const dataToSave = {
+        ...formData,
+        date_of_birth: formData.date_of_birth 
+          ? formData.date_of_birth.toISOString().split('T')[0] 
+          : null,
+        draft_step: currentStep,
+      };
+      // Не сохраняем фото в localStorage (слишком большое)
+      delete dataToSave.photo;
+      delete dataToSave.photoPreview;
+      localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(dataToSave));
+    }
+  }, [formData, currentStep]);
 
   // Загрузка пород при выборе вида
   useEffect(() => {
@@ -1148,23 +1346,28 @@ export default function PetWizard({ onClose, onSubmit, isLoading, editingDraft =
       ...prev,
       breed: breed.name,
       breedId: breed.id,
+      size: breed.size || prev.size, // Установим размер из fallback данных если есть
     }));
 
-    // Загружаем подсказки для породы
-    try {
-      const suggestions = await getBreedSuggestions(breed.id);
-      setBreedSuggestions(suggestions);
-      
-      // Автозаполнение
-      if (suggestions?.suggestions) {
-        setFormData(prev => ({
-          ...prev,
-          activity_level: suggestions.suggestions.activity_level || prev.activity_level,
-          size: suggestions.suggestions.size || prev.size,
-        }));
+    // Загружаем подсказки для породы только если это реальный ID из API
+    // (fallback породы имеют строковые id типа 'labrador', API - UUID)
+    if (breed.id && breed.id.includes('-')) {
+      try {
+        const suggestions = await getBreedSuggestions(breed.id);
+        setBreedSuggestions(suggestions);
+        
+        // Автозаполнение
+        if (suggestions?.suggestions) {
+          setFormData(prev => ({
+            ...prev,
+            activity_level: suggestions.suggestions.activity_level || prev.activity_level,
+            size: suggestions.suggestions.size || prev.size,
+          }));
+        }
+      } catch (error) {
+        console.error('Ошибка загрузки подсказок:', error);
+        // Не показываем ошибку пользователю - это не критично
       }
-    } catch (error) {
-      console.error('Ошибка загрузки подсказок:', error);
     }
   };
 
@@ -1205,12 +1408,23 @@ export default function PetWizard({ onClose, onSubmit, isLoading, editingDraft =
       case 1:
         if (!formData.species) newErrors.species = 'Выберите вид животного';
         if (!formData.name.trim()) newErrors.name = 'Введите кличку питомца';
+        else if (formData.name.trim().length < 2) newErrors.name = 'Минимум 2 символа';
+        else if (formData.name.trim().length > 50) newErrors.name = 'Максимум 50 символов';
         break;
       case 2:
-        if (!formData.breed) newErrors.breed = 'Выберите породу';
+        if (!formData.breed || formData.breed.trim().length < 2) {
+          newErrors.breed = 'Выберите или введите породу';
+        }
         if (!formData.gender) newErrors.gender = 'Выберите пол';
         if (!formData.date_of_birth) newErrors.date_of_birth = 'Укажите дату рождения';
-        if (!formData.weight) newErrors.weight = 'Введите вес';
+        if (!formData.weight) {
+          newErrors.weight = 'Введите вес';
+        } else {
+          const weight = parseFloat(formData.weight);
+          if (isNaN(weight) || weight < 0.3) newErrors.weight = 'Минимальный вес 0.3 кг';
+          else if (formData.species === 'cat' && weight > 15) newErrors.weight = 'Максимум 15 кг для кошки';
+          else if (formData.species === 'dog' && weight > 100) newErrors.weight = 'Максимум 100 кг';
+        }
         break;
       case 3:
         if (formData.health_issues.length === 0) newErrors.health_issues = 'Укажите состояние здоровья';
@@ -1254,6 +1468,7 @@ export default function PetWizard({ onClose, onSubmit, isLoading, editingDraft =
     if (validateStep(currentStep)) {
       if (currentStep < 4) {
         setCurrentStep(currentStep + 1);
+        setRestoredFromStorage(false); // Скрываем уведомление при переходе
       } else {
         handleSubmit();
       }
@@ -1268,16 +1483,53 @@ export default function PetWizard({ onClose, onSubmit, isLoading, editingDraft =
   };
 
   // Сохранение как черновик
-  const handleSaveDraft = () => {
-    const draftData = {
-      ...formData,
-      date_of_birth: formData.date_of_birth 
-        ? formData.date_of_birth.toISOString().split('T')[0] 
-        : null,
-      is_draft: true,
-      draft_step: currentStep,
-    };
-    onSubmit(draftData, true);
+  const handleSaveDraft = async (closeAfterSave = false) => {
+    // Проверяем минимальные данные
+    if (!formData.name && !formData.species) {
+      if (closeAfterSave) {
+        localStorage.removeItem(DRAFT_STORAGE_KEY);
+        onClose();
+      }
+      return;
+    }
+    
+    setIsSavingDraft(true);
+    try {
+      const draftData = {
+        name: formData.name || 'Без имени',
+        species: formData.species || 'dog',
+        breed: formData.breed || null,
+        date_of_birth: formData.date_of_birth 
+          ? formData.date_of_birth.toISOString().split('T')[0] 
+          : null,
+        weight: formData.weight ? parseFloat(formData.weight) : null,
+        gender: formData.gender || null,
+        health_issues: formData.health_issues || [],
+        excluded_ingredients: formData.excluded_ingredients || [],
+        activity_level: formData.activity_level || null,
+        housing_type: formData.housing_type || null,
+        behavioral_problems: formData.behavioral_problems || [],
+        is_draft: true,
+        draft_step: currentStep,
+      };
+      
+      await onSubmit(draftData, true);
+      
+      // Очищаем localStorage после успешного сохранения
+      localStorage.removeItem(DRAFT_STORAGE_KEY);
+      
+      if (closeAfterSave) {
+        onClose();
+      } else {
+        // Показываем сообщение об успешном сохранении
+        setDraftSavedMessage(true);
+        setTimeout(() => setDraftSavedMessage(false), 3000);
+      }
+    } catch (error) {
+      console.error('Ошибка сохранения черновика:', error);
+    } finally {
+      setIsSavingDraft(false);
+    }
   };
 
   // Финальная отправка
@@ -1307,6 +1559,9 @@ export default function PetWizard({ onClose, onSubmit, isLoading, editingDraft =
       // Отправляем данные
       await onSubmit(submitData, false);
 
+      // Очищаем localStorage после успешного создания
+      localStorage.removeItem(DRAFT_STORAGE_KEY);
+
       // Показываем модальное окно успеха только после успешного сохранения
       setCreatedPetName(formData.name);
       setShowSuccessModal(true);
@@ -1323,14 +1578,23 @@ export default function PetWizard({ onClose, onSubmit, isLoading, editingDraft =
     const hasData = formData.name || formData.species;
     
     if (hasData) {
-      const shouldSave = window.confirm(
-        'Сохранить как черновик? Вы сможете продолжить заполнение позже.'
-      );
-      if (shouldSave) {
-        handleSaveDraft();
-        return;
-      }
+      setShowCloseConfirm(true);
+    } else {
+      localStorage.removeItem(DRAFT_STORAGE_KEY);
+      onClose();
     }
+  };
+  
+  // Подтверждение закрытия - сохранить черновик
+  const handleConfirmSaveDraft = async () => {
+    setShowCloseConfirm(false);
+    await handleSaveDraft(true);
+  };
+  
+  // Подтверждение закрытия - не сохранять
+  const handleConfirmDiscard = () => {
+    setShowCloseConfirm(false);
+    localStorage.removeItem(DRAFT_STORAGE_KEY);
     onClose();
   };
 
@@ -1376,6 +1640,49 @@ export default function PetWizard({ onClose, onSubmit, isLoading, editingDraft =
           {/* Content */}
           <div className="flex-1 overflow-y-auto">
             <div className="p-6">
+              {/* Restored from Storage Banner */}
+              <AnimatePresence>
+                {restoredFromStorage && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-xl flex items-center justify-between"
+                  >
+                    <div className="flex items-center gap-2">
+                      <RefreshCw className="w-4 h-4 text-blue-500" />
+                      <span className="text-sm text-blue-700">
+                        Восстановлены несохранённые данные
+                      </span>
+                    </div>
+                    <button
+                      onClick={handleClearRestoredData}
+                      className="text-sm text-blue-600 hover:text-blue-800 flex items-center gap-1"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                      Очистить
+                    </button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+              
+              {/* Draft Saved Success Message */}
+              <AnimatePresence>
+                {draftSavedMessage && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    className="mb-4 p-3 bg-green-50 border border-green-200 rounded-xl flex items-center gap-2"
+                  >
+                    <CheckCircle2 className="w-4 h-4 text-green-500" />
+                    <span className="text-sm text-green-700">
+                      Черновик сохранён! Вы можете продолжить позже.
+                    </span>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+              
               {/* Progress Bar */}
               <ProgressBar currentStep={currentStep} totalSteps={4} />
               
@@ -1426,12 +1733,33 @@ export default function PetWizard({ onClose, onSubmit, isLoading, editingDraft =
                   </AnimatePresence>
                 </div>
 
-                {/* Preview Card */}
+                {/* Preview Card - Desktop */}
                 <div className="hidden lg:block">
                   <PetPreviewCard 
                     formData={formData} 
                     completeness={calculateCompleteness}
                   />
+                </div>
+              </div>
+              
+              {/* Preview Card - Mobile (simplified) */}
+              <div className="lg:hidden mt-6">
+                <div className="bg-gradient-to-r from-purple-50 to-orange-50 rounded-xl p-4 border border-purple-100">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <span className="text-2xl">
+                        {formData.species === 'dog' ? '🐕' : formData.species === 'cat' ? '🐱' : '🐾'}
+                      </span>
+                      <div>
+                        <p className="font-medium text-gray-800">{formData.name || 'Имя питомца'}</p>
+                        <p className="text-xs text-gray-500">{formData.breed || 'Порода'}</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-bold text-purple-600">{Math.min(calculateCompleteness, 100)}%</p>
+                      <p className="text-xs text-gray-400">заполнено</p>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1460,11 +1788,18 @@ export default function PetWizard({ onClose, onSubmit, isLoading, editingDraft =
                 {/* Save as draft button */}
                 <button
                   type="button"
-                  onClick={handleSaveDraft}
-                  disabled={isLoading}
-                  className="px-5 py-2.5 rounded-xl border-2 border-gray-200 text-gray-600 font-medium hover:bg-gray-50 transition-all disabled:opacity-50"
+                  onClick={() => handleSaveDraft(false)}
+                  disabled={isLoading || isSavingDraft || !formData.name && !formData.species}
+                  className="flex items-center gap-2 px-5 py-2.5 rounded-xl border-2 border-gray-200 text-gray-600 font-medium hover:bg-gray-50 transition-all disabled:opacity-50"
                 >
-                  Сохранить черновик
+                  {isSavingDraft ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
+                      Сохранение...
+                    </>
+                  ) : (
+                    'Сохранить черновик'
+                  )}
                 </button>
 
                 {/* Next/Submit button */}
@@ -1496,6 +1831,66 @@ export default function PetWizard({ onClose, onSubmit, isLoading, editingDraft =
           </div>
         </motion.div>
       </div>
+      
+      {/* Close Confirmation Dialog */}
+      <AnimatePresence>
+        {showCloseConfirm && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6"
+            >
+              <div className="text-center mb-6">
+                <div className="w-16 h-16 mx-auto mb-4 bg-amber-100 rounded-full flex items-center justify-center">
+                  <AlertCircle className="w-8 h-8 text-amber-500" />
+                </div>
+                <h3 className="text-lg font-bold text-gray-800 mb-2">
+                  Сохранить черновик?
+                </h3>
+                <p className="text-gray-500 text-sm">
+                  Вы уже начали заполнять профиль. Сохранить как черновик, чтобы продолжить позже?
+                </p>
+              </div>
+              
+              <div className="flex flex-col gap-2">
+                <button
+                  onClick={handleConfirmSaveDraft}
+                  disabled={isSavingDraft}
+                  className="w-full py-3 rounded-xl bg-gradient-to-r from-purple-600 to-orange-500 text-white font-medium hover:shadow-lg transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {isSavingDraft ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      Сохранение...
+                    </>
+                  ) : (
+                    'Сохранить черновик'
+                  )}
+                </button>
+                <button
+                  onClick={handleConfirmDiscard}
+                  className="w-full py-3 rounded-xl border-2 border-gray-200 text-gray-600 font-medium hover:bg-gray-50 transition-all"
+                >
+                  Не сохранять
+                </button>
+                <button
+                  onClick={() => setShowCloseConfirm(false)}
+                  className="w-full py-2 text-gray-400 text-sm hover:text-gray-600 transition-all"
+                >
+                  Отмена
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Success Modal */}
       <AnimatePresence>

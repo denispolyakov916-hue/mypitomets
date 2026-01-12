@@ -23,7 +23,8 @@
 
 from rest_framework import serializers
 from datetime import datetime
-from .breed_models import Breed
+from .models import Breed
+from .models import CalendarEvent
 
 # Допустимые виды животных
 SPECIES_CHOICES = [
@@ -835,3 +836,107 @@ class BreedSuggestionsSerializer(serializers.Serializer):
     grooming_needs = serializers.CharField()
     trainability = serializers.CharField()
     temperament = serializers.ListField(child=serializers.CharField())
+
+
+# =============================================================================
+# СЕРИАЛИЗАТОРЫ КАЛЕНДАРЯ СОБЫТИЙ
+# =============================================================================
+
+class CalendarEventSerializer(serializers.ModelSerializer):
+    """
+    Сериализатор для полной информации о событии календаря.
+
+    Используется для:
+    - Детального просмотра события
+    - Полного обновления события
+    - Частичного обновления события
+    """
+
+    pet_name = serializers.CharField(source='pet.name', read_only=True)
+    pet_species = serializers.CharField(source='pet.species', read_only=True)
+    pet_photo = serializers.SerializerMethodField(read_only=True)
+
+    class Meta:
+        model = CalendarEvent
+        fields = [
+            'id', 'title', 'description',
+            'pet', 'pet_name', 'pet_species', 'pet_photo', 'user',
+            'event_type', 'priority', 'status',
+            'start_date', 'start_time', 'end_date', 'end_time',
+            'is_recurring', 'recurrence_rule',
+            'notify_before', 'email_notification', 'push_notification',
+            'location', 'cost', 'notes',
+            'created_at', 'updated_at', 'completed_at'
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at', 'completed_at']
+
+    def get_pet_photo(self, obj):
+        """Получение URL фото питомца."""
+        if obj.pet.photo:
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(obj.pet.photo.url)
+        return None
+
+    def validate(self, data):
+        """Валидация данных события."""
+        start_date = data.get('start_date')
+        end_date = data.get('end_date')
+
+        if start_date and end_date and end_date < start_date:
+            raise serializers.ValidationError({
+                'end_date': 'Дата окончания не может быть раньше даты начала.'
+            })
+
+        return data
+
+
+class CalendarEventListSerializer(serializers.ModelSerializer):
+    """
+    Сериализатор для списка событий календаря.
+
+    Оптимизирован для списков - содержит только необходимые поля.
+    """
+
+    pet_name = serializers.CharField(source='pet.name', read_only=True)
+    pet_species = serializers.CharField(source='pet.species', read_only=True)
+
+    class Meta:
+        model = CalendarEvent
+        fields = [
+            'id', 'title', 'event_type', 'priority', 'status',
+            'start_date', 'start_time', 'end_date', 'end_time',
+            'pet_name', 'pet_species', 'location', 'cost'
+        ]
+
+
+class CalendarEventCreateSerializer(serializers.ModelSerializer):
+    """
+    Сериализатор для создания нового события календаря.
+
+    Валидирует обязательные поля и устанавливает пользователя из контекста.
+    """
+
+    class Meta:
+        model = CalendarEvent
+        fields = [
+            'title', 'description', 'pet', 'event_type', 'priority',
+            'start_date', 'start_time', 'end_date', 'end_time',
+            'is_recurring', 'recurrence_rule',
+            'notify_before', 'email_notification', 'push_notification',
+            'location', 'cost', 'notes'
+        ]
+
+    def validate_pet(self, value):
+        """Проверка, что питомец принадлежит пользователю."""
+        request = self.context.get('request')
+        if request and value.owner_id != request.user.id:
+            raise serializers.ValidationError(
+                "Вы не можете создавать события для чужих питомцев."
+            )
+        return value
+
+    def create(self, validated_data):
+        """Создание события с установкой пользователя."""
+        validated_data['user'] = self.context['request'].user
+        return super().create(validated_data)

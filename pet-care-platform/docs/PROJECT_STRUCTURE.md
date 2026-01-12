@@ -1,8 +1,10 @@
 # Питомец+ — Структура проекта
 
 **Дата создания**: Январь 2026
-**Версия**: 2.1 (PetID 2.0)
-**Статус**: ✅ PetID 2.0 + Справочник пород (166 пород) внедрён
+**Версия**: 2.2 (После рефакторинга)
+**Статус**: ✅ PetID 2.0 + Рефакторинг (минимизация файлов)
+
+> ⚠️ **ВАЖНО**: 9 января 2026 проведён рефакторинг для уменьшения количества файлов
 
 ---
 
@@ -56,29 +58,34 @@ pet-care-platform/
 ├── backend/                          # Django Backend
 │   ├── apps/                         # Django приложения
 │   │   ├── users/                    # Модуль пользователей
-│   │   ├── pets/                     # Модуль PetID + Напоминания
-│   │   ├── shop/                     # Модуль магазина
-│   │   ├── training/                 # Модуль курсов + Конструктор
+│   │   ├── pets/                     # Модуль PetID + Календарь + Напоминания ⭐
+│   │   │   ├── services.py           # PersonalizationService + BaseCRUDService ⭐
+│   │   ├── shop/                     # Модуль магазина + Аналитика ⭐
+│   │   │   ├── services.py           # CartService + OrderService + BaseCRUDService ⭐
+│   │   ├── training/                 # Модуль курсов + Конструктор ⭐
+│   │   │   ├── services.py           # CourseService + BaseCRUDService ⭐
+│   │   │   ├── views/                # Разбит на 5 модулей по функционалу ⭐
 │   │   ├── payments/                 # Модуль платежей
 │   │   ├── reviews/                  # Модуль отзывов
-│   │   ├── calendar/                 # Модуль календаря
-│   │   ├── analytics/                # Модуль аналитики
 │   │   └── __init__.py
 │   │
-│   ├── core/                         # Общие компоненты
-│   │   ├── authentication.py         # Кастомная аутентификация
+│   ├── core/                         # Общие компоненты ⭐
+│   │   ├── authentication.py         # Кастомная JWT аутентификация
 │   │   ├── cache_utils.py            # Утилиты кэширования
+│   │   ├── crud_views.py             # Базовые CRUD классы
+│   │   ├── exceptions.py             # Кастомные исключения + декораторы ⭐
 │   │   ├── exception_handler.py      # Обработчик исключений
-│   │   ├── exceptions.py             # Кастомные исключения
+│   │   ├── services.py               # BaseCRUDService + декораторы ⭐
+│   │   ├── permissions.py            # Права доступа (IsOwner)
 │   │   ├── health.py                 # Мониторинг здоровья
 │   │   ├── middleware.py             # Кастомное middleware
-│   │   ├── pagination.py             # Кастомная пагинация
-│   │   ├── permissions.py            # Кастомные разрешения
-│   │   ├── services.py               # Базовый сервис
-│   │   ├── tokens.py                 # Кастомные токены
-│   │   ├── utils.py                  # Утилиты
-│   │   ├── validators.py             # Валидаторы
-│   │   └── views.py                  # API для мониторинга
+│   │   ├── permissions.py            # Кастомные разрешения (IsOwner)
+│   │   ├── serializers.py            # Базовые сериализаторы
+│   │   ├── services.py               # ServiceResult, BaseService ⭐
+│   │   ├── tokens.py                 # Кастомные JWT токены
+│   │   ├── utils.py                  # Утилиты (generate_uuid7)
+│   │   ├── validators.py             # JSON валидаторы
+│   │   └── views.py                  # API для health check
 │   │
 │   ├── config/                       # Конфигурация Django
 │   │   ├── settings.py               # Настройки приложения
