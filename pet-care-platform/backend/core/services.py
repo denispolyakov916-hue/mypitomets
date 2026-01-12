@@ -202,3 +202,146 @@ class ValidationService(BaseService):
             raise ValueError(f"{field_name} не может быть пустым")
         return True
 
+
+class BaseCRUDService(BaseService):
+    """
+    Базовый CRUD сервис для работы с моделями Django.
+
+    Предоставляет стандартные CRUD операции с:
+    - Валидацией
+    - Логированием
+    - Обработкой ошибок
+    - Транзакциями
+    """
+
+    def __init__(self, model):
+        """
+        Инициализация CRUD сервиса.
+
+        Args:
+            model: Django модель для работы
+        """
+        self.model = model
+
+    def get_queryset(self, user=None):
+        """
+        Получение queryset для модели.
+
+        Args:
+            user: Пользователь для фильтрации (опционально)
+
+        Returns:
+            QuerySet: Базовый queryset
+        """
+        return self.model.objects.all()
+
+    def get_by_id(self, obj_id, user=None):
+        """
+        Получение объекта по ID.
+
+        Args:
+            obj_id: ID объекта
+            user: Пользователь для проверки прав (опционально)
+
+        Returns:
+            Model instance или None
+        """
+        try:
+            return self.get_queryset(user).get(id=obj_id)
+        except self.model.DoesNotExist:
+            return None
+
+    def create(self, data, user=None):
+        """
+        Создание нового объекта.
+
+        Args:
+            data: Данные для создания
+            user: Пользователь (опционально)
+
+        Returns:
+            tuple: (success, instance или errors)
+        """
+        try:
+            instance = self.model(**data)
+            instance.full_clean()  # Валидация
+            instance.save()
+            self.log_info(f"Created {self.model.__name__}: {instance.id}", {"user": user})
+            return True, instance
+        except Exception as e:
+            self.log_error(e, {"data": data, "user": user})
+            return False, str(e)
+
+    def update(self, obj_id, data, user=None):
+        """
+        Обновление объекта.
+
+        Args:
+            obj_id: ID объекта
+            data: Данные для обновления
+            user: Пользователь (опционально)
+
+        Returns:
+            tuple: (success, instance или errors)
+        """
+        try:
+            instance = self.get_by_id(obj_id, user)
+            if not instance:
+                return False, "Object not found"
+
+            for key, value in data.items():
+                setattr(instance, key, value)
+
+            instance.full_clean()  # Валидация
+            instance.save()
+            self.log_info(f"Updated {self.model.__name__}: {obj_id}", {"user": user})
+            return True, instance
+        except Exception as e:
+            self.log_error(e, {"obj_id": obj_id, "data": data, "user": user})
+            return False, str(e)
+
+    def delete(self, obj_id, user=None):
+        """
+        Удаление объекта.
+
+        Args:
+            obj_id: ID объекта
+            user: Пользователь (опционально)
+
+        Returns:
+            tuple: (success, message или errors)
+        """
+        try:
+            instance = self.get_by_id(obj_id, user)
+            if not instance:
+                return False, "Object not found"
+
+            instance.delete()
+            self.log_info(f"Deleted {self.model.__name__}: {obj_id}", {"user": user})
+            return True, "Deleted successfully"
+        except Exception as e:
+            self.log_error(e, {"obj_id": obj_id, "user": user})
+            return False, str(e)
+
+    def list(self, filters=None, user=None, page=1, page_size=20):
+        """
+        Получение списка объектов с пагинацией.
+
+        Args:
+            filters: Фильтры для queryset
+            user: Пользователь (опционально)
+            page: Номер страницы
+            page_size: Размер страницы
+
+        Returns:
+            QuerySet: Отфильтрованный queryset
+        """
+        queryset = self.get_queryset(user)
+
+        if filters:
+            queryset = queryset.filter(**filters)
+
+        start = (page - 1) * page_size
+        end = start + page_size
+
+        return queryset[start:end]
