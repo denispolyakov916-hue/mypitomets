@@ -57,14 +57,53 @@ function Payment() {
   const method = searchParams.get('method') || 'card' // 'card', 'sbp' - по умолчанию карта
   const amountParam = parseFloat(searchParams.get('amount') || '0')
   
+  // Используем сумму из параметров или из загруженного платежа
+  const amount = paymentInfo?.amount || amountParam
+  const isFree = amount === 0
+
   // Отладка метода оплаты
   useEffect(() => {
     console.log('Payment method from URL:', method)
   }, [method])
 
-  // Используем сумму из параметров или из загруженного платежа
-  const amount = paymentInfo?.amount || amountParam
-  const isFree = amount === 0
+  /**
+   * Принудительная прокрутка наверх при загрузке страницы оплаты
+   */
+  useEffect(() => {
+    console.log('💳 Payment page: Forcing scroll to top')
+
+    const scrollToTop = () => {
+      console.log('📍 Current scroll position before:', window.scrollY)
+      window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
+      document.documentElement.scrollTop = 0
+      document.body.scrollTop = 0
+      document.documentElement.scrollLeft = 0
+      document.body.scrollLeft = 0
+      console.log('📍 Scroll position after:', window.scrollY)
+    }
+
+    // Немедленная прокрутка
+    scrollToTop()
+
+    // Множественные попытки прокрутки
+    setTimeout(scrollToTop, 10)
+    setTimeout(scrollToTop, 50)
+    setTimeout(scrollToTop, 100)
+    setTimeout(scrollToTop, 200)
+
+    // Дополнительная прокрутка при изменении контента
+    const handleContentChange = () => {
+      setTimeout(scrollToTop, 50)
+    }
+
+    window.addEventListener('load', handleContentChange)
+    window.addEventListener('resize', handleContentChange)
+
+    return () => {
+      window.removeEventListener('load', handleContentChange)
+      window.removeEventListener('resize', handleContentChange)
+    }
+  }, [])
 
   /**
    * Загрузка информации о платеже
@@ -81,12 +120,12 @@ function Payment() {
       // Если метод оплаты не указан в URL, но есть в payment metadata, обновляем URL
       if (response.payment) {
         let currentMethod = method || 'card'
-        
+
         // Проверяем metadata для метода оплаты 'sbp'
         if (response.payment.metadata && response.payment.metadata.payment_method === 'sbp') {
           currentMethod = 'sbp'
         }
-        
+
         // Если метод в URL отличается от метода в payment, обновляем URL
         if (currentMethod !== method) {
           const params = new URLSearchParams(window.location.search)
@@ -172,7 +211,7 @@ function Payment() {
    * Проверка существующего платежа для заказа
    */
   const checkExistingPaymentForOrder = useCallback(async (orderIdParam) => {
-    if (!orderIdParam || paymentCreating || paymentInfo) {
+    if (!orderIdParam || paymentInfo) {
       return
     }
 
@@ -193,18 +232,55 @@ function Payment() {
           method: method || 'card'
         })
         navigate(`/payment?${params.toString()}`, { replace: true })
+        setIsLoading(false)
         return
       }
     } catch (err) {
-      // Платеж не найден - это нормально, создадим новый
-      console.log('Существующий платеж не найден, создаем новый')
+      // Платеж не найден - это нормально, будем создавать при оплате
+      console.log('Существующий платеж не найден, будет создан при оплате')
     }
 
-    // Если платеж не найден - создаем новый
+    // Платеж не найден - просто завершаем загрузку, платеж будет создан при нажатии кнопки
     setIsLoading(false)
-    const paymentType = type === 'shop_order' ? 'shop_order' : type === 'course' ? 'course' : 'unified_checkout'
-    createPaymentForOrder(orderIdParam, paymentType, amountParam)
-  }, [paymentCreating, paymentInfo, navigate, type, amountParam, createPaymentForOrder, method])
+  }, [paymentInfo, navigate, method])
+
+  /**
+   * Проверка аутентификации и загрузка информации о платеже
+   */
+  useEffect(() => {
+    if (!isAuthenticated) {
+      navigate('/login')
+      return
+    }
+
+    // Предотвращаем множественные инициализации
+    if (initRef.current) {
+      return
+    }
+    initRef.current = true
+
+    // Загружаем информацию о платеже, если передан payment_id
+    if (paymentId && !paymentInfo && !isLoading) {
+      loadPaymentInfo(paymentId)
+    }
+    // Если передан order_id - сначала проверяем, есть ли уже платеж
+    else if (orderId && !paymentInfo && !isLoading) {
+      checkExistingPaymentForOrder(orderId)
+    }
+    // Если передан course_id, но нет payment_id - создаем платеж
+    else if (courseId && !paymentInfo && !isLoading) {
+      const paymentType = type === 'shop_order' ? 'shop_order' : 'course'
+      createPaymentForOrder(courseId, paymentType, amountParam)
+    }
+  }, [isAuthenticated, paymentId, orderId, courseId, paymentInfo, isLoading, loadPaymentInfo, checkExistingPaymentForOrder, createPaymentForOrder, type, amountParam, navigate])
+
+  // Устанавливаем атрибут для отключения scroll-behavior
+  useEffect(() => {
+    document.body.setAttribute('data-page', 'payment')
+    return () => {
+      document.body.removeAttribute('data-page')
+    }
+  }, [])
 
   /**
    * Обработчик оплаты
@@ -212,6 +288,7 @@ function Payment() {
    */
   const handlePayment = async () => {
     setIsProcessing(true)
+    setSbpProcessing(method === 'sbp')
     setError(null)
 
     try {
@@ -238,11 +315,16 @@ function Payment() {
           return
         }
 
+        // Для 'sbp' сохраняем в metadata, так как в модели Payment нет 'sbp' в choices
+        const paymentMethodForBackend = method === 'sbp' ? 'card' : (method || 'card')
+        const paymentMetadata = method === 'sbp' ? { payment_method: 'sbp' } : {}
+
         const createResponse = await createPayment({
           payment_type: type,
           object_id: orderId,
           amount: amount,
-          payment_method: method || 'card'
+          payment_method: paymentMethodForBackend,
+          metadata: paymentMetadata
         })
 
         if (createResponse.payment) {
@@ -288,35 +370,6 @@ function Payment() {
     }
   }
 
-  /**
-   * Проверка аутентификации и загрузка информации о платеже
-   */
-  useEffect(() => {
-    if (!isAuthenticated) {
-      navigate('/login')
-      return
-    }
-
-    // Предотвращаем множественные инициализации
-    if (initRef.current) {
-      return
-    }
-    initRef.current = true
-
-    // Загружаем информацию о платеже, если передан payment_id
-    if (paymentId && !paymentInfo && !isLoading) {
-      loadPaymentInfo(paymentId)
-    }
-    // Если передан order_id - сначала проверяем, есть ли уже платеж
-    else if (orderId && !paymentInfo && !paymentCreating && !isLoading) {
-      checkExistingPaymentForOrder(orderId)
-    }
-    // Если передан course_id, но нет payment_id и платеж еще не создается/не создан - создаем платеж
-    else if (courseId && !paymentInfo && !paymentCreating && !isLoading) {
-      const paymentType = type === 'shop_order' ? 'shop_order' : 'course'
-      createPaymentForOrder(courseId, paymentType, amountParam)
-    }
-  }, [isAuthenticated, paymentId, orderId, courseId, paymentInfo, paymentCreating, isLoading, loadPaymentInfo, checkExistingPaymentForOrder, createPaymentForOrder, type, amountParam, navigate])
 
   /**
    * Перенаправление после успешной оплаты

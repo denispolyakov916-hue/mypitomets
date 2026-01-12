@@ -90,6 +90,15 @@ const statusConfig = {
       </svg>
     )
   },
+  partially_delivered: {
+    label: 'Частично доставлен',
+    class: 'bg-purple-100 text-purple-800 border-purple-200',
+    icon: (
+      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7 8h10M7 12h4m-4 4h6" />
+      </svg>
+    )
+  },
   shipped: {
     label: 'Отправлен',
     class: 'bg-purple-100 text-purple-800 border-purple-200',
@@ -267,6 +276,7 @@ function OrderCard({ order, onOrderExpired }) {
         
         {/* Кнопка действий */}
         <div className="mt-4 pt-4 border-t border-gray-100 flex flex-col gap-3">
+          {console.log('Order data for buttons:', { id: order.id, status: order.status, total_amount: order.total_amount })}
           {(order.status === 'pending' || order.status === 'expired') && (
             <>
               {/* Выбор способа оплаты */}
@@ -301,9 +311,40 @@ function OrderCard({ order, onOrderExpired }) {
               
               {/* Кнопка оплаты */}
               <button
-                onClick={(e) => {
+                onClick={async (e) => {
                   e.stopPropagation()
-                  handlePayOrder(order.id, order.total_amount, paymentMethod)
+                  console.log('Payment button clicked for order:', order.id, 'amount:', order.total_amount, 'method:', paymentMethod)
+
+                  try {
+                    // Для 'sbp' сохраняем в metadata, так как в модели Payment нет 'sbp' в choices
+                    const paymentMethodForBackend = paymentMethod === 'sbp' ? 'card' : paymentMethod
+                    const paymentMetadata = paymentMethod === 'sbp' ? { payment_method: 'sbp' } : {}
+
+                    // Создаем платеж для существующего заказа
+                    const response = await createPayment({
+                      payment_type: 'shop_order',
+                      object_id: order.id,
+                      amount: order.total_amount,
+                      payment_method: paymentMethodForBackend,
+                      metadata: paymentMetadata
+                    })
+
+                    if (response.payment) {
+                      // Перенаправляем на страницу оплаты с payment_id и методом оплаты
+                      const params = new URLSearchParams({
+                        payment_id: response.payment.id,
+                        amount: response.payment.amount.toString(),
+                        method: paymentMethod
+                      })
+                      navigate(`/payment?${params.toString()}`)
+                    } else {
+                      throw new Error('Не удалось создать платеж')
+                    }
+                  } catch (error) {
+                    console.error('Ошибка создания платежа:', error)
+                    const errorMessage = error.response?.data?.error || error.message || 'Не удалось создать платеж'
+                    alert(`Не удалось создать платеж: ${errorMessage}`)
+                  }
                 }}
                 className="btn-primary text-sm w-full"
               >
@@ -331,53 +372,17 @@ function OrderCard({ order, onOrderExpired }) {
   )
 }
 
-/**
- * Обработчик оплаты заказа
- * @param {string} orderId - ID заказа
- * @param {number} amount - Сумма оплаты
- * @param {string} paymentMethod - Способ оплаты ('card' или 'sbp')
- */
-const handlePayOrder = async (orderId, amount, paymentMethod = 'card') => {
-  try {
-    // Для 'sbp' сохраняем в metadata, так как в модели Payment нет 'sbp' в choices
-    const paymentMethodForBackend = paymentMethod === 'sbp' ? 'card' : paymentMethod
-    const paymentMetadata = paymentMethod === 'sbp' ? { payment_method: 'sbp' } : {}
-    
-    // Создаем платеж для существующего заказа
-    const response = await createPayment({
-      payment_type: 'shop_order',
-      object_id: orderId,
-      amount: amount,
-      payment_method: paymentMethodForBackend,
-      metadata: paymentMetadata
-    })
-
-    if (response.payment) {
-      // Перенаправляем на страницу оплаты с payment_id и методом оплаты
-      const params = new URLSearchParams({
-        payment_id: response.payment.id,
-        amount: response.payment.amount.toString(),
-        method: paymentMethod
-      })
-      window.location.href = `/payment?${params.toString()}`
-    } else {
-      throw new Error('Не удалось создать платеж')
-    }
-  } catch (error) {
-    console.error('Ошибка создания платежа:', error)
-    const errorMessage = error.response?.data?.error || error.message || 'Не удалось создать платеж'
-    alert(`Не удалось создать платеж: ${errorMessage}`)
-  }
-}
 
 /**
  * Компонент страницы заказов
  */
 function Orders() {
+  const navigate = useNavigate()
   const [orders, setOrders] = useState([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState(null)
   const { error: showError } = useToastStore()
+
 
   const fetchOrders = async () => {
     setIsLoading(true)
@@ -385,6 +390,8 @@ function Orders() {
 
     try {
       const response = await getOrders()
+      console.log('Orders response:', response)
+      console.log('Orders data:', response.orders)
       setOrders(response.orders || [])
     } catch (err) {
       const errorMessage = err.response?.data?.error || err.message || 'Не удалось загрузить заказы'

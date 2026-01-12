@@ -9,7 +9,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { Button } from '../../../components/ui'
 import { Card } from '../../../components/ui'
-import CourseRatingDisplay from '../../../components/CourseRatingDisplay'
+import ReviewsSection from '../../../components/ReviewsSection'
 import { getCoursePages, getCoursePage, completeCoursePage } from '../../../api/courses'
 import { useAuthStore } from '../../../store/authStore'
 import { usePets } from '../../../hooks/usePets'
@@ -449,9 +449,10 @@ const CoursePageLearning = () => {
             </Card>
 
             {/* Рейтинг курса */}
-            <CourseRatingDisplay
-              courseId={courseId}
-              className="p-6 bg-white rounded-lg shadow"
+            <ReviewsSection
+              type="course"
+              itemId={courseId}
+              isPurchased={true}
             />
           </div>
         </div>

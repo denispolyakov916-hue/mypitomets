@@ -11,7 +11,7 @@
 
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import { getOrders, createReturn, updateOrder, getAddresses } from '../../api/shop'
+import { getOrders, getOrderDetails, createReturn, updateOrder, getAddresses } from '../../api/shop'
 import { createPayment } from '../../api/payments'
 import { PageLoader } from '../../components/Loader'
 import { useToastStore } from '../../store/toastStore'
@@ -74,6 +74,15 @@ const statusConfig = {
       </svg>
     )
   },
+  partially_delivered: {
+    label: 'Частично доставлен',
+    class: 'bg-purple-100 text-purple-800 border-purple-200',
+    icon: (
+      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7 8h10M7 12h4m-4 4h6" />
+      </svg>
+    )
+  },
   shipped: {
     label: 'Отправлен',
     class: 'bg-purple-100 text-purple-800 border-purple-200',
@@ -112,55 +121,6 @@ const deliveryTypeLabels = {
   pickup: 'Самовывоз'
 }
 
-/**
- * Обработчик оплаты заказа
- * @param {string} orderId - ID заказа
- * @param {number} amount - Сумма оплаты
- * @param {string} paymentMethod - Способ оплаты ('card' или 'sbp')
- */
-const handlePayOrder = async (orderId, amount, paymentMethod = 'card') => {
-  try {
-    // Определяем тип платежа на основе заказа
-    const paymentType = 'shop_order' // Для заказов товаров
-    
-    // Для 'sbp' сохраняем в metadata, так как в модели Payment нет 'sbp' в choices
-    const paymentMethodForBackend = paymentMethod === 'sbp' ? 'card' : paymentMethod
-    const paymentMetadata = paymentMethod === 'sbp' ? { payment_method: 'sbp' } : {}
-    
-    // Создаем платеж для существующего заказа
-    const response = await createPayment({
-      payment_type: paymentType,
-      object_id: orderId,
-      amount: amount,
-      payment_method: paymentMethodForBackend,
-      metadata: paymentMetadata
-    })
-
-    if (response.payment) {
-      // Перенаправляем на страницу оплаты с payment_id и методом оплаты
-      const params = new URLSearchParams({
-        payment_id: response.payment.id,
-        amount: response.payment.amount.toString(),
-        method: paymentMethod
-      })
-      window.location.href = `/payment?${params.toString()}`
-    } else {
-      throw new Error('Не удалось создать платеж')
-    }
-  } catch (error) {
-    console.error('Ошибка создания платежа:', error)
-    
-    // Обработка ошибок недоступных товаров
-    const errorMessage = error.response?.data?.error || error.message || 'Не удалось создать платеж'
-    const errorCode = error.response?.data?.code
-    
-    if (errorCode === 'UNAVAILABLE_ITEMS' || errorMessage.includes('Недоступные товары')) {
-      alert('Некоторые товары из заказа больше недоступны. Пожалуйста, обновите заказ или обратитесь в поддержку.')
-    } else {
-      alert(`Не удалось создать платеж: ${errorMessage}`)
-    }
-  }
-}
 
 /**
  * Компонент деталей заказа
@@ -199,29 +159,78 @@ function OrderDetail() {
   const [addresses, setAddresses] = useState([])
   const [isSavingDelivery, setIsSavingDelivery] = useState(false)
 
+  /**
+   * Обработчик оплаты заказа
+   * @param {string} orderId - ID заказа
+   * @param {number} amount - Сумма оплаты
+   * @param {string} paymentMethod - Способ оплаты ('card' или 'sbp')
+   */
+  const handlePayOrder = async (orderId, amount, paymentMethod = 'card') => {
+    try {
+      // Определяем тип платежа на основе заказа
+      const paymentType = 'shop_order' // Для заказов товаров
+
+      // Для 'sbp' сохраняем в metadata, так как в модели Payment нет 'sbp' в choices
+      const paymentMethodForBackend = paymentMethod === 'sbp' ? 'card' : paymentMethod
+      const paymentMetadata = paymentMethod === 'sbp' ? { payment_method: 'sbp' } : {}
+
+      // Создаем платеж для существующего заказа
+      const response = await createPayment({
+        payment_type: paymentType,
+        object_id: orderId,
+        amount: amount,
+        payment_method: paymentMethodForBackend,
+        metadata: paymentMetadata
+      })
+
+      if (response.payment) {
+        // Перенаправляем на страницу оплаты с payment_id и методом оплаты
+        const params = new URLSearchParams({
+          payment_id: response.payment.id,
+          amount: response.payment.amount.toString(),
+          method: paymentMethod
+        })
+        navigate(`/payment?${params.toString()}`)
+      } else {
+        throw new Error('Не удалось создать платеж')
+      }
+    } catch (error) {
+      console.error('Ошибка создания платежа:', error)
+
+      // Обработка ошибок недоступных товаров
+      const errorMessage = error.response?.data?.error || error.message || 'Не удалось создать платеж'
+      const errorCode = error.response?.data?.code
+
+      if (errorCode === 'UNAVAILABLE_ITEMS' || errorMessage.includes('Недоступные товары')) {
+        alert('Некоторые товары из заказа больше недоступны. Пожалуйста, обновите заказ или обратитесь в поддержку.')
+      } else {
+        alert(`Не удалось создать платеж: ${errorMessage}`)
+      }
+    }
+  }
+
   const fetchOrder = async () => {
     setIsLoading(true)
     setError(null)
-    
+
     // Инициализируем форму доставки при загрузке заказа
     if (order) {
       initDeliveryForm()
     }
 
     try {
-      const response = await getOrders()
-      const foundOrder = response.orders?.find(o => o.id === id)
+      const response = await getOrderDetails(id)
 
-      if (!foundOrder) {
+      if (!response.order) {
         setError('Заказ не найден')
         showError('Заказ не найден')
       } else {
-        setOrder(foundOrder)
+        setOrder(response.order)
         // Инициализируем форму доставки после загрузки заказа
         setDeliveryForm({
-          delivery_type: foundOrder.delivery_type || 'standard',
-          shipping_address: foundOrder.shipping_address || '',
-          address_id: foundOrder.address_id || ''
+          delivery_type: response.order.delivery_type || 'standard',
+          shipping_address: response.order.shipping_address || '',
+          address_id: response.order.address_id || ''
         })
       }
     } catch (err) {
@@ -583,7 +592,7 @@ function OrderDetail() {
                         <span>Цена: {formatPrice(item.price)}</span>
                       </div>
                       {/* Кнопка возврата для доставленных товаров */}
-                      {order.status === 'delivered' && item.product_id && (
+                      {(order.status === 'delivered' || order.status === 'partially_delivered') && item.product_id && (
                         <button
                           onClick={() => openReturnModal(item)}
                           className="mt-2 text-sm text-primary-600 hover:text-primary-700 font-medium"

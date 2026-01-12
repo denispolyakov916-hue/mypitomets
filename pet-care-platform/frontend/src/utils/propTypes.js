@@ -97,7 +97,7 @@ export const CartItemPropTypes = PropTypes.shape({
  */
 export const OrderPropTypes = PropTypes.shape({
   id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
-  status: PropTypes.oneOf(['pending', 'processing', 'shipped', 'delivered', 'cancelled']).isRequired,
+  status: PropTypes.oneOf(['pending', 'processing', 'partially_delivered', 'shipped', 'delivered', 'cancelled']).isRequired,
   total_amount: PropTypes.number.isRequired,
   subtotal_amount: PropTypes.number.isRequired,
   delivery_cost: PropTypes.number.isRequired,

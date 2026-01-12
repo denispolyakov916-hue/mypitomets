@@ -6,6 +6,7 @@ const RecentOrders = ({ orders }) => {
     const colors = {
       pending: 'bg-yellow-100 text-yellow-800',
       processing: 'bg-blue-100 text-blue-800',
+      partially_delivered: 'bg-purple-100 text-purple-800',
       shipped: 'bg-purple-100 text-purple-800',
       delivered: 'bg-green-100 text-green-800',
       cancelled: 'bg-gray-100 text-gray-800',
@@ -18,6 +19,7 @@ const RecentOrders = ({ orders }) => {
     const texts = {
       pending: 'Ожидает',
       processing: 'В обработке',
+      partially_delivered: 'Частично доставлен',
       shipped: 'Отправлен',
       delivered: 'Доставлен',
       cancelled: 'Отменён',

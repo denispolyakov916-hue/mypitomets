@@ -17,7 +17,7 @@ export default defineConfig(({ mode }) => {
   // URL бэкенда для прокси
   // Жестко указываем localhost для разработки
   const backendHost = 'localhost'
-  const backendPort = '8077'
+  const backendPort = '8000'
   const proxyTarget = `http://${backendHost}:${backendPort}`
   
   console.log(`[Vite] API proxy target: ${proxyTarget}`)
@@ -33,17 +33,17 @@ export default defineConfig(({ mode }) => {
       strictPort: false, // Если порт занят, попробовать следующий
 
       // Проксирование API запросов к Django бэкенду
-      // Все запросы на /api/* перенаправляются на localhost:8077
+      // Все запросы на /api/* перенаправляются на localhost:8000
       proxy: {
         '/api': {
-          target: 'http://localhost:8077',
+          target: 'http://localhost:8000',
           changeOrigin: true,
           secure: false,
           ws: false,
           rewrite: (path) => path, // Оставляем путь как есть
           configure: (proxy, options) => {
             proxy.on('proxyReq', (proxyReq, req, res) => {
-              console.log(`[Vite Proxy] ${req.method} ${req.url} -> http://localhost:8077${req.url}`)
+              console.log(`[Vite Proxy] ${req.method} ${req.url} -> http://localhost:8000${req.url}`)
             })
             proxy.on('error', (err, req, res) => {
               console.error('[Vite Proxy Error]', err.message, 'for', req.url)

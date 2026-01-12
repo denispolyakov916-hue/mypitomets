@@ -536,6 +536,7 @@ class Order(models.Model):
     STATUS_CHOICES = [
         ('pending', 'Ожидает оплаты'),
         ('processing', 'В обработке'),
+        ('partially_delivered', 'Частично доставлен'),
         ('shipped', 'Отправлен'),
         ('delivered', 'Доставлен'),
         ('cancelled', 'Отменён'),

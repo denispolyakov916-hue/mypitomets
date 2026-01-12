@@ -15,7 +15,7 @@
 from rest_framework import serializers
 from .models import (
     Course, Lesson, UserCourse, UserCourseProgress, UserLessonProgress,
-    Comment, CommentLike, Rating, CoursePage, ContentBlock, BlockTemplate
+    Comment, CommentLike, CoursePage, ContentBlock, BlockTemplate
 )
 
 
@@ -194,47 +194,7 @@ class CommentCreateSerializer(serializers.ModelSerializer):
         return data
 
 
-class RatingSerializer(serializers.ModelSerializer):
-    """
-    Сериализатор для оценок курсов.
-    """
-    user_name = serializers.CharField(source='user.get_full_name', read_only=True)
-    user_avatar = serializers.CharField(source='user.profile.avatar', read_only=True)
-    pet_name = serializers.CharField(source='pet.name', read_only=True)
-    can_edit = serializers.SerializerMethodField()
-    can_delete = serializers.SerializerMethodField()
-
-    class Meta:
-        model = Rating
-        fields = [
-            'id', 'user', 'user_name', 'user_avatar', 'course', 'pet', 'pet_name',
-            'rating', 'review', 'is_approved', 'can_edit', 'can_delete',
-            'created_at', 'updated_at'
-        ]
-        read_only_fields = ['id', 'user', 'created_at', 'updated_at']
-
-    def get_can_edit(self, obj):
-        request = self.context.get('request')
-        return request and obj.can_edit(request.user)
-
-    def get_can_delete(self, obj):
-        request = self.context.get('request')
-        return request and obj.can_delete(request.user)
-
-
-class RatingCreateSerializer(serializers.ModelSerializer):
-    """
-    Сериализатор для создания оценок курсов.
-    """
-    class Meta:
-        model = Rating
-        fields = ['course', 'pet', 'rating', 'review']
-
-    def validate_rating(self, value):
-        """Валидация оценки (1-5 звезд)."""
-        if not (1 <= value <= 5):
-            raise serializers.ValidationError("Оценка должна быть от 1 до 5 звезд")
-        return value
+# Rating сериализаторы удалены - система заменена на единую Review
 
 
 class CommentLikeSerializer(serializers.ModelSerializer):

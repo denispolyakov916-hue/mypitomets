@@ -1,442 +1,204 @@
 """
-Базовые сервисы для исключения дублирования бизнес-логики.
+Базовые классы для сервисного слоя.
 
-Этот модуль предоставляет фундаментальные сервисы, используемые во всем приложении:
-- BaseService: Базовый класс с транзакциями, логированием и обработкой ошибок
-- BaseCRUDService: CRUD операции для всех моделей с автоматической валидацией
-- ServiceResult: Стандартизированный формат результатов операций
-- NotificationService: Отправка email и push уведомлений
-- ValidationService: Переиспользуемые функции валидации
-
-Используется во всех приложениях (pets, shop, training, users) для:
-- Стандартизации CRUD операций
-- Автоматической обработки ошибок
-- Логирования операций
-- Отправки уведомлений пользователям
-
-Основные сервисы:
-    - BaseCRUDService: Наследуется всеми CRUD сервисами приложений
-    - NotificationService: Отправка уведомлений о заказах, курсах и т.д.
-    - ValidationService: Валидация данных пользователей, заказов, питомцев
+Обеспечивает единообразную структуру всех сервисов в приложении.
 """
 
 import logging
-from django.db import transaction
-from django.core.exceptions import ValidationError
-from django.utils import timezone
-
-from .exceptions import ApiError, handle_service_errors
-
+from typing import Optional, Dict, Any, List
+from abc import ABC, abstractmethod
 
 logger = logging.getLogger(__name__)
 
 
+class BaseService(ABC):
+    """
+    Базовый класс для всех сервисов.
+    
+    Предоставляет общие методы и структуру для всех сервисов приложения.
+    """
+    
+    @classmethod
+    def log_error(cls, error: Exception, context: Optional[Dict[str, Any]] = None):
+        """
+        Логирование ошибок с контекстом.
+        
+        Args:
+            error: Исключение
+            context: Дополнительный контекст для логирования
+        """
+        context_str = f" Context: {context}" if context else ""
+        logger.error(f"{cls.__name__} error: {str(error)}{context_str}", exc_info=True)
+    
+    @classmethod
+    def log_info(cls, message: str, context: Optional[Dict[str, Any]] = None):
+        """
+        Логирование информационных сообщений.
+
+        Args:
+            message: Сообщение для логирования
+            context: Дополнительный контекст
+        """
+        context_str = f" Context: {context}" if context else ""
+        logger.info(f"{cls.__name__}: {message}{context_str}")
+
+    @classmethod
+    def log_warning(cls, message: str, context: Optional[Dict[str, Any]] = None):
+        """
+        Логирование предупреждений.
+
+        Args:
+            message: Сообщение для логирования
+            context: Дополнительный контекст
+        """
+        context_str = f" Context: {context}" if context else ""
+        logger.warning(f"{cls.__name__}: {message}{context_str}")
+
+    @classmethod
+    def validate_required_fields(cls, data: Dict[str, Any], required_fields: List[str]) -> bool:
+        """
+        Валидация обязательных полей.
+        
+        Args:
+            data: Словарь с данными
+            required_fields: Список обязательных полей
+            
+        Returns:
+            bool: True если все поля присутствуют
+            
+        Raises:
+            ValueError: Если отсутствуют обязательные поля
+        """
+        missing_fields = [field for field in required_fields if field not in data or data[field] is None]
+        if missing_fields:
+            raise ValueError(f"Отсутствуют обязательные поля: {', '.join(missing_fields)}")
+        return True
+    
+    @classmethod
+    def safe_get(cls, data: Dict[str, Any], key: str, default: Any = None) -> Any:
+        """
+        Безопасное получение значения из словаря.
+        
+        Args:
+            data: Словарь
+            key: Ключ
+            default: Значение по умолчанию
+            
+        Returns:
+            Значение из словаря или default
+        """
+        return data.get(key, default)
+
+
 class ServiceResult:
     """
-    Результат выполнения сервисной операции.
+    Базовый класс для результатов работы сервисов.
     
-    Позволяет возвращать как успешные результаты, так и ошибки
-    с дополнительной информацией.
+    Обеспечивает единообразный формат возврата результатов.
     """
     
-    def __init__(self, success: bool = True, data=None, error: str = None, errors: list = None):
+    def __init__(
+        self,
+        success: bool,
+        message: str = "",
+        data: Optional[Any] = None,
+        errors: Optional[List[str]] = None,
+        error_code: Optional[str] = None
+    ):
+        """
+        Инициализация результата.
+        
+        Args:
+            success: Успешность операции
+            message: Сообщение о результате
+            data: Данные результата
+            errors: Список ошибок
+            error_code: Код ошибки
+        """
         self.success = success
+        self.message = message
         self.data = data
-        self.error = error
         self.errors = errors or []
+        self.error_code = error_code
     
-    @classmethod
-    def ok(cls, data=None):
-        """Успешный результат."""
-        return cls(success=True, data=data)
-    
-    @classmethod
-    def fail(cls, error: str, errors: list = None):
-        """Неуспешный результат с ошибкой."""
-        return cls(success=False, error=error, errors=errors)
-    
-    def __bool__(self):
-        return self.success
-
-
-class BaseService:
-    """
-    Базовый сервис с общими методами.
-
-    Предоставляет:
-    - Транзакции
-    - Логирование
-    - Обработку ошибок
-    - Валидацию
-    """
-
-    def __init__(self, model=None):
-        self.model = model
-        self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
-
-    @transaction.atomic
-    def execute_in_transaction(self, func, *args, **kwargs):
+    def to_dict(self) -> Dict[str, Any]:
         """
-        Выполнить функцию в транзакции.
-
-        @param func: Функция для выполнения
-        @param args: Позиционные аргументы
-        @param kwargs: Именованные аргументы
-        @return: Результат функции
+        Преобразование результата в словарь.
+        
+        Returns:
+            Словарь с результатом
         """
-        try:
-            result = func(*args, **kwargs)
-            self.logger.info(f"Transaction completed successfully in {self.__class__.__name__}")
-            return result
-        except Exception as e:
-            self.logger.error(f"Transaction failed in {self.__class__.__name__}: {str(e)}")
-            raise
-
-    def validate_data(self, data, validator=None):
-        """
-        Валидация данных.
-
-        @param data: Данные для валидации
-        @param validator: Функция-валидатор (опционально)
-        @return: Валидированные данные
-        @raises ValidationError: Если валидация не прошла
-        """
-        if validator:
-            return validator(data)
-        return data
-
-    def log_operation(self, operation, entity_id=None, user=None, details=None):
-        """
-        Логирование операции.
-
-        @param operation: Название операции
-        @param entity_id: ID сущности
-        @param user: Пользователь
-        @param details: Дополнительные детали
-        """
-        user_info = f" by user {user}" if user else ""
-        entity_info = f" for entity {entity_id}" if entity_id else ""
-        details_info = f" - {details}" if details else ""
-
-        self.logger.info(f"{operation}{entity_info}{user_info}{details_info}")
-
-    def handle_error(self, error, operation=None):
-        """
-        Обработка ошибки с логированием.
-
-        @param error: Исключение
-        @param operation: Название операции
-        @return: ApiError
-        """
-        operation_info = f" during {operation}" if operation else ""
-        self.logger.error(f"Error{operation_info}: {str(error)}")
-
-        if isinstance(error, ValidationError):
-            return ApiError.validation_error(str(error))
-        elif isinstance(error, ApiError):
-            return error
-        else:
-            return ApiError.internal_error(str(error))
-
-
-class BaseCRUDService(BaseService):
-    """
-    Базовый CRUD сервис для работы с моделями.
-
-    Предоставляет стандартные CRUD операции с:
-    - Валидацией
-    - Логированием
-    - Обработкой ошибок
-    - Транзакциями
-    """
-
-    def __init__(self, model, serializer_class=None):
-        super().__init__(model)
-        self.serializer_class = serializer_class
-
-    def get_queryset(self, user=None):
-        """
-        Получить базовый queryset.
-
-        @param user: Пользователь для фильтрации (опционально)
-        @return: QuerySet
-        """
-        queryset = self.model.objects.all()
-
-        # Если модель имеет поле owner, фильтруем по пользователю
-        if user and hasattr(self.model, 'owner'):
-            queryset = queryset.filter(owner=user)
-
-        return queryset
-
-    @handle_service_errors
-    def get_by_id(self, entity_id, user=None):
-        """
-        Получить сущность по ID.
-
-        @param entity_id: ID сущности
-        @param user: Пользователь (для проверки прав)
-        @return: Экземпляр модели
-        @raises ApiError: Если не найдено или нет доступа
-        """
-        queryset = self.get_queryset(user)
-        instance = queryset.get(id=entity_id)
-
-        # Дополнительная проверка прав доступа
-        if user and hasattr(instance, 'owner') and instance.owner != user:
-            raise ApiError.forbidden("Нет доступа к этому объекту")
-
-        return instance
-
-    def get_list(self, filters=None, user=None, order_by=None):
-        """
-        Получить список сущностей.
-
-        @param filters: Словарь фильтров
-        @param user: Пользователь
-        @param order_by: Поле для сортировки
-        @return: QuerySet
-        """
-        queryset = self.get_queryset(user)
-
-        # Применяем фильтры
-        if filters:
-            queryset = queryset.filter(**filters)
-
-        # Применяем сортировку
-        if order_by:
-            queryset = queryset.order_by(order_by)
-
-        return queryset
-
-    @handle_service_errors
-    def create(self, data, user=None, validator=None):
-        """
-        Создать новую сущность.
-
-        @param data: Данные для создания
-        @param user: Пользователь
-        @param validator: Функция валидации
-        @return: Созданная сущность
-        """
-        def _create():
-            # Валидация данных
-            validated_data = self.validate_data(data, validator)
-
-            # Создание экземпляра
-            instance = self.model(**validated_data)
-
-            # Установка owner если есть пользователь
-            if user and hasattr(instance, 'owner'):
-                instance.owner = user
-
-            # Установка временных полей
-            if hasattr(instance, 'created_at'):
-                instance.created_at = timezone.now()
-            if hasattr(instance, 'updated_at'):
-                instance.updated_at = timezone.now()
-
-            instance.save()
-
-            # Логирование
-            self.log_operation(
-                f"Created {self.model.__name__}",
-                instance.id,
-                user,
-                f"Data: {validated_data}"
-            )
-
-            return instance
-
-        return self.execute_in_transaction(_create)
-
-    @handle_service_errors
-    def update(self, entity_id, data, user=None, validator=None, partial=True):
-        """
-        Обновить сущность.
-
-        @param entity_id: ID сущности
-        @param user: Пользователь
-        @param validator: Функция валидации
-        @param partial: Частичное обновление
-        @return: Обновленная сущность
-        """
-        def _update():
-            instance = self.get_by_id(entity_id, user)
-
-            # Валидация данных
-            validated_data = self.validate_data(data, validator)
-
-            # Обновление полей
-            for field, value in validated_data.items():
-                if hasattr(instance, field):
-                    setattr(instance, field, value)
-
-            # Обновление временной метки
-            if hasattr(instance, 'updated_at'):
-                instance.updated_at = timezone.now()
-
-            instance.save()
-
-            # Логирование
-            self.log_operation(
-                f"Updated {self.model.__name__}",
-                instance.id,
-                user,
-                f"Fields: {list(validated_data.keys())}"
-            )
-
-            return instance
-
-        return self.execute_in_transaction(_update)
-
-    @handle_service_errors
-    def delete(self, entity_id, user=None):
-        """
-        Удалить сущность.
-
-        @param entity_id: ID сущности
-        @param user: Пользователь
-        @return: True если удалено
-        """
-        def _delete():
-            instance = self.get_by_id(entity_id, user)
-            instance_id = instance.id
-
-            instance.delete()
-
-            # Логирование
-            self.log_operation(
-                f"Deleted {self.model.__name__}",
-                instance_id,
-                user
-            )
-
-            return True
-
-        return self.execute_in_transaction(_delete)
-
-
-class NotificationService(BaseService):
-    """
-    Сервис для отправки уведомлений.
-
-    Объединяет разные способы уведомлений:
-    - Email
-    - Push notifications
-    - SMS
-    """
-
-    def __init__(self):
-        super().__init__()
-        self.email_service = None  # Will be imported when needed
-        self.push_service = None
-
-    def send_email(self, to_email, subject, template_name, context=None):
-        """
-        Отправить email уведомление.
-
-        @param to_email: Email получателя
-        @param subject: Тема письма
-        @param template_name: Имя шаблона
-        @param context: Контекст для шаблона
-        """
-        try:
-            # Lazy import to avoid circular dependencies
-            if not self.email_service:
-                from apps.users.services.mail_service import MailService
-                self.email_service = MailService()
-
-            self.email_service.send_template_email(
-                to_email, subject, template_name, context or {}
-            )
-
-            self.log_operation("Email sent", details=f"To: {to_email}, Subject: {subject}")
-
-        except Exception as e:
-            self.logger.error(f"Failed to send email to {to_email}: {str(e)}")
-            # Don't raise exception for notification failures
-
-    def send_push_notification(self, user, title, message, data=None):
-        """
-        Отправить push уведомление.
-
-        @param user: Пользователь
-        @param title: Заголовок
-        @param message: Сообщение
-        @param data: Дополнительные данные
-        """
-        # Implementation for push notifications
-        self.log_operation(
-            "Push notification sent",
-            user=user,
-            details=f"Title: {title}"
-        )
-
-    def notify_order_status(self, order, user):
-        """
-        Уведомление об изменении статуса заказа.
-
-        @param order: Заказ
-        @param user: Пользователь
-        """
-        subject = f"Статус заказа #{order.id} изменен"
-        context = {
-            'order': order,
-            'user': user,
-            'status': order.get_status_display()
+        result = {
+            'success': self.success,
+            'message': self.message,
         }
-
-        self.send_email(user.email, subject, 'order_status_changed', context)
-        self.send_push_notification(
-            user,
-            "Заказ обновлен",
-            f"Статус заказа #{order.id}: {order.get_status_display()}"
-        )
+        
+        if self.data is not None:
+            result['data'] = self.data
+        
+        if self.errors:
+            result['errors'] = self.errors
+        
+        if self.error_code:
+            result['error_code'] = self.error_code
+        
+        return result
+    
+    def __bool__(self) -> bool:
+        """Возвращает success для использования в if."""
+        return self.success
+    
+    def __repr__(self) -> str:
+        """Строковое представление результата."""
+        return f"ServiceResult(success={self.success}, message='{self.message}')"
 
 
 class ValidationService(BaseService):
     """
-    Сервис для валидации данных.
-
-    Содержит переиспользуемые функции валидации.
+    Базовый сервис для валидации данных.
+    
+    Предоставляет общие методы валидации.
     """
-
-    def validate_pet_data(self, data):
+    
+    @classmethod
+    def validate_positive_number(cls, value: Any, field_name: str = "Значение") -> bool:
         """
-        Валидация данных питомца.
-
-        @param data: Данные питомца
-        @return: Валидированные данные
-        @raises ValidationError: Если валидация не прошла
+        Валидация положительного числа.
+        
+        Args:
+            value: Значение для валидации
+            field_name: Название поля для сообщения об ошибке
+            
+        Returns:
+            bool: True если значение валидно
+            
+        Raises:
+            ValueError: Если значение не валидно
         """
-        required_fields = ['name', 'species']
-
-        for field in required_fields:
-            if not data.get(field):
-                raise ValidationError(f"Поле {field} обязательно")
-
-        # Валидация возраста
-        if 'date_of_birth' in data:
-            # Логика валидации даты рождения
-            pass
-
-        return data
-
-    def validate_order_data(self, data, user):
+        try:
+            num_value = float(value)
+            if num_value <= 0:
+                raise ValueError(f"{field_name} должно быть положительным числом")
+            return True
+        except (ValueError, TypeError):
+            raise ValueError(f"{field_name} должно быть числом")
+    
+    @classmethod
+    def validate_non_empty_string(cls, value: Any, field_name: str = "Поле") -> bool:
         """
-        Валидация данных заказа.
-
-        @param data: Данные заказа
-        @param user: Пользователь
-        @return: Валидированные данные
-        @raises ValidationError: Если валидация не прошла
+        Валидация непустой строки.
+        
+        Args:
+            value: Значение для валидации
+            field_name: Название поля для сообщения об ошибке
+            
+        Returns:
+            bool: True если значение валидно
+            
+        Raises:
+            ValueError: Если значение не валидно
         """
-        # Проверка корзины
-        if not data.get('cart_items'):
-            raise ValidationError("Корзина пуста")
+        if not isinstance(value, str) or not value.strip():
+            raise ValueError(f"{field_name} не может быть пустым")
+        return True
 
-        # Проверка наличия товаров
-        # ...
-
-        return data

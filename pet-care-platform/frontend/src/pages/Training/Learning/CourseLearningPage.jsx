@@ -3,7 +3,7 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { Button } from '../../../components/ui'
 import { Card } from '../../../components/ui'
 import { ProgressTracker, RatingWidget } from '../../../components/Learning'
-import CourseRatingDisplay from '../../../components/CourseRatingDisplay'
+import ReviewsSection from '../../../components/ReviewsSection'
 import { getCourse, getCourseLessons, getCourseProgress, enrollFreeCourse, getCoursePages } from '../../../api/courses'
 import { useAuthStore } from '../../../store/authStore'
 import { usePets } from '../../../hooks/usePets'
@@ -294,9 +294,10 @@ const CourseLearningPage = () => {
 
           {/* Рейтинг курса */}
           {course && (
-            <CourseRatingDisplay
-              courseId={courseId}
-              className="mb-8"
+            <ReviewsSection
+              type="course"
+              itemId={courseId}
+              isPurchased={true}
             />
           )}
         </div>

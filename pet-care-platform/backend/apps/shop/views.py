@@ -63,7 +63,7 @@ class ProductListView(APIView):
         # Исключаем параметры пагинации для более широкого кэширования
         query_params.pop('page', None)
         query_params.pop('per_page', None)
-        return make_cache_key('products_list', query_params)
+        return make_cache_key('products', query_params)
     
     def get(self, request):
         from django.core.cache import cache
@@ -71,8 +71,8 @@ class ProductListView(APIView):
         
         # Проверяем кэш
         cache_key = self._get_cache_key(request)
-        cached_response = cache.get(cache_key)
-        if cached_response is not None:
+        cached_data = cache.get(cache_key)
+        if cached_data is not None:
             # Восстанавливаем пагинацию из запроса
             try:
                 page = max(1, int(request.query_params.get('page', 1)))
@@ -80,23 +80,26 @@ class ProductListView(APIView):
             except ValueError:
                 page = 1
                 per_page = 20
-            
+
             # Применяем пагинацию к кэшированным данным
-            total = cached_response.get('pagination', {}).get('total', 0)
-            all_products = cached_response.get('products', [])
-            
+            total = cached_data.get('total_count', 0)
+            all_products_data = cached_data.get('all_products_data', [])
+            filters_data = cached_data.get('filters', {})
+
             offset = (page - 1) * per_page
-            products_page = all_products[offset:offset + per_page]
-            
-            response_data = cached_response.copy()
-            response_data['products'] = products_page
-            response_data['pagination'] = {
-                'total': total,
-                'page': page,
-                'per_page': per_page,
-                'total_pages': (total + per_page - 1) // per_page if total > 0 else 0
+            products_page_data = all_products_data[offset:offset + per_page]
+
+            response_data = {
+                'products': products_page_data,
+                'pagination': {
+                    'total': total,
+                    'page': page,
+                    'per_page': per_page,
+                    'total_pages': (total + per_page - 1) // per_page if total > 0 else 0
+                },
+                'filters': filters_data
             }
-            
+
             return Response(response_data, status=status.HTTP_200_OK)
         from apps.pets.models import Pet
         
@@ -200,6 +203,9 @@ class ProductListView(APIView):
         # Общее количество до пагинации
         total_count = products.count()
         
+        # Получаем все данные до пагинации для кэширования
+        all_products_data = [p.to_dict() for p in products]
+
         # Пагинация
         try:
             page = max(1, int(request.query_params.get('page', 1)))
@@ -207,11 +213,9 @@ class ProductListView(APIView):
         except ValueError:
             page = 1
             per_page = 20
-        
+
         offset = (page - 1) * per_page
-        products = products[offset:offset + per_page]
-        
-        products_data = [p.to_dict() for p in products]
+        products_data = all_products_data[offset:offset + per_page]
         
         # Получение доступных фильтров
         from django.db.models import Count, Min, Max
@@ -294,11 +298,18 @@ class ProductListView(APIView):
             }
         }
         
-        # Сохраняем в кэш (без пагинации, чтобы кэшировать все товары)
+        # Сохраняем в кэш все товары и фильтры (без пагинации)
         from django.core.cache import cache
         from django.conf import settings
-        cache_timeout = getattr(settings, 'CACHE_TIMEOUTS', {}).get('products_list', 300)
-        cache.set(cache_key, response_data, cache_timeout)
+
+        cache_data = {
+            'total_count': total_count,
+            'all_products_data': all_products_data,
+            'filters': response_data['filters']
+        }
+
+        cache_timeout = getattr(settings, 'CACHE_TIMEOUTS', {}).get('products', 300)
+        cache.set(cache_key, cache_data, cache_timeout)
         
         return Response(response_data, status=status.HTTP_200_OK)
 
@@ -315,18 +326,24 @@ class ProductDetailView(APIView):
     def get(self, request, product_id):
         from django.core.cache import cache
         from django.conf import settings
-        
-        # Проверяем кэш
-        cache_key = f'product_detail:{product_id}'
-        cached_response = cache.get(cache_key)
-        if cached_response is not None:
-            return Response(cached_response, status=status.HTTP_200_OK)
+
+        # Сначала получаем продукт (нужен для проверки is_purchased)
         try:
             # Оптимизация: используем with_ratings() для предзагрузки рейтинга
             product = Product.objects.with_ratings().get(id=product_id)
         except Product.DoesNotExist:
             from core.exceptions import ApiError
             raise ApiError.not_found('Товар не найден', error_code='PRODUCT_NOT_FOUND')
+
+        # Проверяем кэш
+        cache_key = f'product_detail:{product_id}'
+        cached_response = cache.get(cache_key)
+        if cached_response is not None:
+            # Для авторизованных пользователей добавляем is_purchased, если его нет в кэше
+            if request.user.is_authenticated and 'is_purchased' not in cached_response.get('product', {}):
+                from apps.reviews.utils import can_user_review_product
+                cached_response['product']['is_purchased'] = can_user_review_product(request.user, product)
+            return Response(cached_response, status=status.HTTP_200_OK)
         
         product_data = product.to_dict()
         
@@ -1263,38 +1280,16 @@ class OrderConfirmPaymentView(APIView):
             )
 
             # Обработка платежа (имитация)
-            success = PaymentService.process_payment(payment)
+            PaymentService.process_payment(payment)
 
-            if success:
-                # Обновляем статус заказа
-                order.status = 'processing'
-                order.save(update_fields=['status'])
-
-                # Для каждого курса в заказе создаем UserCourse
-                for item in order.items.filter(course__isnull=False):
-                    # Проверяем согласие с условиями для платных курсов
-                    if item.course.price > 0 and not item.disclaimer_accepted:
-                        logger.warning(f"Курс {item.course.title} не имеет согласия с условиями при активации")
-                        continue  # Пропускаем курс без согласия
-
-                    from apps.training.models import UserCourse
-                    UserCourse.objects.create(
-                        user=request.user,
-                        course=item.course,
-                        pet=item.pet,
-                        purchased_at=order.created_at
-                    )
-
-                return Response({
-                    'message': 'Оплата успешно подтверждена',
-                    'order': order.to_dict(),
-                    'payment_id': str(payment.id)
-                }, status=status.HTTP_200_OK)
-            else:
-                return Response(
-                    {'error': 'Не удалось обработать платеж'},
-                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
-                )
+            # Если дошли сюда - платеж и активация заказа прошли успешно
+            # Перезагружаем заказ из базы, чтобы получить актуальный статус после обработки платежа
+            order.refresh_from_db()
+            return Response({
+                'message': 'Оплата успешно подтверждена',
+                'order': order.to_dict(),
+                'payment_id': str(payment.id)
+            }, status=status.HTTP_200_OK)
 
         except ValueError as e:
             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)

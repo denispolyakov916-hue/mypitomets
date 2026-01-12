@@ -284,6 +284,16 @@ export const getOrders = async () => {
 }
 
 /**
+ * Получение деталей заказа
+ *
+ * @param {string} orderId - ID заказа
+ * @returns {Promise<Object>} Детали заказа
+ */
+export const getOrderDetails = async (orderId) => {
+  return await api.get(`/shop/orders/${orderId}/`)
+}
+
+/**
  * Обновление заказа
  * 
  * @param {string} orderId - ID заказа

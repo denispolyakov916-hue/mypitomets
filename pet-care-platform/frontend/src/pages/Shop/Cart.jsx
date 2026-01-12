@@ -11,13 +11,14 @@
  * - Оформлением заказа
  */
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useCartStore } from '../../store/cartStore'
 import { useToastStore } from '../../store/toastStore'
 import { PageLoader, ButtonLoader } from '../../components/Loader'
 import RecommendationBlock from '../../components/RecommendationBlock'
 import * as shopApi from '../../api/shop'
+import { apiCache } from '../../utils/apiCache'
 
 /**
  * Форматирование цены с символом рубля
@@ -74,6 +75,10 @@ function Cart() {
   // Рекомендации для корзины
   const [recommendations, setRecommendations] = useState([])
   const [recommendationsLoading, setRecommendationsLoading] = useState(false)
+  const lastRecommendationsLoadRef = useRef(null)
+
+  // Состояние для ошибок загрузки изображений
+  const [imageErrors, setImageErrors] = useState(new Set())
 
   /**
    * Проверка, является ли элемент курсом
@@ -106,12 +111,22 @@ function Cart() {
    * Загрузка рекомендаций для корзины
    */
   const loadRecommendations = useCallback(async () => {
-    if (products.length === 0) {
+    const currentProducts = items.filter(item => !isCourse(item))
+    if (currentProducts.length === 0) {
       setRecommendations([])
+      lastRecommendationsLoadRef.current = null
       return
     }
-    
+
+    // Проверяем, не загружали ли уже рекомендации для этого состояния корзины
+    const currentStateKey = `${items.length}-${currentProducts.length}`
+    if (lastRecommendationsLoadRef.current === currentStateKey && !recommendationsLoading) {
+      return
+    }
+
+    lastRecommendationsLoadRef.current = currentStateKey
     setRecommendationsLoading(true)
+
     try {
       const response = await shopApi.getCartRecommendations(6)
       setRecommendations(response.recommendations || [])
@@ -121,7 +136,14 @@ function Cart() {
     } finally {
       setRecommendationsLoading(false)
     }
-  }, [products.length])
+  }, [items, recommendationsLoading])
+
+  /**
+   * Обработчик ошибки загрузки изображения
+   */
+  const handleImageError = (cartItemId) => {
+    setImageErrors(prev => new Set(prev).add(cartItemId))
+  }
 
   /**
    * Загрузка корзины при монтировании и обработка сообщений
@@ -137,8 +159,7 @@ function Cart() {
     }
 
     return () => clearError()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location.state?.message, location.pathname])
+  }, [loadCart, location.state?.message, location.pathname, clearError, navigate])
 
   /**
    * Загрузка рекомендаций когда корзина загружена
@@ -147,7 +168,7 @@ function Cart() {
     if (!isLoading && items.length > 0) {
       loadRecommendations()
     }
-  }, [isLoading, items.length, loadRecommendations])
+  }, [isLoading, items.length])
   
   /**
    * Обработчик добавления рекомендованного товара в корзину
@@ -470,21 +491,38 @@ function Cart() {
                           />
                         </label>
 
-                        {/* Заглушка изображения товара */}
-                        <div className="w-20 h-20 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                          <span className="text-3xl opacity-50">
-                            {itemPetType === 'dog' ? '🐕' : itemPetType === 'cat' ? '🐱' : '🐾'}
-                          </span>
-                        </div>
+                        {/* Изображение товара */}
+                        {(() => {
+                          const mainImage = item.product?.main_image || (item.product?.images && item.product.images[0])
+                          const hasImageError = imageErrors.has(cartItemId)
+
+                          return (
+                            <div className="w-20 h-20 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden">
+                              {mainImage && !hasImageError ? (
+                                <img
+                                  src={mainImage}
+                                  alt={itemName}
+                                  className="w-full h-full object-contain p-1"
+                                  loading="lazy"
+                                  onError={() => handleImageError(cartItemId)}
+                                />
+                              ) : (
+                                <span className="text-3xl opacity-50">
+                                  {itemPetType === 'dog' ? '🐕' : itemPetType === 'cat' ? '🐱' : '🐾'}
+                                </span>
+                              )}
+                            </div>
+                          )
+                        })()}
 
                         {/* Информация о товаре */}
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1">
-                            <h3 className="font-semibold text-gray-900 truncate">
+                            <h3 className="font-semibold text-gray-900 line-clamp-2 text-sm leading-snug">
                               {itemName}
                             </h3>
                           </div>
-                          <p className="text-sm text-gray-500 truncate">
+                          <p className="text-sm text-gray-500 line-clamp-2 leading-relaxed">
                             {itemDescription}
                           </p>
                           <p className="font-medium text-gray-900 mt-1">
@@ -588,24 +626,41 @@ function Cart() {
                           />
                         </label>
 
-                        {/* Заглушка изображения курса */}
-                        <div className="w-20 h-20 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                          <span className="text-3xl opacity-50">
-                            📚
-                          </span>
-                        </div>
+                        {/* Изображение курса */}
+                        {(() => {
+                          const courseImage = item.course?.image || item.course?.main_image
+                          const hasImageError = imageErrors.has(cartItemId)
+
+                          return (
+                            <div className="w-20 h-20 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden">
+                              {courseImage && !hasImageError ? (
+                                <img
+                                  src={courseImage}
+                                  alt={itemName}
+                                  className="w-full h-full object-contain p-1"
+                                  loading="lazy"
+                                  onError={() => handleImageError(cartItemId)}
+                                />
+                              ) : (
+                                <span className="text-3xl opacity-50">
+                                  📚
+                                </span>
+                              )}
+                            </div>
+                          )
+                        })()}
 
                         {/* Информация о курсе */}
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1">
-                            <h3 className="font-semibold text-gray-900 truncate">
+                            <h3 className="font-semibold text-gray-900 line-clamp-2 text-sm leading-snug">
                               {itemName}
                             </h3>
                             <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs font-medium rounded-full whitespace-nowrap">
                               Курс
                             </span>
                           </div>
-                          <p className="text-sm text-gray-500 truncate">
+                          <p className="text-sm text-gray-500 line-clamp-2 leading-relaxed">
                             {itemDescription}
                           </p>
                           {/* Информация о питомце для курса */}

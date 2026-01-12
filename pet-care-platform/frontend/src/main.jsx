@@ -13,8 +13,16 @@ import ReactDOM from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 import App from './App'
 import ErrorBoundary from './components/ErrorBoundary'
+import ScrollToTop from './components/ScrollToTop'
 import { useAuthStore } from './store/authStore'
+import { apiCache } from './utils/apiCache'
 import './index.css'
+
+// Глобальная функция для отладки кэша (можно вызвать в консоли браузера)
+if (typeof window !== 'undefined') {
+  window.apiCacheStats = () => apiCache.logStats()
+  window.apiCacheClear = () => apiCache.clear()
+}
 
 /**
  * Компонент инициализации приложения
@@ -89,12 +97,25 @@ function AppWrapper() {
 }
 
 // Создание корня и рендеринг приложения
-// ПРИМЕЧАНИЕ: StrictMode убран, чтобы избежать двойных запросов в dev-режиме
-// В production это не влияет на работу приложения
+// StrictMode отключаем в dev режиме для предотвращения двойного рендера
+const isProduction = import.meta.env.PROD
+
 ReactDOM.createRoot(document.getElementById('root')).render(
-  <ErrorBoundary>
-    <BrowserRouter>
-      <AppWrapper />
-    </BrowserRouter>
-  </ErrorBoundary>
+  isProduction ? (
+    <React.StrictMode>
+      <ErrorBoundary>
+        <BrowserRouter>
+          <ScrollToTop />
+          <AppWrapper />
+        </BrowserRouter>
+      </ErrorBoundary>
+    </React.StrictMode>
+  ) : (
+    <ErrorBoundary>
+      <BrowserRouter>
+        <ScrollToTop />
+        <AppWrapper />
+      </BrowserRouter>
+    </ErrorBoundary>
+  )
 )

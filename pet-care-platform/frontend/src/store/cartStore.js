@@ -18,6 +18,7 @@
 import { create } from 'zustand'
 import * as shopApi from '../api/shop'
 import * as coursesApi from '../api/courses'
+import { apiCache } from '../utils/apiCache'
 
 /**
  * Автоматическое обновление корзины
@@ -145,6 +146,9 @@ export const useCartStore = create((set, get) => ({
           _lastLoadTime: Date.now()
         })
 
+        // Инвалидируем кэш счетчиков после загрузки корзины
+        apiCache.invalidate('cart-count')
+
         return true
       } catch (error) {
         console.error('Ошибка загрузки корзины:', error)
@@ -209,6 +213,9 @@ export const useCartStore = create((set, get) => ({
         error: null
       })
 
+      // Инвалидируем кэш счетчиков после изменения корзины
+      apiCache.invalidate('cart-count')
+
       return true
     } catch (error) {
       console.error('Ошибка добавления товара в корзину:', error)
@@ -263,6 +270,9 @@ export const useCartStore = create((set, get) => ({
         itemsCount: response.items_count || 0,
         isLoading: false
       })
+
+      // Инвалидируем кэш счетчиков после изменения корзины
+      apiCache.invalidate('cart-count')
 
       return true
     } catch (error) {
@@ -324,6 +334,10 @@ export const useCartStore = create((set, get) => ({
         itemsCount: response.items_count || 0,
         isLoading: false
       })
+
+      // Инвалидируем кэш счетчиков после изменения корзины
+      apiCache.invalidate('cart-count')
+
       return true
     } catch (error) {
       console.error('Ошибка обновления количества в корзине:', error)
@@ -367,6 +381,9 @@ export const useCartStore = create((set, get) => ({
         isLoading: false
       })
 
+      // Инвалидируем кэш счетчиков после изменения корзины
+      apiCache.invalidate('cart-count')
+
       return true
     } catch (error) {
       console.error('Ошибка удаления курса из корзины:', error)
@@ -391,6 +408,9 @@ export const useCartStore = create((set, get) => ({
       itemsCount: 0,
       error: null
     })
+
+    // Инвалидируем кэш счетчиков после очистки корзины
+    apiCache.invalidate('cart-count')
   },
   
   /**
@@ -415,6 +435,9 @@ export const useCartStore = create((set, get) => ({
         itemsCount: 0,
         isLoading: false
       })
+
+      // Инвалидируем кэш счетчиков после оформления заказа
+      apiCache.invalidate('cart-count')
       
       return response.order
     } catch (error) {
@@ -436,36 +459,23 @@ export const useCartStore = create((set, get) => ({
   /**
    * Обновление только количества товаров (быстрое обновление для UI)
    * Используется для автоматического обновления бейджей без полной перезагрузки корзины
-   * 
-   * Защита от дублирования: если запрос уже выполняется, возвращает существующий промис.
+   *
+   * Использует глобальное кэширование для предотвращения дублированных запросов.
    */
   refreshCount: async () => {
-    const state = get()
-    
-    // Если запрос уже выполняется - возвращаем существующий промис
-    if (state._refreshPromise) {
-      return state._refreshPromise
+    try {
+      // Используем глобальное кэширование с коротким TTL (10 секунд для счетчиков)
+      const response = await apiCache.get('cart-count', shopApi.getCart, 10000)
+      set({
+        total: response.totals?.total || 0,
+        itemsCount: response.items_count || 0,
+        _lastLoadTime: Date.now()
+      })
+      return true
+    } catch (error) {
+      console.error('Ошибка обновления количества товаров:', error)
+      return false
     }
-    
-    const refreshPromise = (async () => {
-      try {
-        const response = await shopApi.getCart()
-        set({
-          total: response.totals?.total || 0,
-          itemsCount: response.items_count || 0,
-          _refreshPromise: null,
-          _lastLoadTime: Date.now()
-        })
-        return true
-      } catch (error) {
-        console.error('Ошибка обновления количества товаров:', error)
-        set({ _refreshPromise: null })
-        return false
-      }
-    })()
-    
-    set({ _refreshPromise: refreshPromise })
-    return refreshPromise
   },
   
   /**
@@ -657,6 +667,10 @@ export const useCartStore = create((set, get) => ({
 
       // Перезагружаем корзину
       await loadCart()
+
+      // Кэш уже инвалидирован в loadCart, но на всякий случай
+      apiCache.invalidate('cart-count')
+
       return true
     } catch (error) {
       console.error('Ошибка удаления выбранных элементов из корзины:', error)

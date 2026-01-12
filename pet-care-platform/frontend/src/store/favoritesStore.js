@@ -7,6 +7,7 @@
 
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import { apiCache } from '../utils/apiCache'
 
 /**
  * Store избранного
@@ -15,8 +16,8 @@ export const useFavoritesStore = create(
   persist(
     (set, get) => ({
       // Списки избранного
-      products: [], // массив ID товаров
-      courses: [],  // массив ID курсов
+      products: [], // массив объектов {id, addedAt}
+      courses: [],  // массив объектов {id, addedAt}
       
       // Состояние синхронизации
       isSyncing: false,
@@ -27,8 +28,11 @@ export const useFavoritesStore = create(
        */
       addProduct: (productId) => {
         const { products } = get()
-        if (!products.includes(productId)) {
-          set({ products: [...products, productId] })
+        const existingIndex = products.findIndex(p => p.id === productId)
+        if (existingIndex === -1) {
+          set({ products: [...products, { id: productId, addedAt: new Date().toISOString() }] })
+          // Инвалидируем кэш товаров при изменении избранного
+          apiCache.clearByPrefix('products-')
         }
       },
       
@@ -37,7 +41,9 @@ export const useFavoritesStore = create(
        */
       removeProduct: (productId) => {
         const { products } = get()
-        set({ products: products.filter(id => id !== productId) })
+        set({ products: products.filter(p => p.id !== productId) })
+        // Инвалидируем кэш товаров при изменении избранного
+        apiCache.clearByPrefix('products-')
       },
       
       /**
@@ -45,7 +51,8 @@ export const useFavoritesStore = create(
        */
       toggleProduct: (productId) => {
         const { products, addProduct, removeProduct } = get()
-        if (products.includes(productId)) {
+        const exists = products.some(p => p.id === productId)
+        if (exists) {
           removeProduct(productId)
           return false
         } else {
@@ -58,7 +65,7 @@ export const useFavoritesStore = create(
        * Проверить, в избранном ли товар
        */
       isProductFavorite: (productId) => {
-        return get().products.includes(productId)
+        return get().products.some(p => p.id === productId)
       },
       
       /**
@@ -66,8 +73,11 @@ export const useFavoritesStore = create(
        */
       addCourse: (courseId) => {
         const { courses } = get()
-        if (!courses.includes(courseId)) {
-          set({ courses: [...courses, courseId] })
+        const existingIndex = courses.findIndex(c => c.id === courseId)
+        if (existingIndex === -1) {
+          set({ courses: [...courses, { id: courseId, addedAt: new Date().toISOString() }] })
+          // Инвалидируем кэш курсов при изменении избранного
+          apiCache.clearByPrefix('courses-')
         }
       },
       
@@ -76,7 +86,9 @@ export const useFavoritesStore = create(
        */
       removeCourse: (courseId) => {
         const { courses } = get()
-        set({ courses: courses.filter(id => id !== courseId) })
+        set({ courses: courses.filter(c => c.id !== courseId) })
+        // Инвалидируем кэш курсов при изменении избранного
+        apiCache.clearByPrefix('courses-')
       },
       
       /**
@@ -84,7 +96,8 @@ export const useFavoritesStore = create(
        */
       toggleCourse: (courseId) => {
         const { courses, addCourse, removeCourse } = get()
-        if (courses.includes(courseId)) {
+        const exists = courses.some(c => c.id === courseId)
+        if (exists) {
           removeCourse(courseId)
           return false
         } else {
@@ -97,7 +110,7 @@ export const useFavoritesStore = create(
        * Проверить, в избранном ли курс
        */
       isCourseFavorite: (courseId) => {
-        return get().courses.includes(courseId)
+        return get().courses.some(c => c.id === courseId)
       },
       
       /**
@@ -106,6 +119,20 @@ export const useFavoritesStore = create(
       getTotalCount: () => {
         const { products, courses } = get()
         return products.length + courses.length
+      },
+
+      /**
+       * Получить все избранные товары как массив ID
+       */
+      getProductIds: () => {
+        return get().products.map(p => p.id)
+      },
+
+      /**
+       * Получить все избранные курсы как массив ID
+       */
+      getCourseIds: () => {
+        return get().courses.map(c => c.id)
       },
       
       /**
@@ -131,11 +158,50 @@ export const useFavoritesStore = create(
     }),
     {
       name: 'pet-favorites',
-      version: 1,
+      version: 2,
       partialize: (state) => ({
         products: state.products,
         courses: state.courses,
       }),
+      migrate: (persistedState, version) => {
+        // Миграция с версии 1 на версию 2
+        if (version === 1) {
+          const migratedState = { ...persistedState }
+          const now = new Date().toISOString()
+
+          // Преобразуем массивы ID в массивы объектов {id, addedAt}
+          if (Array.isArray(migratedState.products) && migratedState.products.length > 0) {
+            // Проверяем, является ли первый элемент объектом или ID
+            if (typeof migratedState.products[0] === 'object' && migratedState.products[0].id) {
+              // Уже в новой структуре
+              migratedState.products = migratedState.products
+            } else {
+              // Преобразуем массив ID в массив объектов
+              migratedState.products = migratedState.products.map(id => ({
+                id: id,
+                addedAt: now
+              }))
+            }
+          }
+
+          if (Array.isArray(migratedState.courses) && migratedState.courses.length > 0) {
+            // Проверяем, является ли первый элемент объектом или ID
+            if (typeof migratedState.courses[0] === 'object' && migratedState.courses[0].id) {
+              // Уже в новой структуре
+              migratedState.courses = migratedState.courses
+            } else {
+              // Преобразуем массив ID в массив объектов
+              migratedState.courses = migratedState.courses.map(id => ({
+                id: id,
+                addedAt: now
+              }))
+            }
+          }
+
+          return migratedState
+        }
+        return persistedState
+      },
     }
   )
 )

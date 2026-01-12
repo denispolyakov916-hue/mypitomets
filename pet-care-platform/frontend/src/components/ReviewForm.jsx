@@ -11,13 +11,14 @@ import { ButtonLoader } from './Loader'
 
 /**
  * Компонент формы отзыва
- * 
+ *
  * @param {boolean} isPurchased - Приобретен ли товар/курс
  * @param {function} onSubmit - Обработчик отправки отзыва
+ * @param {function} onDelete - Обработчик удаления отзыва
  * @param {boolean} isLoading - Состояние загрузки
  * @param {Object} existingReview - Существующий отзыв (если есть)
  */
-function ReviewForm({ isPurchased, onSubmit, isLoading = false, existingReview = null }) {
+function ReviewForm({ isPurchased, onSubmit, onDelete, isLoading = false, existingReview = null }) {
   const [rating, setRating] = useState(existingReview?.rating || 0)
   const [comment, setComment] = useState(existingReview?.comment || '')
   const [errors, setErrors] = useState({})
@@ -58,15 +59,8 @@ function ReviewForm({ isPurchased, onSubmit, isLoading = false, existingReview =
     })
   }
   
-  if (!isPurchased) {
-    return (
-      <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
-        <p className="text-sm text-amber-800">
-          Чтобы оставить отзыв, необходимо приобрести этот товар или курс.
-        </p>
-      </div>
-    )
-  }
+  // Проверка возможности оставить отзыв теперь происходит в ReviewsSection
+  // через API eligibility, поэтому здесь не нужна проверка isPurchased
   
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
@@ -111,37 +105,52 @@ function ReviewForm({ isPurchased, onSubmit, isLoading = false, existingReview =
       </div>
       
       {/* Кнопка отправки */}
-      <div className="flex justify-end gap-3">
-        {existingReview && (
+      <div className="flex justify-between items-center">
+        {/* Кнопка удаления (только для существующего отзыва) */}
+        {existingReview && onDelete && (
           <button
             type="button"
-            onClick={() => {
-              setRating(existingReview.rating)
-              setComment(existingReview.comment)
-              setErrors({})
-            }}
-            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+            onClick={onDelete}
             disabled={isLoading}
+            className="px-4 py-2 text-sm font-medium text-red-600 bg-white border border-red-300 rounded-lg hover:bg-red-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Отмена
+            Удалить отзыв
           </button>
         )}
-        <button
-          type="submit"
-          disabled={isLoading || rating === 0 || comment.trim().length < 10}
-          className="px-6 py-2 text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-        >
-          {isLoading ? (
-            <>
-              <ButtonLoader />
-              Отправка...
-            </>
-          ) : existingReview ? (
-            'Обновить отзыв'
-          ) : (
-            'Опубликовать отзыв'
+
+        {/* Кнопки действий */}
+        <div className="flex gap-3 ml-auto">
+          {existingReview && (
+            <button
+              type="button"
+              onClick={() => {
+                setRating(existingReview.rating)
+                setComment(existingReview.comment)
+                setErrors({})
+              }}
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+              disabled={isLoading}
+            >
+              Отмена
+            </button>
           )}
-        </button>
+          <button
+            type="submit"
+            disabled={isLoading || rating === 0 || comment.trim().length < 10}
+            className="px-6 py-2 text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+          >
+            {isLoading ? (
+              <>
+                <ButtonLoader />
+                Отправка...
+              </>
+            ) : existingReview ? (
+              'Обновить отзыв'
+            ) : (
+              'Опубликовать отзыв'
+            )}
+          </button>
+        </div>
       </div>
     </form>
   )

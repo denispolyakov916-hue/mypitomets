@@ -132,7 +132,7 @@ function ProductsSection({ products }) {
               )}
             </div>
             <div className="flex-1 min-w-0">
-              <h3 className="font-medium text-gray-900 truncate">{item.product?.name}</h3>
+              <h3 className="font-semibold text-gray-900 line-clamp-2 text-sm leading-snug">{item.product?.name}</h3>
               <p className="text-sm text-gray-500">
                 {formatPrice(item.price)} × {item.quantity}
               </p>
@@ -191,7 +191,7 @@ function CoursesSection({ courses, formData, onFormChange }) {
               </span>
             </div>
             <div className="flex-1 min-w-0">
-              <h3 className="font-medium text-gray-900">{item.course?.title}</h3>
+              <h3 className="font-semibold text-gray-900 line-clamp-2 text-sm leading-snug">{item.course?.title}</h3>
               {item.pet?.name && (
                 <p className="text-sm text-primary-600">🐾 Для: {item.pet.name}</p>
               )}

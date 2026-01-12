@@ -158,6 +158,7 @@ const OrdersTable = () => {
         const statusConfig = {
           pending: { label: 'Ожидает', color: 'bg-yellow-100 text-yellow-800', icon: '⏳' },
           processing: { label: 'В обработке', color: 'bg-blue-100 text-blue-800', icon: '🔄' },
+          partially_delivered: { label: 'Частично доставлен', color: 'bg-purple-100 text-purple-800', icon: '📦' },
           shipped: { label: 'Отправлен', color: 'bg-purple-100 text-purple-800', icon: '🚚' },
           delivered: { label: 'Доставлен', color: 'bg-green-100 text-green-800', icon: '✅' },
           cancelled: { label: 'Отменён', color: 'bg-red-100 text-red-800', icon: '❌' },
