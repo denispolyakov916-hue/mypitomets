@@ -271,3 +271,76 @@ class ActivationCodeSerializer(serializers.Serializer):
         if len(value) != 6:
             raise serializers.ValidationError('Код активации должен содержать 6 цифр')
         return value
+
+
+class PasswordResetRequestSerializer(serializers.Serializer):
+    """
+    Сериализатор для запроса восстановления пароля.
+    
+    Поля:
+        email (str): Email адрес пользователя
+    """
+    
+    email = serializers.EmailField(
+        required=True,
+        help_text="Email адрес для восстановления пароля"
+    )
+    
+    def validate_email(self, value):
+        """Нормализация email."""
+        return value.lower().strip()
+
+
+class PasswordResetConfirmSerializer(serializers.Serializer):
+    """
+    Сериализатор для подтверждения восстановления пароля.
+    
+    Поля:
+        email (str): Email адрес пользователя
+        code (str): 6-значный код восстановления
+        new_password (str): Новый пароль
+        new_password_confirm (str): Подтверждение нового пароля
+    """
+    
+    email = serializers.EmailField(
+        required=True,
+        help_text="Email адрес"
+    )
+    
+    code = serializers.CharField(
+        required=True,
+        min_length=6,
+        max_length=6,
+        help_text="6-значный код восстановления"
+    )
+    
+    new_password = serializers.CharField(
+        required=True,
+        min_length=6,
+        write_only=True,
+        style={'input_type': 'password'},
+        help_text="Новый пароль (минимум 6 символов)"
+    )
+    
+    new_password_confirm = serializers.CharField(
+        required=True,
+        write_only=True,
+        style={'input_type': 'password'},
+        help_text="Подтверждение нового пароля"
+    )
+    
+    def validate_email(self, value):
+        return value.lower().strip()
+    
+    def validate_code(self, value):
+        if not value.isdigit():
+            raise serializers.ValidationError('Код должен содержать только цифры')
+        return value
+    
+    def validate(self, attrs):
+        if attrs['new_password'] != attrs['new_password_confirm']:
+            raise serializers.ValidationError({
+                'new_password_confirm': 'Пароли не совпадают'
+            })
+        attrs.pop('new_password_confirm', None)
+        return attrs

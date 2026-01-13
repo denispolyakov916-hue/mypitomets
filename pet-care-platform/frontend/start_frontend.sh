@@ -96,13 +96,15 @@ echo "     Запуск Vite dev-сервера..."
 echo "================================================"
 echo ""
 echo "Фронтенд будет доступен по адресам:"
-echo "  http://localhost:5173"
-echo "  http://127.0.0.1:5173"
+echo "  http://localhost:5199"
+echo "  http://127.0.0.1:5199"
+echo ""
+echo "ВАЖНО: Бекенд должен быть запущен на http://localhost:8077"
 echo ""
 echo "Для остановки нажмите Ctrl+C"
 echo ""
 echo "================================================"
 echo ""
 
-npm run dev
+npm run dev -- --port 5199 --host localhost
 

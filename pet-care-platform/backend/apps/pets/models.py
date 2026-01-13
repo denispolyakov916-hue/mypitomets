@@ -408,5 +408,6 @@ class Pet(models.Model):
         }
 
 
-# Импортируем модель Reminder для регистрации в Django
+# Импортируем модели для регистрации в Django
 from .reminder_models import Reminder, ReminderCategory, ReminderFrequency
+from .breed_models import Breed, BreedHealth, BreedNutrition, BreedCare

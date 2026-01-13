@@ -15,9 +15,9 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
   
   // URL бэкенда для прокси
-  // Жестко указываем localhost для разработки
+  // Бэкенд на порту 8077
   const backendHost = 'localhost'
-  const backendPort = '8000'
+  const backendPort = '8077'
   const proxyTarget = `http://${backendHost}:${backendPort}`
   
   console.log(`[Vite] API proxy target: ${proxyTarget}`)
@@ -26,24 +26,24 @@ export default defineConfig(({ mode }) => {
     plugins: [react()],
     
     // Конфигурация сервера разработки
-    // ПОРТ 5199 - уникальный порт для избежания конфликтов в локальной сети
+    // ПОРТ 5199 - порт для фронтенда (localhost)
     server: {
       port: 5199,
-      host: '0.0.0.0', // Слушать на всех интерфейсах (включая IPv4)
+      host: 'localhost', // Слушать только на localhost
       strictPort: false, // Если порт занят, попробовать следующий
 
       // Проксирование API запросов к Django бэкенду
-      // Все запросы на /api/* перенаправляются на localhost:8000
+      // Все запросы на /api/* перенаправляются на localhost:8077
       proxy: {
         '/api': {
-          target: 'http://localhost:8000',
+          target: 'http://localhost:8077',
           changeOrigin: true,
           secure: false,
           ws: false,
           rewrite: (path) => path, // Оставляем путь как есть
           configure: (proxy, options) => {
             proxy.on('proxyReq', (proxyReq, req, res) => {
-              console.log(`[Vite Proxy] ${req.method} ${req.url} -> http://localhost:8000${req.url}`)
+              console.log(`[Vite Proxy] ${req.method} ${req.url} -> ${proxyTarget}${req.url}`)
             })
             proxy.on('error', (err, req, res) => {
               console.error('[Vite Proxy Error]', err.message, 'for', req.url)

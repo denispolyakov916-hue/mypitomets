@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Plus, QrCode, Edit, Share2, Download, Trash2 } from 'lucide-react';
+import { Plus, QrCode, Edit, Share2, Download, Trash2, Eye, BarChart3 } from 'lucide-react';
 import { getPets, createPet, updatePet, deletePet } from '../../api/pets';
 import PetIdWizard from './PetIdWizard';
 import { PageLoader } from '../../components/Loader';
@@ -68,6 +69,7 @@ const transformFormDataToApi = (formData) => {
 };
 
 export default function PetIdPage() {
+  const navigate = useNavigate();
   const [pets, setPets] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showWizard, setShowWizard] = useState(false);
@@ -188,10 +190,13 @@ export default function PetIdPage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.1 }}
-              className="bg-white rounded-2xl shadow-sm overflow-hidden hover:shadow-lg transition-all"
+              className="bg-white rounded-2xl shadow-sm overflow-hidden hover:shadow-lg transition-all group"
             >
-              {/* Фото питомца */}
-              <div className="relative h-48 bg-gradient-to-br from-purple-100 to-orange-100">
+              {/* Фото питомца - кликабельное */}
+              <div 
+                className="relative h-48 bg-gradient-to-br from-purple-100 to-orange-100 cursor-pointer"
+                onClick={() => navigate(`/pet-id/${pet.id}`)}
+              >
                 {pet.photo_url ? (
                   <img src={pet.photo_url} alt={pet.name} className="w-full h-full object-cover" />
                 ) : (
@@ -199,8 +204,17 @@ export default function PetIdPage() {
                     {pet.species === 'dog' ? '🐕' : pet.species === 'cat' ? '🐱' : '🐾'}
                   </div>
                 )}
+                {/* Overlay при наведении */}
+                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all flex items-center justify-center">
+                  <div className="opacity-0 group-hover:opacity-100 transition-all transform translate-y-2 group-hover:translate-y-0">
+                    <div className="bg-white/90 backdrop-blur-sm px-4 py-2 rounded-xl shadow-lg flex items-center gap-2">
+                      <BarChart3 className="w-4 h-4 text-purple-600" />
+                      <span className="text-sm font-medium text-gray-800">Открыть профиль</span>
+                    </div>
+                  </div>
+                </div>
                 {/* Кнопки в правом верхнем углу */}
-                <div className="absolute top-4 right-4 flex gap-2">
+                <div className="absolute top-4 right-4 flex gap-2" onClick={(e) => e.stopPropagation()}>
                   {/* Кнопка удаления */}
                   <button
                     onClick={() => handleDeletePet(pet)}
@@ -218,30 +232,39 @@ export default function PetIdPage() {
 
               {/* Информация */}
               <div className="p-5">
-                <h3 className="text-xl font-semibold text-gray-800">{pet.name}</h3>
-                <p className="text-gray-500 text-sm mt-1">
-                  {pet.breed || 'Порода не указана'} • {pet.species === 'dog' ? 'Собака' : 'Кошка'}
-                </p>
+                <div 
+                  className="cursor-pointer"
+                  onClick={() => navigate(`/pet-id/${pet.id}`)}
+                >
+                  <h3 className="text-xl font-semibold text-gray-800 hover:text-purple-600 transition-colors">{pet.name}</h3>
+                  <p className="text-gray-500 text-sm mt-1">
+                    {pet.breed || 'Порода не указана'} • {pet.species === 'dog' ? 'Собака' : 'Кошка'}
+                  </p>
+                </div>
                 
                 {/* ID номер */}
                 <div className="mt-3 p-3 bg-gray-50 rounded-xl">
                   <p className="text-xs text-gray-400 mb-1">Pet ID</p>
-                  <p className="font-mono text-sm text-gray-700">#{pet.id?.toString().padStart(8, '0')}</p>
+                  <p className="font-mono text-sm text-gray-700">#{pet.id?.toString().slice(0, 8)}</p>
                 </div>
 
                 {/* Действия */}
                 <div className="flex gap-2 mt-4">
                   <button
-                    onClick={() => handleEditPet(pet)}
-                    className="flex-1 flex items-center justify-center gap-2 py-2 bg-purple-50 text-purple-600 rounded-xl hover:bg-purple-100 transition-all"
+                    onClick={() => navigate(`/pet-id/${pet.id}`)}
+                    className="flex-1 flex items-center justify-center gap-2 py-2 bg-gradient-to-r from-purple-600 to-orange-500 text-white rounded-xl hover:shadow-md transition-all"
                   >
-                    <Edit className="w-4 h-4" /> Изменить
+                    <Eye className="w-4 h-4" /> Профиль
                   </button>
-                  <button className="p-2 bg-gray-50 text-gray-600 rounded-xl hover:bg-gray-100 transition-all">
+                  <button
+                    onClick={() => handleEditPet(pet)}
+                    className="p-2 bg-purple-50 text-purple-600 rounded-xl hover:bg-purple-100 transition-all"
+                    title="Изменить"
+                  >
+                    <Edit className="w-4 h-4" />
+                  </button>
+                  <button className="p-2 bg-gray-50 text-gray-600 rounded-xl hover:bg-gray-100 transition-all" title="Поделиться">
                     <Share2 className="w-4 h-4" />
-                  </button>
-                  <button className="p-2 bg-gray-50 text-gray-600 rounded-xl hover:bg-gray-100 transition-all">
-                    <Download className="w-4 h-4" />
                   </button>
                 </div>
               </div>

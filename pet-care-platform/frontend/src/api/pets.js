@@ -154,3 +154,106 @@ export const ACTIVITY_LEVEL_OPTIONS = [
   { value: 'medium', label: 'Средняя' },
   { value: 'high', label: 'Высокая' },
 ]
+
+// ===== API ДЛЯ РАБОТЫ С ПОРОДАМИ =====
+
+/**
+ * Получение списка пород с фильтрацией
+ * 
+ * @param {Object} params - Параметры фильтрации
+ * @param {string} [params.species] - Вид животного (dog/cat)
+ * @param {string} [params.search] - Поиск по названию
+ * @param {string} [params.size] - Размер (tiny/small/medium/large/giant)
+ * @returns {Promise<Object>} Список пород
+ */
+export const getBreeds = async (params = {}) => {
+  const queryParams = new URLSearchParams()
+  if (params.species) queryParams.append('species', params.species)
+  if (params.search) queryParams.append('search', params.search)
+  if (params.size) queryParams.append('size', params.size)
+  
+  const queryString = queryParams.toString()
+  return await api.get(`/pets/breeds/${queryString ? '?' + queryString : ''}`)
+}
+
+/**
+ * Получение информации о породе по slug
+ * 
+ * @param {string} slug - URL-имя породы
+ * @returns {Promise<Object>} Детальная информация о породе
+ */
+export const getBreedBySlug = async (slug) => {
+  return await api.get(`/pets/breeds/${slug}/`)
+}
+
+/**
+ * Получение сравнения параметров питомца с эталоном породы
+ * 
+ * @param {string} petId - ID питомца
+ * @returns {Promise<Object>} Анализ параметров и рекомендации
+ */
+export const getPetBreedComparison = async (petId) => {
+  return await api.get(`/pets/${petId}/breed-comparison/`)
+}
+
+// ===== ДОПОЛНИТЕЛЬНЫЕ КОНСТАНТЫ =====
+
+/**
+ * Варианты типа питания
+ */
+export const DIET_TYPE_OPTIONS = [
+  { value: 'dry', label: 'Сухой корм' },
+  { value: 'wet', label: 'Влажный корм' },
+  { value: 'mixed', label: 'Смешанное питание' },
+  { value: 'raw', label: 'Натуральное питание' },
+  { value: 'home', label: 'Домашняя еда' },
+]
+
+/**
+ * Варианты частоты кормления
+ */
+export const FEEDING_FREQUENCY_OPTIONS = [
+  { value: '1', label: '1 раз в день' },
+  { value: '2', label: '2 раза в день' },
+  { value: '3', label: '3 раза в день' },
+  { value: 'free', label: 'Свободный доступ' },
+]
+
+/**
+ * Варианты размера питомца
+ */
+export const SIZE_OPTIONS = [
+  { value: 'small', label: 'Маленький (до 10 кг)' },
+  { value: 'medium', label: 'Средний (10-25 кг)' },
+  { value: 'large', label: 'Крупный (более 25 кг)' },
+]
+
+/**
+ * Варианты типа телосложения
+ */
+export const BODY_TYPE_OPTIONS = [
+  { value: 'slim', label: 'Недостаточный вес' },
+  { value: 'normal', label: 'Идеальный вес' },
+  { value: 'overweight', label: 'Избыточный вес' },
+  { value: 'obese', label: 'Ожирение' },
+]
+
+/**
+ * Варианты типа жилья
+ */
+export const HOUSING_TYPE_OPTIONS = [
+  { value: 'apartment', label: 'Квартира' },
+  { value: 'house', label: 'Частный дом' },
+  { value: 'cottage', label: 'Дача/Коттедж' },
+  { value: 'other', label: 'Другое' },
+]
+
+/**
+ * Варианты состояния зубов
+ */
+export const DENTAL_HEALTH_OPTIONS = [
+  { value: 'excellent', label: 'Отличное' },
+  { value: 'good', label: 'Хорошее' },
+  { value: 'fair', label: 'Удовлетворительное' },
+  { value: 'needs_attention', label: 'Требует лечения' },
+]

@@ -41,6 +41,12 @@ import Loader from './components/Loader'
 import Home from './pages/Home'
 import AuthModal from './pages/Auth/AuthModal'
 import Activate from './pages/Auth/Activate'
+import ForgotPassword from './pages/Auth/ForgotPassword'
+import ResetPassword from './pages/Auth/ResetPassword'
+
+// Ленивая загрузка страниц пород
+const BreedsPage = lazy(() => import('./pages/Breeds/BreedsPage'))
+const BreedDetailPage = lazy(() => import('./pages/Breeds/BreedDetailPage'))
 import PetList from './pages/PetProfile/PetList'
 import PetForm from './pages/PetProfile/PetForm'
 import PetProfile from './pages/PetProfile/PetProfile'
@@ -61,6 +67,7 @@ const HealthDiary = lazy(() => import('./pages/HealthDiary/HealthDiary'))
 const Orders = lazy(() => import('./pages/Orders/Orders'))
 const OrderDetail = lazy(() => import('./pages/Orders/OrderDetail'))
 const PetIdPage = lazy(() => import('./pages/PetId/PetIdPage'))
+const PetDetailPage = lazy(() => import('./pages/PetId/PetDetailPage'))
 
 // Ленивая загрузка тяжёлых страниц обучения
 const CourseLearningPage = lazy(() => import('./pages/Training/Learning/CourseLearningPage'))
@@ -130,10 +137,30 @@ function App() {
                 element={isAuthenticated ? <Navigate to="/pet-id" /> : <AuthModal />}
               />
               <Route path="/activate" element={<Activate />} />
+              <Route path="/forgot-password" element={<ForgotPassword />} />
+              <Route path="/reset-password" element={<ResetPassword />} />
 
               {/* Магазин - Публичный */}
               <Route path="/shop" element={<Shop />} />
               <Route path="/shop/products/:id" element={<ProductDetail />} />
+
+              {/* Породы - Публичный */}
+              <Route
+                path="/breeds"
+                element={
+                  <Suspense fallback={<Loader />}>
+                    <BreedsPage />
+                  </Suspense>
+                }
+              />
+              <Route
+                path="/breeds/:slug"
+                element={
+                  <Suspense fallback={<Loader />}>
+                    <BreedDetailPage />
+                  </Suspense>
+                }
+              />
 
               {/* Курсы - Публичный каталог */}
               <Route path="/courses" element={<Courses />} />
@@ -156,6 +183,15 @@ function App() {
                   element={
                     <Suspense fallback={<Loader />}>
                       <PetIdPage />
+                    </Suspense>
+                  }
+                />
+                {/* Детальный просмотр питомца с анализом */}
+                <Route
+                  path="/pet-id/:id"
+                  element={
+                    <Suspense fallback={<Loader />}>
+                      <PetDetailPage />
                     </Suspense>
                   }
                 />

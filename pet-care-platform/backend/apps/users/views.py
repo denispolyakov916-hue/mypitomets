@@ -20,6 +20,8 @@ from .serializers import (
     UserRegistrationSerializer, 
     UserLoginSerializer,
     ActivationCodeSerializer,
+    PasswordResetRequestSerializer,
+    PasswordResetConfirmSerializer,
 )
 from .services import UserService
 from core.exceptions import ApiError
@@ -557,3 +559,92 @@ class UserCoursesView(APIView):
     def get(self, request):
         courses = [uc.to_dict() for uc in request.user.user_courses.all()]
         return Response({'courses': courses}, status=status.HTTP_200_OK)
+
+
+class PasswordResetRequestView(APIView):
+    """
+    Запрос на восстановление пароля.
+    
+    POST /api/auth/password-reset/
+    Тело: {"email": "..."}
+    
+    Отправляет код восстановления на указанный email.
+    """
+    
+    permission_classes = [AllowAny]
+    
+    def post(self, request):
+        try:
+            serializer = PasswordResetRequestSerializer(data=request.data)
+            
+            if not serializer.is_valid():
+                return Response(
+                    {'error': 'Ошибка валидации', 'errors': serializer.errors},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            email = serializer.validated_data['email']
+            result = UserService.request_password_reset(email)
+            
+            return Response(result, status=status.HTTP_200_OK)
+            
+        except ApiError as e:
+            return Response({'error': e.detail}, status=e.status_code)
+        except Exception as e:
+            logger.error(f"Ошибка при запросе восстановления пароля: {str(e)}")
+            return Response(
+                {'error': 'Внутренняя ошибка сервера'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
+class PasswordResetConfirmView(APIView):
+    """
+    Подтверждение восстановления пароля.
+    
+    POST /api/auth/password-reset/confirm/
+    Тело: {"email": "...", "code": "123456", "new_password": "...", "new_password_confirm": "..."}
+    
+    Возвращает токены при успешной смене пароля.
+    """
+    
+    permission_classes = [AllowAny]
+    
+    def post(self, request):
+        try:
+            serializer = PasswordResetConfirmSerializer(data=request.data)
+            
+            if not serializer.is_valid():
+                return Response(
+                    {'error': 'Ошибка валидации', 'errors': serializer.errors},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            email = serializer.validated_data['email']
+            code = serializer.validated_data['code']
+            new_password = serializer.validated_data['new_password']
+            
+            result = UserService.confirm_password_reset(email, code, new_password)
+            
+            # Установка refresh токена в cookie
+            response = Response(result, status=status.HTTP_200_OK)
+            if 'refreshToken' in result:
+                response.set_cookie(
+                    'refreshToken',
+                    result['refreshToken'],
+                    max_age=30 * 24 * 60 * 60,
+                    httponly=True,
+                    samesite='Lax',
+                    secure=not settings.DEBUG
+                )
+            
+            return response
+            
+        except ApiError as e:
+            return Response({'error': e.detail}, status=e.status_code)
+        except Exception as e:
+            logger.error(f"Ошибка при подтверждении восстановления пароля: {str(e)}")
+            return Response(
+                {'error': 'Внутренняя ошибка сервера'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )

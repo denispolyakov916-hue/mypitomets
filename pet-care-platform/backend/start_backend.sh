@@ -119,9 +119,9 @@ echo "[OK] Миграции применены"
 echo ""
 
 # Шаг 6: Проверка порта
-echo "[6/6] Проверка порта 8000..."
-if lsof -Pi :8000 -sTCP:LISTEN -t >/dev/null ; then
-    echo "[ПРЕДУПРЕЖДЕНИЕ] Порт 8000 уже используется!"
+echo "[6/6] Проверка порта 8077..."
+if lsof -Pi :8077 -sTCP:LISTEN -t >/dev/null ; then
+    echo "[ПРЕДУПРЕЖДЕНИЕ] Порт 8077 уже используется!"
 fi
 echo ""
 
@@ -131,15 +131,16 @@ echo "     Запуск Django сервера..."
 echo "================================================"
 echo ""
 echo "Бэкенд будет доступен по адресам:"
-echo "  http://localhost:8000"
-echo "  http://localhost:8000/api/"
-echo "  http://localhost:8000/admin/"
+echo "  http://localhost:8077"
+echo "  http://0.0.0.0:8077 (все интерфейсы)"
+echo "  http://localhost:8077/api/"
+echo "  http://localhost:8077/admin/"
 echo ""
 echo "Для остановки нажмите Ctrl+C"
 echo "================================================"
 echo ""
 
-.venv/bin/python manage.py runserver 0.0.0.0:8000
+.venv/bin/python manage.py runserver 0.0.0.0:8077
 
 echo ""
 echo "Сервер остановлен."

@@ -30,6 +30,12 @@ from .reminder_views import (
     ReminderCategoriesView,
     UpcomingRemindersView,
 )
+from .breed_views import (
+    BreedListView,
+    BreedDetailView,
+    BreedHealthView,
+    PetBreedComparisonView,
+)
 
 urlpatterns = [
     # Список всех питомцев / Создание нового питомца
@@ -55,4 +61,17 @@ urlpatterns = [
     
     # Отметить напоминание выполненным
     path('reminders/<uuid:reminder_id>/complete/', ReminderCompleteView.as_view(), name='reminder-complete'),
+    
+    # ===== Породы =====
+    # Список пород с фильтрацией
+    path('breeds/', BreedListView.as_view(), name='breed-list'),
+    
+    # Детали породы
+    path('breeds/<slug:slug>/', BreedDetailView.as_view(), name='breed-detail'),
+    
+    # Риски здоровья породы
+    path('breeds/<slug:slug>/health/', BreedHealthView.as_view(), name='breed-health'),
+    
+    # Сравнение питомца с эталоном породы
+    path('<uuid:pet_id>/breed-comparison/', PetBreedComparisonView.as_view(), name='pet-breed-comparison'),
 ]

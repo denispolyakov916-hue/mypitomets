@@ -145,7 +145,7 @@ function Register() {
   }
   
   return (
-    <div className="min-h-screen relative overflow-hidden bg-gradient-to-br from-purple-600 via-purple-500 to-purple-600">
+    <div className="min-h-screen flex items-center justify-center relative overflow-hidden bg-gradient-to-br from-purple-600 via-purple-500 to-purple-600 px-4 py-8">
       {/* Animated background elements - same as Home page */}
       <div className="absolute inset-0">
         {/* Primary gradient orbs */}

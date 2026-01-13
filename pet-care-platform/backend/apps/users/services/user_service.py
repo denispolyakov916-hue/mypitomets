@@ -329,4 +329,90 @@ class UserService:
             list: Список пользователей
         """
         return list(User.objects.all())
+    
+    @staticmethod
+    def request_password_reset(email):
+        """
+        Запрос на восстановление пароля.
+        
+        Отправляет код восстановления на email пользователя.
+        
+        Аргументы:
+            email: Email пользователя
+            
+        Возвращает:
+            dict: Результат операции
+        """
+        try:
+            user = User.objects.get(email__iexact=email.lower().strip())
+        except User.DoesNotExist:
+            # Не раскрываем информацию о существовании пользователя
+            return {
+                'success': True,
+                'message': 'Если аккаунт существует, на указанный email отправлен код восстановления'
+            }
+        
+        # Генерация 6-значного кода восстановления
+        reset_code = str(random.randint(100000, 999999))
+        
+        # Сохраняем код в поле activation_code (переиспользуем)
+        user.activation_code = reset_code
+        user.save(update_fields=['activation_code'])
+        
+        logger.info(f"Код восстановления для {email}: {reset_code}")
+        print(f"[PASSWORD RESET] Код восстановления для {email}: {reset_code}")
+        
+        # Отправка письма с кодом
+        try:
+            MailService.send_password_reset_mail(email, reset_code)
+            print(f"[PASSWORD RESET] Письмо отправлено на {email}")
+        except Exception as e:
+            logger.error(f"Ошибка отправки письма восстановления: {str(e)}")
+            print(f"[PASSWORD RESET ERROR] {str(e)}")
+        
+        return {
+            'success': True,
+            'message': 'Если аккаунт существует, на указанный email отправлен код восстановления'
+        }
+    
+    @staticmethod
+    def confirm_password_reset(email, code, new_password):
+        """
+        Подтверждение восстановления пароля.
+        
+        Аргументы:
+            email: Email пользователя
+            code: Код восстановления
+            new_password: Новый пароль
+            
+        Возвращает:
+            dict: Результат операции с токенами
+        """
+        try:
+            user = User.objects.get(email__iexact=email.lower().strip())
+        except User.DoesNotExist:
+            raise ApiError.bad_request('Пользователь не найден')
+        
+        # Проверка кода
+        if user.activation_code != code:
+            raise ApiError.bad_request('Неверный код восстановления')
+        
+        # Установка нового пароля
+        user.set_password(new_password)
+        user.activation_code = None  # Очищаем код
+        user.save(update_fields=['password', 'activation_code'])
+        
+        logger.info(f"Пароль успешно сброшен для {email}")
+        print(f"[PASSWORD RESET SUCCESS] Пароль изменён для {email}")
+        
+        # Автоматически входим пользователя
+        tokens = TokenService.generate_tokens(user)
+        TokenService.save_token(user.id, tokens['refreshToken'])
+        
+        return {
+            'success': True,
+            'message': 'Пароль успешно изменён',
+            **tokens,
+            'user': user.to_dict()
+        }
 

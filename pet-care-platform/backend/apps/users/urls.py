@@ -24,6 +24,8 @@ from .views import (
     ActivateByCodeView,
     ExchangeAuthCodeView,
     GetUsersView,
+    PasswordResetRequestView,
+    PasswordResetConfirmView,
 )
 
 urlpatterns = [
@@ -62,4 +64,12 @@ urlpatterns = [
     # Список пользователей (для тестирования, требует аутентификации)
     # GET /api/auth/users/
     path('users/', GetUsersView.as_view(), name='auth-users'),
+    
+    # Восстановление пароля - запрос
+    # POST /api/auth/password-reset/
+    path('password-reset/', PasswordResetRequestView.as_view(), name='auth-password-reset'),
+    
+    # Восстановление пароля - подтверждение
+    # POST /api/auth/password-reset/confirm/
+    path('password-reset/confirm/', PasswordResetConfirmView.as_view(), name='auth-password-reset-confirm'),
 ]

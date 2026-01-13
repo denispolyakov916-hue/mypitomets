@@ -6,7 +6,7 @@
  */
 
 import { useState, useEffect } from 'react'
-import { useNavigate, useLocation } from 'react-router-dom'
+import { useNavigate, useLocation, Link } from 'react-router-dom'
 import { useAuthStore } from '../../store/authStore'
 import { ButtonLoader } from '../../components/Loader'
 
@@ -291,6 +291,24 @@ const toggleMode = () => {
                   isRegisterMode ? 'Зарегистрироваться' : 'Войти'
                 )}
               </button>
+
+              {/* Ссылка восстановления пароля (только для входа) */}
+              {!isRegisterMode && (
+                <Link 
+                  to="/forgot-password" 
+                  className="auth-forgot-link"
+                  style={{ 
+                    display: 'block', 
+                    textAlign: 'center', 
+                    marginTop: '12px',
+                    color: '#666',
+                    fontSize: '14px',
+                    textDecoration: 'none'
+                  }}
+                >
+                  Забыли пароль?
+                </Link>
+              )}
 
               {/* Социальные сети */}
               <div className="auth-social-text">
