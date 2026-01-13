@@ -856,7 +856,7 @@ class PetSerializer(serializers.Serializer):
 
 class BreedListSerializer(serializers.ModelSerializer):
     """
-    Упрощённый сериализатор для списка пород.
+    Краткий сериализатор породы для списков.
     Используется в выпадающих списках и автодополнении.
     """
     class Meta:
@@ -864,7 +864,7 @@ class BreedListSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'name', 'slug', 'species',
             'size_category', 'weight_min', 'weight_max',
-            'energy_level', 'trainability', 'popularity_rank'
+            'energy_level', 'trainability'
         ]
 
 
@@ -872,36 +872,55 @@ class BreedSerializer(serializers.ModelSerializer):
     """
     Полный сериализатор породы.
     Включает все характеристики для автозаполнения PetID.
+    
+    Основан на фактической схеме БД (migration 0009_recreate_breed_tables).
     """
-    average_weight = serializers.FloatField(read_only=True)
-    average_lifespan = serializers.FloatField(read_only=True)
+    average_weight = serializers.SerializerMethodField()
+    average_lifespan = serializers.SerializerMethodField()
     suggestions = serializers.SerializerMethodField()
     
     class Meta:
         model = Breed
         fields = [
             # Основные
-            'id', 'name', 'slug', 'species', 'description',
-            # Здоровье
-            'health_risk_level', 'genetic_risks', 
+            'id', 'name', 'name_en', 'slug', 'species', 
+            'description', 'short_description',
+            # Размеры
+            'size_category', 'weight_min', 'weight_max', 'average_weight',
+            'height_min', 'height_max',
             'lifespan_min', 'lifespan_max', 'average_lifespan',
-            'dental_health_notes',
-            # Вес и размер
-            'weight_min', 'weight_max', 'average_weight', 'size_category',
-            'diet_recommendations', 'digestion_sensitivity', 'metabolism_notes',
-            # Активность
-            'energy_level', 'exercise_needs', 'favorite_activities', 'activity_notes',
-            # Уход
-            'grooming_level', 'bathing_frequency', 'grooming_notes',
             # Поведение
-            'temperament', 'trainability', 'children_compatibility', 'socialization_notes',
+            'energy_level', 'trainability', 'intelligence',
+            'friendliness_to_children', 'friendliness_to_pets', 'friendliness_to_strangers',
+            'independence',
+            # Уход
+            'grooming_frequency', 'shedding_level', 'coat_type',
+            # Здоровье
+            'health_risk_level', 'hypoallergenic', 'brachycephalic',
+            # Условия содержания
+            'apartment_friendly', 'good_for_novice',
             # Мета
-            'popularity_rank', 'suggestions'
+            'suggestions'
         ]
+    
+    def get_average_weight(self, obj):
+        """Возвращает средний вес породы."""
+        return float((obj.weight_min + obj.weight_max) / 2)
+    
+    def get_average_lifespan(self, obj):
+        """Возвращает среднюю продолжительность жизни."""
+        return float((obj.lifespan_min + obj.lifespan_max) / 2)
     
     def get_suggestions(self, obj):
         """Возвращает рекомендуемые значения для автозаполнения Pet."""
-        return obj.get_suggestions_for_pet()
+        return {
+            'activity_level': obj.energy_level,
+            'size': obj.size_category,
+            'trainability': obj.trainability,
+            'grooming_needs': obj.grooming_frequency,
+            'good_for_apartment': obj.apartment_friendly,
+            'good_for_novice': obj.good_for_novice,
+        }
 
 
 class BreedSuggestionsSerializer(serializers.Serializer):

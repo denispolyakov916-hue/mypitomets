@@ -26,7 +26,7 @@ import { Eye, EyeOff } from 'lucide-react'
  */
 function Register() {
   const navigate = useNavigate()
-  const { register, activateByCode, isLoading, error, clearError } = useAuthStore()
+  const { register, activateByCode, resendActivationCode, isLoading, error, clearError } = useAuthStore()
   
   // Состояние формы регистрации
   const [formData, setFormData] = useState({
@@ -42,10 +42,79 @@ function Register() {
   const [showPassword, setShowPassword] = useState(false)
   const [showPasswordConfirm, setShowPasswordConfirm] = useState(false)
   
+  // Состояние для таймера повторной отправки кода
+  const [resendCooldown, setResendCooldown] = useState(0)
+  const [resendSuccess, setResendSuccess] = useState(false)
+  
   // Очистка ошибок при монтировании
   useEffect(() => {
     clearError()
   }, [clearError])
+  
+  // Таймер обратного отсчёта для повторной отправки кода
+  useEffect(() => {
+    if (resendCooldown > 0) {
+      const timer = setTimeout(() => setResendCooldown(resendCooldown - 1), 1000)
+      return () => clearTimeout(timer)
+    }
+  }, [resendCooldown])
+  
+  /**
+   * Обработчик повторной отправки кода активации
+   */
+  const handleResendCode = async () => {
+    if (resendCooldown > 0) return
+    
+    setResendSuccess(false)
+    const success = await resendActivationCode(formData.email)
+    
+    if (success) {
+      setResendCooldown(60) // 60 секунд ожидания
+      setResendSuccess(true)
+      // Очищаем сообщение об успехе через 5 секунд
+      setTimeout(() => setResendSuccess(false), 5000)
+    }
+  }
+  
+  /**
+   * Вычисление силы пароля
+   * @param {string} password - Пароль для проверки
+   * @returns {Object} Объект с уровнем силы и сообщением
+   */
+  const calculatePasswordStrength = (password) => {
+    if (!password) {
+      return { level: 0, message: '', color: 'gray' }
+    }
+    
+    let score = 0
+    const checks = {
+      length: password.length >= 8,
+      hasLetter: /[a-zA-Zа-яА-ЯёЁ]/.test(password),
+      hasDigit: /\d/.test(password),
+      hasSpecial: /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?`~]/.test(password),
+      isLong: password.length >= 12
+    }
+    
+    if (checks.length) score += 1
+    if (checks.hasLetter) score += 1
+    if (checks.hasDigit) score += 1
+    if (checks.hasSpecial) score += 1
+    if (checks.isLong) score += 1
+    
+    // Определение уровня и сообщения
+    if (score <= 2) {
+      return { level: 1, message: 'Слабый', color: 'red', checks }
+    } else if (score <= 3) {
+      return { level: 2, message: 'Средний', color: 'yellow', checks }
+    } else if (score <= 4) {
+      return { level: 3, message: 'Хороший', color: 'blue', checks }
+    } else {
+      return { level: 4, message: 'Отличный', color: 'green', checks }
+    }
+  }
+  
+  // Вычисление силы пароля
+  const passwordStrength = calculatePasswordStrength(formData.password)
   
   /**
    * Валидация полей формы
@@ -71,11 +140,26 @@ function Register() {
       errors.lastName = 'Фамилия должна содержать минимум 2 символа'
     }
 
-    // Валидация пароля
+    // Валидация пароля с новыми требованиями
     if (!formData.password) {
       errors.password = 'Введите пароль'
-    } else if (formData.password.length < 6) {
-      errors.password = 'Пароль должен быть не менее 6 символов'
+    } else {
+      const pwdErrors = []
+      if (formData.password.length < 8) {
+        pwdErrors.push('минимум 8 символов')
+      }
+      if (!/[a-zA-Zа-яА-ЯёЁ]/.test(formData.password)) {
+        pwdErrors.push('хотя бы одну букву')
+      }
+      if (!/\d/.test(formData.password)) {
+        pwdErrors.push('хотя бы одну цифру')
+      }
+      if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?`~]/.test(formData.password)) {
+        pwdErrors.push('хотя бы один спецсимвол')
+      }
+      if (pwdErrors.length > 0) {
+        errors.password = `Пароль должен содержать: ${pwdErrors.join(', ')}`
+      }
     }
 
     // Валидация подтверждения пароля
@@ -523,7 +607,7 @@ function Register() {
                     className={`w-full px-4 py-3 pr-12 border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent transition-all duration-200 text-white placeholder-white/60 bg-white/10 backdrop-blur-sm ${
                       validationErrors.password ? 'border-red-400 bg-red-500/20' : 'border-white/30 hover:border-orange-400/60'
                     }`}
-                    placeholder="Минимум 6 символов"
+                    placeholder="Минимум 8 символов"
                     autoComplete="new-password"
                     disabled={isLoading}
                   />
@@ -535,6 +619,61 @@ function Register() {
                     {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                   </button>
                 </div>
+                
+                {/* Индикатор силы пароля */}
+                {formData.password && (
+                  <motion.div
+                    className="mt-2"
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    transition={{ duration: 0.3 }}
+                  >
+                    {/* Шкала силы */}
+                    <div className="flex gap-1 mb-2">
+                      {[1, 2, 3, 4].map((level) => (
+                        <div
+                          key={level}
+                          className={`h-1.5 flex-1 rounded-full transition-all duration-300 ${
+                            passwordStrength.level >= level
+                              ? passwordStrength.color === 'red' ? 'bg-red-500'
+                                : passwordStrength.color === 'yellow' ? 'bg-yellow-500'
+                                : passwordStrength.color === 'blue' ? 'bg-blue-500'
+                                : 'bg-green-500'
+                              : 'bg-white/20'
+                          }`}
+                        />
+                      ))}
+                    </div>
+                    
+                    {/* Статус и подсказки */}
+                    <div className="flex justify-between items-center">
+                      <span className={`text-xs font-medium ${
+                        passwordStrength.color === 'red' ? 'text-red-400'
+                          : passwordStrength.color === 'yellow' ? 'text-yellow-400'
+                          : passwordStrength.color === 'blue' ? 'text-blue-400'
+                          : 'text-green-400'
+                      }`}>
+                        {passwordStrength.message}
+                      </span>
+                      
+                      <div className="flex gap-2 text-xs">
+                        <span className={passwordStrength.checks?.length ? 'text-green-400' : 'text-white/40'}>
+                          8+
+                        </span>
+                        <span className={passwordStrength.checks?.hasLetter ? 'text-green-400' : 'text-white/40'}>
+                          Aa
+                        </span>
+                        <span className={passwordStrength.checks?.hasDigit ? 'text-green-400' : 'text-white/40'}>
+                          123
+                        </span>
+                        <span className={passwordStrength.checks?.hasSpecial ? 'text-green-400' : 'text-white/40'}>
+                          @#$
+                        </span>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+                
                 {validationErrors.password && (
                   <motion.p
                     className="text-sm text-red-500 mt-1"
@@ -700,11 +839,48 @@ function Register() {
                 {isLoading ? 'Активация...' : 'Активировать'}
               </motion.button>
 
+              {/* Кнопка повторной отправки кода */}
               <motion.div
                 className="text-center"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ duration: 0.5, delay: 0.9 }}
+              >
+                {resendSuccess && (
+                  <motion.p 
+                    className="text-green-400 text-sm mb-3"
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                  >
+                    ✓ Новый код отправлен на email
+                  </motion.p>
+                )}
+                
+                <button
+                  type="button"
+                  onClick={handleResendCode}
+                  disabled={resendCooldown > 0 || isLoading}
+                  className={`text-sm font-semibold transition-all duration-200 relative group ${
+                    resendCooldown > 0 
+                      ? 'text-white/50 cursor-not-allowed' 
+                      : 'text-white/80 hover:text-orange-300'
+                  }`}
+                >
+                  {resendCooldown > 0 
+                    ? `Отправить повторно через ${resendCooldown} сек` 
+                    : 'Отправить код повторно'
+                  }
+                  {resendCooldown === 0 && (
+                    <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-orange-400 group-hover:w-full transition-all duration-300"></span>
+                  )}
+                </button>
+              </motion.div>
+              
+              <motion.div
+                className="text-center"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.5, delay: 1.0 }}
               >
                 <button
                   type="button"

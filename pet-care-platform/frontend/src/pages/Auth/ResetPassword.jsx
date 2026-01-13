@@ -44,11 +44,14 @@ const ResetPassword = () => {
     }
 
     try {
+      console.log('[ResetPassword] Отправка данных:', formData);
       const response = await api.post('/auth/password-reset/confirm/', formData);
+      console.log('[ResetPassword] Ответ:', response);
       
+      // api.post возвращает response.data напрямую (см. api/client.js интерцептор)
       // Если получили токены, автоматически входим
-      if (response.data.accessToken) {
-        setAuth(response.data.user, response.data.accessToken);
+      if (response.accessToken) {
+        setAuth(response.user, response.accessToken);
         setSuccess(true);
         setTimeout(() => navigate('/dashboard'), 2000);
       } else {
@@ -56,7 +59,8 @@ const ResetPassword = () => {
         setTimeout(() => navigate('/login'), 2000);
       }
     } catch (err) {
-      setError(err.response?.data?.error || 'Неверный код или произошла ошибка');
+      console.error('[ResetPassword] Ошибка:', err);
+      setError(err.message || err.error || 'Неверный код или произошла ошибка');
     } finally {
       setLoading(false);
     }

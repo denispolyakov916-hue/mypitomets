@@ -72,6 +72,12 @@ class User(AbstractBaseUser, PermissionsMixin):
         null=True,
         help_text="Код активации (6 цифр) для подтверждения email"
     )
+    
+    code_created_at = models.DateTimeField(
+        blank=True,
+        null=True,
+        help_text="Время создания кода активации/восстановления для проверки срока действия"
+    )
 
     # Расширенные настройки профиля
     avatar = models.ImageField(

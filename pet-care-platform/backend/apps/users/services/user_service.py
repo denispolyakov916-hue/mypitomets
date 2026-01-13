@@ -8,6 +8,8 @@
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.conf import settings
+from django.utils import timezone
+from datetime import timedelta
 from core.exceptions import ApiError
 from apps.users.services.token_service import TokenService
 from apps.users.services.mail_service import MailService
@@ -18,9 +20,46 @@ import logging
 User = get_user_model()
 logger = logging.getLogger('apps.users')
 
+# Константа для срока действия кодов (15 минут)
+CODE_EXPIRATION_MINUTES = 15
+
 
 class UserService:
     """Сервис для работы с пользователями."""
+    
+    @staticmethod
+    def _is_code_expired(code_created_at):
+        """
+        Проверка срока действия кода.
+        
+        Аргументы:
+            code_created_at: Время создания кода (datetime)
+            
+        Возвращает:
+            bool: True если код просрочен, False если действителен
+        """
+        if not code_created_at:
+            return True  # Если нет времени создания, считаем код просроченным
+        
+        expiration_time = code_created_at + timedelta(minutes=CODE_EXPIRATION_MINUTES)
+        return timezone.now() > expiration_time
+    
+    @staticmethod
+    def _generate_code_with_timestamp(user):
+        """
+        Генерирует новый код и сохраняет время его создания.
+        
+        Аргументы:
+            user: Объект пользователя
+            
+        Возвращает:
+            str: Сгенерированный 6-значный код
+        """
+        code = str(random.randint(100000, 999999))
+        user.activation_code = code
+        user.code_created_at = timezone.now()
+        user.save(update_fields=['activation_code', 'code_created_at'])
+        return code
     
     @staticmethod
     def registration(email, password, first_name=None, last_name=None):
@@ -57,6 +96,7 @@ class UserService:
             last_name=last_name or '',
             activation_link=activation_link,
             activation_code=activation_code,
+            code_created_at=timezone.now(),  # Сохраняем время создания кода
             is_activated=False  # По умолчанию не активирован
         )
         
@@ -101,7 +141,7 @@ class UserService:
             или dict с токенами и данными пользователя (для активации по коду)
             
         Исключения:
-            ApiError: Если ссылка или код активации некорректны, или аккаунт уже активирован
+            ApiError: Если ссылка или код активации некорректны, просрочены, или аккаунт уже активирован
         """
         if not activation_link and not activation_code:
             raise ApiError.bad_request('Необходимо указать ссылку или код активации')
@@ -120,6 +160,13 @@ class UserService:
         if user.is_activated:
             logger.warning(f"Попытка повторной активации аккаунта: {user.email}")
             raise ApiError.bad_request('Аккаунт уже активирован')
+        
+        # Проверка срока действия кода (15 минут)
+        if UserService._is_code_expired(user.code_created_at):
+            logger.warning(f"Попытка активации просроченным кодом: {user.email}")
+            raise ApiError.bad_request(
+                f'Код активации истёк. Запросите новый код.'
+            )
         
         user.is_activated = True
         # Очищаем код и ссылку после активации для безопасности
@@ -331,6 +378,57 @@ class UserService:
         return list(User.objects.all())
     
     @staticmethod
+    def resend_activation_code(email):
+        """
+        Повторная отправка кода активации.
+        
+        Генерирует новый код и отправляет его на email.
+        
+        Аргументы:
+            email: Email пользователя
+            
+        Возвращает:
+            dict: Результат операции
+            
+        Исключения:
+            ApiError: Если пользователь не найден или уже активирован
+        """
+        try:
+            user = User.objects.get(email__iexact=email.lower().strip())
+        except User.DoesNotExist:
+            raise ApiError.bad_request('Пользователь с таким email не найден')
+        
+        if user.is_activated:
+            raise ApiError.bad_request('Аккаунт уже активирован')
+        
+        # Генерация нового кода с временной меткой
+        new_code = UserService._generate_code_with_timestamp(user)
+        
+        # Генерация новой ссылки активации
+        user.activation_link = str(uuid.uuid4())
+        user.save(update_fields=['activation_link'])
+        
+        # Формирование полной ссылки активации
+        api_url = getattr(settings, 'API_URL', 'http://localhost:8000')
+        activation_url = f"{api_url}/api/auth/activate/{user.activation_link}"
+        
+        logger.info(f"Повторная отправка кода активации для {email}: {new_code}")
+        print(f"[RESEND ACTIVATION] Новый код активации для {email}: {new_code}")
+        
+        # Отправка письма
+        try:
+            MailService.send_activation_mail(email, activation_url, new_code)
+            print(f"[RESEND ACTIVATION SUCCESS] Письмо отправлено на {email}")
+        except Exception as e:
+            logger.error(f"Ошибка отправки письма активации: {str(e)}")
+            print(f"[RESEND ACTIVATION ERROR] {str(e)}")
+        
+        return {
+            'success': True,
+            'message': 'Новый код активации отправлен на email'
+        }
+    
+    @staticmethod
     def request_password_reset(email):
         """
         Запрос на восстановление пароля.
@@ -352,12 +450,13 @@ class UserService:
                 'message': 'Если аккаунт существует, на указанный email отправлен код восстановления'
             }
         
-        # Генерация 6-значного кода восстановления
+        # Генерация 6-значного кода восстановления с временной меткой
         reset_code = str(random.randint(100000, 999999))
         
-        # Сохраняем код в поле activation_code (переиспользуем)
+        # Сохраняем код в поле activation_code (переиспользуем) и время создания
         user.activation_code = reset_code
-        user.save(update_fields=['activation_code'])
+        user.code_created_at = timezone.now()
+        user.save(update_fields=['activation_code', 'code_created_at'])
         
         logger.info(f"Код восстановления для {email}: {reset_code}")
         print(f"[PASSWORD RESET] Код восстановления для {email}: {reset_code}")
@@ -390,12 +489,24 @@ class UserService:
         """
         try:
             user = User.objects.get(email__iexact=email.lower().strip())
+            print(f"[PASSWORD RESET CONFIRM] Найден пользователь: {user.email}")
         except User.DoesNotExist:
+            print(f"[PASSWORD RESET CONFIRM] Пользователь не найден: {email}")
             raise ApiError.bad_request('Пользователь не найден')
         
         # Проверка кода
+        print(f"[PASSWORD RESET CONFIRM] Код в БД: '{user.activation_code}', Код из запроса: '{code}'")
         if user.activation_code != code:
+            print(f"[PASSWORD RESET CONFIRM] Коды не совпадают!")
             raise ApiError.bad_request('Неверный код восстановления')
+        
+        # Проверка срока действия кода (15 минут)
+        if UserService._is_code_expired(user.code_created_at):
+            logger.warning(f"Попытка восстановления пароля просроченным кодом: {email}")
+            print(f"[PASSWORD RESET CONFIRM] Код просрочен!")
+            raise ApiError.bad_request(
+                f'Код восстановления истёк. Запросите новый код.'
+            )
         
         # Установка нового пароля
         user.set_password(new_password)

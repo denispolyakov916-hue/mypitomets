@@ -561,6 +561,40 @@ class UserCoursesView(APIView):
         return Response({'courses': courses}, status=status.HTTP_200_OK)
 
 
+class ResendActivationCodeView(APIView):
+    """
+    Повторная отправка кода активации.
+    
+    POST /api/auth/resend-activation/
+    Тело: {"email": "..."}
+    
+    Генерирует новый код и отправляет его на email.
+    """
+    
+    permission_classes = [AllowAny]
+    
+    def post(self, request):
+        try:
+            email = request.data.get('email')
+            if not email:
+                return Response(
+                    {'error': 'Email обязателен'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            result = UserService.resend_activation_code(email)
+            return Response(result, status=status.HTTP_200_OK)
+            
+        except ApiError as e:
+            return Response({'error': e.detail}, status=e.status_code)
+        except Exception as e:
+            logger.error(f"Ошибка при повторной отправке кода активации: {str(e)}")
+            return Response(
+                {'error': 'Внутренняя ошибка сервера'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
 class PasswordResetRequestView(APIView):
     """
     Запрос на восстановление пароля.
@@ -612,9 +646,13 @@ class PasswordResetConfirmView(APIView):
     
     def post(self, request):
         try:
+            # Логирование для отладки
+            print(f"[PASSWORD RESET CONFIRM] Входящие данные: {request.data}")
+            
             serializer = PasswordResetConfirmSerializer(data=request.data)
             
             if not serializer.is_valid():
+                print(f"[PASSWORD RESET CONFIRM] Ошибки валидации: {serializer.errors}")
                 return Response(
                     {'error': 'Ошибка валидации', 'errors': serializer.errors},
                     status=status.HTTP_400_BAD_REQUEST

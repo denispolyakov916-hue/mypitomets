@@ -1,9 +1,9 @@
 # Питомец+ — Структура проекта
 
 **Дата создания**: Январь 2026
-**Версия**: 2.2 (После рефакторинга)
-**Статус**: ✅ PetID 2.0 + Рефакторинг завершен
-**Последнее обновление**: Январь 2026 - Очистка проекта, PetID 2.0
+**Версия**: 2.3 (Улучшение аутентификации)
+**Статус**: ✅ PetID 2.0 + Аутентификация 2.0 + Рефакторинг завершен
+**Последнее обновление**: Январь 2026 - Улучшение security аутентификации
 
 > ⚠️ **ВАЖНО**: 9 января 2026 проведён рефакторинг для уменьшения количества файлов
 
@@ -125,6 +125,43 @@ pet-care-platform/
     └── deploy.ps1                    # Windows
 ```
 
+## Функциональные модули
+
+### Реализованные функции
+1. **Регистрация и аутентификация** - Улучшенная система с JWT токенами, email активацией, сроком действия кодов и усиленной password policy
+2. **PetID** - Расширенные профили питомцев с персонализацией на основе 128 пород (58 кошек, 66 собак)
+3. **Справочник пород** - Комплексная база данных характеристик собак и кошек с анализом здоровья, питания и ухода
+4. **Магазин** - Полнофункциональный интернет-магазин с корзиной и заказами
+5. **Подбор корма** - Интеллектуальная система персонализированных рекомендаций
+6. **Заказы** - Система оформления и отслеживания заказов
+7. **Курсы** - Образовательная платформа с drag-and-drop конструктором
+8. **Платежи** - Интеграция с платежными системами
+9. **Отзывы** - Система рейтингов и комментариев
+
+### Структура для развития
+10. **Аналитика** - Сбор и анализ данных о работе платформы
+11. **Календарь** - Планирование ухода за питомцами
+12. **Уведомления** - Push и email рассылки пользователям
+13. **Админ-панель** - React интерфейс управления платформой
+14. **Конструктор графиков** - Визуализация данных и отчетов
+
+## API структура
+
+### Основные эндпоинты
+- **/api/auth/** - Аутентификация (регистрация, вход, токены)
+- **/api/users/** - Профили пользователей
+- **/api/pets/** - PetID и питомцы
+- **/api/shop/** - Магазин и заказы
+- **/api/courses/** - Курсы и обучение
+- **/api/payments/** - Платежи
+- **/api/reviews/** - Отзывы
+
+### Архитектурные принципы
+- Service Layer паттерн для бизнес-логики
+- JWT аутентификация с refresh токенами
+- Централизованная обработка ошибок
+- Оптимизированные запросы к БД
+
 ```
 pet-care-platform/
 │
@@ -148,25 +185,33 @@ pet-care-platform/
 │   │
 │   ├── apps/                         # Django приложения
 │   │   │
-│   │   ├── users/                    # Модуль пользователей
-│   │   │   ├── models.py             # User, Token модели
-│   │   │   ├── views.py              # Авторизация API
-│   │   │   ├── urls.py               # URL /api/auth/
-│   │   │   └── profile_urls.py       # URL /api/users/
+│   │   ├── users/                    # Модуль пользователей и аутентификации ⭐
+│   │   │   ├── models.py             # User модель (UUID, email auth) + Token модель
+│   │   │   ├── views.py              # 15 API эндпоинтов аутентификации
+│   │   │   ├── serializers.py        # Сериализаторы для всех форм
+│   │   │   ├── services/             # Бизнес-логика аутентификации ⭐
+│   │   │   │   ├── user_service.py   # Регистрация, вход, активация
+│   │   │   │   ├── token_service.py  # Управление JWT токенами
+│   │   │   │   └── mail_service.py   # Email рассылки
+│   │   │   ├── urls.py               # URL /api/auth/ + /api/users/
+│   │   │   ├── admin.py              # Админка пользователей
+│   │   │   └── management/commands/  # Команды для тестовых данных
 │   │   │
 │   │   ├── pets/                     # Модуль PetID + Напоминания + Справочник пород
 │   │   │   ├── models.py             # Pet модель (расширенная v2.0)
-│   │   │   ├── breed_models.py       # Breed модель (справочник пород) — NEW
+│   │   │   ├── breed_models.py       # Breed + BreedHealth + BreedNutrition + BreedCare модели — NEW
 │   │   │   ├── reminder_models.py    # Reminder модель
 │   │   │   ├── views.py              # CRUD питомцев + API пород + анализ
+│   │   │   ├── breed_views.py        # API сравнения питомца с породой — NEW
 │   │   │   ├── reminder_views.py     # API напоминаний
-│   │   │   ├── serializers.py        # Pet + Breed сериализаторы — NEW
+│   │   │   ├── serializers.py        # Pet сериализаторы
+│   │   │   ├── serializers_breeds.py # Breed сериализаторы — NEW
 │   │   │   ├── services.py           # PersonalizationService (v2.0)
 │   │   │   ├── admin.py              # Админка Pet + Reminder
 │   │   │   ├── urls.py               # URL /api/pets/, /api/pets/breeds/, /api/pets/reminders/
 │   │   │   └── management/commands/
 │   │   │       ├── import_breeds.py      # Импорт из Markdown — NEW
-│   │   │       └── import_all_breeds.py  # Полный справочник (166 пород) — NEW
+│   │   │       └── load_breeds.py        # Загрузка данных пород из JSON — NEW
 │   │   │
 │   │   ├── shop/                     # Модуль магазина
 │   │   │   ├── models.py             # Product, Cart, Order модели
@@ -313,22 +358,45 @@ pet-care-platform/
 ### Базовые URL
 
 ```
-Backend API:  http://localhost:8000/api
-Frontend:     http://localhost:5173
-Admin Panel:  http://localhost:8000/admin/
-Dashboard:    http://localhost:8000/admin/dashboard/
+Backend API:     http://192.168.1.11:8077/api
+Frontend:        http://localhost:5199
+Admin Panel:     http://192.168.1.11:8077/admin/
+Dashboard:       http://192.168.1.11:8077/admin/dashboard/
+React Admin:     http://localhost:5199/admin/dashboard
+API Health:      http://192.168.1.11:8077/api/health/
+
+# Альтернативные URL:
+Backend API:     http://127.0.0.1:8077/api
+Frontend:        http://127.0.0.1:5199
+Admin Panel:     http://127.0.0.1:8077/admin/
 ```
 
 ### Новые эндпоинты (добавлены в этой версии)
+
+#### Аутентификация (`/api/auth/`) — UPDATED v2.3
+
+| Метод | URL | Описание |
+|-------|-----|----------|
+| POST | `/api/auth/registration/` | Регистрация с улучшенной password policy |
+| POST | `/api/auth/login/` | Вход с проверкой активации |
+| POST | `/api/auth/logout/` | Выход с очисткой токенов |
+| GET | `/api/auth/refresh/` | Обновление access токена |
+| GET | `/api/auth/activate/{link}/` | Активация по ссылке из email |
+| POST | `/api/auth/activate-by-code/` | Активация по 6-значному коду |
+| POST | `/api/auth/exchange-auth-code/` | Обмен временного кода на токены |
+| POST | `/api/auth/resend-activation/` | **NEW** — Повторная отправка кода активации |
+| POST | `/api/auth/password-reset/` | Запрос восстановления пароля |
+| POST | `/api/auth/password-reset/confirm/` | Подтверждение с улучшенной валидацией |
 
 #### Справочник пород (`/api/pets/breeds/`) — NEW
 
 | Метод | URL | Описание |
 |-------|-----|----------|
-| GET | `/api/pets/breeds/` | Список пород (с фильтрами species, search) |
-| GET | `/api/pets/breeds/{uuid}/` | Детали породы |
-| GET | `/api/pets/breeds/by-slug/{slug}/` | Порода по slug |
-| GET | `/api/pets/breeds/{uuid}/suggestions/` | Подсказки для автозаполнения PetID |
+| GET | `/api/pets/breeds/` | Список пород (фильтры: species, size, hypoallergenic, apartment_friendly) |
+| GET | `/api/pets/breeds/by-slug/{slug}/` | Детали породы по slug |
+| GET | `/api/pets/breeds/{id}/` | Детали породы по ID |
+| GET | `/api/pets/{pet_id}/breed-comparison/` | Сравнение питомца с эталоном породы |
+| GET | `/api/pets/breeds/{id}/health/` | Риски здоровья породы |
 
 #### Анализ питомца (`/api/pets/{uuid}/analysis/`) — NEW
 
@@ -384,15 +452,18 @@ Dashboard:    http://localhost:8000/admin/dashboard/
 
 ## Модели данных
 
-### Backend модели (38 моделей)
+### Backend модели (38 моделей) — UPDATED v2.3
 
-#### apps.users
-- `User` - Пользователь (UUID, email auth)
+#### apps.users — UPDATED v2.3
+- `User` - Пользователь (UUID, email auth, code_created_at для срока действия)
 - `Token` - Refresh токены пользователей
 
 #### apps.pets
 - `Pet` - Профиль питомца (PetID) с расширенными полями персонализации
-- `Breed` - Справочник пород (166 пород: 101 собак, 65 кошек) — NEW
+- `Breed` - Справочник пород (128 пород: 58 кошек, 66 собак) — NEW
+- `BreedHealth` - Генетические риски здоровья пород (220 записей) — NEW
+- `BreedNutrition` - Рекомендации по питанию пород (55 записей) — NEW
+- `BreedCare` - Процедуры ухода за породами (31 запись) — NEW
 - `Reminder` - Напоминания по уходу
 - `ReminderCategory` - Категории напоминаний
 - `ReminderFrequency` - Частота напоминаний
@@ -433,6 +504,183 @@ Dashboard:    http://localhost:8000/admin/dashboard/
 - `ChartConfig` - Конфигурация графика
 - `ChartSession` - Сессия графика
 - `AnalyticsLog` - Лог аналитики
+
+### User (Пользователь) — обновлено v2.3
+
+```python
+class User(AbstractBaseUser, PermissionsMixin):
+    """
+    Кастомная модель пользователя с расширенной аутентификацией.
+
+    Использует email вместо username для аутентификации.
+    UUID в качестве первичного ключа для безопасности.
+    """
+
+    # Основные поля
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    email = models.EmailField(unique=True, verbose_name='Email')
+
+    # Дополнительные поля профиля
+    first_name = models.CharField(max_length=150, blank=True, verbose_name='Имя')
+    last_name = models.CharField(max_length=150, blank=True, verbose_name='Фамилия')
+    phone = models.CharField(max_length=20, blank=True, verbose_name='Телефон')
+    default_address = models.TextField(blank=True, verbose_name='Адрес доставки по умолчанию')
+
+    is_active = models.BooleanField(default=True)
+    is_staff = models.BooleanField(default=False)
+
+    # Поля для активации через email
+    is_activated = models.BooleanField(
+        default=False,
+        help_text="Активирован ли аккаунт через email"
+    )
+
+    activation_link = models.CharField(
+        max_length=255,
+        blank=True,
+        null=True,
+        unique=True,
+        help_text="Ссылка для активации аккаунта"
+    )
+
+    activation_code = models.CharField(
+        max_length=6,
+        blank=True,
+        null=True,
+        help_text="Код активации (6 цифр) для подтверждения email"
+    )
+
+    code_created_at = models.DateTimeField(
+        blank=True,
+        null=True,
+        help_text="Время создания кода активации/восстановления для проверки срока действия"
+    )
+
+    # Расширенные настройки профиля
+    avatar = models.ImageField(
+        upload_to='users/avatars/',
+        blank=True,
+        null=True,
+        verbose_name='Аватар'
+    )
+    bio = models.TextField(blank=True, verbose_name='О себе')
+    date_of_birth = models.DateField(blank=True, null=True, verbose_name='Дата рождения')
+    city = models.CharField(max_length=100, blank=True, verbose_name='Город')
+    website = models.URLField(blank=True, verbose_name='Сайт')
+
+    # Настройки уведомлений
+    email_notifications = models.BooleanField(default=True, verbose_name='Email уведомления')
+    push_notifications = models.BooleanField(default=True, verbose_name='Push уведомления')
+    order_notifications = models.BooleanField(default=True, verbose_name='Уведомления о заказах')
+    marketing_notifications = models.BooleanField(default=False, verbose_name='Маркетинговые уведомления')
+
+    # Предпочтения персонализации
+    preferred_pet_types = models.JSONField(
+        default=list,
+        blank=True,
+        verbose_name='Предпочитаемые типы питомцев',
+        help_text='Список предпочитаемых типов питомцев для персонализации'
+    )
+
+    created_at = models.DateTimeField(default=timezone.now, verbose_name='Дата регистрации')
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='Дата обновления')
+
+    objects = UserManager()
+
+    USERNAME_FIELD = 'email'
+    REQUIRED_FIELDS = []
+
+    class Meta:
+        db_table = 'users'
+        verbose_name = 'Пользователь'
+        verbose_name_plural = 'Пользователи'
+
+    def __str__(self):
+        return self.email
+
+    def to_dict(self):
+        """Сериализация для API (DTO)."""
+        return {
+            'id': str(self.id),
+            'email': self.email,
+            'isActivated': self.is_activated,
+            'is_staff': self.is_staff,
+            'is_superuser': self.is_superuser,
+        }
+
+    def to_dict_full(self):
+        """Полная сериализация для API."""
+        # Обработка аватара
+        avatar_url = None
+        if self.avatar:
+            try:
+                avatar_url = self.avatar.url
+            except (ValueError, AttributeError):
+                avatar_url = None
+
+        return {
+            'id': str(self.id),
+            'email': self.email,
+            'first_name': self.first_name,
+            'last_name': self.last_name,
+            'phone': self.phone,
+            'default_address': self.default_address,
+            'avatar': avatar_url,
+            'bio': self.bio,
+            'date_of_birth': self.date_of_birth.isoformat() if self.date_of_birth else None,
+            'city': self.city,
+            'website': self.website,
+            'email_notifications': self.email_notifications,
+            'push_notifications': self.push_notifications,
+            'order_notifications': self.order_notifications,
+            'marketing_notifications': self.marketing_notifications,
+            'preferred_pet_types': self.preferred_pet_types,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'isActivated': self.is_activated,
+            'is_staff': self.is_staff,
+            'is_superuser': self.is_superuser,
+        }
+```
+
+### Token (Refresh токен)
+
+```python
+class Token(models.Model):
+    """
+    Модель для хранения refresh токенов пользователей.
+
+    Хранит refresh токены в базе данных для возможности их отзыва
+    и проверки валидности при обновлении access токенов.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='tokens',
+        help_text="Пользователь, которому принадлежит токен"
+    )
+
+    refresh_token = models.TextField(
+        unique=True,
+        help_text="Refresh токен (JWT строка)"
+    )
+
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        help_text="Дата создания токена"
+    )
+
+    class Meta:
+        verbose_name = 'Токен'
+        verbose_name_plural = 'Токены'
+        db_table = 'tokens'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"Token for {self.user.email}"
+```
 
 ### Pet (Питомец / PetID) — обновлено v2.0
 
@@ -485,58 +733,115 @@ class Pet(models.Model):
     @property calculated_size: str  # Размер на основе веса и породы
 ```
 
-### Breed (Справочник пород) — NEW
+### Breed (Справочник пород) — UPDATED
 
 ```python
 class Breed(models.Model):
-    id: UUID                    # UUIDv7 идентификатор
-    name: str                   # Название породы (уникальное)
-    slug: str                   # URL-slug (уникальный)
+    # Основная информация
+    id: int                     # ID из JSON (primary key)
     species: str                # Вид (dog/cat)
-    description: str            # Описание породы
-    
-    # Здоровье и генетика
-    health_risk_level: str      # Уровень риска (low/medium/high)
-    genetic_risks: list         # Генетические риски (JSON)
-    lifespan_min: int           # Минимальная продолжительность жизни
-    lifespan_max: int           # Максимальная продолжительность жизни
-    
-    # Физические параметры
-    weight_min: Decimal         # Минимальный вес (кг)
-    weight_max: Decimal         # Максимальный вес (кг)
-    size_category: str          # Категория размера (toy/small/medium/large/giant)
-    
-    # Питание
-    diet_recommendations: str   # Рекомендации по питанию
-    digestion_sensitivity: str  # Чувствительность пищеварения
-    metabolism_notes: str       # Особенности метаболизма
-    
-    # Активность
-    energy_level: str           # Уровень энергии (low/medium/high/very_high)
-    exercise_needs: str         # Потребность в нагрузках
-    favorite_activities: list   # Рекомендуемые активности (JSON)
-    
+    name: str                   # Название породы (уникальное)
+    name_en: str                # Название на английском
+    slug: str                   # URL-slug (уникальный)
+
+    # Описания
+    description: str            # Полное описание
+    short_description: str      # Краткое описание
+
+    # Физические характеристики
+    size_category: str          # Размер (tiny/small/medium/large/giant)
+    weight_min: Decimal         # Мин. вес (кг)
+    weight_max: Decimal         # Макс. вес (кг)
+    height_min: int             # Мин. рост (см)
+    height_max: int             # Макс. рост (см)
+    lifespan_min: int           # Мин. продолжительность жизни
+    lifespan_max: int           # Макс. продолжительность жизни
+
+    # Характер и поведение
+    energy_level: str           # Энергичность (very_low/low/medium/high/very_high)
+    trainability: str           # Обучаемость
+    intelligence: str           # Интеллект
+    friendliness_to_children: str  # Отношение к детям
+    friendliness_to_pets: str   # Отношение к другим животным
+    friendliness_to_strangers: str  # Отношение к незнакомцам
+    independence: str           # Независимость
+
     # Уход
-    grooming_level: str         # Уровень груминга (minimal/medium/high)
-    bathing_frequency: str      # Частота купания
-    grooming_notes: str         # Примечания по уходу
-    
-    # Поведение
-    temperament: list           # Темперамент (JSON)
-    trainability: str           # Обучаемость (low/medium/high)
-    children_compatibility: str # Совместимость с детьми
-    socialization_notes: str    # Заметки по социализации
-    
+    grooming_frequency: str     # Частота груминга (minimal/weekly/regular/daily/professional)
+    shedding_level: str         # Линька
+    coat_type: str              # Тип шерсти (hairless/short/medium/long/wire/curly/double)
+
+    # Здоровье
+    health_risk_level: str      # Уровень риска здоровья
+    hypoallergenic: bool        # Гипоаллергенная
+    brachycephalic: bool        # Брахицефал
+
+    # Условия содержания
+    apartment_friendly: bool    # Подходит для квартиры
+    good_for_novice: bool       # Подходит новичкам
+
     # Метаданные
-    popularity_rank: int        # Рейтинг популярности
-    is_active: bool             # Активна ли порода
     created_at: datetime
     updated_at: datetime
-    
+
     # Методы
-    def get_suggestions_for_pet() -> dict  # Подсказки для автозаполнения PetID
-    @property average_weight: float        # Средний вес
-    @property average_lifespan: float      # Средняя продолжительность жизни
+    def to_dict() -> dict        # Сериализация в словарь
+    @property ideal_weight: tuple  # Идеальный диапазон веса
+    @property average_lifespan: float  # Средняя продолжительность жизни
+```
+
+### BreedHealth (Риски здоровья) — NEW
+
+```python
+class BreedHealth(models.Model):
+    breed: ForeignKey(Breed)    # Связь с породой
+    condition_name: str         # Название заболевания
+    condition_type: str         # Тип (genetic/congenital)
+    affected_system: str        # Затронутая система
+    severity: str               # Тяжесть (low/medium/high)
+    prevalence_percent: Decimal # Распространенность (%)
+    age_of_onset: str           # Возраст проявления
+    prevention: str             # Профилактика
+    screening: str              # Рекомендуемые обследования
+    created_at: datetime
+
+    # Методы
+    def to_dict() -> dict        # Сериализация
+```
+
+### BreedNutrition (Рекомендации по питанию) — NEW
+
+```python
+class BreedNutrition(models.Model):
+    breed: OneToOne(Breed)      # Связь с породой
+    protein_need: str           # Потребность в белке
+    calorie_density: str        # Калорийность
+    diet_type: str              # Тип питания (dry/wet/mixed)
+    feeding_frequency: str      # Частота кормлений
+    special_considerations: str  # Особые рекомендации
+    common_allergens: list       # Аллергены (JSON)
+    created_at: datetime
+    updated_at: datetime
+
+    # Методы
+    def to_dict() -> dict        # Сериализация
+```
+
+### BreedCare (Процедуры ухода) — NEW
+
+```python
+class BreedCare(models.Model):
+    breed: ForeignKey(Breed)    # Связь с породой
+    care_category: str          # Категория ухода (coat/skin/ears/eyes/dental/nails)
+    procedure: str              # Процедура
+    frequency: str              # Частота
+    importance: str             # Важность (low/medium/high/critical)
+    season: str                 # Сезон (all/spring/summer/autumn/winter)
+    notes: str                  # Примечания
+    created_at: datetime
+
+    # Методы
+    def to_dict() -> dict        # Сериализация
 ```
 
 ### CoursePage (Страница курса) — NEW
@@ -722,18 +1027,25 @@ class PetContext:
 | Тянет поводок | Курсы прогулок, поводка |
 | Не слушается команд | Курсы послушания |
 
-### Справочник пород (166 пород) — NEW
+### Справочник пород (128 пород) — UPDATED
 
 | Вид | Количество | Размеры |
 |-----|------------|---------|
-| 🐕 Собаки | 101 | toy, small, medium, large, giant |
-| 🐱 Кошки | 65 | small, medium, large |
+| 🐕 Собаки | 66 | tiny, small, medium, large, giant |
+| 🐱 Кошки | 58 | small, medium, large |
 
-**Автозаполнение PetID на основе породы:**
-- Уровень активности (energy_level)
-- Размер (size_category)
-- Генетические риски здоровья
-- Рекомендации по питанию и уходу
+**Комплексный анализ питомца:**
+- **Вес**: сравнение с эталоном (±15% = норма)
+- **Активность**: маппинг уровней энергии
+- **Здоровье**: риски породы + текущее состояние
+- **Поведение**: совместимость с типичным характером
+- **Условия**: проверка apartment_friendly, has_yard
+
+**Персонализированные рекомендации:**
+- Диета и корм по потребностям породы
+- Курсы обучения по обучаемости
+- Профилактика по генетическим рискам
+- Уход по типу шерсти и частоте груминга
 
 ---
 
@@ -1076,10 +1388,132 @@ npm run dev
 
 ### Доступ
 
-- **Frontend**: http://localhost:5173
-- **Backend API**: http://localhost:8000/api
-- **Admin Panel**: http://localhost:8000/admin
-- **Dashboard**: http://localhost:8000/admin/dashboard/
+- **Frontend**: http://localhost:5199
+- **Backend API**: http://192.168.1.11:8077/api
+- **Admin Panel**: http://192.168.1.11:8077/admin
+- **Dashboard**: http://192.168.1.11:8077/admin/dashboard/
+- **React Admin**: http://localhost:5199/admin/dashboard
+
+### Альтернативный доступ (localhost)
+
+- **Backend API**: http://127.0.0.1:8077/api
+- **Admin Panel**: http://127.0.0.1:8077/admin
+- **Dashboard**: http://127.0.0.1:8077/admin/dashboard/
+
+---
+
+## Система Email-рассылок
+
+### Текущая конфигурация (Локальная разработка)
+
+Для локальной разработки используется **Mail.ru SMTP**:
+
+| Параметр | Значение |
+|----------|----------|
+| **SMTP Host** | smtp.mail.ru |
+| **SMTP Port** | 587 (TLS) |
+| **Email** | testpetplus@mail.ru |
+| **Backend** | django.core.mail.backends.smtp.EmailBackend |
+
+**Типы писем:**
+- ✅ Регистрация (код активации)
+- ✅ Восстановление пароля (код сброса)
+- 🔜 Подтверждение заказа (планируется)
+- 🔜 Напоминания о событиях (планируется)
+
+### Архитектура
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                      MailService                            │
+│  backend/apps/users/services/mail_service.py               │
+├─────────────────────────────────────────────────────────────┤
+│  send_activation_mail(email, link, code)                    │
+│  send_password_reset_mail(email, code)                      │
+│  # Будущие методы:                                          │
+│  # send_order_confirmation(email, order)                    │
+│  # send_reminder_email(email, reminder)                     │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────┐
+│              Django Email Backend                           │
+│  config/settings.py → EMAIL_BACKEND                         │
+├─────────────────────────────────────────────────────────────┤
+│  Локально: smtp.EmailBackend → smtp.mail.ru                 │
+│  Продакшен: smtp.EmailBackend → SendGrid/SES/Mailgun        │
+│  Отладка: console.EmailBackend → консоль сервера            │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Различия: Локальная разработка vs Продакшен
+
+| Аспект | Локальная разработка | Продакшен |
+|--------|---------------------|-----------|
+| **SMTP провайдер** | Mail.ru (бесплатно) | SendGrid / Amazon SES / Mailgun |
+| **Домен отправителя** | @mail.ru | Собственный домен (pitomets.ru) |
+| **Лимиты** | ~100 писем/день | Неограниченно (по тарифу) |
+| **Доставляемость** | Может попадать в спам | Высокая (SPF, DKIM, DMARC) |
+| **Шаблоны** | Inline HTML в коде | Шаблоны в сервисе рассылки |
+| **Аналитика** | Нет | Открытия, клики, bounce rate |
+| **Безопасность** | Пароль в settings.py | API ключ в переменных окружения |
+
+### Настройка для Продакшена
+
+#### Вариант 1: SendGrid (рекомендуется)
+
+```bash
+# Переменные окружения
+EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend
+SMTP_HOST=smtp.sendgrid.net
+SMTP_PORT=587
+SMTP_USER=apikey
+SMTP_PASSWORD=SG.xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+DEFAULT_FROM_EMAIL=noreply@pitomets.ru
+```
+
+**Плюсы SendGrid:**
+- Бесплатно до 100 писем/день
+- Высокая доставляемость
+- Подробная аналитика
+- Шаблоны с drag-and-drop редактором
+- Webhook для событий (доставка, открытие, клик)
+
+#### Вариант 2: Amazon SES
+
+```bash
+SMTP_HOST=email-smtp.eu-west-1.amazonaws.com
+SMTP_PORT=587
+SMTP_USER=AKIAXXXXXXXXXXXXXXXX
+SMTP_PASSWORD=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+DEFAULT_FROM_EMAIL=noreply@pitomets.ru
+```
+
+**Плюсы SES:**
+- Самый дешёвый ($0.10 за 1000 писем)
+- Интеграция с AWS экосистемой
+- Высокая надёжность
+
+#### Вариант 3: Mailgun
+
+```bash
+SMTP_HOST=smtp.mailgun.org
+SMTP_PORT=587
+SMTP_USER=postmaster@mg.pitomets.ru
+SMTP_PASSWORD=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+DEFAULT_FROM_EMAIL=noreply@pitomets.ru
+```
+
+### Переход на продакшен (чеклист)
+
+1. ☐ Зарегистрироваться в сервисе рассылки
+2. ☐ Верифицировать домен (добавить DNS записи SPF, DKIM, DMARC)
+3. ☐ Получить API ключ / SMTP credentials
+4. ☐ Настроить переменные окружения на сервере
+5. ☐ Убрать пароль Mail.ru из settings.py
+6. ☐ Создать красивые HTML шаблоны писем
+7. ☐ Настроить webhook для отслеживания доставки
+8. ☐ Тестовая отправка на разные почтовые сервисы
 
 ---
 
@@ -1088,14 +1522,14 @@ npm run dev
 ### Сценарий тестирования
 
 #### Базовое тестирование
-1. Открыть http://localhost:5173
+1. Открыть http://localhost:5199
 2. Зарегистрировать аккаунт
 3. Создать профиль питомца с проблемами здоровья
 4. Проверить персональные рекомендации в магазине
 5. Добавить товары в корзину → проверить "Часто покупают вместе"
 6. Создать напоминание для питомца
 7. Оформить заказ
-8. Проверить админ-панель: /admin/dashboard/
+8. Проверить админ-панель: http://192.168.1.11:8077/admin/dashboard/
 
 #### Тестирование конструктора курсов
 1. Войти как администратор
@@ -1119,17 +1553,40 @@ npm run dev
 
 ## История изменений
 
+### v2.3 (Январь 2026) — Улучшение аутентификации
+
+**Backend:**
+- ✅ Поле `code_created_at` в User модели для проверки срока действия кодов
+- ✅ Проверка срока действия кодов активации и восстановления (15 минут)
+- ✅ Эндпоинт `POST /api/auth/resend-activation/` для повторной отправки кода
+- ✅ Улучшенная password policy (8+ символов, буквы+цифры+спецсимволы)
+- ✅ Проверка на распространённые пароли (30+ паролей в чёрном списке)
+- ✅ Обновлены email шаблоны с информацией о сроке действия
+
+**Frontend:**
+- ✅ Индикатор силы пароля с 4-уровневой шкалой (слабый/средний/хороший/отличный)
+- ✅ Визуальные подсказки выполнения требований пароля
+- ✅ Кнопка "Отправить код повторно" с таймером 60 секунд
+- ✅ Улучшенные API функции для повторной отправки кодов
+- ✅ Расширенный authStore с методом `resendActivationCode`
+
+**Security улучшения:**
+- ✅ Закрыта уязвимость бессрочных кодов активации
+- ✅ Улучшена защита от brute force через временные ограничения
+- ✅ Усилена password policy для предотвращения слабых паролей
+
 ### v2.2 (Январь 2026) — PetID 2.0 + Очистка проекта
 
 **Backend:**
-- ✅ Модель Breed — справочник пород (166 пород: 101 собака, 65 кошек)
-- ✅ API справочника пород с фильтрацией и поиском
-- ✅ Подсказки для автозаполнения PetID на основе породы
+- ✅ Модели пород: Breed + BreedHealth + BreedNutrition + BreedCare (128 пород)
+- ✅ API сравнения питомца с эталоном породы (/breed-comparison/)
+- ✅ Комплексный анализ: вес, активность, здоровье, поведение, условия
+- ✅ Персонализированные рекомендации по всем категориям
 - ✅ Расширенная модель Pet (поведение, образ жизни, profile_completeness)
 - ✅ PetAnalysisView — анализ профиля с рекомендациями
 - ✅ Улучшенный PersonalizationService с поведенческими данными
 - ✅ Персонализация курсов по поведенческим проблемам и опыту дрессировки
-- ✅ Management команда import_all_breeds для импорта справочника
+- ✅ Management команда load_breeds для загрузки данных из JSON
 
 **Frontend:**
 - ✅ PetQuickCreate — компактная форма создания питомца с автозаполнением
@@ -1244,13 +1701,16 @@ npm run dev
 #### Модуль пользователей (`apps.users`)
 
 **Views (Представления):**
-- `RegisterView.post()` - Регистрация нового пользователя с отправкой email активации
-- `LoginView.post()` - Аутентификация пользователя с JWT токенами
-- `LogoutView.post()` - Выход пользователя с удалением refresh токена
+- `RegisterView.post()` - Регистрация с улучшенной password policy
+- `LoginView.post()` - Аутентификация с проверкой активации аккаунта
+- `LogoutView.post()` - Выход с удалением refresh токена
 - `RefreshView.get()` - Обновление access токена по refresh токену
-- `ActivateView.get()` - Активация аккаунта по ссылке из email
-- `ActivateByCodeView.post()` - Активация аккаунта по коду из email
-- `ExchangeAuthCodeView.post()` - Обмен временного кода на токены после активации
+- `ActivateView.get()` - Активация по ссылке с проверкой срока действия
+- `ActivateByCodeView.post()` - Активация по коду с проверкой срока действия
+- `ExchangeAuthCodeView.post()` - Обмен временного кода на токены
+- `ResendActivationCodeView.post()` - **NEW** — Повторная отправка кода активации
+- `PasswordResetRequestView.post()` - Запрос восстановления с временной меткой
+- `PasswordResetConfirmView.post()` - Подтверждение с улучшенной валидацией
 - `ProfileView.get()` - Получение профиля пользователя с питомцами и заказами
 - `ProfileView.put()` - Обновление данных профиля
 - `UserOrdersView.get()` - Получение истории заказов пользователя
@@ -1258,12 +1718,15 @@ npm run dev
 - `GetUsersView.get()` - Получение списка всех пользователей (для тестирования)
 
 **Services (Сервисы):**
-- `UserService.registration()` - Регистрация пользователя с генерацией кодов активации
-- `UserService.activate()` - Активация аккаунта по ссылке или коду
+- `UserService.registration()` - Регистрация с улучшенной password policy
+- `UserService.activate()` - Активация с проверкой срока действия (15 мин)
+- `UserService.resend_activation_code()` - **NEW** — Повторная отправка кода активации
 - `UserService.exchange_temp_code_for_tokens()` - Обмен временного кода на токены
 - `UserService.login()` - Вход с валидацией и генерацией токенов
 - `UserService.logout()` - Выход с удалением токена из БД
 - `UserService.refresh()` - Обновление токенов по refresh токену
+- `UserService.request_password_reset()` - Запрос восстановления с временной меткой
+- `UserService.confirm_password_reset()` - Подтверждение с проверкой срока действия
 - `UserService.get_all_users()` - Получение всех пользователей
 - `TokenService.generate_tokens()` - Генерация JWT токенов для пользователя
 - `TokenService.validate_access_token()` - Валидация access токена
@@ -1271,7 +1734,7 @@ npm run dev
 - `TokenService.save_token()` - Сохранение refresh токена в БД
 - `TokenService.remove_token()` - Удаление refresh токена из БД
 - `TokenService.find_token()` - Поиск refresh токена в БД
-- `MailService.send_activation_mail()` - Отправка email активации с кодом и ссылкой
+- `MailService.send_activation_mail()` - Отправка email с информацией о сроке действия
 
 #### Модуль питомцев (`apps.pets`)
 
@@ -1282,9 +1745,10 @@ npm run dev
 - `PetDetailView.put()` - Обновление данных питомца
 - `PetDetailView.delete()` - Удаление питомца
 - `PetAnalysisView.get()` - Анализ профиля питомца с рекомендациями — NEW
-- `BreedListView.get()` - Список пород с фильтрацией (species, search) — NEW
-- `BreedDetailView.get()` - Детали породы (по ID или slug) — NEW
-- `BreedSuggestionsView.get()` - Подсказки для автозаполнения PetID — NEW
+- `BreedListView.get()` - Список пород с расширенной фильтрацией (species, size, hypoallergenic, apartment_friendly) — UPDATED
+- `BreedDetailView.get()` - Детали породы по slug с полными данными — UPDATED
+- `PetBreedComparisonView.get()` - Комплексное сравнение питомца с эталоном породы — NEW
+- `BreedHealthView.get()` - Риски здоровья конкретной породы — NEW
 - `ReminderListView.get()` - Получение списка напоминаний с фильтрами
 - `ReminderListView.post()` - Создание нового напоминания
 - `ReminderDetailView.get()` - Получение деталей напоминания
@@ -1295,8 +1759,12 @@ npm run dev
 - `UpcomingRemindersView.get()` - Получение предстоящих напоминаний для дашборда
 
 **Serializers (Сериализаторы):** — NEW
-- `BreedSerializer` - Полная сериализация породы
-- `BreedListSerializer` - Краткая сериализация для списков
+- `BreedListSerializer` - Краткая сериализация для списков пород
+- `BreedDetailSerializer` - Полная сериализация с related данными
+- `BreedHealthSerializer` - Сериализация рисков здоровья
+- `BreedNutritionSerializer` - Сериализация рекомендаций по питанию
+- `BreedCareSerializer` - Сериализация процедур ухода
+- `PetBreedComparisonSerializer` - Сериализация результатов сравнения
 
 **Services (Сервисы):**
 - `PersonalizationService.get_context()` - Получение контекста персонализации для пользователя (с поведенческими данными) — UPDATED
@@ -1459,13 +1927,17 @@ npm run dev
 ### Frontend API (React + Axios)
 
 #### Модуль аутентификации (`api/auth.js`)
-- `login()` - Вход по email и паролю
-- `register()` - Регистрация нового пользователя
+- `register()` - Регистрация с улучшенной password policy
+- `login()` - Вход с проверкой активации аккаунта
 - `logout()` - Выход пользователя
-- `refresh()` - Обновление токенов
-- `activateByCode()` - Активация по коду
-- `exchangeAuthCode()` - Обмен кода на токены
-- `getProfile()` - Получение профиля пользователя
+- `refreshToken()` - Обновление access токена
+- `activateByCode()` - Активация по коду с проверкой срока действия
+- `exchangeAuthCode()` - Обмен временного кода на токены
+- `resendActivationCode()` - **NEW** — Повторная отправка кода активации
+- `requestPasswordReset()` - **NEW** — Запрос восстановления пароля
+- `confirmPasswordReset()` - **NEW** — Подтверждение с улучшенной валидацией
+- `getProfile()` - Получение профиля
+- `updateProfile()` - Обновление профиля пользователя
 - `updateProfile()` - Обновление профиля
 - `getUserOrders()` - Заказы пользователя
 - `getUserCourses()` - Курсы пользователя
@@ -1479,9 +1951,9 @@ npm run dev
 - `getPetAnalysis()` - Анализ профиля питомца с рекомендациями — NEW
 
 #### Справочник пород (`api/pets.js`) — NEW
-- `getBreeds()` - Список пород с фильтрами (species, search, order_by, limit)
-- `getBreed()` - Детали породы по ID
-- `getBreedSuggestions()` - Подсказки для автозаполнения PetID на основе породы
+- `getBreeds()` - Список пород с расширенной фильтрацией (species, size, hypoallergenic, apartment_friendly)
+- `getBreed()` - Детали породы по slug с полными данными
+- `getPetBreedComparison()` - Сравнение питомца с эталоном породы — NEW
 
 #### Константы для PetID (`api/pets.js`) — NEW
 - `SPECIES_OPTIONS` - Виды животных
@@ -1677,7 +2149,11 @@ npm run dev
 
 #### Хранилища состояния (`store/`)
 - `authStore` - Аутентификация пользователя
-  - `login()`, `register()`, `logout()` - Основные действия аутентификации
+  - `register()` - Регистрация с улучшенной password policy
+  - `login()` - Вход с проверкой активации
+  - `logout()` - Выход пользователя
+  - `activateByCode()` - Активация по коду
+  - `resendActivationCode()` - **NEW** — Повторная отправка кода активации
   - `validateToken()` - Валидация токена
   - `loadProfile()` - Загрузка профиля
   - `startTokenValidation()` - Периодическая проверка токена
@@ -1761,8 +2237,7 @@ npm run dev
 - `create_test_users` - Создание тестовых пользователей с полными профилями, питомцами, заказами и записями на курсы
 
 #### Pets (`apps.pets.management.commands`) — NEW
-- `import_breeds` - Импорт пород из Markdown файла (breed_descriptions.md)
-- `import_all_breeds` - Импорт полного справочника пород (166 пород: 101 собака, 65 кошек)
+- `load_breeds` - Загрузка данных пород из JSON файлов (breeds.json, breed_health.json, breed_nutrition.json, breed_care.json)
 
 ### Core utilities (Ядро приложения)
 

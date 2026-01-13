@@ -52,7 +52,7 @@ echo.
 echo ══════════════════════════════════════════════════════════════════════════
 echo.
 
-python manage.py runserver 0.0.0.0:8077
+python manage.py runserver 192.168.1.11:8077
 
 echo.
 echo [СТОП] Сервер остановлен.

@@ -18,6 +18,16 @@
 from rest_framework import serializers
 import re
 
+# Список распространённых паролей для проверки
+COMMON_PASSWORDS = {
+    'password', 'password1', 'password123', '123456', '12345678', '123456789',
+    'qwerty', 'qwerty123', 'abc123', 'monkey', 'letmein', 'trustno1',
+    'dragon', 'baseball', 'iloveyou', 'master', 'sunshine', 'ashley',
+    'football', 'shadow', 'passw0rd', '1234567', '1234567890', 'welcome',
+    'admin', 'admin123', 'login', 'princess', 'solo', 'qwertyuiop',
+    'пароль', 'пароль123', '123456а', 'qwerty1', 'йцукен', 'привет'
+}
+
 
 class UserRegistrationSerializer(serializers.Serializer):
     """
@@ -74,10 +84,10 @@ class UserRegistrationSerializer(serializers.Serializer):
     # Поле пароля - write_only гарантирует, что оно никогда не сериализуется в ответах
     password = serializers.CharField(
         required=True,
-        min_length=6,
+        min_length=8,
         write_only=True,
         style={'input_type': 'password'},
-        help_text="Пароль (минимум 6 символов)"
+        help_text="Пароль (минимум 8 символов, буквы, цифры и спецсимволы)"
     )
 
     # Подтверждение пароля для формы регистрации
@@ -107,6 +117,53 @@ class UserRegistrationSerializer(serializers.Serializer):
         """
         # Нормализация в нижний регистр
         return value.lower().strip()
+    
+    def validate_password(self, value):
+        """
+        Валидация сложности пароля.
+        
+        Проверяет:
+        - Минимум 8 символов
+        - Наличие хотя бы одной буквы
+        - Наличие хотя бы одной цифры
+        - Наличие хотя бы одного специального символа
+        - Отсутствие в списке распространённых паролей
+        
+        Аргументы:
+            value (str): Пароль из запроса
+            
+        Возвращает:
+            str: Валидированный пароль
+            
+        Исключения:
+            ValidationError: Если пароль не соответствует требованиям
+        """
+        errors = []
+        
+        # Проверка длины
+        if len(value) < 8:
+            errors.append('Пароль должен содержать минимум 8 символов')
+        
+        # Проверка наличия буквы (латиница или кириллица)
+        if not re.search(r'[a-zA-Zа-яА-ЯёЁ]', value):
+            errors.append('Пароль должен содержать хотя бы одну букву')
+        
+        # Проверка наличия цифры
+        if not re.search(r'\d', value):
+            errors.append('Пароль должен содержать хотя бы одну цифру')
+        
+        # Проверка наличия специального символа
+        if not re.search(r'[!@#$%^&*()_+\-=\[\]{};\':"\\|,.<>\/?`~]', value):
+            errors.append('Пароль должен содержать хотя бы один специальный символ (!@#$%^&*...)')
+        
+        # Проверка на распространённые пароли
+        if value.lower() in COMMON_PASSWORDS:
+            errors.append('Этот пароль слишком распространён. Выберите другой')
+        
+        if errors:
+            raise serializers.ValidationError(errors)
+        
+        return value
     
     def validate(self, attrs):
         """
@@ -316,10 +373,10 @@ class PasswordResetConfirmSerializer(serializers.Serializer):
     
     new_password = serializers.CharField(
         required=True,
-        min_length=6,
+        min_length=8,
         write_only=True,
         style={'input_type': 'password'},
-        help_text="Новый пароль (минимум 6 символов)"
+        help_text="Новый пароль (минимум 8 символов, буквы, цифры и спецсимволы)"
     )
     
     new_password_confirm = serializers.CharField(
@@ -335,6 +392,39 @@ class PasswordResetConfirmSerializer(serializers.Serializer):
     def validate_code(self, value):
         if not value.isdigit():
             raise serializers.ValidationError('Код должен содержать только цифры')
+        return value
+    
+    def validate_new_password(self, value):
+        """
+        Валидация сложности нового пароля.
+        
+        Проверяет те же требования, что и при регистрации.
+        """
+        errors = []
+        
+        # Проверка длины
+        if len(value) < 8:
+            errors.append('Пароль должен содержать минимум 8 символов')
+        
+        # Проверка наличия буквы (латиница или кириллица)
+        if not re.search(r'[a-zA-Zа-яА-ЯёЁ]', value):
+            errors.append('Пароль должен содержать хотя бы одну букву')
+        
+        # Проверка наличия цифры
+        if not re.search(r'\d', value):
+            errors.append('Пароль должен содержать хотя бы одну цифру')
+        
+        # Проверка наличия специального символа
+        if not re.search(r'[!@#$%^&*()_+\-=\[\]{};\':"\\|,.<>\/?`~]', value):
+            errors.append('Пароль должен содержать хотя бы один специальный символ (!@#$%^&*...)')
+        
+        # Проверка на распространённые пароли
+        if value.lower() in COMMON_PASSWORDS:
+            errors.append('Этот пароль слишком распространён. Выберите другой')
+        
+        if errors:
+            raise serializers.ValidationError(errors)
+        
         return value
     
     def validate(self, attrs):

@@ -200,3 +200,59 @@ export const exchangeAuthCode = async (authCode) => {
 export const hasToken = () => {
   return !!localStorage.getItem('access_token')
 }
+
+/**
+ * Повторная отправка кода активации
+ * 
+ * @param {string} email - Email пользователя
+ * @returns {Promise<Object>} Результат операции
+ * @throws {Object} Ошибка если пользователь не найден или уже активирован
+ * 
+ * @example
+ *   await resendActivationCode('user@example.com')
+ */
+export const resendActivationCode = async (email) => {
+  return await api.post('/auth/resend-activation/', { email })
+}
+
+/**
+ * Запрос на восстановление пароля
+ * 
+ * @param {string} email - Email пользователя
+ * @returns {Promise<Object>} Результат операции
+ * 
+ * @example
+ *   await requestPasswordReset('user@example.com')
+ */
+export const requestPasswordReset = async (email) => {
+  return await api.post('/auth/password-reset/', { email })
+}
+
+/**
+ * Подтверждение восстановления пароля
+ * 
+ * @param {string} email - Email пользователя
+ * @param {string} code - 6-значный код восстановления
+ * @param {string} newPassword - Новый пароль
+ * @param {string} newPasswordConfirm - Подтверждение нового пароля
+ * @returns {Promise<Object>} Токены и данные пользователя
+ * 
+ * @example
+ *   await confirmPasswordReset('user@example.com', '123456', 'newpass', 'newpass')
+ */
+export const confirmPasswordReset = async (email, code, newPassword, newPasswordConfirm) => {
+  const response = await api.post('/auth/password-reset/confirm/', {
+    email,
+    code,
+    new_password: newPassword,
+    new_password_confirm: newPasswordConfirm
+  })
+  
+  // Сохраняем токены после успешного сброса пароля
+  if (response.accessToken && response.refreshToken) {
+    localStorage.setItem('access_token', response.accessToken)
+    localStorage.setItem('refresh_token', response.refreshToken)
+  }
+  
+  return response
+}

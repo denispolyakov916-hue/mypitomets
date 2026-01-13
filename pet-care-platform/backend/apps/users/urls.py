@@ -24,6 +24,7 @@ from .views import (
     ActivateByCodeView,
     ExchangeAuthCodeView,
     GetUsersView,
+    ResendActivationCodeView,
     PasswordResetRequestView,
     PasswordResetConfirmView,
 )
@@ -60,6 +61,10 @@ urlpatterns = [
     # Обмен временного кода активации на токены (после активации по ссылке)
     # POST /api/auth/exchange-auth-code/
     path('exchange-auth-code/', ExchangeAuthCodeView.as_view(), name='auth-exchange-code'),
+    
+    # Повторная отправка кода активации
+    # POST /api/auth/resend-activation/
+    path('resend-activation/', ResendActivationCodeView.as_view(), name='auth-resend-activation'),
     
     # Список пользователей (для тестирования, требует аутентификации)
     # GET /api/auth/users/

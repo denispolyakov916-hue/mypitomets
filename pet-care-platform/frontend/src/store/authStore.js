@@ -170,6 +170,28 @@ export const useAuthStore = create((set, get) => ({
   },
   
   /**
+   * Повторная отправка кода активации
+   * 
+   * @param {string} email - Email пользователя
+   * @returns {Promise<boolean>} True если отправка успешна
+   */
+  resendActivationCode: async (email) => {
+    set({ isLoading: true, error: null })
+    
+    try {
+      await authApi.resendActivationCode(email)
+      set({ isLoading: false, error: null })
+      return true
+    } catch (error) {
+      set({
+        isLoading: false,
+        error: error.message || 'Ошибка отправки кода'
+      })
+      return false
+    }
+  },
+  
+  /**
    * Выход текущего пользователя
    *
    * Очищает токены и сбрасывает состояние авторизации.

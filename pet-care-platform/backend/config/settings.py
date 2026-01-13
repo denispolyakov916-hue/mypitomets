@@ -11,21 +11,30 @@ import os
 from pathlib import Path
 from datetime import timedelta
 
+# BASE_DIR нужен для корректной загрузки .env файлов
+BASE_DIR = Path(__file__).resolve().parent.parent
+
 # Загрузка переменных окружения из .env (опционально)
 try:
     from dotenv import load_dotenv
     # Сначала загружаем .env (общие настройки из Git)
-    load_dotenv()
+    env_path = BASE_DIR / '.env'
+    env_local_path = BASE_DIR / '.env.local'
+    
+    if env_path.exists():
+        load_dotenv(env_path)
+        print(f"[CONFIG] Загружен .env из {env_path}")
+    
     # Затем .env.local (личные переопределения, если есть, не в Git)
-    load_dotenv('.env.local', override=True)
+    if env_local_path.exists():
+        load_dotenv(env_local_path, override=True)
+        print(f"[CONFIG] Загружен .env.local из {env_local_path}")
 except ImportError:
     pass  # python-dotenv не установлен, используем переменные окружения напрямую
 
 # =============================================================================
 # БАЗОВАЯ КОНФИГУРАЦИЯ
 # =============================================================================
-
-BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'django-insecure-change-in-production')
 
@@ -44,11 +53,30 @@ API_URL = os.getenv('API_URL', 'http://localhost:8077')
 # =============================================================================
 # НАСТРОЙКИ EMAIL
 # =============================================================================
+# 
+# Локальная разработка: Mail.ru SMTP (testpetplus@mail.ru)
+# Продакшен: Рекомендуется SendGrid, Amazon SES или Mailgun
+#
+# Переопределить через переменные окружения:
+# - SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASSWORD, DEFAULT_FROM_EMAIL
+# =============================================================================
 
-# Настройки SMTP для отправки email
-EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = os.getenv('SMTP_HOST', 'smtp.gmail.com')
+# Email backend - SMTP по умолчанию
+EMAIL_BACKEND = os.getenv('EMAIL_BACKEND', 'django.core.mail.backends.smtp.EmailBackend')
+
+# SMTP настройки для Mail.ru (локальная разработка)
+# В продакшене переопределяются через переменные окружения
+EMAIL_HOST = os.getenv('SMTP_HOST', 'smtp.mail.ru')
 EMAIL_PORT = int(os.getenv('SMTP_PORT', '587'))
+EMAIL_HOST_USER = os.getenv('SMTP_USER', 'testpetplus@mail.ru')
+EMAIL_HOST_PASSWORD = os.getenv('SMTP_PASSWORD', 'zrflr90NTgUXpTEYL080')
+DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', None) or EMAIL_HOST_USER or 'testpetplus@mail.ru'
+
+# Логирование конфигурации email для отладки (без пароля)
+print(f"[EMAIL CONFIG] Backend: {EMAIL_BACKEND}")
+print(f"[EMAIL CONFIG] Host: {EMAIL_HOST}:{EMAIL_PORT}")
+print(f"[EMAIL CONFIG] User: {EMAIL_HOST_USER}")
+print(f"[EMAIL CONFIG] From: {DEFAULT_FROM_EMAIL}")
 
 # TLS и SSL взаимоисключающие - определяем автоматически по порту или из переменных окружения
 # Для Gmail: порт 587 использует TLS, порт 465 использует SSL
@@ -76,14 +104,6 @@ else:
     # По умолчанию для порта 587 используем TLS
     EMAIL_USE_TLS = True
     EMAIL_USE_SSL = False
-
-EMAIL_HOST_USER = os.getenv('SMTP_USER', '')
-EMAIL_HOST_PASSWORD = os.getenv('SMTP_PASSWORD', '')
-# DEFAULT_FROM_EMAIL использует EMAIL_HOST_USER, если он задан, иначе fallback
-DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', None) or EMAIL_HOST_USER or 'noreply@petcare-platform.com'
-
-# Для разработки можно использовать консольный backend (выводит email в консоль)
-# EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 
 # =============================================================================
 # ПРИЛОЖЕНИЯ

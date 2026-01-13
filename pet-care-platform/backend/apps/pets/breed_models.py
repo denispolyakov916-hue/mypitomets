@@ -75,9 +75,8 @@ class Breed(models.Model):
     slug = models.SlugField(max_length=100, unique=True, verbose_name='URL-имя')
     
     # Описания
-    description = models.TextField(blank=True, verbose_name='Описание породы')
-    short_description = models.CharField(max_length=300, blank=True, verbose_name='Краткое описание')
-    origin_country = models.CharField(max_length=100, blank=True, verbose_name='Страна происхождения')
+    description = models.TextField(blank=True, null=True, verbose_name='Описание породы')
+    short_description = models.TextField(blank=True, null=True, verbose_name='Краткое описание')
     
     # Физические характеристики
     size_category = models.CharField(max_length=20, choices=SIZE_CHOICES, verbose_name='Размер')
@@ -97,6 +96,7 @@ class Breed(models.Model):
     friendliness_to_children = models.CharField(max_length=20, choices=LEVEL_CHOICES, verbose_name='Отношение к детям')
     friendliness_to_pets = models.CharField(max_length=20, choices=LEVEL_CHOICES, default='medium', verbose_name='Отношение к другим животным')
     friendliness_to_strangers = models.CharField(max_length=20, choices=LEVEL_CHOICES, default='medium', verbose_name='Отношение к незнакомцам')
+    independence = models.CharField(max_length=20, choices=LEVEL_CHOICES, default='medium', verbose_name='Независимость')
     
     # Уход
     grooming_frequency = models.CharField(max_length=20, choices=GROOMING_CHOICES, verbose_name='Частота груминга')
@@ -111,7 +111,6 @@ class Breed(models.Model):
     # Условия содержания
     apartment_friendly = models.BooleanField(default=True, verbose_name='Подходит для квартиры')
     good_for_novice = models.BooleanField(default=True, verbose_name='Подходит новичкам')
-    exercise_needs = models.CharField(max_length=20, choices=LEVEL_CHOICES, default='medium', verbose_name='Потребность в нагрузках')
     
     # Метаданные
     created_at = models.DateTimeField(auto_now_add=True)
@@ -140,7 +139,6 @@ class Breed(models.Model):
             'slug': self.slug,
             'description': self.description,
             'short_description': self.short_description,
-            'origin_country': self.origin_country,
             'size_category': self.size_category,
             'weight_min': float(self.weight_min),
             'weight_max': float(self.weight_max),
@@ -154,6 +152,7 @@ class Breed(models.Model):
             'friendliness_to_children': self.friendliness_to_children,
             'friendliness_to_pets': self.friendliness_to_pets,
             'friendliness_to_strangers': self.friendliness_to_strangers,
+            'independence': self.independence,
             'grooming_frequency': self.grooming_frequency,
             'shedding_level': self.shedding_level,
             'coat_type': self.coat_type,
@@ -162,7 +161,6 @@ class Breed(models.Model):
             'brachycephalic': self.brachycephalic,
             'apartment_friendly': self.apartment_friendly,
             'good_for_novice': self.good_for_novice,
-            'exercise_needs': self.exercise_needs,
         }
     
     @property
@@ -179,36 +177,54 @@ class Breed(models.Model):
 class BreedHealth(models.Model):
     """
     Генетические риски здоровья породы.
+    Соответствует схеме migration 0009.
     """
     
-    SEVERITY_CHOICES = [
-        ('low', 'Низкий'),
-        ('medium', 'Средний'),
-        ('high', 'Высокий'),
-        ('critical', 'Критический'),
+    CONDITION_TYPE_CHOICES = [
+        ('genetic', 'Генетическое'),
+        ('congenital', 'Врожденное'),
     ]
     
-    breed = models.ForeignKey(Breed, on_delete=models.CASCADE, related_name='health_risks')
+    SEVERITY_CHOICES = [
+        ('low', 'Низкая'),
+        ('medium', 'Средняя'),
+        ('high', 'Высокая'),
+    ]
+    
+    AFFECTED_SYSTEM_CHOICES = [
+        ('musculoskeletal', 'Опорно-двигательная'),
+        ('cardiovascular', 'Сердечно-сосудистая'),
+        ('respiratory', 'Дыхательная'),
+        ('digestive', 'Пищеварительная'),
+        ('urinary', 'Мочевыделительная'),
+        ('reproductive', 'Репродуктивная'),
+        ('endocrine', 'Эндокринная'),
+        ('nervous', 'Нервная'),
+        ('immune', 'Иммунная'),
+        ('integumentary', 'Кожа и шерсть'),
+        ('ophthalmologic', 'Офтальмологическая'),
+        ('dental', 'Стоматологическая'),
+        ('renal', 'Почечная'),
+        ('neurological', 'Неврологическая'),
+        ('general', 'Общая'),
+    ]
+    
+    breed = models.ForeignKey(Breed, on_delete=models.CASCADE, related_name='health_risks', verbose_name='Порода')
     condition_name = models.CharField(max_length=200, verbose_name='Название заболевания')
-    condition_name_en = models.CharField(max_length=200, blank=True)
-    
-    description = models.TextField(blank=True, verbose_name='Описание')
-    severity = models.CharField(max_length=20, choices=SEVERITY_CHOICES, verbose_name='Тяжесть')
+    condition_type = models.CharField(max_length=20, choices=CONDITION_TYPE_CHOICES, default='genetic')
+    affected_system = models.CharField(max_length=50, choices=AFFECTED_SYSTEM_CHOICES, db_index=True)
+    severity = models.CharField(max_length=20, choices=SEVERITY_CHOICES, db_index=True, verbose_name='Тяжесть')
     prevalence_percent = models.DecimalField(max_digits=5, decimal_places=2, verbose_name='Распространённость %')
-    
-    symptoms = models.JSONField(default=list, blank=True, verbose_name='Симптомы')
-    prevention = models.TextField(blank=True, verbose_name='Профилактика')
-    treatment = models.TextField(blank=True, verbose_name='Лечение')
-    
-    affected_system = models.CharField(max_length=100, blank=True, verbose_name='Поражаемая система')
     age_of_onset = models.CharField(max_length=50, blank=True, verbose_name='Возраст проявления')
-    screening_recommended = models.BooleanField(default=False, verbose_name='Рекомендован скрининг')
+    prevention = models.TextField(verbose_name='Профилактика')
+    screening = models.TextField(verbose_name='Рекомендуемые обследования')
+    created_at = models.DateTimeField(auto_now_add=True)
     
     class Meta:
         verbose_name = 'Риск здоровья породы'
         verbose_name_plural = 'Риски здоровья пород'
-        db_table = 'breed_health_risks'
-        ordering = ['-prevalence_percent']
+        db_table = 'breed_health'
+        ordering = ['breed', '-severity', '-prevalence_percent']
     
     def __str__(self):
         return f"{self.breed.name}: {self.condition_name}"
@@ -217,46 +233,60 @@ class BreedHealth(models.Model):
         return {
             'id': self.id,
             'condition_name': self.condition_name,
-            'description': self.description,
+            'condition_type': self.condition_type,
+            'affected_system': self.affected_system,
             'severity': self.severity,
             'prevalence_percent': float(self.prevalence_percent),
-            'symptoms': self.symptoms,
-            'prevention': self.prevention,
-            'treatment': self.treatment,
-            'affected_system': self.affected_system,
             'age_of_onset': self.age_of_onset,
-            'screening_recommended': self.screening_recommended,
+            'prevention': self.prevention,
+            'screening': self.screening,
         }
 
 
 class BreedNutrition(models.Model):
     """
     Рекомендации по питанию для породы.
+    Соответствует схеме migration 0009.
     """
     
-    breed = models.ForeignKey(Breed, on_delete=models.CASCADE, related_name='nutrition_recommendations')
+    LEVEL_CHOICES = [
+        ('low', 'Низкая'),
+        ('medium', 'Средняя'),
+        ('high', 'Высокая'),
+        ('very_high', 'Очень высокая'),
+    ]
     
-    # Калории
-    calories_per_kg_puppy = models.PositiveIntegerField(null=True, blank=True, verbose_name='Ккал/кг (щенок/котёнок)')
-    calories_per_kg_adult = models.PositiveIntegerField(verbose_name='Ккал/кг (взрослый)')
-    calories_per_kg_senior = models.PositiveIntegerField(null=True, blank=True, verbose_name='Ккал/кг (пожилой)')
+    CALORIE_CHOICES = [
+        ('low', 'Низкая'),
+        ('medium', 'Средняя'),
+        ('high', 'Высокая'),
+    ]
     
-    # Макронутриенты
-    protein_min_percent = models.PositiveIntegerField(default=25, verbose_name='Мин. белок %')
-    protein_max_percent = models.PositiveIntegerField(default=35, verbose_name='Макс. белок %')
-    fat_min_percent = models.PositiveIntegerField(default=10, verbose_name='Мин. жиры %')
-    fat_max_percent = models.PositiveIntegerField(default=20, verbose_name='Макс. жиры %')
+    DIET_TYPE_CHOICES = [
+        ('dry', 'Сухой'),
+        ('wet', 'Влажный'),
+        ('mixed', 'Смешанный'),
+    ]
     
-    # Рекомендации
-    recommended_ingredients = models.JSONField(default=list, blank=True, verbose_name='Рекомендуемые ингредиенты')
-    avoid_ingredients = models.JSONField(default=list, blank=True, verbose_name='Избегать ингредиенты')
-    
-    feeding_notes = models.TextField(blank=True, verbose_name='Примечания по кормлению')
-    supplements = models.JSONField(default=list, blank=True, verbose_name='Рекомендуемые добавки')
+    breed = models.OneToOneField(
+        Breed, 
+        on_delete=models.CASCADE, 
+        primary_key=True,
+        related_name='nutrition', 
+        verbose_name='Порода'
+    )
+    protein_need = models.CharField(max_length=20, choices=LEVEL_CHOICES, verbose_name='Потребность в белке')
+    calorie_density = models.CharField(max_length=20, choices=CALORIE_CHOICES, verbose_name='Калорийность')
+    diet_type = models.CharField(max_length=20, choices=DIET_TYPE_CHOICES, verbose_name='Тип питания')
+    feeding_frequency = models.CharField(max_length=50, verbose_name='Частота кормлений')
+    special_considerations = models.TextField(blank=True, verbose_name='Особые рекомендации')
+    common_allergens = models.JSONField(default=list, blank=True, verbose_name='Аллергены')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
     
     class Meta:
         verbose_name = 'Питание породы'
-        verbose_name_plural = 'Питание пород'
+        verbose_name_plural = 'Рекомендации по питанию'
         db_table = 'breed_nutrition'
     
     def __str__(self):
@@ -264,71 +294,74 @@ class BreedNutrition(models.Model):
     
     def to_dict(self):
         return {
-            'id': self.id,
-            'calories_per_kg_puppy': self.calories_per_kg_puppy,
-            'calories_per_kg_adult': self.calories_per_kg_adult,
-            'calories_per_kg_senior': self.calories_per_kg_senior,
-            'protein_min_percent': self.protein_min_percent,
-            'protein_max_percent': self.protein_max_percent,
-            'fat_min_percent': self.fat_min_percent,
-            'fat_max_percent': self.fat_max_percent,
-            'recommended_ingredients': self.recommended_ingredients,
-            'avoid_ingredients': self.avoid_ingredients,
-            'feeding_notes': self.feeding_notes,
-            'supplements': self.supplements,
+            'breed_id': self.breed_id,
+            'protein_need': self.protein_need,
+            'calorie_density': self.calorie_density,
+            'diet_type': self.diet_type,
+            'feeding_frequency': self.feeding_frequency,
+            'special_considerations': self.special_considerations,
+            'common_allergens': self.common_allergens,
         }
 
 
 class BreedCare(models.Model):
     """
     Рекомендации по уходу за породой.
+    Соответствует схеме migration 0009.
     """
     
-    FREQUENCY_CHOICES = [
-        ('daily', 'Ежедневно'),
-        ('weekly', 'Еженедельно'),
-        ('biweekly', 'Раз в 2 недели'),
-        ('monthly', 'Ежемесячно'),
-        ('quarterly', 'Раз в квартал'),
-        ('yearly', 'Ежегодно'),
-        ('as_needed', 'По необходимости'),
+    CARE_CATEGORY_CHOICES = [
+        ('coat', 'Шерсть'),
+        ('skin', 'Кожа'),
+        ('ears', 'Уши'),
+        ('eyes', 'Глаза'),
+        ('respiratory', 'Дыхание'),
+        ('dental', 'Зубы'),
+        ('nails', 'Когти'),
     ]
     
-    breed = models.ForeignKey(Breed, on_delete=models.CASCADE, related_name='care_procedures')
+    IMPORTANCE_CHOICES = [
+        ('low', 'Низкая'),
+        ('medium', 'Средняя'),
+        ('high', 'Высокая'),
+        ('critical', 'Критическая'),
+    ]
     
-    procedure_name = models.CharField(max_length=100, verbose_name='Процедура')
-    category = models.CharField(max_length=50, verbose_name='Категория')  # grooming, dental, exercise, vet
-    frequency = models.CharField(max_length=20, choices=FREQUENCY_CHOICES, verbose_name='Частота')
+    SEASON_CHOICES = [
+        ('all', 'Круглый год'),
+        ('spring', 'Весна'),
+        ('summer', 'Лето'),
+        ('autumn', 'Осень'),
+        ('winter', 'Зима'),
+    ]
     
-    description = models.TextField(blank=True, verbose_name='Описание')
-    tips = models.TextField(blank=True, verbose_name='Советы')
-    duration_minutes = models.PositiveIntegerField(null=True, blank=True, verbose_name='Длительность (мин)')
-    
-    importance = models.CharField(max_length=20, choices=[
-        ('optional', 'Опционально'),
-        ('recommended', 'Рекомендуется'),
-        ('required', 'Обязательно'),
-    ], default='recommended', verbose_name='Важность')
+    breed = models.ForeignKey(Breed, on_delete=models.CASCADE, related_name='care_procedures', verbose_name='Порода')
+    care_category = models.CharField(max_length=20, choices=CARE_CATEGORY_CHOICES, db_index=True, verbose_name='Категория')
+    procedure = models.CharField(max_length=200, verbose_name='Процедура')
+    frequency = models.CharField(max_length=50, verbose_name='Частота')
+    importance = models.CharField(max_length=20, choices=IMPORTANCE_CHOICES, db_index=True, verbose_name='Важность')
+    season = models.CharField(max_length=20, choices=SEASON_CHOICES, default='all', verbose_name='Сезон')
+    notes = models.TextField(blank=True, verbose_name='Примечания')
+    created_at = models.DateTimeField(auto_now_add=True)
     
     class Meta:
-        verbose_name = 'Уход за породой'
-        verbose_name_plural = 'Уход за породами'
+        verbose_name = 'Процедура ухода за породой'
+        verbose_name_plural = 'Процедуры ухода за породами'
         db_table = 'breed_care'
-        ordering = ['breed', 'category', 'procedure_name']
+        ordering = ['breed', '-importance', 'care_category']
     
     def __str__(self):
-        return f"{self.breed.name}: {self.procedure_name}"
+        return f"{self.breed.name}: {self.procedure}"
     
     def to_dict(self):
         return {
             'id': self.id,
-            'procedure_name': self.procedure_name,
-            'category': self.category,
+            'care_category': self.care_category,
+            'procedure': self.procedure,
             'frequency': self.frequency,
-            'description': self.description,
-            'tips': self.tips,
-            'duration_minutes': self.duration_minutes,
             'importance': self.importance,
+            'season': self.season,
+            'notes': self.notes,
         }
 
 

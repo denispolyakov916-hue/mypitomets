@@ -214,8 +214,8 @@ class BreedListView(BaseReadOnlyView):
     permission_classes = [AllowAny]
 
     def get_queryset(self):
-        """Получить активные породы."""
-        return Breed.objects.filter(is_active=True)
+        """Получить все породы."""
+        return Breed.objects.all()
 
     def filter_queryset(self, queryset, request):
         """Применить фильтры к справочнику пород."""
@@ -231,11 +231,11 @@ class BreedListView(BaseReadOnlyView):
 
     def order_queryset(self, queryset, request):
         """Сортировка пород."""
-        order_by = request.query_params.get('order_by', '-popularity_rank')
-        if order_by in ['name', '-name', 'popularity_rank', '-popularity_rank']:
+        order_by = request.query_params.get('order_by', 'name')
+        if order_by in ['name', '-name', 'species', '-species']:
             queryset = queryset.order_by(order_by)
         else:
-            queryset = queryset.order_by('-popularity_rank', 'name')
+            queryset = queryset.order_by('species', 'name')
         return queryset
 
     def paginate_queryset(self, queryset, request):
@@ -261,8 +261,8 @@ class BreedDetailView(BaseReadOnlyView):
     permission_classes = [AllowAny]
 
     def get_queryset(self):
-        """Получить активные породы."""
-        return Breed.objects.filter(is_active=True)
+        """Получить все породы."""
+        return Breed.objects.all()
 
     def get_object(self):
         """Получить породу по ID или slug."""
@@ -273,7 +273,7 @@ class BreedDetailView(BaseReadOnlyView):
             return super().get_object()
         elif slug:
             try:
-                return self.get_queryset().get(slug=slug, is_active=True)
+                return self.get_queryset().get(slug=slug)
             except Breed.DoesNotExist:
                 raise ApiError.not_found("Порода не найдена")
         else:
@@ -294,19 +294,29 @@ class BreedSuggestionsView(APIView):
     def get(self, request, breed_id):
         """Подсказки для автозаполнения на основе породы."""
         try:
-            breed = Breed.objects.get(id=breed_id, is_active=True)
+            breed = Breed.objects.get(id=breed_id)
         except Breed.DoesNotExist:
             raise ApiError.not_found("Порода не найдена")
 
-        suggestions = breed.get_suggestions_for_pet()
+        # Получаем связанные риски здоровья
+        health_risks = list(breed.health_risks.values_list('condition_name', flat=True)[:5])
+
+        suggestions = {
+            'activity_level': breed.energy_level,
+            'size': breed.size_category,
+            'trainability': breed.trainability,
+            'grooming_needs': breed.grooming_frequency,
+            'good_for_apartment': breed.apartment_friendly,
+            'good_for_novice': breed.good_for_novice,
+        }
 
         return Response({
             'breed_id': str(breed.id),
             'breed_name': breed.name,
             'species': breed.species,
             'suggestions': suggestions,
-            'description': breed.description,
-            'health_warnings': breed.genetic_risks,
+            'description': breed.description or '',
+            'health_warnings': health_risks,
         })
 
 
