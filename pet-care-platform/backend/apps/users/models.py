@@ -72,11 +72,24 @@ class User(AbstractBaseUser, PermissionsMixin):
         null=True,
         help_text="Код активации (6 цифр) для подтверждения email"
     )
-    
+
+    password_reset_code = models.CharField(
+        max_length=6,
+        blank=True,
+        null=True,
+        help_text="Код восстановления пароля (6 цифр)"
+    )
+
     code_created_at = models.DateTimeField(
         blank=True,
         null=True,
-        help_text="Время создания кода активации/восстановления для проверки срока действия"
+        help_text="Время создания кода активации для проверки срока действия"
+    )
+
+    password_reset_code_created_at = models.DateTimeField(
+        blank=True,
+        null=True,
+        help_text="Время создания кода восстановления пароля для проверки срока действия"
     )
 
     # Расширенные настройки профиля

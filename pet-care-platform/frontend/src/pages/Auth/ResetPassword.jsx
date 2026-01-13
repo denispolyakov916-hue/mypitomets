@@ -6,6 +6,34 @@ import { useAuthStore } from '../../store/authStore';
 /**
  * Страница подтверждения восстановления пароля
  */
+/**
+ * Валидация сложности пароля
+ */
+const validatePassword = (password) => {
+  const errors = [];
+  
+  if (password.length < 8) {
+    errors.push('Минимум 8 символов');
+  }
+  
+  // Проверка букв (латиница или кириллица)
+  if (!/[a-zA-Zа-яА-ЯёЁ]/.test(password)) {
+    errors.push('Хотя бы одна буква');
+  }
+  
+  // Проверка цифр
+  if (!/\d/.test(password)) {
+    errors.push('Хотя бы одна цифра');
+  }
+  
+  // Проверка спецсимволов
+  if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?`~]/.test(password)) {
+    errors.push('Хотя бы один спецсимвол (!@#$%...)');
+  }
+  
+  return errors;
+};
+
 const ResetPassword = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -19,11 +47,17 @@ const ResetPassword = () => {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [passwordErrors, setPasswordErrors] = useState([]);
   const [success, setSuccess] = useState(false);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
+    
+    // Валидация пароля в реальном времени
+    if (name === 'new_password') {
+      setPasswordErrors(validatePassword(value));
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -31,14 +65,17 @@ const ResetPassword = () => {
     setLoading(true);
     setError('');
 
+    // Проверка совпадения паролей
     if (formData.new_password !== formData.new_password_confirm) {
       setError('Пароли не совпадают');
       setLoading(false);
       return;
     }
 
-    if (formData.new_password.length < 6) {
-      setError('Пароль должен быть не менее 6 символов');
+    // Проверка требований к паролю
+    const pwdErrors = validatePassword(formData.new_password);
+    if (pwdErrors.length > 0) {
+      setError('Пароль не соответствует требованиям: ' + pwdErrors.join(', '));
       setLoading(false);
       return;
     }
@@ -60,7 +97,20 @@ const ResetPassword = () => {
       }
     } catch (err) {
       console.error('[ResetPassword] Ошибка:', err);
-      setError(err.message || err.error || 'Неверный код или произошла ошибка');
+      // Извлекаем сообщение об ошибке из разных форматов ответа
+      let errorMessage = 'Неверный код или произошла ошибка';
+      if (err.errors) {
+        // Если ошибки валидации от сервера
+        const serverErrors = Object.values(err.errors).flat();
+        if (serverErrors.length > 0) {
+          errorMessage = serverErrors.join(', ');
+        }
+      } else if (err.message) {
+        errorMessage = err.message;
+      } else if (err.error) {
+        errorMessage = err.error;
+      }
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -145,10 +195,31 @@ const ResetPassword = () => {
               value={formData.new_password}
               onChange={handleChange}
               required
-              minLength={6}
+              minLength={8}
               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-              placeholder="Минимум 6 символов"
+              placeholder="Минимум 8 символов"
             />
+            {/* Индикатор требований к паролю */}
+            {formData.new_password && (
+              <div className="mt-2 text-xs space-y-1">
+                <div className={`flex items-center ${formData.new_password.length >= 8 ? 'text-green-600' : 'text-gray-500'}`}>
+                  <span className="mr-1">{formData.new_password.length >= 8 ? '✓' : '○'}</span>
+                  Минимум 8 символов
+                </div>
+                <div className={`flex items-center ${/[a-zA-Zа-яА-ЯёЁ]/.test(formData.new_password) ? 'text-green-600' : 'text-gray-500'}`}>
+                  <span className="mr-1">{/[a-zA-Zа-яА-ЯёЁ]/.test(formData.new_password) ? '✓' : '○'}</span>
+                  Хотя бы одна буква
+                </div>
+                <div className={`flex items-center ${/\d/.test(formData.new_password) ? 'text-green-600' : 'text-gray-500'}`}>
+                  <span className="mr-1">{/\d/.test(formData.new_password) ? '✓' : '○'}</span>
+                  Хотя бы одна цифра
+                </div>
+                <div className={`flex items-center ${/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?`~]/.test(formData.new_password) ? 'text-green-600' : 'text-gray-500'}`}>
+                  <span className="mr-1">{/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?`~]/.test(formData.new_password) ? '✓' : '○'}</span>
+                  Хотя бы один спецсимвол
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="mb-6">

@@ -452,11 +452,11 @@ class UserService:
         
         # Генерация 6-значного кода восстановления с временной меткой
         reset_code = str(random.randint(100000, 999999))
-        
-        # Сохраняем код в поле activation_code (переиспользуем) и время создания
-        user.activation_code = reset_code
-        user.code_created_at = timezone.now()
-        user.save(update_fields=['activation_code', 'code_created_at'])
+
+        # Сохраняем код в отдельном поле password_reset_code и время создания
+        user.password_reset_code = reset_code
+        user.password_reset_code_created_at = timezone.now()
+        user.save(update_fields=['password_reset_code', 'password_reset_code_created_at'])
         
         logger.info(f"Код восстановления для {email}: {reset_code}")
         print(f"[PASSWORD RESET] Код восстановления для {email}: {reset_code}")
@@ -495,13 +495,13 @@ class UserService:
             raise ApiError.bad_request('Пользователь не найден')
         
         # Проверка кода
-        print(f"[PASSWORD RESET CONFIRM] Код в БД: '{user.activation_code}', Код из запроса: '{code}'")
-        if user.activation_code != code:
+        print(f"[PASSWORD RESET CONFIRM] Код в БД: '{user.password_reset_code}', Код из запроса: '{code}'")
+        if user.password_reset_code != code:
             print(f"[PASSWORD RESET CONFIRM] Коды не совпадают!")
             raise ApiError.bad_request('Неверный код восстановления')
-        
+
         # Проверка срока действия кода (15 минут)
-        if UserService._is_code_expired(user.code_created_at):
+        if UserService._is_code_expired(user.password_reset_code_created_at):
             logger.warning(f"Попытка восстановления пароля просроченным кодом: {email}")
             print(f"[PASSWORD RESET CONFIRM] Код просрочен!")
             raise ApiError.bad_request(
@@ -510,8 +510,9 @@ class UserService:
         
         # Установка нового пароля
         user.set_password(new_password)
-        user.activation_code = None  # Очищаем код
-        user.save(update_fields=['password', 'activation_code'])
+        user.password_reset_code = None  # Очищаем код восстановления
+        user.password_reset_code_created_at = None  # Очищаем время создания кода восстановления
+        user.save(update_fields=['password', 'password_reset_code', 'password_reset_code_created_at'])
         
         logger.info(f"Пароль успешно сброшен для {email}")
         print(f"[PASSWORD RESET SUCCESS] Пароль изменён для {email}")

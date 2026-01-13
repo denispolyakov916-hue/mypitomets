@@ -217,6 +217,25 @@ export const useAuthStore = create((set, get) => ({
   setUser: (user) => {
     set({ user })
   },
+
+  /**
+   * Установка авторизации после успешного сброса пароля или другой операции
+   * 
+   * @param {Object} user - Данные пользователя
+   * @param {string} accessToken - Access токен
+   */
+  setAuth: (user, accessToken) => {
+    if (accessToken) {
+      localStorage.setItem('access_token', accessToken)
+    }
+    set({
+      user,
+      isAuthenticated: true,
+      error: null
+    })
+    // Запускаем периодическую проверку токена
+    get().startTokenValidation()
+  },
   
   /**
    * Очистка состояния ошибки
