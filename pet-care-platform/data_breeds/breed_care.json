@@ -1,0 +1,299 @@
+[
+  {
+    "breed_id": 1,
+    "care_category": "coat",
+    "procedure": "Вычесывание подшерстка",
+    "frequency": "2-3 раза в неделю",
+    "importance": "high",
+    "season": "spring",
+    "notes": "Усиленное вычесывание в период весенней линьки"
+  },
+  {
+    "breed_id": 2,
+    "care_category": "coat",
+    "procedure": "Вычесывание подшерстка",
+    "frequency": "ежедневно",
+    "importance": "high",
+    "season": "all",
+    "notes": "Очень обильная линька круглый год, требует ежедневного вычесывания"
+  },
+  {
+    "breed_id": 3,
+    "care_category": "skin",
+    "procedure": "Чистка складок кожи на морде",
+    "frequency": "ежедневно",
+    "importance": "critical",
+    "season": "all",
+    "notes": "Складки на морде - риск инфекций, дерматита. Протирать ежедневно сухой тканью"
+  },
+  {
+    "breed_id": 3,
+    "care_category": "respiratory",
+    "procedure": "Контроль температуры и физической нагрузки",
+    "frequency": "постоянно",
+    "importance": "critical",
+    "season": "summer",
+    "notes": "Брахицефалы перегреваются. Избегать жары, прогулки в прохладное время, доступ к воде"
+  },
+  {
+    "breed_id": 4,
+    "care_category": "coat",
+    "procedure": "Расчесывание длинной шерсти",
+    "frequency": "ежедневно",
+    "importance": "high",
+    "season": "all",
+    "notes": "Длинная шерсть склонна к колтунам. Использовать расческу с длинными зубцами"
+  },
+  {
+    "breed_id": 6,
+    "care_category": "coat",
+    "procedure": "Расчесывание длинной шерсти",
+    "frequency": "ежедневно",
+    "importance": "high",
+    "season": "all",
+    "notes": "Полудлинная шерсть требует регулярного ухода для предотвращения колтунов"
+  },
+  {
+    "breed_id": 8,
+    "care_category": "coat",
+    "procedure": "Минимальное расчесывание",
+    "frequency": "раз в неделю",
+    "importance": "low",
+    "season": "all",
+    "notes": "Короткая шерсть практически не требует ухода"
+  },
+  {
+    "breed_id": 10,
+    "care_category": "skin",
+    "procedure": "Уход за кожей (купание)",
+    "frequency": "раз в 1-2 недели",
+    "importance": "high",
+    "season": "all",
+    "notes": "Бесшерстная порода - кожа выделяет жир, требует частого купания"
+  },
+  {
+    "breed_id": 10,
+    "care_category": "skin",
+    "procedure": "Защита от солнца",
+    "frequency": "постоянно",
+    "importance": "high",
+    "season": "summer",
+    "notes": "Кожа без шерсти подвержена солнечным ожогам. Использовать солнцезащитный крем"
+  },
+  {
+    "breed_id": 11,
+    "care_category": "coat",
+    "procedure": "Расчесывание полудлинной шерсти",
+    "frequency": "2-3 раза в неделю",
+    "importance": "medium",
+    "season": "all",
+    "notes": "Шелковистая шерсть требует регулярного расчесывания"
+  },
+  {
+    "breed_id": 13,
+    "care_category": "coat",
+    "procedure": "Расчесывание длинной шерсти",
+    "frequency": "ежедневно",
+    "importance": "high",
+    "season": "all",
+    "notes": "Густая длинная шерсть с подшерстком требует тщательного ухода"
+  },
+  {
+    "breed_id": 14,
+    "care_category": "coat",
+    "procedure": "Расчесывание длинной шерсти",
+    "frequency": "ежедневно",
+    "importance": "high",
+    "season": "all",
+    "notes": "Длинная шерсть склонна к образованию колтунов"
+  },
+  {
+    "breed_id": 17,
+    "care_category": "ears",
+    "procedure": "Чистка больших ушей",
+    "frequency": "еженедельно",
+    "importance": "medium",
+    "season": "all",
+    "notes": "Большие уши требуют регулярной чистки"
+  },
+  {
+    "breed_id": 20,
+    "care_category": "coat",
+    "procedure": "Уход за кудрявой шерстью",
+    "frequency": "2-3 раза в неделю",
+    "importance": "high",
+    "season": "all",
+    "notes": "Кудрявая шерсть склонна к спутыванию, нужна специальная расческа"
+  },
+  {
+    "breed_id": 21,
+    "care_category": "skin",
+    "procedure": "Чистка складок кожи",
+    "frequency": "ежедневно",
+    "importance": "critical",
+    "season": "all",
+    "notes": "Многочисленные складки на коже требуют ежедневного ухода"
+  },
+  {
+    "breed_id": 23,
+    "care_category": "coat",
+    "procedure": "Вычесывание густого подшерстка",
+    "frequency": "ежедневно",
+    "importance": "high",
+    "season": "spring",
+    "notes": "Очень густой подшерсток, обильная линька весной и осенью"
+  },
+  {
+    "breed_id": 30,
+    "care_category": "coat",
+    "procedure": "Тримминг (выщипывание шерсти)",
+    "frequency": "раз в 2-3 месяца",
+    "importance": "high",
+    "season": "all",
+    "notes": "Жесткая шерсть требует профессионального тримминга, не стрижки"
+  },
+  {
+    "breed_id": 31,
+    "care_category": "coat",
+    "procedure": "Расчесывание длинной шелковистой шерсти",
+    "frequency": "ежедневно",
+    "importance": "high",
+    "season": "all",
+    "notes": "Длинная шерсть требует ежедневного ухода, особенно на лапах и ушах"
+  },
+  {
+    "breed_id": 33,
+    "care_category": "coat",
+    "procedure": "Стрижка (груминг)",
+    "frequency": "раз в 1-2 месяца",
+    "importance": "high",
+    "season": "all",
+    "notes": "Шерсть не линяет, но растет постоянно - требуется регулярная стрижка"
+  },
+  {
+    "breed_id": 34,
+    "care_category": "skin",
+    "procedure": "Чистка складок на морде",
+    "frequency": "ежедневно",
+    "importance": "critical",
+    "season": "all",
+    "notes": "Складки требуют ежедневного ухода для предотвращения инфекций"
+  },
+  {
+    "breed_id": 34,
+    "care_category": "respiratory",
+    "procedure": "Контроль дыхания и температуры",
+    "frequency": "постоянно",
+    "importance": "critical",
+    "season": "all",
+    "notes": "Брахицефалический синдром - избегать перегрева и чрезмерных нагрузок"
+  },
+  {
+    "breed_id": 38,
+    "care_category": "coat",
+    "procedure": "Вычесывание двойной шерсти",
+    "frequency": "ежедневно",
+    "importance": "high",
+    "season": "spring",
+    "notes": "Густая двойная шерсть, сильная линька весной"
+  },
+  {
+    "breed_id": 39,
+    "care_category": "coat",
+    "procedure": "Вычесывание подшерстка",
+    "frequency": "ежедневно",
+    "importance": "high",
+    "season": "all",
+    "notes": "Очень густой подшерсток требует ежедневного ухода"
+  },
+  {
+    "breed_id": 43,
+    "care_category": "coat",
+    "procedure": "Расчесывание жесткой шерсти",
+    "frequency": "2-3 раза в неделю",
+    "importance": "medium",
+    "season": "all",
+    "notes": "Жесткая шерсть требует регулярного расчесывания"
+  },
+  {
+    "breed_id": 45,
+    "care_category": "coat",
+    "procedure": "Вычесывание подшерстка",
+    "frequency": "ежедневно",
+    "importance": "high",
+    "season": "spring",
+    "notes": "Густой подшерсток, обильная линька"
+  },
+  {
+    "breed_id": 2,
+    "care_category": "ears",
+    "procedure": "Осмотр и чистка ушей",
+    "frequency": "еженедельно",
+    "importance": "high",
+    "season": "all",
+    "notes": "Вислоухие уши плохо вентилируются - повышенный риск отитов и инфекций"
+  },
+  {
+    "breed_id": 3,
+    "care_category": "skin",
+    "procedure": "Чистка складок на морде",
+    "frequency": "ежедневно",
+    "importance": "critical",
+    "season": "all",
+    "notes": "Плоская морда с глубокими складками - риск дерматита"
+  },
+  {
+    "breed_id": 3,
+    "care_category": "eyes",
+    "procedure": "Протирание глаз",
+    "frequency": "ежедневно",
+    "importance": "high",
+    "season": "all",
+    "notes": "Брахицефалы склонны к слезотечению, требуется ежедневное протирание"
+  },
+  {
+    "breed_id": 4,
+    "care_category": "coat",
+    "procedure": "Расчесывание длинной шерсти",
+    "frequency": "ежедневно",
+    "importance": "high",
+    "season": "all",
+    "notes": "Длинная густая шерсть склонна к колтунам. Особое внимание - живот, подмышки, за ушами"
+  },
+  {
+    "breed_id": 7,
+    "care_category": "coat",
+    "procedure": "Протирание короткой шерсти влажной тканью",
+    "frequency": "еженедельно",
+    "importance": "low",
+    "season": "all",
+    "notes": "Короткая шерсть с характерным блеском - минимальный уход"
+  },
+  {
+    "breed_id": 13,
+    "care_category": "coat",
+    "procedure": "Расчесывание полудлинной шерсти",
+    "frequency": "2-3 раза в неделю",
+    "importance": "medium",
+    "season": "all",
+    "notes": "Шерсть средней длины, без подшерстка - умеренный уход"
+  },
+  {
+    "breed_id": 14,
+    "care_category": "coat",
+    "procedure": "Расчесывание длинной шерсти",
+    "frequency": "ежедневно",
+    "importance": "high",
+    "season": "all",
+    "notes": "Длинная шерсть без подшерстка склонна к колтунам"
+  },
+  {
+    "breed_id": 18,
+    "care_category": "coat",
+    "procedure": "Уход за волнистой шерстью",
+    "frequency": "2-3 раза в неделю",
+    "importance": "medium",
+    "season": "all",
+    "notes": "Волнистая кудрявая шерсть требует регулярного расчесывания"
+  }
+]

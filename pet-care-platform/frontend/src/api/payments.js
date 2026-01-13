@@ -7,6 +7,15 @@
 import api from './client'
 
 /**
+ * Получение списка платежей пользователя
+ * 
+ * @returns {Promise<Object>} Список платежей
+ */
+export const getPayments = async () => {
+  return await api.get('/payments/')
+}
+
+/**
  * Обработка платежа через единую страницу оплаты
  * 
  * @param {Object} paymentData - Данные платежа
@@ -22,6 +31,9 @@ import api from './client'
 export const processPayment = async (paymentData) => {
   return await api.post('/payments/page/', paymentData)
 }
+
+// Псевдоним для обратной совместимости
+export { processPayment as submitPaymentPage }
 
 /**
  * Подтверждение существующего платежа
@@ -66,5 +78,24 @@ export const getPayment = async (paymentId) => {
  */
 export const getPaymentByOrder = async (orderId) => {
   return await api.get(`/payments/by-order/${orderId}/`)
+}
+
+/**
+ * Отмена платежа
+ *
+ * @param {string} paymentId - ID платежа
+ * @returns {Promise<Object>} Результат отмены
+ */
+export const cancelPayment = async (paymentId) => {
+  return await api.post(`/payments/${paymentId}/cancel/`, {})
+}
+
+/**
+ * Получение статистики платежей
+ *
+ * @returns {Promise<Object>} Статистика платежей
+ */
+export const getPaymentStatistics = async () => {
+  return await api.get('/payments/statistics/')
 }
 

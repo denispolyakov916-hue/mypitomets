@@ -100,7 +100,29 @@ export const updateCourseReview = async (courseId, reviewId, reviewData) => {
 }
 
 /**
- * Удаление отзыва
+ * Удаление отзыва на товар
+ * 
+ * @param {number} productId - ID товара
+ * @param {number} reviewId - ID отзыва
+ * @returns {Promise<Object>} Результат удаления
+ */
+export const deleteProductReview = async (productId, reviewId) => {
+  return await api.delete(`/reviews/products/${productId}/reviews/${reviewId}/delete/`)
+}
+
+/**
+ * Удаление отзыва на курс
+ * 
+ * @param {number} courseId - ID курса
+ * @param {number} reviewId - ID отзыва
+ * @returns {Promise<Object>} Результат удаления
+ */
+export const deleteCourseReview = async (courseId, reviewId) => {
+  return await api.delete(`/reviews/courses/${courseId}/reviews/${reviewId}/delete/`)
+}
+
+/**
+ * Удаление отзыва (универсальный метод)
  * 
  * @param {string} type - Тип ('products' или 'courses')
  * @param {number} itemId - ID товара или курса
@@ -108,11 +130,31 @@ export const updateCourseReview = async (courseId, reviewId, reviewData) => {
  * @returns {Promise<Object>} Результат удаления
  */
 export const deleteReview = async (type, itemId, reviewId) => {
-  return await api.delete(`/reviews/${type}/${itemId}/reviews/${reviewId}/`)
+  return await api.delete(`/reviews/${type}/${itemId}/reviews/${reviewId}/delete/`)
 }
 
 /**
- * Проверка возможности оставить отзыв
+ * Проверка возможности оставить отзыв на товар
+ * 
+ * @param {number} productId - ID товара
+ * @returns {Promise<Object>} Информация о возможности оставить отзыв
+ */
+export const getProductReviewEligibility = async (productId) => {
+  return await api.get(`/reviews/products/${productId}/eligibility/`)
+}
+
+/**
+ * Проверка возможности оставить отзыв на курс
+ * 
+ * @param {number} courseId - ID курса
+ * @returns {Promise<Object>} Информация о возможности оставить отзыв
+ */
+export const getCourseReviewEligibility = async (courseId) => {
+  return await api.get(`/reviews/courses/${courseId}/eligibility/`)
+}
+
+/**
+ * Проверка возможности оставить отзыв (универсальный метод)
  * 
  * @param {string} type - Тип ('products' или 'courses')
  * @param {number} itemId - ID товара или курса
@@ -120,5 +162,14 @@ export const deleteReview = async (type, itemId, reviewId) => {
  */
 export const checkReviewEligibility = async (type, itemId) => {
   return await api.get(`/reviews/${type}/${itemId}/eligibility/`)
+}
+
+/**
+ * Получение недавних покупок для отзывов
+ * 
+ * @returns {Promise<Object>} Список недавно приобретённых товаров и курсов
+ */
+export const getRecentPurchasesForReview = async () => {
+  return await api.get('/reviews/recent-purchases/')
 }
 

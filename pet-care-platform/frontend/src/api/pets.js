@@ -1,39 +1,48 @@
 /**
  * Модуль API питомцев
- * 
+ *
  * Предоставляет функции для управления питомцами (PetID):
- * - Получение всех питомцев пользователя
- * - Получение деталей одного питомца
- * - Создание нового питомца
- * - Обновление питомца
- * - Удаление питомца
- * 
- * Все функции требуют аутентификации.
+ * - CRUD операции с питомцами
+ * - Управление черновиками
+ * - Справочник пород
+ * - Анализ профилей питомцев
+ *
+ * Все функции требуют аутентификации кроме справочника пород.
  */
 
 import api from './client'
+import { createCrudApi, createReadOnlyApi } from './baseApi'
+
+// Создаем CRUD API клиент для питомцев
+const petsApi = createCrudApi('/pets/')
+
+// Создаем клиент для справочника пород (только чтение)
+const breedsApi = createReadOnlyApi('/pets/breeds/')
+
+// ===== CRUD ОПЕРАЦИИ С ПИТОМЦАМИ =====
 
 /**
  * Получение всех питомцев текущего пользователя
- * 
+ *
+ * @param {Object} filters - Фильтры для запроса
  * @returns {Promise<Object>} Объект с массивом питомцев и количеством
- * 
+ *
  * @example
- *   const { pets, count } = await getPets()
+ *   const { data: pets, count } = await getPets({ is_draft: 'false' })
  */
-export const getPets = async () => {
-  return await api.get('/pets/')
+export const getPets = async (filters = {}) => {
+  return await petsApi.getList(filters)
 }
 
 /**
  * Получение одного питомца по ID
- * 
+ *
  * @param {number} petId - Уникальный идентификатор питомца
  * @returns {Promise<Object>} Данные питомца
  * @throws {Object} 404 если питомец не найден, 403 если не владелец
  */
 export const getPet = async (petId) => {
-  return await api.get(`/pets/${petId}/`)
+  return await petsApi.getById(petId)
 }
 
 /**
@@ -54,7 +63,7 @@ export const getPet = async (petId) => {
  * @returns {Promise<Object>} Данные созданного питомца
  *
  * @example
- *   const { pet } = await createPet({
+ *   const { data } = await createPet({
  *     name: 'Барсик',
  *     species: 'cat',
  *     breed: 'Персидская',
@@ -64,37 +73,95 @@ export const getPet = async (petId) => {
  *   })
  */
 export const createPet = async (petData) => {
-  return await api.post('/pets/', petData)
+  return await petsApi.create(petData)
 }
 
 /**
  * Обновление существующего питомца
- * 
+ *
  * Поддерживает частичное обновление - изменяются только предоставленные поля.
- * 
+ *
  * @param {number} petId - Уникальный идентификатор питомца
  * @param {Object} petData - Поля для обновления
  * @returns {Promise<Object>} Данные обновлённого питомца
  * @throws {Object} 403 если не владелец, 404 если не найден
- * 
+ *
  * @example
- *   const { pet } = await updatePet(1, { weight: 5.5 })
+ *   const { data } = await updatePet(1, { weight: 5.5 })
  */
 export const updatePet = async (petId, petData) => {
-  return await api.put(`/pets/${petId}/`, petData)
+  return await petsApi.update(petId, petData)
 }
 
 /**
  * Удаление профиля питомца
- * 
+ *
  * Необратимо удаляет питомца. Действие нельзя отменить.
- * 
+ *
  * @param {number} petId - Уникальный идентификатор питомца
  * @returns {Promise<Object>} Сообщение об успехе
  * @throws {Object} 403 если не владелец, 404 если не найден
  */
 export const deletePet = async (petId) => {
-  return await api.delete(`/pets/${petId}/`)
+  return await petsApi.delete(petId)
+}
+
+/**
+ * Сохранение черновика питомца
+ * 
+ * Создаёт или обновляет черновик профиля питомца.
+ * Черновики отображаются отдельно от готовых профилей.
+ * 
+ * @param {Object} draftData - Данные черновика
+ * @param {string} [draftId] - ID существующего черновика для обновления
+ * @returns {Promise<Object>} Данные сохранённого черновика
+ */
+export const savePetDraft = async (draftData, draftId = null) => {
+  const formData = new FormData()
+  
+  // Добавляем все поля в FormData
+  Object.keys(draftData).forEach(key => {
+    if (key === 'photo' && draftData[key] instanceof File) {
+      formData.append('photo', draftData[key])
+    } else if (key === 'photoPreview') {
+      // Пропускаем preview URL
+    } else if (Array.isArray(draftData[key])) {
+      formData.append(key, JSON.stringify(draftData[key]))
+    } else if (draftData[key] !== null && draftData[key] !== undefined) {
+      formData.append(key, draftData[key])
+    }
+  })
+  
+  // Помечаем как черновик
+  formData.append('is_draft', 'true')
+  
+  if (draftId) {
+    return await api.put(`/pets/${draftId}/`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
+  }
+  return await api.post('/pets/', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  })
+}
+
+/**
+ * Получение черновиков питомцев пользователя
+ * 
+ * @returns {Promise<Object>} Объект с массивом черновиков
+ */
+export const getPetDrafts = async () => {
+  return await api.get('/pets/?is_draft=true')
+}
+
+/**
+ * Удаление черновика питомца
+ * 
+ * @param {string} draftId - ID черновика
+ * @returns {Promise<Object>} Сообщение об успехе
+ */
+export const deletePetDraft = async (draftId) => {
+  return await api.delete(`/pets/${draftId}/`)
 }
 
 /**
@@ -164,13 +231,17 @@ export const ACTIVITY_LEVEL_OPTIONS = [
  * @param {string} [params.species] - Вид животного (dog/cat)
  * @param {string} [params.search] - Поиск по названию
  * @param {string} [params.size] - Размер (tiny/small/medium/large/giant)
- * @returns {Promise<Object>} Список пород
+ * @param {string} [params.order_by] - Сортировка (name, -name, popularity_rank)
+ * @param {number} [params.limit] - Лимит результатов (по умолчанию 50)
+ * @returns {Promise<Object>} Объект с массивом пород и количеством
  */
 export const getBreeds = async (params = {}) => {
   const queryParams = new URLSearchParams()
   if (params.species) queryParams.append('species', params.species)
   if (params.search) queryParams.append('search', params.search)
   if (params.size) queryParams.append('size', params.size)
+  if (params.order_by) queryParams.append('order_by', params.order_by)
+  if (params.limit) queryParams.append('limit', params.limit)
   
   const queryString = queryParams.toString()
   return await api.get(`/pets/breeds/${queryString ? '?' + queryString : ''}`)
@@ -187,6 +258,26 @@ export const getBreedBySlug = async (slug) => {
 }
 
 /**
+ * Получение детальной информации о породе
+ * 
+ * @param {string} breedId - UUID породы
+ * @returns {Promise<Object>} Полные данные породы
+ */
+export const getBreed = async (breedId) => {
+  return await api.get(`/pets/breeds/${breedId}/`)
+}
+
+/**
+ * Получение подсказок для автозаполнения PetID на основе породы
+ * 
+ * @param {string} breedId - UUID породы
+ * @returns {Promise<Object>} Подсказки для заполнения профиля
+ */
+export const getBreedSuggestions = async (breedId) => {
+  return await api.get(`/pets/breeds/${breedId}/suggestions/`)
+}
+
+/**
  * Получение сравнения параметров питомца с эталоном породы
  * 
  * @param {string} petId - ID питомца
@@ -194,6 +285,16 @@ export const getBreedBySlug = async (slug) => {
  */
 export const getPetBreedComparison = async (petId) => {
   return await api.get(`/pets/${petId}/breed-comparison/`)
+}
+
+/**
+ * Получение анализа профиля питомца
+ * 
+ * @param {string} petId - UUID питомца
+ * @returns {Promise<Object>} Анализ здоровья и рекомендации
+ */
+export const getPetAnalysis = async (petId) => {
+  return await api.get(`/pets/${petId}/analysis/`)
 }
 
 // ===== ДОПОЛНИТЕЛЬНЫЕ КОНСТАНТЫ =====
@@ -205,7 +306,7 @@ export const DIET_TYPE_OPTIONS = [
   { value: 'dry', label: 'Сухой корм' },
   { value: 'wet', label: 'Влажный корм' },
   { value: 'mixed', label: 'Смешанное питание' },
-  { value: 'raw', label: 'Натуральное питание' },
+  { value: 'raw', label: 'Натуральное (BARF)' },
   { value: 'home', label: 'Домашняя еда' },
 ]
 
@@ -256,4 +357,58 @@ export const DENTAL_HEALTH_OPTIONS = [
   { value: 'good', label: 'Хорошее' },
   { value: 'fair', label: 'Удовлетворительное' },
   { value: 'needs_attention', label: 'Требует лечения' },
+]
+
+/**
+ * Стандартные черты характера
+ */
+export const CHARACTER_TRAITS = [
+  'Дружелюбный', 'Активный', 'Спокойный', 'Игривый', 
+  'Застенчивый', 'Любопытный', 'Независимый', 'Ласковый',
+  'Упрямый', 'Умный', 'Преданный', 'Общительный'
+]
+
+/**
+ * Стандартные проблемы здоровья
+ */
+export const HEALTH_ISSUES_OPTIONS = [
+  { value: 'overweight', label: 'Избыточный вес' },
+  { value: 'underweight', label: 'Недостаточный вес' },
+  { value: 'skin_problems', label: 'Проблемы с кожей/шерстью' },
+  { value: 'digestive_issues', label: 'Проблемы с пищеварением' },
+  { value: 'joint_problems', label: 'Проблемы с суставами' },
+  { value: 'dental_problems', label: 'Проблемы с зубами' },
+  { value: 'urinary_problems', label: 'Проблемы с мочеиспусканием' },
+  { value: 'allergies', label: 'Аллергия' },
+  { value: 'chronic_disease', label: 'Хроническое заболевание' },
+  { value: 'none', label: 'Нет проблем со здоровьем' }
+]
+
+/**
+ * Стандартные аллергии/исключаемые ингредиенты
+ */
+export const EXCLUDED_INGREDIENTS_OPTIONS = [
+  { value: 'chicken', label: 'Курица' },
+  { value: 'beef', label: 'Говядина' },
+  { value: 'fish', label: 'Рыба' },
+  { value: 'lamb', label: 'Баранина' },
+  { value: 'pork', label: 'Свинина' },
+  { value: 'eggs', label: 'Яйца' },
+  { value: 'dairy', label: 'Молочные продукты' },
+  { value: 'wheat', label: 'Пшеница/злаки' },
+  { value: 'corn', label: 'Кукуруза' },
+  { value: 'soy', label: 'Соя' },
+  { value: 'artificial_colors', label: 'Искусственные красители' },
+  { value: 'artificial_preservatives', label: 'Искусственные консерванты' },
+  { value: 'none', label: 'Нет аллергий' }
+]
+
+/**
+ * Стандартные поведенческие проблемы
+ */
+export const BEHAVIORAL_PROBLEMS = [
+  'Лает/мяукает без причины', 'Грызёт вещи', 'Агрессия к другим животным',
+  'Агрессия к людям', 'Страх громких звуков', 'Боязнь одиночества',
+  'Метит территорию', 'Не приучен к туалету', 'Тянет поводок',
+  'Не слушается команд', 'Прыгает на людей', 'Царапает мебель'
 ]

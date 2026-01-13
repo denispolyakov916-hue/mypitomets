@@ -1,9 +1,11 @@
 # Питомец+ — Структура проекта
 
 **Дата создания**: Январь 2026
-**Версия**: 2.1
-**Статус**: ✅ Рефакторинг завершен - Платформа стабилизирована и очищена
-**Последнее обновление**: Январь 2026 - Очистка проекта от временных файлов и дубликатов
+**Версия**: 2.2 (После рефакторинга)
+**Статус**: ✅ PetID 2.0 + Рефакторинг завершен
+**Последнее обновление**: Январь 2026 - Очистка проекта, PetID 2.0
+
+> ⚠️ **ВАЖНО**: 9 января 2026 проведён рефакторинг для уменьшения количества файлов
 
 ---
 
@@ -57,29 +59,34 @@ pet-care-platform/
 ├── backend/                          # Django Backend
 │   ├── apps/                         # Django приложения
 │   │   ├── users/                    # Модуль пользователей
-│   │   ├── pets/                     # Модуль PetID + Напоминания
-│   │   ├── shop/                     # Модуль магазина
-│   │   ├── training/                 # Модуль курсов + Конструктор
+│   │   ├── pets/                     # Модуль PetID + Календарь + Напоминания ⭐
+│   │   │   ├── services.py           # PersonalizationService + BaseCRUDService ⭐
+│   │   ├── shop/                     # Модуль магазина + Аналитика ⭐
+│   │   │   ├── services.py           # CartService + OrderService + BaseCRUDService ⭐
+│   │   ├── training/                 # Модуль курсов + Конструктор ⭐
+│   │   │   ├── services.py           # CourseService + BaseCRUDService ⭐
+│   │   │   ├── views/                # Разбит на 5 модулей по функционалу ⭐
 │   │   ├── payments/                 # Модуль платежей
 │   │   ├── reviews/                  # Модуль отзывов
-│   │   ├── calendar/                 # Модуль календаря
-│   │   ├── analytics/                # Модуль аналитики
 │   │   └── __init__.py
 │   │
-│   ├── core/                         # Общие компоненты
-│   │   ├── authentication.py         # Кастомная аутентификация
+│   ├── core/                         # Общие компоненты ⭐
+│   │   ├── authentication.py         # Кастомная JWT аутентификация
 │   │   ├── cache_utils.py            # Утилиты кэширования
+│   │   ├── crud_views.py             # Базовые CRUD классы
+│   │   ├── exceptions.py             # Кастомные исключения + декораторы ⭐
 │   │   ├── exception_handler.py      # Обработчик исключений
-│   │   ├── exceptions.py             # Кастомные исключения
+│   │   ├── services.py               # BaseCRUDService + декораторы ⭐
+│   │   ├── permissions.py            # Права доступа (IsOwner)
 │   │   ├── health.py                 # Мониторинг здоровья
 │   │   ├── middleware.py             # Кастомное middleware
-│   │   ├── pagination.py             # Кастомная пагинация
-│   │   ├── permissions.py            # Кастомные разрешения
-│   │   ├── services.py               # Базовый сервис
-│   │   ├── tokens.py                 # Кастомные токены
-│   │   ├── utils.py                  # Утилиты
-│   │   ├── validators.py             # Валидаторы
-│   │   └── views.py                  # API для мониторинга
+│   │   ├── permissions.py            # Кастомные разрешения (IsOwner)
+│   │   ├── serializers.py            # Базовые сериализаторы
+│   │   ├── services.py               # ServiceResult, BaseService ⭐
+│   │   ├── tokens.py                 # Кастомные JWT токены
+│   │   ├── utils.py                  # Утилиты (generate_uuid7)
+│   │   ├── validators.py             # JSON валидаторы
+│   │   └── views.py                  # API для health check
 │   │
 │   ├── config/                       # Конфигурация Django
 │   │   ├── settings.py               # Настройки приложения
@@ -147,14 +154,19 @@ pet-care-platform/
 │   │   │   ├── urls.py               # URL /api/auth/
 │   │   │   └── profile_urls.py       # URL /api/users/
 │   │   │
-│   │   ├── pets/                     # Модуль PetID + Напоминания
-│   │   │   ├── models.py             # Pet модель (с health_issues, activity_level)
+│   │   ├── pets/                     # Модуль PetID + Напоминания + Справочник пород
+│   │   │   ├── models.py             # Pet модель (расширенная v2.0)
+│   │   │   ├── breed_models.py       # Breed модель (справочник пород) — NEW
 │   │   │   ├── reminder_models.py    # Reminder модель
-│   │   │   ├── views.py              # CRUD питомцев
+│   │   │   ├── views.py              # CRUD питомцев + API пород + анализ
 │   │   │   ├── reminder_views.py     # API напоминаний
-│   │   │   ├── services.py           # PersonalizationService
+│   │   │   ├── serializers.py        # Pet + Breed сериализаторы — NEW
+│   │   │   ├── services.py           # PersonalizationService (v2.0)
 │   │   │   ├── admin.py              # Админка Pet + Reminder
-│   │   │   └── urls.py               # URL /api/pets/, /api/pets/reminders/
+│   │   │   ├── urls.py               # URL /api/pets/, /api/pets/breeds/, /api/pets/reminders/
+│   │   │   └── management/commands/
+│   │   │       ├── import_breeds.py      # Импорт из Markdown — NEW
+│   │   │       └── import_all_breeds.py  # Полный справочник (166 пород) — NEW
 │   │   │
 │   │   ├── shop/                     # Модуль магазина
 │   │   │   ├── models.py             # Product, Cart, Order модели
@@ -258,6 +270,12 @@ pet-care-platform/
 │   │   ├── pages/                    # Страницы приложения
 │   │   │   ├── Auth/                 # Авторизация
 │   │   │   ├── PetProfile/           # Профили питомцев
+│   │   │   ├── PetId/                # PetID 2.0 — NEW
+│   │   │   │   ├── PetIdPage.jsx     # Главная страница PetID
+│   │   │   │   ├── index.js          # Экспорт компонентов
+│   │   │   │   └── components/
+│   │   │   │       ├── PetQuickCreate.jsx   # Быстрое создание питомца
+│   │   │   │       └── PetProfileEditor.jsx # Редактор профиля
 │   │   │   ├── Shop/                 # Магазин (с рекомендациями)
 │   │   │   ├── Training/             # Курсы + Конструктор
 │   │   │   │   ├── Learning/         # Обучение (новая архитектура)
@@ -302,6 +320,21 @@ Dashboard:    http://localhost:8000/admin/dashboard/
 ```
 
 ### Новые эндпоинты (добавлены в этой версии)
+
+#### Справочник пород (`/api/pets/breeds/`) — NEW
+
+| Метод | URL | Описание |
+|-------|-----|----------|
+| GET | `/api/pets/breeds/` | Список пород (с фильтрами species, search) |
+| GET | `/api/pets/breeds/{uuid}/` | Детали породы |
+| GET | `/api/pets/breeds/by-slug/{slug}/` | Порода по slug |
+| GET | `/api/pets/breeds/{uuid}/suggestions/` | Подсказки для автозаполнения PetID |
+
+#### Анализ питомца (`/api/pets/{uuid}/analysis/`) — NEW
+
+| Метод | URL | Описание |
+|-------|-----|----------|
+| GET | `/api/pets/{uuid}/analysis/` | Анализ профиля питомца с рекомендациями |
 
 #### Напоминания (`/api/pets/reminders/`)
 
@@ -358,7 +391,8 @@ Dashboard:    http://localhost:8000/admin/dashboard/
 - `Token` - Refresh токены пользователей
 
 #### apps.pets
-- `Pet` - Профиль питомца (PetID)
+- `Pet` - Профиль питомца (PetID) с расширенными полями персонализации
+- `Breed` - Справочник пород (166 пород: 101 собак, 65 кошек) — NEW
 - `Reminder` - Напоминания по уходу
 - `ReminderCategory` - Категории напоминаний
 - `ReminderFrequency` - Частота напоминаний
@@ -400,10 +434,11 @@ Dashboard:    http://localhost:8000/admin/dashboard/
 - `ChartSession` - Сессия графика
 - `AnalyticsLog` - Лог аналитики
 
-### Pet (Питомец / PetID) — обновлено
+### Pet (Питомец / PetID) — обновлено v2.0
 
 ```python
 class Pet(models.Model):
+    # Основные данные
     id: UUID                    # UUIDv7 идентификатор
     owner: User                 # Владелец (FK)
     name: str                   # Кличка
@@ -414,12 +449,94 @@ class Pet(models.Model):
     gender: str                 # Пол (male/female/unknown)
     is_neutered: bool           # Кастрирован/Стерилизован
     photo: ImageField | None    # Фото питомца
+    
+    # Питание и здоровье
     favorite_foods: list        # Любимые продукты (JSON)
     allergies: list             # Аллергии (JSON)
-    health_issues: list         # Проблемы здоровья (JSON) - NEW
-    activity_level: str         # Уровень активности (low/medium/high) - NEW
+    health_issues: list         # Проблемы здоровья (JSON)
+    sensitive_digestion: bool   # Чувствительное пищеварение - NEW
+    chronic_conditions: str     # Хронические заболевания - NEW
+    diet_type: str              # Тип питания (dry/wet/mixed/raw/home) - NEW
+    
+    # Поведение и дрессировка - NEW
+    activity_level: str         # Уровень активности (low/medium/high)
+    behavior_type: str          # Тип поведения (calm/active/aggressive/shy/playful)
+    social_level: str           # Уровень социализации
+    training_experience: str    # Опыт дрессировки (none/basic/intermediate/advanced)
+    behavioral_problems: list   # Поведенческие проблемы (JSON)
+    character_traits: list      # Черты характера (JSON)
+    
+    # Образ жизни владельца - NEW
+    housing_type: str           # Тип жилья (apartment/house/cottage)
+    has_yard: bool              # Есть ли двор
+    has_children: bool          # Есть ли дети
+    other_pets: str             # Другие питомцы
+    
+    # Метаданные
+    profile_completeness: int   # Процент заполненности профиля (0-100) - NEW
+    is_extended_profile: bool   # Расширенный профиль заполнен - NEW
     created_at: datetime
     updated_at: datetime
+    
+    # Вычисляемые свойства (properties) - NEW
+    @property age: int          # Возраст в годах
+    @property age_months: int   # Возраст в месяцах
+    @property age_category: str # Категория возраста (puppy/kitten/adult/senior)
+    @property calculated_size: str  # Размер на основе веса и породы
+```
+
+### Breed (Справочник пород) — NEW
+
+```python
+class Breed(models.Model):
+    id: UUID                    # UUIDv7 идентификатор
+    name: str                   # Название породы (уникальное)
+    slug: str                   # URL-slug (уникальный)
+    species: str                # Вид (dog/cat)
+    description: str            # Описание породы
+    
+    # Здоровье и генетика
+    health_risk_level: str      # Уровень риска (low/medium/high)
+    genetic_risks: list         # Генетические риски (JSON)
+    lifespan_min: int           # Минимальная продолжительность жизни
+    lifespan_max: int           # Максимальная продолжительность жизни
+    
+    # Физические параметры
+    weight_min: Decimal         # Минимальный вес (кг)
+    weight_max: Decimal         # Максимальный вес (кг)
+    size_category: str          # Категория размера (toy/small/medium/large/giant)
+    
+    # Питание
+    diet_recommendations: str   # Рекомендации по питанию
+    digestion_sensitivity: str  # Чувствительность пищеварения
+    metabolism_notes: str       # Особенности метаболизма
+    
+    # Активность
+    energy_level: str           # Уровень энергии (low/medium/high/very_high)
+    exercise_needs: str         # Потребность в нагрузках
+    favorite_activities: list   # Рекомендуемые активности (JSON)
+    
+    # Уход
+    grooming_level: str         # Уровень груминга (minimal/medium/high)
+    bathing_frequency: str      # Частота купания
+    grooming_notes: str         # Примечания по уходу
+    
+    # Поведение
+    temperament: list           # Темперамент (JSON)
+    trainability: str           # Обучаемость (low/medium/high)
+    children_compatibility: str # Совместимость с детьми
+    socialization_notes: str    # Заметки по социализации
+    
+    # Метаданные
+    popularity_rank: int        # Рейтинг популярности
+    is_active: bool             # Активна ли порода
+    created_at: datetime
+    updated_at: datetime
+    
+    # Методы
+    def get_suggestions_for_pet() -> dict  # Подсказки для автозаполнения PetID
+    @property average_weight: float        # Средний вес
+    @property average_lifespan: float      # Средняя продолжительность жизни
 ```
 
 ### CoursePage (Страница курса) — NEW
@@ -529,27 +646,56 @@ class Reminder(models.Model):
 
 ---
 
-## Система персонализации PetID
+## Система персонализации PetID — v2.0
 
-### PersonalizationService
+### PersonalizationService (обновлён)
 
 ```python
 class PersonalizationService:
     @staticmethod
     def get_context(user) -> PersonalizationContext
-        """Получает контекст всех питомцев пользователя."""
+        """Получает контекст всех питомцев с поведенческими данными и данными породы."""
     
     @staticmethod
     def get_pet_context(user, pet_id) -> PetContext
-        """Получает контекст конкретного питомца."""
+        """Получает контекст конкретного питомца с данными породы из справочника."""
     
     @classmethod
     def get_health_based_recommendations(cls, user, health_issue, limit=12)
         """Рекомендации на основе проблем здоровья."""
     
     @classmethod
+    def get_course_recommendations(cls, user, limit=6)
+        """Рекомендации курсов с учётом поведенческих проблем и опыта дрессировки."""
+    
+    @classmethod
     def get_full_recommendations(cls, user, products_limit=8, courses_limit=4)
         """Полные персонализированные рекомендации."""
+```
+
+### PetContext (расширенный) — NEW
+
+```python
+@dataclass
+class PetContext:
+    pet_id: str
+    name: str
+    species: str
+    breed: str | None
+    age: int | None
+    age_category: str | None       # puppy/kitten/adult/senior
+    weight: float | None
+    activity_level: str            # low/medium/high
+    # Поведенческие данные для персонализации курсов
+    behavior_type: str | None      # calm/active/aggressive/shy/playful
+    social_level: str | None       # Уровень социализации
+    training_experience: str | None # none/basic/intermediate/advanced
+    behavioral_problems: list      # Поведенческие проблемы
+    profile_completeness: int      # Процент заполненности профиля
+    # Данные породы из справочника
+    breed_energy_level: str | None
+    breed_trainability: str | None
+    breed_health_risks: list       # Генетические риски породы
 ```
 
 ### Маппинг проблем здоровья → категории товаров
@@ -562,6 +708,32 @@ class PersonalizationService:
 | joint_problems | Хондропротекторы, добавки |
 | dental_issues | Средства для зубов, игрушки |
 | allergies | Гипоаллергенные корма |
+| kidney_issues | Ренальные диеты |
+| heart_issues | Кардио-поддержка |
+
+### Персонализация курсов по поведению — NEW
+
+| Поведенческая проблема | Рекомендуемые курсы |
+|------------------------|---------------------|
+| Лает/мяукает без причины | Курсы по контролю лая, вокализации |
+| Агрессия | Курсы коррекции, социализации |
+| Страх громких звуков | Десенсибилизация |
+| Боязнь одиночества | Сепарационная тревожность |
+| Тянет поводок | Курсы прогулок, поводка |
+| Не слушается команд | Курсы послушания |
+
+### Справочник пород (166 пород) — NEW
+
+| Вид | Количество | Размеры |
+|-----|------------|---------|
+| 🐕 Собаки | 101 | toy, small, medium, large, giant |
+| 🐱 Кошки | 65 | small, medium, large |
+
+**Автозаполнение PetID на основе породы:**
+- Уровень активности (energy_level)
+- Размер (size_category)
+- Генетические риски здоровья
+- Рекомендации по питанию и уходу
 
 ---
 
@@ -777,6 +949,7 @@ user.save()
 |----------|------------|------------|--------|
 | **Пользователи** | 57 | Реальные профили с email, именами, телефонами | ✅ Полностью заполнено |
 | **Питомцы** | 106 | Собаки и кошки с породами и владельцами | ✅ Полностью заполнено |
+| **Породы** | 166 | 101 собака + 65 кошек с характеристиками | ✅ Полностью заполнено — NEW |
 | **Товары** | 11,143 | Каталог с ценами, брендами, остатками на складе | ✅ Полностью заполнено |
 | **Заказы** | 226 | Полная история заказов с товарами и статусами | ✅ Полностью заполнено |
 | **Курсы** | 63 | Образовательный контент со статистикой + тестовый курс | ✅ Полностью заполнено |
@@ -946,20 +1119,31 @@ npm run dev
 
 ## История изменений
 
-### v2.1 (Январь 2026) — Очистка проекта
+### v2.2 (Январь 2026) — PetID 2.0 + Очистка проекта
+
+**Backend:**
+- ✅ Модель Breed — справочник пород (166 пород: 101 собака, 65 кошек)
+- ✅ API справочника пород с фильтрацией и поиском
+- ✅ Подсказки для автозаполнения PetID на основе породы
+- ✅ Расширенная модель Pet (поведение, образ жизни, profile_completeness)
+- ✅ PetAnalysisView — анализ профиля с рекомендациями
+- ✅ Улучшенный PersonalizationService с поведенческими данными
+- ✅ Персонализация курсов по поведенческим проблемам и опыту дрессировки
+- ✅ Management команда import_all_breeds для импорта справочника
+
+**Frontend:**
+- ✅ PetQuickCreate — компактная форма создания питомца с автозаполнением
+- ✅ PetProfileEditor — редактор профиля с 6 секциями
+- ✅ Обновлённый PetIdPage с карточками и прогресс-баром заполненности
+- ✅ API клиент для справочника пород (getBreeds, getBreedSuggestions)
+- ✅ Константы для всех полей PetID
+- ✅ Удалён старый PetIdWizard (600+ строк нефункционального кода)
 
 **Очистка:**
 - ✅ Удалены временные файлы (cookies.txt, .xml файлы)
-- ✅ Удалены дублирующиеся скрипты создания пользователей (4 файла объединены в стандартную Django команду)
-- ✅ Удалены тестовые скрипты из корня проекта (check_data.py, check_db.py, test_api.py)
-- ✅ Удалены дублирующиеся setup скрипты (setup_db_final.py, setup_simple.py)
-- ✅ Удалены временные настройки (settings_temp.py)
-- ✅ Удалена ошибочная директория Pet_dev
-- ✅ Удален неиспользуемый тестовый компонент (FavoritesTest.jsx)
+- ✅ Удалены дублирующиеся скрипты создания пользователей
+- ✅ Удалены тестовые скрипты из корня проекта
 - ✅ Максимизировано переиспользование кода
-- ✅ Обновлена документация структуры проекта
-
-**Результат:** Проект очищен от временных файлов, дубликатов и неиспользуемого кода. Все функции сохранены.
 
 ### v0.2.0 (Декабрь 2024) — Модернизация
 
@@ -1097,6 +1281,10 @@ npm run dev
 - `PetDetailView.get()` - Получение деталей питомца
 - `PetDetailView.put()` - Обновление данных питомца
 - `PetDetailView.delete()` - Удаление питомца
+- `PetAnalysisView.get()` - Анализ профиля питомца с рекомендациями — NEW
+- `BreedListView.get()` - Список пород с фильтрацией (species, search) — NEW
+- `BreedDetailView.get()` - Детали породы (по ID или slug) — NEW
+- `BreedSuggestionsView.get()` - Подсказки для автозаполнения PetID — NEW
 - `ReminderListView.get()` - Получение списка напоминаний с фильтрами
 - `ReminderListView.post()` - Создание нового напоминания
 - `ReminderDetailView.get()` - Получение деталей напоминания
@@ -1106,13 +1294,17 @@ npm run dev
 - `ReminderCategoriesView.get()` - Получение категорий и частот напоминаний
 - `UpcomingRemindersView.get()` - Получение предстоящих напоминаний для дашборда
 
+**Serializers (Сериализаторы):** — NEW
+- `BreedSerializer` - Полная сериализация породы
+- `BreedListSerializer` - Краткая сериализация для списков
+
 **Services (Сервисы):**
-- `PersonalizationService.get_context()` - Получение контекста персонализации для пользователя
+- `PersonalizationService.get_context()` - Получение контекста персонализации для пользователя (с поведенческими данными) — UPDATED
 - `PersonalizationService.get_pet_context()` - Получение контекста конкретного питомца
 - `PersonalizationService.filter_products()` - Фильтрация товаров по контексту питомцев
-- `PersonalizationService.filter_courses()` - Фильтрация курсов по контексту питомцев
+- `PersonalizationService.filter_courses()` - Фильтрация курсов по контексту питомцев (с учётом поведения) — UPDATED
 - `PersonalizationService.get_product_recommendations()` - Персональные рекомендации товаров
-- `PersonalizationService.get_course_recommendations()` - Персональные рекомендации курсов
+- `PersonalizationService.get_course_recommendations()` - Персональные рекомендации курсов (по поведенческим проблемам, опыту дрессировки) — UPDATED
 - `PersonalizationService.get_health_based_recommendations()` - Рекомендации по проблемам здоровья
 - `PersonalizationService.get_available_health_filters()` - Доступные фильтры здоровья
 - `PersonalizationService.get_full_recommendations()` - Полные персонализированные рекомендации
@@ -1284,6 +1476,27 @@ npm run dev
 - `createPet()` - Создание питомца
 - `updatePet()` - Обновление питомца
 - `deletePet()` - Удаление питомца
+- `getPetAnalysis()` - Анализ профиля питомца с рекомендациями — NEW
+
+#### Справочник пород (`api/pets.js`) — NEW
+- `getBreeds()` - Список пород с фильтрами (species, search, order_by, limit)
+- `getBreed()` - Детали породы по ID
+- `getBreedSuggestions()` - Подсказки для автозаполнения PetID на основе породы
+
+#### Константы для PetID (`api/pets.js`) — NEW
+- `SPECIES_OPTIONS` - Виды животных
+- `ACTIVITY_LEVEL_OPTIONS` - Уровни активности
+- `BEHAVIOR_TYPE_OPTIONS` - Типы поведения
+- `SOCIAL_LEVEL_OPTIONS` - Уровни социализации
+- `TRAINING_EXPERIENCE_OPTIONS` - Опыт дрессировки
+- `SIZE_OPTIONS` - Размеры животных
+- `BODY_TYPE_OPTIONS` - Типы телосложения
+- `DIET_TYPE_OPTIONS` - Типы питания
+- `FEEDING_FREQUENCY_OPTIONS` - Частота кормления
+- `HOUSING_TYPE_OPTIONS` - Типы жилья
+- `DENTAL_HEALTH_OPTIONS` - Состояние зубов
+- `CHARACTER_TRAITS` - Черты характера
+- `BEHAVIORAL_PROBLEMS` - Поведенческие проблемы
 
 #### Модуль напоминаний (`api/reminders.js`)
 - `getReminders()` - Список напоминаний
@@ -1496,11 +1709,14 @@ npm run dev
 - `RegisterPage` - Страница регистрации
 - `ActivationPage` - Страница активации аккаунта
 
-#### Профиль питомцев (`pages/PetProfile/`)
+#### Профиль питомцев (`pages/PetProfile/`, `pages/PetId/`)
 - `PetListPage` - Список питомцев
 - `PetCreatePage` - Создание питомца
 - `PetEditPage` - Редактирование питомца
 - `PetDetailPage` - Детали питомца
+- `PetIdPage` - Главная страница управления PetID — NEW
+- `PetQuickCreate` - Компактная форма быстрого создания питомца с автозаполнением — NEW
+- `PetProfileEditor` - Редактор профиля с секциями (Основное/Здоровье/Питание/Поведение/Образ жизни) — NEW
 
 #### Магазин (`pages/Shop/`)
 - `ShopPage` - Каталог товаров с фильтрами
@@ -1543,6 +1759,10 @@ npm run dev
 
 #### Users (`apps.users.management.commands`)
 - `create_test_users` - Создание тестовых пользователей с полными профилями, питомцами, заказами и записями на курсы
+
+#### Pets (`apps.pets.management.commands`) — NEW
+- `import_breeds` - Импорт пород из Markdown файла (breed_descriptions.md)
+- `import_all_breeds` - Импорт полного справочника пород (166 пород: 101 собака, 65 кошек)
 
 ### Core utilities (Ядро приложения)
 

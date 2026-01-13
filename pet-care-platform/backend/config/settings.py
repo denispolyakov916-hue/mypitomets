@@ -31,15 +31,15 @@ SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'django-insecure-change-in-productio
 
 DEBUG = os.getenv('DEBUG', 'True').lower() == 'true'
 
-ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1,0.0.0.0,192.168.1.11').split(',')
+ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1,0.0.0.0,192.168.1.139,192.168.1.11,testserver').split(',')
 
 # URL клиентского приложения для редиректов
-# ПОРТ 5199 - порт для фронтенда (localhost)
+# ПОРТ 5199 - уникальный порт для фронтенда, чтобы избежать конфликтов в локальной сети
 CLIENT_URL = os.getenv('CLIENT_URL', 'http://localhost:5199')
 
 # URL API для формирования ссылок активации
-# ПОРТ 8077 - порт для бекенда (0.0.0.0 - все интерфейсы)
-API_URL = os.getenv('API_URL', 'http://192.168.1.11:8077')
+# ПОРТ 8077 - уникальный порт для бекенда, чтобы избежать конфликтов в локальной сети
+API_URL = os.getenv('API_URL', 'http://localhost:8077')
 
 # =============================================================================
 # НАСТРОЙКИ EMAIL
@@ -109,8 +109,6 @@ INSTALLED_APPS = [
     'apps.training',
     'apps.payments',
     'apps.reviews',
-    'apps.calendar',
-    'apps.analytics',
 ]
 
 # =============================================================================
@@ -163,7 +161,7 @@ DATABASES = {
         'ENGINE': os.getenv('DB_ENGINE', 'django.db.backends.postgresql'),
         'NAME': os.getenv('DB_NAME', 'pitomets_db'),
         'USER': os.getenv('DB_USER', 'pitomets'),
-        'PASSWORD': os.getenv('DB_PASSWORD', '578321'),
+        'PASSWORD': os.getenv('DB_PASSWORD', 'pitomets_password'),
         'HOST': os.getenv('DB_HOST', 'localhost'),
         'PORT': os.getenv('DB_PORT', '5432'),
         'OPTIONS': {
@@ -213,13 +211,6 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'
 
 # =============================================================================
 # МЕДИА ФАЙЛЫ (загруженные пользователями)
-# =============================================================================
-
-MEDIA_URL = 'media/'
-MEDIA_ROOT = BASE_DIR / 'media'
-
-# =============================================================================
-# МЕДИА ФАЙЛЫ
 # =============================================================================
 
 MEDIA_URL = '/media/'
@@ -282,6 +273,7 @@ CORS_ALLOWED_ORIGINS = [
     
     # Бекенд на 0.0.0.0:8077 (доступен по IP)
     "http://192.168.1.11:8077",    # Локальная сеть (основной IP)
+    "http://192.168.1.139:8077",   # Локальная сеть (альтернативный IP)
     "http://127.0.0.1:8077",       # localhost
     "http://localhost:8077",        # localhost
     

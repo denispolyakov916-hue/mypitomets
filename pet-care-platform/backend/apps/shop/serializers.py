@@ -17,6 +17,9 @@
 from rest_framework import serializers
 from decimal import Decimal
 
+# Модели аналитики
+from .models import AnalyticMetric, ChartConfig, ChartSession, AnalyticsLog
+
 
 class ProductSerializer(serializers.Serializer):
     """
@@ -665,3 +668,176 @@ class UnifiedOrderSerializer(serializers.Serializer):
         data['_selected_cart_items'] = list(cart_items)
 
         return data
+
+
+# =============================================================================
+# СЕРИАЛИЗАТОРЫ АНАЛИТИКИ
+# =============================================================================
+
+class MetricListSerializer(serializers.ModelSerializer):
+    """
+    Сериализатор для списка метрик (упрощённый).
+    """
+
+    class Meta:
+        model = AnalyticMetric
+        fields = [
+            'id', 'name', 'category', 'data_type', 'units',
+            'description', 'is_active'
+        ]
+
+
+class AnalyticMetricSerializer(serializers.ModelSerializer):
+    """
+    Полный сериализатор метрики аналитики.
+    """
+
+    class Meta:
+        model = AnalyticMetric
+        fields = [
+            'id', 'name', 'description', 'category', 'subcategory',
+            'data_type', 'default_aggregation', 'available_aggregations',
+            'table_name', 'field_name', 'sql_template',
+            'related_fields', 'filter_fields', 'dimension_fields',
+            'units', 'format_pattern', 'is_active', 'is_system',
+            'cache_ttl', 'created_at', 'updated_at'
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at']
+
+
+class ChartConfigSerializer(serializers.ModelSerializer):
+    """
+    Сериализатор конфигурации графика.
+    """
+
+    class Meta:
+        model = ChartConfig
+        fields = [
+            'id', 'name', 'description', 'chart_type',
+            'canvas_config', 'x_axis_config', 'y_axis_config',
+            'data_layers', 'filters_config', 'segment_config',
+            'style_config', 'legend_config', 'interaction_config',
+            'is_template', 'is_public', 'category', 'tags',
+            'usage_count', 'last_used_at', 'preview_image', 'export_formats',
+            'created_at', 'updated_at', 'created_by', 'version', 'parent_config'
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at', 'created_by', 'usage_count', 'last_used_at']
+
+
+class ChartConfigCreateSerializer(serializers.ModelSerializer):
+    """
+    Сериализатор для создания конфигурации графика.
+    """
+
+    class Meta:
+        model = ChartConfig
+        fields = [
+            'name', 'description', 'chart_type',
+            'canvas_config', 'x_axis_config', 'y_axis_config',
+            'data_layers', 'filters_config', 'segment_config',
+            'style_config', 'legend_config', 'interaction_config',
+            'is_template', 'is_public', 'category', 'tags'
+        ]
+
+
+class ChartTemplateSerializer(serializers.ModelSerializer):
+    """
+    Сериализатор для шаблонов графиков.
+    """
+
+    created_by_name = serializers.CharField(source='created_by.get_full_name', read_only=True)
+
+    class Meta:
+        model = ChartConfig
+        fields = [
+            'id', 'name', 'description', 'chart_type', 'category', 'tags',
+            'usage_count', 'created_by_name', 'created_at'
+        ]
+
+
+class ChartSessionSerializer(serializers.ModelSerializer):
+    """
+    Сериализатор сессии конструктора графиков.
+    """
+
+    class Meta:
+        model = ChartSession
+        fields = [
+            'id', 'config', 'status', 'started_at', 'last_activity_at', 'expires_at'
+        ]
+        read_only_fields = ['id', 'started_at', 'last_activity_at']
+
+
+class AnalyticsLogSerializer(serializers.ModelSerializer):
+    """
+    Сериализатор лога аналитики.
+    """
+
+    user_email = serializers.EmailField(source='user.email', read_only=True)
+    action_display = serializers.CharField(source='get_action_display', read_only=True)
+
+    class Meta:
+        model = AnalyticsLog
+        fields = [
+            'id', 'user', 'user_email', 'action', 'action_display',
+            'resource_type', 'resource_id', 'metadata', 'ip_address',
+            'user_agent', 'execution_time', 'data_points', 'success',
+            'error_message', 'timestamp'
+        ]
+
+
+class ChartDataRequestSerializer(serializers.Serializer):
+    """
+    Сериализатор запроса данных графика.
+    """
+
+    config = serializers.DictField(
+        help_text="Конфигурация графика"
+    )
+    data_limit = serializers.IntegerField(
+        default=10000,
+        min_value=1,
+        max_value=50000,
+        help_text="Максимальное количество точек данных"
+    )
+
+    def validate_config(self, value):
+        """Валидация конфигурации графика."""
+        required_fields = ['metrics']
+        if not all(field in value for field in required_fields):
+            raise serializers.ValidationError("Конфигурация должна содержать 'metrics'")
+
+        if not value.get('metrics'):
+            raise serializers.ValidationError("Метрики не могут быть пустыми")
+
+        return value
+
+
+class ChartExportSerializer(serializers.Serializer):
+    """
+    Сериализатор запроса экспорта графика.
+    """
+
+    format = serializers.ChoiceField(
+        choices=['png', 'jpg', 'svg', 'pdf'],
+        default='png',
+        help_text="Формат экспорта"
+    )
+    width = serializers.IntegerField(
+        default=1200,
+        min_value=400,
+        max_value=4000,
+        help_text="Ширина изображения"
+    )
+    height = serializers.IntegerField(
+        default=800,
+        min_value=300,
+        max_value=3000,
+        help_text="Высота изображения"
+    )
+    quality = serializers.IntegerField(
+        default=90,
+        min_value=1,
+        max_value=100,
+        help_text="Качество (для JPG)"
+    )

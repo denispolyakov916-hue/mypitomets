@@ -47,9 +47,6 @@ import ResetPassword from './pages/Auth/ResetPassword'
 // Ленивая загрузка страниц пород
 const BreedsPage = lazy(() => import('./pages/Breeds/BreedsPage'))
 const BreedDetailPage = lazy(() => import('./pages/Breeds/BreedDetailPage'))
-import PetList from './pages/PetProfile/PetList'
-import PetForm from './pages/PetProfile/PetForm'
-import PetProfile from './pages/PetProfile/PetProfile'
 import Shop from './pages/Shop/Shop'
 import ProductDetail from './pages/Shop/ProductDetail'
 import Cart from './pages/Shop/Cart'

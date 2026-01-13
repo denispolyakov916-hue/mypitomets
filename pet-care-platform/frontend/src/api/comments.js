@@ -18,7 +18,7 @@ import api from './client'
  * @returns {Promise<Object>} Список комментариев с реакциями пользователя
  */
 export const getLessonComments = async (lessonId) => {
-  return await api.get(`/lessons/${lessonId}/comments/`)
+  return await api.get(`/courses/lessons/${lessonId}/comments/`)
 }
 
 /**
@@ -40,7 +40,7 @@ export const addLessonComment = async (lessonId, content, parentId = null, attac
     body.parent_id = parentId
   }
 
-  return await api.post(`/lessons/${lessonId}/comments/`, body)
+  return await api.post(`/courses/lessons/${lessonId}/comments/`, body)
 }
 
 /**
@@ -50,7 +50,7 @@ export const addLessonComment = async (lessonId, content, parentId = null, attac
  * @returns {Promise<Object>} Результат лайка
  */
 export const likeComment = async (commentId) => {
-  return await api.post(`/comments/${commentId}/like/`, { is_like: true })
+  return await api.post(`/courses/comments/${commentId}/like/`, { is_like: true })
 }
 
 /**
@@ -60,7 +60,7 @@ export const likeComment = async (commentId) => {
  * @returns {Promise<Object>} Результат дизлайка
  */
 export const dislikeComment = async (commentId) => {
-  return await api.post(`/comments/${commentId}/like/`, { is_like: false })
+  return await api.post(`/courses/comments/${commentId}/like/`, { is_like: false })
 }
 
 /**
@@ -70,41 +70,11 @@ export const dislikeComment = async (commentId) => {
  * @returns {Promise<Object>} Результат удаления
  */
 export const removeCommentReaction = async (commentId) => {
-  return await api.delete(`/comments/${commentId}/like/`)
+  return await api.delete(`/courses/comments/${commentId}/like/`)
 }
 
-/**
- * Получение комментариев к курсу
- *
- * @param {number} courseId - ID курса
- * @param {Object} params - Параметры запроса (page, per_page)
- * @returns {Promise<Object>} Список комментариев с пагинацией
- */
-export const getCourseComments = async (courseId, params = {}) => {
-  return await api.get(`/courses/${courseId}/comments/`, { params })
-}
-
-/**
- * Добавление комментария к курсу
- *
- * @param {number} courseId - ID курса
- * @param {string} content - Текст комментария
- * @param {string} [parentId] - ID родительского комментария
- * @param {Array} [attachments] - Массив вложений
- * @returns {Promise<Object>} Созданный комментарий
- */
-export const addCourseComment = async (courseId, content, parentId = null, attachments = []) => {
-  const body = {
-    content: content,
-    attachments: attachments
-  }
-
-  if (parentId) {
-    body.parent = parentId
-  }
-
-  return await api.post(`/courses/${courseId}/comments/create/`, body)
-}
+// Функции комментариев курсов перенесены в courses.js для логичности
+// export const getCourseComments, addCourseComment, createCourseComment
 
 /**
  * Получение деталей комментария
@@ -113,8 +83,11 @@ export const addCourseComment = async (courseId, content, parentId = null, attac
  * @returns {Promise<Object>} Детали комментария
  */
 export const getCommentDetails = async (commentId) => {
-  return await api.get(`/comments/${commentId}/`)
+  return await api.get(`/courses/comments/${commentId}/`)
 }
+
+// Псевдоним для обратной совместимости
+export { getCommentDetails as getComment }
 
 /**
  * Редактирование комментария
@@ -125,7 +98,7 @@ export const getCommentDetails = async (commentId) => {
  * @returns {Promise<Object>} Обновленный комментарий
  */
 export const updateComment = async (commentId, content, attachments = []) => {
-  return await api.put(`/comments/${commentId}/`, {
+  return await api.put(`/courses/comments/${commentId}/`, {
     content: content,
     attachments: attachments
   })
@@ -138,7 +111,7 @@ export const updateComment = async (commentId, content, attachments = []) => {
  * @returns {Promise<Object>} Результат удаления
  */
 export const deleteComment = async (commentId) => {
-  return await api.delete(`/comments/${commentId}/`)
+  return await api.delete(`/courses/comments/${commentId}/`)
 }
 
 /**
@@ -149,5 +122,9 @@ export const deleteComment = async (commentId) => {
  * @returns {Promise<Object>} Результат реакции
  */
 export const addCommentReaction = async (commentId, action) => {
-  return await api.post(`/comments/${commentId}/${action}/`)
+  return await api.post(`/courses/comments/${commentId}/${action}/`)
 }
+
+// Псевдоним для обратной совместимости
+export { addCommentReaction as reactToComment }
+export { removeCommentReaction as unlikeComment }

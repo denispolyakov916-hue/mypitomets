@@ -6,7 +6,6 @@ URL маршруты для REST API админ-панели Питомец+.
 Все эндпоинты защищены IsAdminUser permission (требуют is_staff=True).
 
 Структура URL:
-    /api/admin/analytics/     - Аналитические данные и графики
     /api/admin/management/    - Массовые операции и экспорт
     /api/admin/users/         - CRUD для пользователей
     /api/admin/pets/          - CRUD для питомцев
@@ -34,7 +33,6 @@ from .admin_api import (
 admin_router = DefaultRouter()
 
 # Аналитические эндпоинты
-admin_router.register(r'analytics', AdminAnalyticsViewSet, basename='admin-analytics')
 
 # Управление данными (bulk операции, экспорт)
 admin_router.register(r'management', AdminManagementViewSet, basename='admin-management')
@@ -52,7 +50,6 @@ urlpatterns = [
     path('', include(admin_router.urls)),
 
     # Аналитика и конструктор графиков
-    path('analytics/', include('apps.analytics.urls')),
 
     # Быстрая сводка статистики
     path('stats/summary/', admin_stats_summary, name='admin-stats-summary'),
