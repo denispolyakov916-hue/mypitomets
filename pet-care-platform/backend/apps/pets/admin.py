@@ -14,15 +14,15 @@ class PetAdmin(admin.ModelAdmin):
     
     list_display = (
         'name', 'species_display', 'breed', 'owner_link', 
-        'age_display', 'gender_display', 'activity_display',
-        'health_issues_display', 'is_neutered', 'created_at'
+        'age_display', 'sex_display', 'activity_display',
+        'is_neutered', 'created_at'
     )
     list_filter = (
-        'species', 'gender', 'is_neutered', 'activity_level',
+        'species', 'sex', 'is_neutered', 'activity_level',
         'created_at', 'owner__is_active'
     )
     search_fields = (
-        'name', 'breed', 'owner__email', 'owner__first_name', 
+        'name', 'breed__name', 'owner__email', 'owner__first_name', 
         'owner__last_name'
     )
     ordering = ('-created_at',)
@@ -33,17 +33,13 @@ class PetAdmin(admin.ModelAdmin):
             'fields': ('id', 'owner', 'name', 'species', 'breed')
         }),
         ('Характеристики', {
-            'fields': ('date_of_birth', 'weight', 'gender', 'is_neutered')
+            'fields': ('date_of_birth', 'weight', 'sex', 'is_neutered')
         }),
         ('Фото', {
             'fields': ('photo', 'photo_preview')
         }),
-        ('Здоровье и особенности', {
-            'fields': ('health_issues', 'activity_level', 'allergies'),
-        }),
-        ('Предпочтения', {
-            'fields': ('favorite_foods',),
-            'classes': ('collapse',)
+        ('Активность', {
+            'fields': ('activity_level',),
         }),
         ('Системная информация', {
             'fields': ('created_at', 'updated_at'),
@@ -58,11 +54,6 @@ class PetAdmin(admin.ModelAdmin):
         icons = {
             'dog': '🐕',
             'cat': '🐈',
-            'bird': '🐦',
-            'rodent': '🐹',
-            'fish': '🐠',
-            'reptile': '🦎',
-            'other': '🐾'
         }
         icon = icons.get(obj.species, '🐾')
         return format_html('{} {}', icon, obj.get_species_display())
@@ -88,10 +79,10 @@ class PetAdmin(admin.ModelAdmin):
         return '-'
     age_display.short_description = 'Возраст'
     
-    def gender_display(self, obj):
+    def sex_display(self, obj):
         """Отображение пола."""
-        return obj.get_gender_display()
-    gender_display.short_description = 'Пол'
+        return obj.get_sex_display()
+    sex_display.short_description = 'Пол'
     
     def photo_preview(self, obj):
         """Превью фото питомца."""
@@ -118,14 +109,18 @@ class PetAdmin(admin.ModelAdmin):
     def activity_display(self, obj):
         """Отображение уровня активности."""
         colors = {
+            'very_low': '#6b7280',
             'low': '#f59e0b',
-            'medium': '#3b82f6',
-            'high': '#10b981'
+            'moderate': '#3b82f6',
+            'high': '#10b981',
+            'very_high': '#ef4444'
         }
         icons = {
+            'very_low': '💤',
             'low': '🐢',
-            'medium': '🐕',
-            'high': '🚀'
+            'moderate': '🐕',
+            'high': '🏃',
+            'very_high': '🚀'
         }
         color = colors.get(obj.activity_level, '#6b7280')
         icon = icons.get(obj.activity_level, '')
@@ -134,38 +129,6 @@ class PetAdmin(admin.ModelAdmin):
             color, icon, obj.get_activity_level_display()
         )
     activity_display.short_description = 'Активность'
-    
-    def health_issues_display(self, obj):
-        """Отображение проблем здоровья."""
-        if not obj.health_issues:
-            return '-'
-        
-        # Маппинг кодов на русские названия
-        labels = {
-            'overweight': 'Лишний вес',
-            'sensitive_digestion': 'Чувств. пищеварение',
-            'skin_issues': 'Проблемы с кожей',
-            'joint_problems': 'Суставы',
-            'dental_issues': 'Зубы',
-            'allergies': 'Аллергии',
-            'kidney_issues': 'Почки',
-            'heart_issues': 'Сердце',
-        }
-        
-        issues = []
-        for issue in obj.health_issues[:3]:  # Показываем только первые 3
-            label = labels.get(issue, issue)
-            issues.append(label)
-        
-        result = ', '.join(issues)
-        if len(obj.health_issues) > 3:
-            result += f' (+{len(obj.health_issues) - 3})'
-        
-        return format_html(
-            '<span style="color: #dc2626;">{}</span>',
-            result
-        )
-    health_issues_display.short_description = 'Проблемы здоровья'
 
 
 # ===== Админка для напоминаний =====

@@ -15,8 +15,8 @@ class PetInline(admin.TabularInline):
     from apps.pets.models import Pet
     model = Pet
     extra = 0
-    fields = ('name', 'species', 'breed', 'date_of_birth', 'gender')
-    readonly_fields = ('name', 'species', 'breed', 'date_of_birth', 'gender')
+    fields = ('name', 'species', 'breed', 'date_of_birth', 'sex')
+    readonly_fields = ('name', 'species', 'breed', 'date_of_birth', 'sex')
     can_delete = False
     show_change_link = True
 

@@ -167,59 +167,54 @@ export const deletePetDraft = async (draftId) => {
 /**
  * Доступные варианты видов животных для формы создания питомца
  *
- * Соответствует SPECIES_CHOICES на бэкенде для консистентности.
+ * По документации Integration_PetID: только dog и cat
  */
 export const SPECIES_OPTIONS = [
-  { value: 'dog', label: 'Собака' },
-  { value: 'cat', label: 'Кошка' },
-  { value: 'bird', label: 'Птица' },
-  { value: 'rodent', label: 'Грызун' },
-  { value: 'fish', label: 'Рыбка' },
-  { value: 'reptile', label: 'Рептилия' },
-  { value: 'other', label: 'Другое' },
+  { value: 'dog', label: 'Собака', icon: '🐕' },
+  { value: 'cat', label: 'Кошка', icon: '🐈' },
 ]
 
-// ===== НОВЫЕ КОНСТАНТЫ ДЛЯ ПЕРСОНАЛИЗАЦИИ КУРСОВ =====
-
 /**
- * Варианты типов поведения для персонализации курсов
+ * Варианты пола питомца (обязательное поле)
  */
-export const BEHAVIOR_TYPE_OPTIONS = [
+export const SEX_OPTIONS = [
+  { value: 'male', label: 'Самец', icon: '♂️' },
+  { value: 'female', label: 'Самка', icon: '♀️' },
+]
+
+// =============================================================================
+// КОНСТАНТЫ ПО ДОКУМЕНТАЦИИ Integration_PetID_Breeds_Calculator.md
+// =============================================================================
+
+/**
+ * Варианты темперамента (заменяет behavior_type)
+ */
+export const TEMPERAMENT_OPTIONS = [
   { value: 'calm', label: 'Спокойный' },
+  { value: 'balanced', label: 'Уравновешенный' },
   { value: 'active', label: 'Активный' },
-  { value: 'aggressive', label: 'Агрессивный' },
-  { value: 'shy', label: 'Трусливый' },
-  { value: 'playful', label: 'Игривый' },
+  { value: 'hyperactive', label: 'Гиперактивный' },
 ]
 
 /**
- * Варианты уровней социализации
+ * Варианты уровней социализации (обновлено по документации)
  */
 export const SOCIAL_LEVEL_OPTIONS = [
-  { value: 'home_only', label: 'Только домашний' },
-  { value: 'street', label: 'Уличный' },
-  { value: 'social', label: 'Социальный' },
-  { value: 'mixed', label: 'Смешанный' },
+  { value: 'antisocial', label: 'Избегает контактов' },
+  { value: 'reserved', label: 'Сдержанный' },
+  { value: 'friendly', label: 'Дружелюбный' },
+  { value: 'very_social', label: 'Очень общительный' },
 ]
 
 /**
- * Варианты опыта дрессировки
- */
-export const TRAINING_EXPERIENCE_OPTIONS = [
-  { value: 'none', label: 'Без опыта' },
-  { value: 'basic', label: 'Базовый' },
-  { value: 'intermediate', label: 'Средний' },
-  { value: 'advanced', label: 'Продвинутый' },
-  { value: 'professional', label: 'Профессиональный' },
-]
-
-/**
- * Варианты уровней активности
+ * Варианты уровней активности (5 значений по документации)
  */
 export const ACTIVITY_LEVEL_OPTIONS = [
-  { value: 'low', label: 'Низкая' },
-  { value: 'medium', label: 'Средняя' },
-  { value: 'high', label: 'Высокая' },
+  { value: 'very_low', label: 'Очень низкая', description: 'Минимум движения' },
+  { value: 'low', label: 'Низкая', description: 'Короткие прогулки' },
+  { value: 'moderate', label: 'Умеренная', description: 'Стандартные прогулки' },
+  { value: 'high', label: 'Высокая', description: 'Активные игры, бег' },
+  { value: 'very_high', label: 'Очень высокая', description: 'Спорт, охота' },
 ]
 
 // ===== API ДЛЯ РАБОТЫ С ПОРОДАМИ =====
@@ -242,6 +237,8 @@ export const getBreeds = async (params = {}) => {
   if (params.size) queryParams.append('size', params.size)
   if (params.order_by) queryParams.append('order_by', params.order_by)
   if (params.limit) queryParams.append('limit', params.limit)
+  if (params.popular_only) queryParams.append('popular_only', 'true')
+  if (params.age_months) queryParams.append('age_months', params.age_months)
   
   const queryString = queryParams.toString()
   return await api.get(`/pets/breeds/${queryString ? '?' + queryString : ''}`)
@@ -321,32 +318,49 @@ export const FEEDING_FREQUENCY_OPTIONS = [
 ]
 
 /**
- * Варианты размера питомца
+ * Категория размера (5 значений по документации)
  */
-export const SIZE_OPTIONS = [
-  { value: 'small', label: 'Маленький (до 10 кг)' },
-  { value: 'medium', label: 'Средний (10-25 кг)' },
-  { value: 'large', label: 'Крупный (более 25 кг)' },
+export const SIZE_CATEGORY_OPTIONS = [
+  { value: 'toy', label: 'Той', description: 'до 5 кг' },
+  { value: 'small', label: 'Маленький', description: '5-10 кг' },
+  { value: 'medium', label: 'Средний', description: '10-25 кг' },
+  { value: 'large', label: 'Крупный', description: '25-45 кг' },
+  { value: 'giant', label: 'Гигантский', description: 'более 45 кг' },
 ]
 
 /**
- * Варианты типа телосложения
+ * Оценка упитанности (BCS - Body Condition Score)
+ * Шкала 1-9 по международному стандарту
  */
-export const BODY_TYPE_OPTIONS = [
-  { value: 'slim', label: 'Недостаточный вес' },
-  { value: 'normal', label: 'Идеальный вес' },
-  { value: 'overweight', label: 'Избыточный вес' },
-  { value: 'obese', label: 'Ожирение' },
+export const BODY_CONDITION_SCORE_OPTIONS = [
+  { value: '1', label: '1 - Истощение', category: 'underweight' },
+  { value: '2', label: '2 - Очень худой', category: 'underweight' },
+  { value: '3', label: '3 - Худой', category: 'underweight' },
+  { value: '4', label: '4 - Недостаток веса', category: 'normal' },
+  { value: '5', label: '5 - Идеальный вес', category: 'normal' },
+  { value: '6', label: '6 - Избыток веса', category: 'normal' },
+  { value: '7', label: '7 - Полнота', category: 'overweight' },
+  { value: '8', label: '8 - Ожирение', category: 'overweight' },
+  { value: '9', label: '9 - Тяжёлое ожирение', category: 'overweight' },
 ]
 
 /**
- * Варианты типа жилья
+ * Варианты типа жилья (обновлено по документации)
  */
 export const HOUSING_TYPE_OPTIONS = [
   { value: 'apartment', label: 'Квартира' },
   { value: 'house', label: 'Частный дом' },
-  { value: 'cottage', label: 'Дача/Коттедж' },
-  { value: 'other', label: 'Другое' },
+  { value: 'farm', label: 'Ферма/сельская местность' },
+  { value: 'outdoor', label: 'Вольерное содержание' },
+]
+
+/**
+ * Размер двора (отображается если has_yard=true)
+ */
+export const YARD_SIZE_OPTIONS = [
+  { value: 'small', label: 'Маленький (до 100 м²)' },
+  { value: 'medium', label: 'Средний (100-500 м²)' },
+  { value: 'large', label: 'Большой (более 500 м²)' },
 ]
 
 /**
@@ -404,11 +418,278 @@ export const EXCLUDED_INGREDIENTS_OPTIONS = [
 ]
 
 /**
- * Стандартные поведенческие проблемы
+ * Поведенческие проблемы (enum по документации)
  */
-export const BEHAVIORAL_PROBLEMS = [
-  'Лает/мяукает без причины', 'Грызёт вещи', 'Агрессия к другим животным',
-  'Агрессия к людям', 'Страх громких звуков', 'Боязнь одиночества',
-  'Метит территорию', 'Не приучен к туалету', 'Тянет поводок',
-  'Не слушается команд', 'Прыгает на людей', 'Царапает мебель'
+export const BEHAVIORAL_PROBLEMS_OPTIONS = [
+  { value: 'aggression_dogs', label: 'Агрессия к собакам' },
+  { value: 'aggression_people', label: 'Агрессия к людям' },
+  { value: 'aggression_cats', label: 'Агрессия к кошкам' },
+  { value: 'separation_anxiety', label: 'Тревога разлуки' },
+  { value: 'excessive_barking', label: 'Чрезмерный лай' },
+  { value: 'destructive_behavior', label: 'Деструктивное поведение' },
+  { value: 'fear_phobias', label: 'Страхи/фобии' },
+  { value: 'marking_territory', label: 'Метки территории' },
+  { value: 'excessive_licking', label: 'Чрезмерное вылизывание' },
+  { value: 'food_aggression', label: 'Агрессия за еду' },
+  { value: 'leash_pulling', label: 'Тянет поводок' },
+  { value: 'jumping_on_people', label: 'Прыгает на людей' },
+  { value: 'none', label: 'Нет проблем' },
+]
+
+/**
+ * Тип шерсти (7 значений по документации)
+ */
+export const COAT_TYPE_OPTIONS = [
+  { value: 'hairless', label: 'Бесшёрстный' },
+  { value: 'short', label: 'Короткая' },
+  { value: 'medium', label: 'Средняя' },
+  { value: 'long', label: 'Длинная' },
+  { value: 'double', label: 'Двойная (с подшёрстком)' },
+  { value: 'wire', label: 'Жёсткая' },
+  { value: 'curly', label: 'Курчавая' },
+]
+
+/**
+ * Репродуктивное состояние (для некастрированных самок)
+ */
+export const REPRODUCTIVE_STATE_OPTIONS = [
+  { value: 'none', label: 'Обычное состояние' },
+  { value: 'heat', label: 'Течка' },
+  { value: 'pregnant', label: 'Беременность' },
+  { value: 'lactating', label: 'Лактация' },
+]
+
+/**
+ * Климат проживания
+ */
+export const CLIMATE_OPTIONS = [
+  { value: 'hot', label: 'Жаркий' },
+  { value: 'warm', label: 'Тёплый' },
+  { value: 'cool', label: 'Прохладный' },
+  { value: 'cold', label: 'Холодный' },
+  { value: 'very_cold', label: 'Очень холодный' },
+]
+
+/**
+ * Тип поведения
+ */
+export const BEHAVIOR_TYPE_OPTIONS = [
+  { value: 'calm', label: 'Спокойный' },
+  { value: 'playful', label: 'Игривый' },
+  { value: 'energetic', label: 'Энергичный' },
+  { value: 'nervous', label: 'Нервный' },
+  { value: 'aggressive', label: 'Агрессивный' },
+  { value: 'friendly', label: 'Дружелюбный' },
+  { value: 'independent', label: 'Независимый' },
+]
+
+/**
+ * Опыт дрессировки
+ */
+export const TRAINING_EXPERIENCE_OPTIONS = [
+  { value: 'none', label: 'Без опыта' },
+  { value: 'basic', label: 'Базовые команды' },
+  { value: 'intermediate', label: 'Средний уровень' },
+  { value: 'advanced', label: 'Продвинутый' },
+  { value: 'professional', label: 'Профессиональный' },
+]
+
+/**
+ * Размер питомца (алиас для SIZE_CATEGORY_OPTIONS)
+ */
+export const SIZE_OPTIONS = [
+  { value: 'toy', label: 'Той (до 3 кг)' },
+  { value: 'small', label: 'Маленький (3-10 кг)' },
+  { value: 'medium', label: 'Средний (10-25 кг)' },
+  { value: 'large', label: 'Крупный (25-45 кг)' },
+  { value: 'giant', label: 'Гигантский (45+ кг)' },
+]
+
+// =============================================================================
+// API ФУНКЦИИ ДЛЯ КАЛЬКУЛЯТОРА КАЛОРИЙ И АВТОЗАПОЛНЕНИЯ
+// =============================================================================
+
+/**
+ * Расчёт дневной нормы калорий для питомца
+ * 
+ * @param {string} petId - UUID питомца
+ * @returns {Promise<Object>} Результат расчёта (RER, MER, рекомендации)
+ */
+export const calculatePetCalories = async (petId) => {
+  return await api.get(`/pets/${petId}/calculate-calories/`)
+}
+
+/**
+ * Расчёт плана кормления с указанной калорийностью корма
+ * 
+ * @param {string} petId - UUID питомца
+ * @param {number} foodCalorieDensity - Калорийность корма (ккал/кг)
+ * @param {number} days - Количество дней для плана (по умолчанию 7)
+ * @returns {Promise<Object>} План кормления с порциями
+ */
+export const calculateFeedingPlan = async (petId, foodCalorieDensity, days = 7) => {
+  return await api.post(`/pets/${petId}/calculate-calories/`, {
+    food_calorie_density: foodCalorieDensity,
+    days: days
+  })
+}
+
+/**
+ * Получение предложений автозаполнения из породы
+ * 
+ * @param {string} petId - UUID питомца
+ * @returns {Promise<Object>} Предложенные значения (size_category, coat_type, activity_level, ideal_weight_kg)
+ */
+export const getAutofillSuggestions = async (petId) => {
+  return await api.get(`/pets/${petId}/autofill-suggestions/`)
+}
+
+// =============================================================================
+// API ФУНКЦИИ ДЛЯ ПОДБОРА КОРМА
+// =============================================================================
+
+/**
+ * Типы кормов для фильтрации
+ */
+export const FOOD_TYPE_OPTIONS = [
+  { value: 'dry', label: 'Сухой корм' },
+  { value: 'wet', label: 'Влажный корм' },
+  { value: 'canned', label: 'Консервы' },
+  { value: 'pouch', label: 'Паучи' },
+  { value: 'pate', label: 'Паштет' },
+  { value: 'holistic', label: 'Холистик' },
+  { value: 'diet', label: 'Диетический' },
+  { value: 'hypoallergenic', label: 'Гипоаллергенный' },
+]
+
+/**
+ * Получение рекомендаций кормов для питомца
+ * 
+ * @param {string} petId - UUID питомца
+ * @param {Object} filters - Фильтры для поиска
+ * @param {string} [filters.food_type] - Тип корма (dry, wet, etc.)
+ * @param {number} [filters.min_price] - Минимальная цена
+ * @param {number} [filters.max_price] - Максимальная цена
+ * @param {string} [filters.brands] - Бренды через запятую
+ * @param {number} [filters.limit=20] - Количество результатов
+ * @param {number} [filters.offset=0] - Смещение для пагинации
+ * @returns {Promise<Object>} Рекомендации с оценками совместимости
+ */
+export const getFoodRecommendations = async (petId, filters = {}) => {
+  const params = new URLSearchParams()
+  
+  if (filters.food_type) params.append('food_type', filters.food_type)
+  if (filters.min_price) params.append('min_price', filters.min_price)
+  if (filters.max_price) params.append('max_price', filters.max_price)
+  if (filters.brands) params.append('brands', filters.brands)
+  if (filters.limit) params.append('limit', filters.limit)
+  if (filters.offset) params.append('offset', filters.offset)
+  
+  const queryString = params.toString()
+  const url = `/pets/${petId}/food-recommendations/${queryString ? `?${queryString}` : ''}`
+  
+  return await api.get(url)
+}
+
+/**
+ * Получение расчёта рациона для питомца
+ * 
+ * @param {string} petId - UUID питомца
+ * @returns {Promise<Object>} Расчёт калорий, БЖУ, порций
+ */
+export const getDietCalculation = async (petId) => {
+  return await api.get(`/pets/${petId}/diet-calculation/`)
+}
+
+/**
+ * Получение статистики по доступным кормам
+ * 
+ * @param {string} species - Вид животного (dog | cat)
+ * @returns {Promise<Object>} Статистика: бренды, типы, ценовые диапазоны
+ */
+export const getFoodStatistics = async (species = 'dog') => {
+  return await api.get(`/pets/food-statistics/?species=${species}`)
+}
+
+/**
+ * Получение полного плана питания для питомца
+ * 
+ * @param {string} petId - UUID питомца
+ * @param {Object} params - Параметры плана
+ * @param {string} [params.food_type='multi'] - Тип питания (dry, wet, multi)
+ * @param {string} [params.variant='basic'] - Вариант набора (basic, advanced)
+ * @param {number} [params.period_days=30] - Период подбора в днях
+ * @param {Array} [params.preferred_brands] - Предпочтительные бренды
+ * @param {number} [params.min_price] - Минимальная цена
+ * @param {number} [params.max_price] - Максимальная цена
+ * @returns {Promise<Object>} Полный план питания с компонентами и стоимостью
+ */
+export const getFeedingPlan = async (petId, params = {}) => {
+  if (Object.keys(params).length === 0) {
+    // GET запрос с параметрами по умолчанию
+    return await api.get(`/pets/${petId}/feeding-plan/`)
+  }
+  // POST запрос с конкретными параметрами
+  return await api.post(`/pets/${petId}/feeding-plan/`, params)
+}
+
+/**
+ * Получение альтернативных продуктов для компонента рациона
+ * 
+ * @param {string} petId - UUID питомца
+ * @param {number} productId - ID текущего продукта
+ * @param {string} componentType - Тип компонента (dry_food, wet_food, treat, supplement)
+ * @param {number} [limit=10] - Количество альтернатив
+ * @returns {Promise<Object>} Список альтернативных продуктов с оценками
+ */
+export const getFoodAlternatives = async (petId, productId, componentType, options = {}) => {
+  const { limit = 10, period_days = 30, food_type = 'multi' } = options
+  const params = new URLSearchParams({
+    component_type: componentType,
+    limit: limit.toString(),
+    period_days: period_days.toString(),
+    food_type: food_type
+  })
+  return await api.get(`/pets/${petId}/food-alternatives/${productId}/?${params}`)
+}
+
+/**
+ * Расчёт калорий для активного дня
+ * 
+ * @param {string} petId - UUID питомца
+ * @param {Array} activities - Список активностей
+ * @param {string} activities[].type - Тип активности (running, playing, training, etc.)
+ * @param {number} activities[].duration_minutes - Длительность в минутах
+ * @returns {Promise<Object>} Расчёт с увеличенной калорийностью
+ */
+export const calculateActiveDayCalories = async (petId, activities) => {
+  return await api.post(`/pets/${petId}/active-day-calories/`, { activities })
+}
+
+/**
+ * Типы питания для конструктора рациона
+ */
+export const FEEDING_TYPE_OPTIONS = [
+  { value: 'dry', label: 'Сухой', description: 'Только сухой корм', icon: '🥫' },
+  { value: 'wet', label: 'Влажный', description: 'Только влажный корм', icon: '🍖' },
+  { value: 'multi', label: 'Мультипитание', description: '60% сухой + 30% влажный + 10% лакомства', icon: '🍽️' },
+]
+
+/**
+ * Варианты набора для конструктора рациона
+ */
+export const PLAN_VARIANT_OPTIONS = [
+  { value: 'basic', label: 'Базовый', description: 'Корм + лакомства' },
+  { value: 'advanced', label: 'Продвинутый', description: 'Корм + лакомства + добавки' },
+]
+
+/**
+ * Периоды подбора корма
+ */
+export const FEEDING_PERIOD_OPTIONS = [
+  { value: 7, label: '7 дней', shortLabel: '1 нед' },
+  { value: 14, label: '14 дней', shortLabel: '2 нед' },
+  { value: 30, label: '30 дней', shortLabel: '1 мес' },
+  { value: 60, label: '60 дней', shortLabel: '2 мес' },
+  { value: 90, label: '90 дней', shortLabel: '3 мес' },
 ]

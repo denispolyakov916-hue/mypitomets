@@ -66,71 +66,77 @@ class ProductListView(APIView):
         return make_cache_key('products', query_params)
     
     def get(self, request):
+        """
+        Оптимизированный каталог товаров.
+        
+        Оптимизации:
+        1. Пагинация применяется ДО сериализации (критическая оптимизация)
+        2. Фильтры кэшируются отдельно с более длинным TTL
+        3. Товары кэшируются по страницам
+        4. Минимизированы SQL запросы через select_related/prefetch
+        """
         from django.core.cache import cache
         from django.conf import settings
-        
-        # Проверяем кэш
-        cache_key = self._get_cache_key(request)
-        cached_data = cache.get(cache_key)
-        if cached_data is not None:
-            # Восстанавливаем пагинацию из запроса
-            try:
-                page = max(1, int(request.query_params.get('page', 1)))
-                per_page = min(100, max(1, int(request.query_params.get('per_page', 20))))
-            except ValueError:
-                page = 1
-                per_page = 20
-
-            # Применяем пагинацию к кэшированным данным
-            total = cached_data.get('total_count', 0)
-            all_products_data = cached_data.get('all_products_data', [])
-            filters_data = cached_data.get('filters', {})
-
-            offset = (page - 1) * per_page
-            products_page_data = all_products_data[offset:offset + per_page]
-
-            response_data = {
-                'products': products_page_data,
-                'pagination': {
-                    'total': total,
-                    'page': page,
-                    'per_page': per_page,
-                    'total_pages': (total + per_page - 1) // per_page if total > 0 else 0
-                },
-                'filters': filters_data
-            }
-
-            return Response(response_data, status=status.HTTP_200_OK)
         from apps.pets.models import Pet
+        from django.db.models import Count, Min, Max
         
-        # Используем оптимизированный каталог с предзагруженными рейтингами
-        # Это устраняет N+1 проблему при вызове to_dict()
+        # Параметры пагинации
+        try:
+            page = max(1, int(request.query_params.get('page', 1)))
+            per_page = min(100, max(1, int(request.query_params.get('per_page', 20))))
+        except ValueError:
+            page = 1
+            per_page = 20
+        
+        # Генерируем ключи кэша
+        filters_hash = self._get_cache_key(request)
+        cache_key_products = f'{filters_hash}:page:{page}:per_page:{per_page}'
+        cache_key_filters = f'shop:filters:{request.query_params.get("animal", "")}:{request.query_params.get("category", "")}'
+        cache_key_user_pets = f'shop:user_pets:{request.user.id}' if request.user.is_authenticated else None
+        
+        # Пробуем получить товары из кэша
+        cached_products = cache.get(cache_key_products)
+        cached_filters = cache.get(cache_key_filters)
+        cached_user_pets = cache.get(cache_key_user_pets) if cache_key_user_pets else None
+        
+        # Если есть закэшированные товары и фильтры
+        if cached_products is not None and cached_filters is not None:
+            # Добавляем питомцев пользователя (кэшируются отдельно)
+            if cached_user_pets is None and request.user.is_authenticated:
+                cached_user_pets = self._get_user_pets(request.user)
+                cache.set(cache_key_user_pets, cached_user_pets, 600)  # 10 минут
+            
+            filters_data = cached_filters.copy()
+            filters_data['user_pets'] = cached_user_pets or []
+            
+            return Response({
+                'products': cached_products['products'],
+                'pagination': cached_products['pagination'],
+                'filters': filters_data
+            }, status=status.HTTP_200_OK)
+        
+        # === ПОСТРОЕНИЕ QUERYSET ===
         products = Product.objects.catalog()
         
         # Фильтр по питомцу (персональная подборка)
         pet_id = request.query_params.get('pet_id')
         animal = request.query_params.get('animal')
         
-        # Если указан pet_id, получаем вид питомца и фильтруем по нему
         if pet_id and request.user.is_authenticated:
             try:
-                # Оптимизация: select_related для owner (хотя owner не используется, но для консистентности)
-                pet = Pet.objects.select_related('owner').get(id=pet_id, owner=request.user)
-                # Маппинг видов питомцев на типы животных в товарах
+                pet = Pet.objects.only('species').get(id=pet_id, owner=request.user)
                 if pet.species in ['dog', 'cat']:
                     animal = pet.species
             except (Pet.DoesNotExist, ValueError):
                 pass
         
-        # Фильтр по животному
+        # Применяем фильтры
         products = products.for_animal(animal)
         
-        # Фильтр по категории и подкатегории
         category = request.query_params.get('category')
         subcategory = request.query_params.get('subcategory')
         products = products.in_category(category, subcategory)
         
-        # Фильтр по бренду
         vendor = request.query_params.get('vendor')
         products = products.by_vendor(vendor)
         
@@ -168,25 +174,23 @@ class ProductListView(APIView):
         search = request.query_params.get('search')
         products = products.search(search)
 
-        # Фильтр по рейтингу (оптимизировано - используем SQL аннотацию)
+        # Фильтр по рейтингу
         min_rating = request.query_params.get('min_rating')
         if min_rating:
             try:
-                min_rating_val = float(min_rating)
-                products = products.with_min_rating(min_rating_val)
+                products = products.with_min_rating(float(min_rating))
             except ValueError:
                 pass
 
-        # Фильтр по популярности (количеству заказов)
+        # Фильтр по популярности
         min_orders = request.query_params.get('min_orders')
         if min_orders:
             try:
-                min_orders_val = int(min_orders)
-                products = products.filter(order_count__gte=min_orders_val)
+                products = products.filter(order_count__gte=int(min_orders))
             except ValueError:
                 pass
 
-        # Сортировка (оптимизировано - сортировка по рейтингу теперь через SQL)
+        # Сортировка
         sort_by = request.query_params.get('sort_by')
         if sort_by == 'rating':
             products = products.order_by_rating()
@@ -197,36 +201,73 @@ class ProductListView(APIView):
         elif sort_by == 'price_desc':
             products = products.order_by('-price')
         else:
-            # По умолчанию сортировка по ID (новые товары)
             products = products.order_by('-id')
         
-        # Общее количество до пагинации
+        # === КРИТИЧЕСКАЯ ОПТИМИЗАЦИЯ: Пагинация ДО сериализации ===
         total_count = products.count()
-        
-        # Получаем все данные до пагинации для кэширования
-        all_products_data = [p.to_dict() for p in products]
-
-        # Пагинация
-        try:
-            page = max(1, int(request.query_params.get('page', 1)))
-            per_page = min(100, max(1, int(request.query_params.get('per_page', 20))))
-        except ValueError:
-            page = 1
-            per_page = 20
-
         offset = (page - 1) * per_page
-        products_data = all_products_data[offset:offset + per_page]
         
-        # Получение доступных фильтров
+        # Применяем LIMIT/OFFSET на уровне SQL, затем сериализуем
+        products_page = products[offset:offset + per_page]
+        products_data = [p.to_dict() for p in products_page]
+        
+        # Формируем данные пагинации
+        pagination_data = {
+            'total': total_count,
+            'page': page,
+            'per_page': per_page,
+            'total_pages': (total_count + per_page - 1) // per_page if total_count > 0 else 0
+        }
+        
+        # Кэшируем товары для этой страницы (короткий TTL)
+        cache_timeout_products = getattr(settings, 'CACHE_TIMEOUTS', {}).get('products', 60)
+        cache.set(cache_key_products, {
+            'products': products_data,
+            'pagination': pagination_data
+        }, cache_timeout_products)
+        
+        # === ФИЛЬТРЫ: Кэшируем отдельно с более длинным TTL ===
+        if cached_filters is None:
+            cached_filters = self._build_filters_data(animal, category)
+            cache_timeout_filters = getattr(settings, 'CACHE_TIMEOUTS', {}).get('filters', 600)  # 10 минут
+            cache.set(cache_key_filters, cached_filters, cache_timeout_filters)
+        
+        # Питомцы пользователя
+        user_pets = []
+        if request.user.is_authenticated:
+            if cached_user_pets is None:
+                user_pets = self._get_user_pets(request.user)
+                cache.set(cache_key_user_pets, user_pets, 600)
+            else:
+                user_pets = cached_user_pets
+        
+        filters_data = cached_filters.copy()
+        filters_data['user_pets'] = user_pets
+        
+        return Response({
+            'products': products_data,
+            'pagination': pagination_data,
+            'filters': filters_data
+        }, status=status.HTTP_200_OK)
+    
+    def _build_filters_data(self, animal=None, category=None):
+        """Построение данных фильтров с оптимизированными запросами."""
         from django.db.models import Count, Min, Max
         
-        # Подкатегории для текущих фильтров (только товары в наличии)
+        # Базовый queryset для фильтров
         filter_query = Product.objects.filter(price__gt=0, stock_count__gt=0)
         if animal:
             filter_query = filter_query.filter(animal=animal)
         if category:
             filter_query = filter_query.filter(category=category)
         
+        # Один запрос для всех агрегаций
+        aggregations = filter_query.aggregate(
+            min_price=Min('price'),
+            max_price=Max('price')
+        )
+        
+        # Подкатегории и бренды - отдельные оптимизированные запросы
         subcategories = list(
             filter_query.values('subcategory')
             .annotate(count=Count('id'))
@@ -234,7 +275,6 @@ class ProductListView(APIView):
             .order_by('subcategory')
         )
         
-        # Бренды
         vendors = list(
             filter_query.values('vendor')
             .annotate(count=Count('id'))
@@ -242,76 +282,44 @@ class ProductListView(APIView):
             .order_by('-count')[:50]
         )
         
-        # Диапазон цен
-        price_range = filter_query.aggregate(
-            min_price=Min('price'),
-            max_price=Max('price')
-        )
-        
-        # Получение питомцев пользователя для персональных подборок
-        user_pets = []
-        if request.user.is_authenticated:
-            try:
-                from apps.pets.models import Pet
-                pets = Pet.objects.filter(owner=request.user)
-                user_pets = [
-                    {
-                        'id': str(pet.id),
-                        'name': pet.name,
-                        'species': pet.species,
-                        'species_label': pet.get_species_display(),
-                    }
-                    for pet in pets
-                ]
-            except Exception as e:
-                logger.warning(f"Ошибка при получении данных о питомцах для пользователя {request.user.email}: {e}")
-                pets = []
-        
-        response_data = {
-            'products': products_data,
-            'pagination': {
-                'total': total_count,
-                'page': page,
-                'per_page': per_page,
-                'total_pages': (total_count + per_page - 1) // per_page
+        return {
+            'animals': [
+                {'value': 'dog', 'label': 'Для собак'},
+                {'value': 'cat', 'label': 'Для кошек'},
+            ],
+            'categories': [
+                {'value': 'food', 'label': 'Корм'},
+                {'value': 'pharmacy', 'label': 'Ветаптека'},
+                {'value': 'ammunition', 'label': 'Амуниция'},
+                {'value': 'care', 'label': 'Средства по уходу'},
+                {'value': 'transport', 'label': 'Транспортировка'},
+                {'value': 'toys', 'label': 'Игрушки'},
+            ],
+            'subcategories': subcategories,
+            'vendors': vendors,
+            'price_range': {
+                'min': float(aggregations['min_price']) if aggregations['min_price'] else 0,
+                'max': float(aggregations['max_price']) if aggregations['max_price'] else 0,
             },
-            'filters': {
-                'animals': [
-                    {'value': 'dog', 'label': 'Для собак'},
-                    {'value': 'cat', 'label': 'Для кошек'},
-                ],
-                'categories': [
-                    {'value': 'food', 'label': 'Корм'},
-                    {'value': 'pharmacy', 'label': 'Ветаптека'},
-                    {'value': 'ammunition', 'label': 'Амуниция'},
-                    {'value': 'care', 'label': 'Средства по уходу'},
-                    {'value': 'transport', 'label': 'Транспортировка'},
-                    {'value': 'toys', 'label': 'Игрушки'},
-                ],
-                'subcategories': subcategories,
-                'vendors': vendors,
-                'price_range': {
-                    'min': float(price_range['min_price']) if price_range['min_price'] else 0,
-                    'max': float(price_range['max_price']) if price_range['max_price'] else 0,
-                },
-                'user_pets': user_pets,  # Питомцы пользователя для персональных подборок
-            }
         }
-        
-        # Сохраняем в кэш все товары и фильтры (без пагинации)
-        from django.core.cache import cache
-        from django.conf import settings
-
-        cache_data = {
-            'total_count': total_count,
-            'all_products_data': all_products_data,
-            'filters': response_data['filters']
-        }
-
-        cache_timeout = getattr(settings, 'CACHE_TIMEOUTS', {}).get('products', 300)
-        cache.set(cache_key, cache_data, cache_timeout)
-        
-        return Response(response_data, status=status.HTTP_200_OK)
+    
+    def _get_user_pets(self, user):
+        """Получение питомцев пользователя для персональных подборок."""
+        from apps.pets.models import Pet
+        try:
+            pets = Pet.objects.filter(owner=user).only('id', 'name', 'species')
+            return [
+                {
+                    'id': str(pet.id),
+                    'name': pet.name,
+                    'species': pet.species,
+                    'species_label': pet.get_species_display(),
+                }
+                for pet in pets
+            ]
+        except Exception as e:
+            logger.warning(f"Ошибка при получении питомцев пользователя {user.email}: {e}")
+            return []
 
 
 class ProductDetailView(APIView):

@@ -12,10 +12,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Plus, QrCode, Edit, Share2, Trash2, 
   AlertCircle, TrendingUp, Heart, Activity,
-  FileEdit, Clock, ChevronRight
+  FileEdit, Clock, ChevronRight, UtensilsCrossed, BarChart3
 } from 'lucide-react';
 import { getPets, createPet, updatePet, deletePet, getPetAnalysis, savePetDraft } from '../../api/pets';
-import PetWizard from './components/PetWizard';
+import PetCreateForm from './components/PetCreateForm';
 import PetProfileEditor from './components/PetProfileEditor';
 import { PageLoader } from '../../components/Loader';
 
@@ -58,7 +58,7 @@ const getProgressColor = (percent) => {
 // КОМПОНЕНТ КАРТОЧКИ ПИТОМЦА (оптимизирован с React.memo)
 // ============================================
 
-const PetCard = React.memo(({ pet, index, onEdit, onDelete, onViewAnalysis, onNavigate }) => {
+const PetCard = React.memo(({ pet, index, onEdit, onDelete, onViewAnalysis, onNavigate, onFoodRecommendation }) => {
   const [showActions, setShowActions] = useState(false);
 
   return (
@@ -132,22 +132,26 @@ const PetCard = React.memo(({ pet, index, onEdit, onDelete, onViewAnalysis, onNa
           <div>
             <h3 className="text-xl font-bold text-gray-800">{pet.name}</h3>
             <p className="text-gray-500 text-sm mt-0.5">
-              {pet.breed || 'Порода не указана'} • {getSpeciesName(pet.species)}
+              {pet.breed_name || pet.breed || 'Порода не указана'} • {getSpeciesName(pet.species)}
             </p>
           </div>
-          {pet.age !== null && (
+          {(pet.age !== null || pet.age_years !== null || pet.age_years !== undefined) && (
             <span className="px-2.5 py-1 bg-purple-100 text-purple-600 text-xs font-medium rounded-full">
-              {pet.age} {pet.age === 1 ? 'год' : pet.age < 5 ? 'года' : 'лет'}
+              {(() => {
+                const age = pet.age_years ?? pet.age;
+                if (age === null || age === undefined) return null;
+                return `${age} ${age === 1 ? 'год' : age < 5 ? 'года' : 'лет'}`;
+              })()}
             </span>
           )}
         </div>
 
         {/* Основные характеристики */}
         <div className="grid grid-cols-3 gap-2 mt-4">
-          {pet.weight && (
+          {(pet.weight_kg || pet.weight) && (
             <div className="text-center p-2 bg-gray-50 rounded-xl">
               <p className="text-xs text-gray-400">Вес</p>
-              <p className="font-semibold text-gray-700">{pet.weight} кг</p>
+              <p className="font-semibold text-gray-700">{pet.weight_kg || pet.weight} кг</p>
             </div>
           )}
           {pet.activity_level && (
@@ -158,11 +162,11 @@ const PetCard = React.memo(({ pet, index, onEdit, onDelete, onViewAnalysis, onNa
               </p>
             </div>
           )}
-          {pet.gender && pet.gender !== 'unknown' && (
+          {(pet.sex || pet.gender) && (pet.sex || pet.gender) !== 'unknown' && (
             <div className="text-center p-2 bg-gray-50 rounded-xl">
               <p className="text-xs text-gray-400">Пол</p>
               <p className="font-semibold text-gray-700">
-                {pet.gender === 'male' ? '♂️ М' : '♀️ Ж'}
+                {(pet.sex || pet.gender) === 'male' ? '♂️ М' : '♀️ Ж'}
               </p>
             </div>
           )}
@@ -178,22 +182,33 @@ const PetCard = React.memo(({ pet, index, onEdit, onDelete, onViewAnalysis, onNa
           </div>
         )}
 
-        {/* Действия */}
+        {/* Основные действия */}
         <div className="flex gap-2 mt-4">
           <button
+            onClick={() => onViewAnalysis(pet)}
+            className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-100 transition-all font-medium"
+            title="Анализ питомца"
+          >
+            <BarChart3 className="w-4 h-4" /> Анализ
+          </button>
+          <button
+            onClick={() => onFoodRecommendation(pet)}
+            className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-orange-50 text-orange-600 rounded-xl hover:bg-orange-100 transition-all font-medium"
+            title="Подбор корма"
+          >
+            <UtensilsCrossed className="w-4 h-4" /> Подбор корма
+          </button>
+        </div>
+        
+        {/* Дополнительные действия */}
+        <div className="flex gap-2 mt-2">
+          <button
             onClick={() => onEdit(pet)}
-            className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-purple-50 text-purple-600 rounded-xl hover:bg-purple-100 transition-all font-medium"
+            className="flex-1 flex items-center justify-center gap-2 py-2 text-sm text-gray-600 rounded-xl hover:bg-gray-100 transition-all"
           >
             <Edit className="w-4 h-4" /> Редактировать
           </button>
-          <button 
-            onClick={() => onViewAnalysis(pet)}
-            className="p-2.5 bg-gray-50 text-gray-600 rounded-xl hover:bg-gray-100 transition-all"
-            title="Анализ профиля"
-          >
-            <TrendingUp className="w-4 h-4" />
-          </button>
-          <button className="p-2.5 bg-gray-50 text-gray-600 rounded-xl hover:bg-gray-100 transition-all" title="Поделиться">
+          <button className="p-2 text-gray-400 rounded-xl hover:bg-gray-100 transition-all" title="Поделиться">
             <Share2 className="w-4 h-4" />
           </button>
         </div>
@@ -395,7 +410,10 @@ export default function PetIdPage() {
       setIsLoading(true);
 
       const response = await getPets();
-      const allPets = response.pets || [];
+      // API возвращает {pets: [...], count: ...} или {data: [...]}
+      const allPets = response.data?.pets || response.pets || response.data || [];
+      
+      console.log('Loaded pets:', allPets);
 
       // Разделяем на готовые профили и черновики с оптимизацией
       const completedPets = [];
@@ -512,16 +530,15 @@ export default function PetIdPage() {
     setShowCreateModal(true);
   }, []);
 
-  // Просмотр анализа с оптимизацией
-  const handleViewAnalysis = useCallback(async (pet) => {
-    try {
-      const analysis = await getPetAnalysis(pet.id);
-      console.log('Анализ профиля:', analysis);
-      alert(`Профиль заполнен на ${analysis.analysis?.profile_completeness || 0}%`);
-    } catch (err) {
-      console.error('Ошибка получения анализа:', err);
-    }
-  }, []);
+  // Просмотр анализа питомца
+  const handleViewAnalysis = useCallback((pet) => {
+    navigate(`/pets/${pet.id}/analysis`);
+  }, [navigate]);
+  
+  // Переход к подбору корма
+  const handleFoodRecommendation = useCallback((pet) => {
+    navigate(`/food-recommendation?pet_id=${pet.id}`);
+  }, [navigate]);
 
   // Переход к детальной странице питомца
   const handleNavigateToPet = useCallback((petId) => {
@@ -539,7 +556,7 @@ export default function PetIdPage() {
     if (openEditor) {
       // Открываем редактор для последнего созданного питомца
       const response = await getPets();
-      const allPets = response.pets || [];
+      const allPets = response.data?.pets || response.pets || response.data || [];
       const completedPets = allPets.filter(p => !p.is_draft);
       if (completedPets.length > 0) {
         // Сортируем по дате создания и берём последнего
@@ -697,6 +714,7 @@ export default function PetIdPage() {
                         onDelete={handleDelete}
                         onViewAnalysis={handleViewAnalysis}
                         onNavigate={handleNavigateToPet}
+                        onFoodRecommendation={handleFoodRecommendation}
                       />
                     ))}
                   </div>
@@ -707,14 +725,15 @@ export default function PetIdPage() {
         )}
       </AnimatePresence>
 
-      {/* Модалка создания (новый wizard) */}
+      {/* Модалка создания PetID (одна страница) */}
       <AnimatePresence>
         {showCreateModal && (
-          <PetWizard
-            onClose={handleCloseCreateModal}
-            onSubmit={handleCreate}
-            isLoading={isSubmitting}
-            editingDraft={editingDraft}
+          <PetCreateForm
+            onClose={() => {
+              setShowCreateModal(false);
+              setEditingDraft(null);
+              fetchPets();
+            }}
           />
         )}
       </AnimatePresence>

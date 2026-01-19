@@ -104,7 +104,7 @@ class PetBreedComparisonService:
                 'message': 'Уровень активности не указан'
             }
         
-        breed_energy = breed.energy_level
+        breed_energy = breed.base_activity_level
         pet_activity = pet.activity_level
         
         # Маппинг уровней

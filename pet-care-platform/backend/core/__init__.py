@@ -1,45 +1,21 @@
 # Core utilities for the backend
-
-from .crud_views import (
-    BaseCRUDMixin,
-    BaseListCreateView,
-    BaseDetailView,
-    BaseReadOnlyView
-)
-
-from .permissions import (
-    IsOwner,
-    IsOwnerOrReadOnly,
-    IsStaffOrReadOnly,
-    IsAuthenticatedOrReadOnly,
-    IsAdminOrReadOnly
-)
-
-from .serializers import (
-    TimestampMixin,
-    OwnerMixin,
-    BaseModelSerializer,
-    CreateUpdateSerializerMixin,
-    ListDetailSerializerMixin,
-    DynamicFieldsSerializer,
-    ReadOnlySerializer
-)
+# Note: Imports moved to be done lazily to avoid circular dependencies during app loading
 
 __all__ = [
-    # CRUD Views
+    # CRUD Views - import from core.crud_views
     'BaseCRUDMixin',
     'BaseListCreateView',
     'BaseDetailView',
     'BaseReadOnlyView',
 
-    # Permissions
+    # Permissions - import from core.permissions
     'IsOwner',
     'IsOwnerOrReadOnly',
     'IsStaffOrReadOnly',
     'IsAuthenticatedOrReadOnly',
     'IsAdminOrReadOnly',
 
-    # Serializers
+    # Serializers - import from core.serializers
     'TimestampMixin',
     'OwnerMixin',
     'BaseModelSerializer',
@@ -48,4 +24,3 @@ __all__ = [
     'DynamicFieldsSerializer',
     'ReadOnlySerializer',
 ]
-

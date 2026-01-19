@@ -21,11 +21,17 @@ import {
 import {
   getBreeds,
   getBreedSuggestions,
+  getPetAutofillSuggestions,
   ACTIVITY_LEVEL_OPTIONS,
   HOUSING_TYPE_OPTIONS,
   HEALTH_ISSUES_OPTIONS,
   EXCLUDED_INGREDIENTS_OPTIONS,
-  BEHAVIORAL_PROBLEMS
+  BEHAVIORAL_PROBLEMS,
+  SIZE_OPTIONS,
+  COAT_TYPE_OPTIONS,
+  REPRODUCTIVE_STATE_OPTIONS,
+  TEMPERAMENT_CHOICES,
+  CLIMATE_CHOICES
 } from '../../../api/pets';
 
 // ============================================
@@ -54,7 +60,17 @@ const initialFormState = {
   activity_level: '',
   housing_type: '',
   behavioral_problems: [],
-  size: null,
+  size_category: null,
+  // Новые поля для автозаполнения
+  coat_type: '',
+  is_neutered: false,
+  neutering_date: null,
+  reproductive_state: 'none',
+  temperament: '',
+  climate: '',
+  has_other_pets: false,
+  // Автозаполняемые из породы
+  ideal_weight_kg: null,
 };
 
 // Полные fallback-данные пород (когда API недоступен)
@@ -506,7 +522,7 @@ const Step2Info = ({ formData, onChange, errors, breeds, loadingBreeds, onBreedS
     onChange('breedId', parseInt(breed.id, 10));
     // Установим размер из породы если есть
     if (breed.size) {
-      onChange('size', breed.size);
+      onChange('size_category', breed.size);
     }
     // Вызываем callback для загрузки подсказок
     onBreedSelect(breed);
@@ -1033,26 +1049,36 @@ const Step3Health = ({ formData, onChange, errors }) => {
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Уровень активности <span className="text-red-500">*</span>
           </label>
-          <div className="grid grid-cols-3 gap-2">
-            {ACTIVITY_LEVEL_OPTIONS.map(option => (
-              <button
-                key={option.value}
-                type="button"
-                onClick={() => onChange('activity_level', option.value)}
-                className={`
-                  p-3 rounded-xl border-2 transition-all text-center
-                  ${formData.activity_level === option.value
-                    ? 'border-purple-500 bg-purple-50'
-                    : 'border-gray-200 hover:border-purple-200'
-                  }
-                `}
-              >
-                <div className="text-2xl mb-1">
-                  {option.value === 'low' ? '🐌' : option.value === 'medium' ? '🐕' : '🏃'}
-                </div>
-                <span className="text-sm font-medium text-gray-700">{option.label}</span>
-              </button>
-            ))}
+          <div className="grid grid-cols-5 gap-2">
+            {ACTIVITY_LEVEL_OPTIONS.map(option => {
+              // Иконки для 5 уровней активности
+              const activityIcons = {
+                'very_low': '😴',
+                'low': '🐌', 
+                'medium': '🐕',
+                'high': '🏃',
+                'very_high': '🚀'
+              };
+              return (
+                <button
+                  key={option.value}
+                  type="button"
+                  onClick={() => onChange('activity_level', option.value)}
+                  className={`
+                    p-2 rounded-xl border-2 transition-all text-center
+                    ${formData.activity_level === option.value
+                      ? 'border-purple-500 bg-purple-50'
+                      : 'border-gray-200 hover:border-purple-200'
+                    }
+                  `}
+                >
+                  <div className="text-xl mb-1">
+                    {activityIcons[option.value] || '🐕'}
+                  </div>
+                  <span className="text-xs font-medium text-gray-700">{option.label}</span>
+                </button>
+              );
+            })}
           </div>
           {errors.activity_level && (
             <p className="mt-2 text-sm text-red-500">{errors.activity_level}</p>
@@ -1340,32 +1366,49 @@ export default function PetWizard({ onClose, onSubmit, isLoading, editingDraft =
     }
   };
 
-  // Обработка выбора породы
+  // Обработка выбора породы с автозаполнением из API
   const handleBreedSelect = async (breed) => {
     setFormData(prev => ({
       ...prev,
       breed: breed.name,
       breedId: breed.id,
-      size: breed.size || prev.size, // Установим размер из fallback данных если есть
+      size_category: breed.size || prev.size_category,
     }));
 
-    // Загружаем подсказки для породы только если это реальный ID из API
-    // (fallback породы имеют строковые id типа 'labrador', API - UUID)
-    if (breed.id && breed.id.includes('-')) {
+    // Загружаем подсказки автозаполнения из нового API
+    if (breed.id) {
       try {
-        const suggestions = await getBreedSuggestions(breed.id);
-        setBreedSuggestions(suggestions);
+        // Используем новый endpoint автозаполнения
+        const autofillData = await getPetAutofillSuggestions(breed.id, formData.species);
+        setBreedSuggestions(autofillData);
         
-        // Автозаполнение
-        if (suggestions?.suggestions) {
+        // Автозаполнение из данных породы
+        if (autofillData?.suggestions) {
+          const suggestions = autofillData.suggestions;
           setFormData(prev => ({
             ...prev,
-            activity_level: suggestions.suggestions.activity_level || prev.activity_level,
-            size: suggestions.suggestions.size || prev.size,
+            activity_level: suggestions.activity_level || prev.activity_level,
+            size_category: suggestions.size_category || prev.size_category,
+            coat_type: suggestions.coat_type || prev.coat_type,
+            ideal_weight_kg: suggestions.ideal_weight_kg || prev.ideal_weight_kg,
           }));
         }
+        
+        // Также пробуем старый API для совместимости
+        if (!autofillData?.suggestions && breed.id.includes && breed.id.includes('-')) {
+          const suggestions = await getBreedSuggestions(breed.id);
+          setBreedSuggestions(suggestions);
+          
+          if (suggestions?.suggestions) {
+            setFormData(prev => ({
+              ...prev,
+              activity_level: suggestions.suggestions.activity_level || prev.activity_level,
+              size_category: suggestions.suggestions.size || prev.size_category,
+            }));
+          }
+        }
       } catch (error) {
-        console.error('Ошибка загрузки подсказок:', error);
+        console.error('Ошибка загрузки автозаполнения:', error);
         // Не показываем ошибку пользователю - это не критично
       }
     }
@@ -1529,6 +1572,14 @@ export default function PetWizard({ onClose, onSubmit, isLoading, editingDraft =
         activity_level: formData.activity_level || 'medium',
         housing_type: formData.housing_type || null,
         behavioral_problems: formData.behavioral_problems || [],
+        size_category: formData.size_category || null,
+        coat_type: formData.coat_type || null,
+        is_neutered: formData.is_neutered || false,
+        reproductive_state: formData.reproductive_state || 'none',
+        temperament: formData.temperament || null,
+        climate: formData.climate || null,
+        has_other_pets: formData.has_other_pets || false,
+        ideal_weight_kg: formData.ideal_weight_kg || null,
         is_draft: true,
         draft_step: currentStep,
       };
@@ -1641,7 +1692,15 @@ export default function PetWizard({ onClose, onSubmit, isLoading, editingDraft =
       activity_level: formData.activity_level || 'medium',
       housing_type: formData.housing_type || null,
       behavioral_problems: formData.behavioral_problems.includes('Нет проблем') ? [] : formData.behavioral_problems,
-      size: formData.size,
+      size_category: formData.size_category,
+      // Новые поля
+      coat_type: formData.coat_type || null,
+      is_neutered: formData.is_neutered || false,
+      reproductive_state: formData.reproductive_state || 'none',
+      temperament: formData.temperament || null,
+      climate: formData.climate || null,
+      has_other_pets: formData.has_other_pets || false,
+      ideal_weight_kg: formData.ideal_weight_kg || null,
       is_draft: false,
     };
 

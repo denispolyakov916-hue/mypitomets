@@ -4,11 +4,11 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   ArrowLeft, Edit, Trash2, Share2, QrCode, AlertCircle,
   Scale, Activity, Utensils, Brain, Heart, Home, Scissors,
-  ChevronRight, Info, CheckCircle, AlertTriangle, XCircle
+  ChevronRight, Info, CheckCircle, AlertTriangle, XCircle, UtensilsCrossed
 } from 'lucide-react';
 import { getPet, deletePet, getPetBreedComparison } from '../../api/pets';
 import { PageLoader } from '../../components/Loader';
-import PetIdWizard from './PetIdWizard';
+import PetProfileEditor from './components/PetProfileEditor';
 
 // Цвета для статусов
 const STATUS_COLORS = {
@@ -337,6 +337,16 @@ export default function PetDetailPage() {
           </p>
         </div>
         <div className="flex gap-2">
+          {/* Кнопка подбора корма - активна только если есть вес */}
+          {pet.weight && (
+            <button
+              onClick={() => navigate(`/food-recommendation?pet_id=${pet.id}`)}
+              className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-orange-500 to-amber-500 text-white rounded-xl hover:shadow-lg transition-all"
+            >
+              <UtensilsCrossed className="w-4 h-4" />
+              Подбор корма
+            </button>
+          )}
           <button
             onClick={() => setShowWizard(true)}
             className="flex items-center gap-2 px-4 py-2 bg-purple-50 text-purple-600 rounded-xl hover:bg-purple-100 transition-all"
@@ -689,12 +699,12 @@ export default function PetDetailPage() {
         )}
       </AnimatePresence>
 
-      {/* Модальный визард редактирования */}
+      {/* Модальное окно редактирования */}
       {showWizard && (
-        <PetIdWizard
+        <PetProfileEditor
+          pet={pet}
           onClose={() => setShowWizard(false)}
-          onSubmit={handleEditComplete}
-          editData={pet}
+          onSave={handleEditComplete}
         />
       )}
     </div>

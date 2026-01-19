@@ -6,6 +6,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from django.shortcuts import get_object_or_404
+from django.db.models import Case, When, IntegerField
 from rest_framework.filters import SearchFilter, OrderingFilter
 
 from .models import Breed, Pet
@@ -16,66 +17,157 @@ from .serializers_breeds import (
 from .services_breeds import PetBreedComparisonService
 
 
-class BreedListView(generics.ListAPIView):
+# Популярные породы собак (по статистике регистрации в России)
+POPULAR_DOG_BREEDS = [
+    'Лабрадор Ретривер', 'Немецкая Овчарка', 'Французский Бульдог',
+    'Йоркширский Терьер', 'Джек Рассел Терьер', 'Корги Пемброк',
+    'Хаски', 'Такса', 'Шпиц', 'Чихуахуа', 'Бигль', 'Мопс',
+    'Золотистый Ретривер', 'Кокер Спаниель', 'Ротвейлер',
+    'Доберман', 'Боксёр', 'Акита', 'Шарпей', 'Самоед'
+]
+
+# Популярные породы кошек
+POPULAR_CAT_BREEDS = [
+    'Британская Короткошерстная', 'Шотландская Вислоухая', 'Мейн-Кун',
+    'Сфинкс', 'Бенгальская', 'Сиамская', 'Персидская', 'Абиссинская',
+    'Русская Голубая', 'Рэгдолл', 'Невская Маскарадная', 'Сибирская'
+]
+
+
+def calculate_weight_for_age(breed, age_months):
+    """
+    Рассчитывает ожидаемый вес породы для указанного возраста.
+    
+    Формула:
+    - Щенок/котёнок до 12 мес: вес = взрослый_вес * (возраст_мес / 12) ^ 0.75
+    - Взрослое животное (>12 мес): возвращаем диапазон взрослого веса
+    """
+    if not age_months or age_months <= 0:
+        return None, None
+    
+    # Получаем взрослый вес
+    adult_min = float(breed.weight_male_min or breed.weight_female_min or 0)
+    adult_max = float(breed.weight_male_max or breed.weight_female_max or 0)
+    
+    if adult_min == 0 and adult_max == 0:
+        return None, None
+    
+    # Для взрослых животных (>12 мес) возвращаем взрослый вес
+    if age_months >= 12:
+        return round(adult_min, 1), round(adult_max, 1)
+    
+    # Для молодых - расчёт по формуле роста
+    # Коэффициент роста: (возраст/12)^0.75 даёт нелинейный рост
+    growth_factor = (age_months / 12) ** 0.75
+    
+    expected_min = adult_min * growth_factor
+    expected_max = adult_max * growth_factor
+    
+    return round(expected_min, 1), round(expected_max, 1)
+
+
+class BreedListView(APIView):
     """
     Список пород с фильтрацией и поиском.
     
     GET /api/breeds/
     
     Параметры:
-        species: dog | cat
-        size_category: toy | small | medium | large | giant
-        energy_level: low | medium | high | very_high
-        health_risk_level: low | medium | high
-        brachycephalic: true | false
-        apartment_friendly: true | false
-        good_for_novice: true | false
+        species: dog | cat (обязательный)
         search: поиск по названию
+        age_months: возраст питомца для расчёта ожидаемого веса
+        popular_only: true - только популярные породы
+        limit: максимальное количество результатов
+    
+    Возвращает: { count: N, breeds: [{id, name, weight_min, weight_max}, ...] }
     """
     
-    queryset = Breed.objects.all()
-    serializer_class = BreedListSerializer
     permission_classes = [AllowAny]
-    filter_backends = [SearchFilter, OrderingFilter]
     
-    search_fields = ['name', 'name_en']
-    ordering_fields = ['name', 'size_category', 'energy_level']
-    ordering = ['species', 'name']
-    
-    def get_queryset(self):
-        """Фильтрация вручную"""
-        queryset = super().get_queryset()
+    def get(self, request):
+        queryset = Breed.objects.all()
         
-        # Фильтры из query params
-        species = self.request.query_params.get('species')
+        # Фильтр по виду (обязательный для оптимизации)
+        species = request.query_params.get('species')
         if species:
             queryset = queryset.filter(species=species)
         
-        size_category = self.request.query_params.get('size_category')
-        if size_category:
-            queryset = queryset.filter(size_category=size_category)
+        # Поиск по названию
+        search = request.query_params.get('search', '').strip()
         
-        energy_level = self.request.query_params.get('energy_level')
-        if energy_level:
-            queryset = queryset.filter(energy_level=energy_level)
+        # Получаем параметры
+        age_months = request.query_params.get('age_months')
+        if age_months:
+            try:
+                age_months = int(age_months)
+            except ValueError:
+                age_months = None
         
-        health_risk_level = self.request.query_params.get('health_risk_level')
-        if health_risk_level:
-            queryset = queryset.filter(health_risk_level=health_risk_level)
+        popular_only = request.query_params.get('popular_only', '').lower() == 'true'
+        limit = request.query_params.get('limit')
+        if limit:
+            try:
+                limit = int(limit)
+            except ValueError:
+                limit = None
         
-        brachycephalic = self.request.query_params.get('brachycephalic')
-        if brachycephalic:
-            queryset = queryset.filter(brachycephalic=brachycephalic.lower() == 'true')
+        # Определяем популярные породы для вида
+        popular_breeds = POPULAR_DOG_BREEDS if species == 'dog' else POPULAR_CAT_BREEDS
         
-        apartment_friendly = self.request.query_params.get('apartment_friendly')
-        if apartment_friendly:
-            queryset = queryset.filter(apartment_friendly=apartment_friendly.lower() == 'true')
+        if search:
+            # Режим поиска - фильтруем по названию
+            queryset = queryset.filter(name__icontains=search)
+            # Сортировка: сначала точные совпадения с началом, потом остальные
+            queryset = queryset.extra(
+                select={'starts_with': "CASE WHEN LOWER(name) LIKE %s THEN 0 ELSE 1 END"},
+                select_params=[search.lower() + '%']
+            ).order_by('starts_with', 'name')
+        elif popular_only:
+            # Режим популярных пород - фильтруем и сортируем по списку
+            # Используем Case/When для сортировки по порядку в списке
+            popular_order = Case(
+                *[When(name__icontains=name, then=pos) for pos, name in enumerate(popular_breeds)],
+                default=len(popular_breeds),
+                output_field=IntegerField()
+            )
+            queryset = queryset.annotate(popular_order=popular_order)
+            queryset = queryset.filter(popular_order__lt=len(popular_breeds))
+            queryset = queryset.order_by('popular_order')
+        else:
+            # Режим по умолчанию - сначала популярные, потом остальные по алфавиту
+            popular_order = Case(
+                *[When(name__icontains=name, then=pos) for pos, name in enumerate(popular_breeds)],
+                default=999,
+                output_field=IntegerField()
+            )
+            queryset = queryset.annotate(popular_order=popular_order)
+            queryset = queryset.order_by('popular_order', 'name')
         
-        good_for_novice = self.request.query_params.get('good_for_novice')
-        if good_for_novice:
-            queryset = queryset.filter(good_for_novice=good_for_novice.lower() == 'true')
+        # Применяем лимит
+        if limit:
+            queryset = queryset[:limit]
         
-        return queryset
+        # Формируем минимальный ответ
+        breeds_data = []
+        for breed in queryset:
+            weight_min, weight_max = calculate_weight_for_age(breed, age_months)
+            
+            # Если возраст не указан, берём взрослый вес
+            if weight_min is None:
+                weight_min = float(breed.weight_male_min or breed.weight_female_min or 0) if breed.weight_male_min or breed.weight_female_min else None
+                weight_max = float(breed.weight_male_max or breed.weight_female_max or 0) if breed.weight_male_max or breed.weight_female_max else None
+            
+            breeds_data.append({
+                'id': breed.id,
+                'name': breed.name,
+                'weight_min': weight_min,
+                'weight_max': weight_max,
+            })
+        
+        return Response({
+            'count': len(breeds_data),
+            'breeds': breeds_data
+        })
 
 
 class BreedDetailView(generics.RetrieveAPIView):

@@ -34,14 +34,16 @@ from .views import (
     BreedListView as BreedListViewOld, BreedDetailView as BreedDetailViewOld, BreedSuggestionsView,
     CalendarEventListView, CalendarEventDetailView, CalendarEventCompleteView,
     CalendarEventCancelView, CalendarEventTodayView, CalendarEventUpcomingView,
-    CalendarEventTypesView
+    CalendarEventTypesView,
+    PetCalorieCalculatorView, PetAutofillSuggestionsView,  # Новые views
 )
 from .views_breeds import (
     BreedListView, BreedDetailView,
     PetBreedComparisonView, BreedHealthRisksView
 )
 from .views_food import (
-    PetDietCalculationView, PetFoodRecommendationsView
+    PetDietCalculationView, PetFoodRecommendationsView, FoodStatisticsView,
+    PetFeedingPlanView, PetFoodAlternativesView, PetActiveDayCaloriesView
 )
 from .reminder_views import (
     ReminderListView,
@@ -83,9 +85,32 @@ urlpatterns = [
     # Сравнение с эталоном породы
     path('<uuid:pet_id>/breed-comparison/', PetBreedComparisonView.as_view(), name='pet-breed-comparison'),
     
-    # Расчет рациона и подбор корма
+    # ===== Калькулятор калорий и автозаполнение =====
+    # Расчёт дневной нормы калорий
+    path('<uuid:pet_id>/calculate-calories/', PetCalorieCalculatorView.as_view(), name='pet-calculate-calories'),
+    
+    # Предложения автозаполнения из породы
+    path('<uuid:pet_id>/autofill-suggestions/', PetAutofillSuggestionsView.as_view(), name='pet-autofill-suggestions'),
+    
+    # ===== Расчет рациона и подбор корма =====
+    # Расчёт калорийности
     path('<uuid:pet_id>/diet-calculation/', PetDietCalculationView.as_view(), name='pet-diet-calculation'),
+    
+    # Быстрый подбор корма (упрощённый)
     path('<uuid:pet_id>/recommend-food/', PetFoodRecommendationsView.as_view(), name='pet-recommend-food'),
+    path('<uuid:pet_id>/food-recommendations/', PetFoodRecommendationsView.as_view(), name='pet-food-recommendations'),
+    
+    # Полный план питания (GET - по умолчанию, POST - с параметрами)
+    path('<uuid:pet_id>/feeding-plan/', PetFeedingPlanView.as_view(), name='pet-feeding-plan'),
+    
+    # Альтернативные продукты для компонента
+    path('<uuid:pet_id>/food-alternatives/<int:product_id>/', PetFoodAlternativesView.as_view(), name='pet-food-alternatives'),
+    
+    # Расчёт калорий для активного дня
+    path('<uuid:pet_id>/active-day-calories/', PetActiveDayCaloriesView.as_view(), name='pet-active-day-calories'),
+    
+    # Статистика по кормам (бренды, типы, цены)
+    path('food-statistics/', FoodStatisticsView.as_view(), name='food-statistics'),
     
     # ===== Напоминания =====
     # Список / Создание напоминаний

@@ -2,13 +2,19 @@
 Модели базы знаний о породах собак и кошек.
 
 Содержит:
-- Breed - основная информация о породе
+- Breed - основная информация о породе (для собак FCI, для кошек WCF)
 - BreedHealth - генетические риски здоровья
 - BreedNutrition - рекомендации по питанию
 - BreedCare - рекомендации по уходу
+
+Данные загружаются из:
+- breeds.json (собаки, FCI классификация)
+- cats_breeds.json (кошки, WCF классификация)
 """
 
 from django.db import models
+from django.utils.text import slugify
+from unidecode import unidecode
 
 
 class Breed(models.Model):
@@ -19,6 +25,7 @@ class Breed(models.Model):
     - Сравнения параметров питомца с эталоном
     - Персонализированных рекомендаций
     - Подбора корма и товаров
+    - Автозаполнения PetID
     """
     
     SPECIES_CHOICES = [
@@ -27,27 +34,27 @@ class Breed(models.Model):
     ]
     
     SIZE_CHOICES = [
-        ('tiny', 'Миниатюрный'),
-        ('small', 'Маленький'),
-        ('medium', 'Средний'),
-        ('large', 'Крупный'),
-        ('giant', 'Гигантский'),
+        ('toy', 'Карликовый'),  # < 5 кг
+        ('small', 'Маленький'),  # 5-10 кг
+        ('medium', 'Средний'),   # 10-25 кг
+        ('large', 'Крупный'),    # 25-45 кг
+        ('giant', 'Гигантский'), # > 45 кг
     ]
     
-    ENERGY_CHOICES = [
+    ACTIVITY_CHOICES = [
         ('very_low', 'Очень низкая'),
         ('low', 'Низкая'),
-        ('medium', 'Средняя'),
+        ('moderate', 'Умеренная'),
         ('high', 'Высокая'),
         ('very_high', 'Очень высокая'),
     ]
     
-    LEVEL_CHOICES = [
-        ('very_low', 'Очень низкий'),
-        ('low', 'Низкий'),
-        ('medium', 'Средний'),
-        ('high', 'Высокий'),
-        ('very_high', 'Очень высокий'),
+    TRAINABILITY_CHOICES = [
+        ('very_low', 'Очень низкая'),
+        ('low', 'Низкая'),
+        ('moderate', 'Умеренная'),
+        ('high', 'Высокая'),
+        ('very_high', 'Очень высокая'),
     ]
     
     COAT_CHOICES = [
@@ -55,64 +62,115 @@ class Breed(models.Model):
         ('short', 'Короткая'),
         ('medium', 'Средняя'),
         ('long', 'Длинная'),
-        ('wire', 'Жесткая'),
-        ('curly', 'Кудрявая'),
+        ('wire', 'Жёсткая'),
+        ('curly', 'Курчавая'),
         ('double', 'Двойная'),
     ]
     
     GROOMING_CHOICES = [
         ('minimal', 'Минимальный'),
-        ('weekly', 'Еженедельный'),
-        ('regular', 'Регулярный'),
-        ('daily', 'Ежедневный'),
-        ('professional', 'Профессиональный'),
+        ('low', 'Низкий'),
+        ('moderate', 'Умеренный'),
+        ('high', 'Высокий'),
+        ('very_high', 'Очень высокий'),
     ]
     
-    # Основная информация
-    species = models.CharField(max_length=10, choices=SPECIES_CHOICES, verbose_name='Вид')
-    name = models.CharField(max_length=100, verbose_name='Название породы')
-    name_en = models.CharField(max_length=100, blank=True, verbose_name='Название (англ)')
-    slug = models.SlugField(max_length=100, unique=True, verbose_name='URL-имя')
+    # === Основная информация ===
+    external_id = models.CharField(
+        max_length=20, unique=True, db_index=True,
+        null=True, blank=True,
+        verbose_name='Внешний ID',
+        help_text='ID из JSON файла (7001 для собак FCI, 1001 для кошек WCF)'
+    )
+    species = models.CharField(max_length=10, choices=SPECIES_CHOICES, db_index=True, verbose_name='Вид')
+    name = models.CharField(max_length=200, verbose_name='Название породы (рус)')
+    name_en = models.CharField(max_length=200, blank=True, verbose_name='Название породы (англ)')
+    slug = models.SlugField(max_length=200, unique=True, verbose_name='URL-имя')
     
-    # Описания
-    description = models.TextField(blank=True, null=True, verbose_name='Описание породы')
-    short_description = models.TextField(blank=True, null=True, verbose_name='Краткое описание')
+    # === Классификация FCI (для собак) ===
+    fci_number = models.PositiveIntegerField(null=True, blank=True, verbose_name='FCI номер')
+    fci_group = models.PositiveSmallIntegerField(null=True, blank=True, verbose_name='FCI группа')
+    fci_section = models.PositiveSmallIntegerField(null=True, blank=True, verbose_name='FCI секция')
+    fci_subsection = models.PositiveSmallIntegerField(null=True, blank=True, verbose_name='FCI подсекция')
     
-    # Физические характеристики
-    size_category = models.CharField(max_length=20, choices=SIZE_CHOICES, verbose_name='Размер')
-    weight_min = models.DecimalField(max_digits=5, decimal_places=1, verbose_name='Мин. вес (кг)')
-    weight_max = models.DecimalField(max_digits=5, decimal_places=1, verbose_name='Макс. вес (кг)')
-    height_min = models.PositiveIntegerField(null=True, blank=True, verbose_name='Мин. рост (см)')
-    height_max = models.PositiveIntegerField(null=True, blank=True, verbose_name='Макс. рост (см)')
-    lifespan_min = models.PositiveIntegerField(verbose_name='Мин. продолжительность жизни')
-    lifespan_max = models.PositiveIntegerField(verbose_name='Макс. продолжительность жизни')
+    # === Классификация WCF (для кошек) ===
+    wcf_code = models.CharField(max_length=10, blank=True, verbose_name='WCF код')
+    wcf_category = models.CharField(max_length=50, blank=True, verbose_name='WCF категория')
     
-    # Характер и поведение
-    energy_level = models.CharField(max_length=20, choices=ENERGY_CHOICES, verbose_name='Энергичность')
-    trainability = models.CharField(max_length=20, choices=LEVEL_CHOICES, verbose_name='Обучаемость')
-    intelligence = models.CharField(max_length=20, choices=LEVEL_CHOICES, verbose_name='Интеллект')
+    # === Общая информация ===
+    country_origin = models.CharField(max_length=100, blank=True, verbose_name='Страна происхождения')
+    purpose = models.CharField(max_length=100, blank=True, verbose_name='Назначение')
     
-    # Социальные характеристики
-    friendliness_to_children = models.CharField(max_length=20, choices=LEVEL_CHOICES, verbose_name='Отношение к детям')
-    friendliness_to_pets = models.CharField(max_length=20, choices=LEVEL_CHOICES, default='medium', verbose_name='Отношение к другим животным')
-    friendliness_to_strangers = models.CharField(max_length=20, choices=LEVEL_CHOICES, default='medium', verbose_name='Отношение к незнакомцам')
-    independence = models.CharField(max_length=20, choices=LEVEL_CHOICES, default='medium', verbose_name='Независимость')
+    # === Описания ===
+    short_description = models.TextField(blank=True, verbose_name='Краткое описание (рус)')
+    short_description_en = models.TextField(blank=True, verbose_name='Краткое описание (англ)')
     
-    # Уход
-    grooming_frequency = models.CharField(max_length=20, choices=GROOMING_CHOICES, verbose_name='Частота груминга')
-    shedding_level = models.CharField(max_length=20, choices=LEVEL_CHOICES, verbose_name='Линька')
-    coat_type = models.CharField(max_length=20, choices=COAT_CHOICES, verbose_name='Тип шерсти')
+    # === Физические характеристики ===
+    size_category = models.CharField(
+        max_length=20, choices=SIZE_CHOICES, db_index=True,
+        verbose_name='Размер',
+        help_text='Категория размера для автозаполнения PetID'
+    )
+    coat_type = models.CharField(
+        max_length=20, choices=COAT_CHOICES, 
+        verbose_name='Тип шерсти',
+        help_text='Для автозаполнения PetID'
+    )
+    average_lifespan = models.PositiveIntegerField(
+        default=12,
+        verbose_name='Средняя продолжительность жизни (лет)'
+    )
     
-    # Здоровье
-    health_risk_level = models.CharField(max_length=20, choices=LEVEL_CHOICES, verbose_name='Уровень риска здоровья')
-    hypoallergenic = models.BooleanField(default=False, verbose_name='Гипоаллергенная')
-    brachycephalic = models.BooleanField(default=False, verbose_name='Брахицефал')
+    # === Вес (из JSON ideal_weight) ===
+    weight_male_min = models.DecimalField(
+        max_digits=5, decimal_places=1, null=True, blank=True,
+        verbose_name='Мин. вес самца (кг)'
+    )
+    weight_male_max = models.DecimalField(
+        max_digits=5, decimal_places=1, null=True, blank=True,
+        verbose_name='Макс. вес самца (кг)'
+    )
+    weight_female_min = models.DecimalField(
+        max_digits=5, decimal_places=1, null=True, blank=True,
+        verbose_name='Мин. вес самки (кг)'
+    )
+    weight_female_max = models.DecimalField(
+        max_digits=5, decimal_places=1, null=True, blank=True,
+        verbose_name='Макс. вес самки (кг)'
+    )
     
-    # Условия содержания
-    apartment_friendly = models.BooleanField(default=True, verbose_name='Подходит для квартиры')
-    good_for_novice = models.BooleanField(default=True, verbose_name='Подходит новичкам')
+    # === Характер и поведение ===
+    base_activity_level = models.CharField(
+        max_length=20, choices=ACTIVITY_CHOICES, default='moderate',
+        verbose_name='Базовый уровень активности',
+        help_text='Для автозаполнения PetID'
+    )
+    trainability = models.CharField(
+        max_length=20, choices=TRAINABILITY_CHOICES, default='moderate',
+        verbose_name='Обучаемость'
+    )
     
-    # Метаданные
+    # === Уход ===
+    grooming_needs = models.CharField(
+        max_length=20, choices=GROOMING_CHOICES, default='moderate',
+        verbose_name='Потребность в уходе'
+    )
+    
+    # === Риски здоровья (JSON из breeds.json) ===
+    health_risks = models.JSONField(
+        default=list, blank=True,
+        verbose_name='Риски здоровья',
+        help_text='JSON: [{"condition_code": "hip_dysplasia", "risk_level": "high"}, ...]'
+    )
+    
+    # === Риски аллергий (JSON из breeds.json) ===
+    allergy_risks = models.JSONField(
+        default=list, blank=True,
+        verbose_name='Риски аллергий',
+        help_text='JSON: [{"allergen_code": "chicken_protein", "risk_level": "common"}, ...]'
+    )
+    
+    # === Метаданные ===
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
@@ -123,55 +181,114 @@ class Breed(models.Model):
         ordering = ['species', 'name']
         indexes = [
             models.Index(fields=['species', 'name']),
+            models.Index(fields=['external_id']),
             models.Index(fields=['slug']),
             models.Index(fields=['size_category']),
+            models.Index(fields=['coat_type']),
         ]
     
     def __str__(self):
         return f"{self.name} ({self.get_species_display()})"
     
+    def save(self, *args, **kwargs):
+        """Автогенерация slug если не задан."""
+        if not self.slug:
+            base_slug = slugify(unidecode(self.name_en or self.name))
+            self.slug = f"{self.species}-{base_slug}"
+        super().save(*args, **kwargs)
+    
     def to_dict(self):
+        """Сериализация для API."""
         return {
             'id': self.id,
+            'external_id': self.external_id,
             'species': self.species,
             'name': self.name,
             'name_en': self.name_en,
             'slug': self.slug,
-            'description': self.description,
             'short_description': self.short_description,
             'size_category': self.size_category,
-            'weight_min': float(self.weight_min),
-            'weight_max': float(self.weight_max),
-            'height_min': self.height_min,
-            'height_max': self.height_max,
-            'lifespan_min': self.lifespan_min,
-            'lifespan_max': self.lifespan_max,
-            'energy_level': self.energy_level,
-            'trainability': self.trainability,
-            'intelligence': self.intelligence,
-            'friendliness_to_children': self.friendliness_to_children,
-            'friendliness_to_pets': self.friendliness_to_pets,
-            'friendliness_to_strangers': self.friendliness_to_strangers,
-            'independence': self.independence,
-            'grooming_frequency': self.grooming_frequency,
-            'shedding_level': self.shedding_level,
             'coat_type': self.coat_type,
-            'health_risk_level': self.health_risk_level,
-            'hypoallergenic': self.hypoallergenic,
-            'brachycephalic': self.brachycephalic,
-            'apartment_friendly': self.apartment_friendly,
-            'good_for_novice': self.good_for_novice,
+            'average_lifespan': self.average_lifespan,
+            'base_activity_level': self.base_activity_level,
+            'energy_level': self.base_activity_level,  # alias
+            'trainability': self.trainability,
+            'grooming_needs': self.grooming_needs,
+            'ideal_weight': self.ideal_weight,
+            'weight_min': float(self.weight_min) if self.weight_min else None,
+            'weight_max': float(self.weight_max) if self.weight_max else None,
+            'min_weight': float(self.min_weight) if self.min_weight else None,
+            'max_weight': float(self.max_weight) if self.max_weight else None,
+            'average_weight': float(self.average_weight) if self.average_weight else None,
+            'health_risks': self.health_risks,
+            'allergy_risks': self.allergy_risks,
         }
     
     @property
     def ideal_weight(self):
         """Возвращает идеальный диапазон веса."""
-        return (float(self.weight_min), float(self.weight_max))
+        return {
+            'male': {
+                'min': float(self.weight_male_min) if self.weight_male_min else None,
+                'max': float(self.weight_male_max) if self.weight_male_max else None,
+            },
+            'female': {
+                'min': float(self.weight_female_min) if self.weight_female_min else None,
+                'max': float(self.weight_female_max) if self.weight_female_max else None,
+            }
+        }
     
     @property
-    def average_lifespan(self):
-        """Средняя продолжительность жизни."""
-        return (self.lifespan_min + self.lifespan_max) / 2
+    def weight_min(self):
+        """Минимальный вес породы (усреднённый по полам)."""
+        weights = [w for w in [self.weight_male_min, self.weight_female_min] if w is not None]
+        return min(weights) if weights else None
+    
+    @property
+    def weight_max(self):
+        """Максимальный вес породы (усреднённый по полам)."""
+        weights = [w for w in [self.weight_male_max, self.weight_female_max] if w is not None]
+        return max(weights) if weights else None
+    
+    @property
+    def min_weight(self):
+        """Алиас для weight_min (для фронтенда)."""
+        return self.weight_min
+    
+    @property
+    def max_weight(self):
+        """Алиас для weight_max (для фронтенда)."""
+        return self.weight_max
+    
+    @property
+    def average_weight(self):
+        """Средний вес породы."""
+        if self.weight_min and self.weight_max:
+            return (float(self.weight_min) + float(self.weight_max)) / 2
+        return None
+    
+    def get_ideal_weight_for_sex(self, sex):
+        """Возвращает средний идеальный вес для пола."""
+        if sex == 'male' and self.weight_male_min and self.weight_male_max:
+            return (float(self.weight_male_min) + float(self.weight_male_max)) / 2
+        elif sex == 'female' and self.weight_female_min and self.weight_female_max:
+            return (float(self.weight_female_min) + float(self.weight_female_max)) / 2
+        # Fallback на мужской вес или None
+        if self.weight_male_min and self.weight_male_max:
+            return (float(self.weight_male_min) + float(self.weight_male_max)) / 2
+        return None
+    
+    def get_autofill_data(self, pet_sex='male'):
+        """
+        Возвращает данные для автозаполнения PetID.
+        Используется триггером автозаполнения при создании питомца.
+        """
+        return {
+            'size_category': self.size_category,
+            'coat_type': self.coat_type,
+            'activity_level': self.base_activity_level,
+            'ideal_weight_kg': self.get_ideal_weight_for_sex(pet_sex),
+        }
 
 
 class BreedHealth(models.Model):
@@ -209,7 +326,7 @@ class BreedHealth(models.Model):
         ('general', 'Общая'),
     ]
     
-    breed = models.ForeignKey(Breed, on_delete=models.CASCADE, related_name='health_risks', verbose_name='Порода')
+    breed = models.ForeignKey(Breed, on_delete=models.CASCADE, related_name='breed_health_records', verbose_name='Порода')
     condition_name = models.CharField(max_length=200, verbose_name='Название заболевания')
     condition_type = models.CharField(max_length=20, choices=CONDITION_TYPE_CHOICES, default='genetic')
     affected_system = models.CharField(max_length=50, choices=AFFECTED_SYSTEM_CHOICES, db_index=True)

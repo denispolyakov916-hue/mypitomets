@@ -1,84 +1,91 @@
 /**
- * Компонент страницы магазина
+ * Оптимизированный компонент страницы магазина
  * 
  * Каталог товаров с расширенной фильтрацией.
- * Функции:
- * - Сетка отображения товаров
- * - Боковая панель с фильтрами
- * - Фильтр по животному, категории, подкатегории
- * - Фильтр по бренду и цене
- * - Поиск по названию
- * - Пагинация
+ * 
+ * Оптимизации:
+ * - Кэширование данных с SWR-like стратегией
+ * - Debouncing фильтров для уменьшения запросов
+ * - Skeleton loading для улучшения perceived performance
+ * - Prefetching следующей страницы
+ * - Мгновенная навигация между закэшированными страницами
+ * - Оптимизация изображений с lazy loading
  */
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, useMemo, memo } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { getProducts } from '../../api/shop'
 import { useCartStore } from '../../store/cartStore'
 import { useAuthStore } from '../../store/authStore'
 import { useToastStore } from '../../store/toastStore'
+import { useProducts } from '../../hooks/useProducts'
 import ProductCard from '../../components/ProductCard'
-import { PageLoader } from '../../components/Loader'
+import { ProductGridSkeleton } from '../../components/ProductCardSkeleton'
 
 /**
- * Компонент боковой панели фильтров
+ * Компонент боковой панели фильтров (мемоизированный)
  */
-function FilterSidebar({ filters, availableFilters, onFilterChange, onReset }) {
+const FilterSidebar = memo(function FilterSidebar({ filters, availableFilters, onFilterChange, onReset, isLoading }) {
   const sidebarRef = useRef(null)
 
   useEffect(() => {
     const handleWheel = (e) => {
-      // Проверяем, находится ли target внутри боковой панели
       if (sidebarRef.current && sidebarRef.current.contains(e.target)) {
         const sidebar = sidebarRef.current
         const isAtTop = sidebar.scrollTop === 0
         const isAtBottom = sidebar.scrollTop + sidebar.clientHeight >= sidebar.scrollHeight
 
-        // Предотвращаем прокрутку страницы только если панель не может прокручиваться дальше
         if ((e.deltaY < 0 && isAtTop) || (e.deltaY > 0 && isAtBottom)) {
-          // Панель достигла конца, позволяем прокрутку страницы
           return
         }
-
-        // Панель может прокручиваться, предотвращаем прокрутку страницы
         e.stopPropagation()
       }
     }
 
-    // Добавляем обработчик на document с passive: false для возможности preventDefault
     document.addEventListener('wheel', handleWheel, { passive: false })
-
-    return () => {
-      document.removeEventListener('wheel', handleWheel)
-    }
+    return () => document.removeEventListener('wheel', handleWheel)
   }, [])
+
   const [priceRange, setPriceRange] = useState({
     min: filters.min_price || '',
     max: filters.max_price || ''
   })
   
+  // Синхронизация priceRange с filters
+  useEffect(() => {
+    setPriceRange({
+      min: filters.min_price || '',
+      max: filters.max_price || ''
+    })
+  }, [filters.min_price, filters.max_price])
+  
   const handlePriceApply = () => {
     onFilterChange('min_price', priceRange.min)
     onFilterChange('max_price', priceRange.max)
   }
+
+  // Проверка активных фильтров для кнопки сброса
+  const hasActiveFilters = filters.animal || filters.pet_id || filters.category || 
+    filters.subcategory || filters.vendor || filters.min_price || 
+    filters.max_price || filters.in_stock || filters.has_discount || filters.search
   
   return (
     <div
       ref={sidebarRef}
-      className="bg-white/95 backdrop-blur-sm rounded-xl shadow-lg border border-white/20 p-5 overflow-y-auto"
+      className={`bg-white/95 backdrop-blur-sm rounded-xl shadow-lg border border-white/20 p-5 overflow-y-auto transition-opacity duration-200 ${isLoading ? 'opacity-70' : 'opacity-100'}`}
       style={{
         overscrollBehavior: 'contain',
-        height: 'calc(100vh - 6rem)' // 100vh минус header + top offset
+        height: 'calc(100vh - 6rem)'
       }}
     >
       <div className="flex justify-between items-center mb-4">
         <h3 className="font-semibold text-gray-900">Фильтры</h3>
         <button
           onClick={onReset}
+          disabled={!hasActiveFilters}
           className={`text-sm transition-colors ${
-            (filters.animal || filters.pet_id || filters.category || filters.subcategory || filters.vendor || filters.min_price || filters.max_price || filters.in_stock || filters.has_discount || filters.search)
+            hasActiveFilters
               ? 'text-purple-600 hover:text-purple-700'
-              : 'text-gray-400 hover:text-gray-600'
+              : 'text-gray-400 cursor-not-allowed'
           }`}
         >
           Очистить фильтры
@@ -97,7 +104,6 @@ function FilterSidebar({ filters, availableFilters, onFilterChange, onReset }) {
           </p>
           <div className="space-y-2">
             {availableFilters.user_pets.map(pet => {
-              // Показываем только питомцев, для которых есть товары (dog, cat)
               const hasProducts = ['dog', 'cat'].includes(pet.species)
               if (!hasProducts) return null
               
@@ -202,7 +208,7 @@ function FilterSidebar({ filters, availableFilters, onFilterChange, onReset }) {
         </div>
       </div>
       
-      {/* Подкатегория (если есть) */}
+      {/* Подкатегория */}
       {availableFilters.subcategories?.length > 0 && (
         <div className="mb-5">
           <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -361,17 +367,16 @@ function FilterSidebar({ filters, availableFilters, onFilterChange, onReset }) {
       </div>
     </div>
   )
-}
+})
 
 /**
- * Компонент пагинации
+ * Компонент пагинации (мемоизированный)
  */
-function Pagination({ pagination, onPageChange }) {
+const Pagination = memo(function Pagination({ pagination, onPageChange, isLoading }) {
   if (!pagination || pagination.total_pages <= 1) return null
   
   const { page, total_pages } = pagination
   
-  // Генерация номеров страниц
   const getPageNumbers = () => {
     const pages = []
     const showPages = 5
@@ -390,10 +395,10 @@ function Pagination({ pagination, onPageChange }) {
   }
   
   return (
-    <div className="flex justify-center items-center gap-1 mt-8 p-4 bg-white/50 backdrop-blur-sm rounded-xl border border-purple-100">
+    <div className={`flex justify-center items-center gap-1 mt-8 p-4 bg-white/50 backdrop-blur-sm rounded-xl border border-purple-100 transition-opacity ${isLoading ? 'opacity-50 pointer-events-none' : ''}`}>
       <button
         onClick={() => onPageChange(page - 1)}
-        disabled={page === 1}
+        disabled={page === 1 || isLoading}
         className="px-3 py-2 rounded-lg bg-white/90 backdrop-blur-sm border border-purple-200 text-gray-700 hover:bg-purple-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
       >
         ←
@@ -403,6 +408,7 @@ function Pagination({ pagination, onPageChange }) {
         <button
           key={num}
           onClick={() => onPageChange(num)}
+          disabled={isLoading}
           className={`px-3 py-2 rounded-lg transition-all duration-200 ${
             num === page
               ? 'bg-gradient-to-r from-purple-500 to-purple-600 text-white shadow-lg'
@@ -415,14 +421,40 @@ function Pagination({ pagination, onPageChange }) {
 
       <button
         onClick={() => onPageChange(page + 1)}
-        disabled={page === total_pages}
+        disabled={page === total_pages || isLoading}
         className="px-3 py-2 rounded-lg bg-white/90 backdrop-blur-sm border border-purple-200 text-gray-700 hover:bg-purple-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
       >
         →
       </button>
     </div>
   )
-}
+})
+
+/**
+ * Оптимизированная сетка товаров
+ */
+const ProductGrid = memo(function ProductGrid({ products, onAddToCart, isLoading }) {
+  if (isLoading && products.length === 0) {
+    return <ProductGridSkeleton count={20} />
+  }
+  
+  return (
+    <div className={`grid responsive-grid gap-4 transition-opacity duration-200 ${isLoading ? 'opacity-60' : 'opacity-100'}`}>
+      {products.map((product, index) => (
+        <div
+          key={product.id}
+          className="animate-scaleIn"
+          style={{ animationDelay: `${Math.min(index * 0.03, 0.3)}s` }}
+        >
+          <ProductCard
+            product={product}
+            onAddToCart={onAddToCart}
+          />
+        </div>
+      ))}
+    </div>
+  )
+})
 
 /**
  * Главный компонент страницы магазина
@@ -434,16 +466,11 @@ function Shop() {
   const { addItem } = useCartStore()
   const { success } = useToastStore()
   
-  // Состояние
-  const [products, setProducts] = useState([])
-  const [pagination, setPagination] = useState(null)
-  const [availableFilters, setAvailableFilters] = useState({})
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState(null)
+  // Поисковая строка (локальное состояние для контролируемого ввода)
   const [searchQuery, setSearchQuery] = useState(searchParams.get('search') || '')
   
   // Фильтры из URL
-  const filters = {
+  const filters = useMemo(() => ({
     animal: searchParams.get('animal') || '',
     pet_id: searchParams.get('pet_id') || '',
     category: searchParams.get('category') || '',
@@ -458,10 +485,23 @@ function Shop() {
     sort_by: searchParams.get('sort_by') || '',
     search: searchParams.get('search') || '',
     page: searchParams.get('page') || '1',
-  }
+  }), [searchParams])
+  
+  // Используем оптимизированный хук для работы с продуктами
+  const {
+    products,
+    pagination,
+    availableFilters,
+    isLoading,
+    isRefetching,
+    error,
+    fetchProducts,
+    fetchImmediate,
+    isCached
+  } = useProducts(filters)
   
   /**
-   * Обновление фильтра
+   * Обновление фильтра с debouncing
    */
   const handleFilterChange = useCallback((name, value) => {
     const newParams = new URLSearchParams(searchParams)
@@ -472,7 +512,7 @@ function Shop() {
       newParams.delete(name)
     }
     
-    // Сбрасываем страницу при изменении фильтров
+    // Сбрасываем страницу при изменении фильтров (кроме page)
     if (name !== 'page') {
       newParams.set('page', '1')
     }
@@ -482,7 +522,7 @@ function Shop() {
       newParams.delete('subcategory')
     }
     
-    // При выборе питомца сбрасываем фильтр по животному (будет установлен автоматически)
+    // При выборе питомца сбрасываем фильтр по животному
     if (name === 'pet_id') {
       newParams.delete('animal')
     }
@@ -512,32 +552,33 @@ function Shop() {
   }, [searchQuery, handleFilterChange])
   
   /**
-   * Загрузка товаров
+   * Смена страницы (мгновенная, без debounce)
+   */
+  const handlePageChange = useCallback((page) => {
+    const newParams = new URLSearchParams(searchParams)
+    newParams.set('page', String(page))
+    setSearchParams(newParams)
+  }, [searchParams, setSearchParams])
+  
+  /**
+   * Эффект загрузки товаров при изменении фильтров
    */
   useEffect(() => {
-    const fetchProducts = async () => {
-      setIsLoading(true)
-      setError(null)
-      
-      try {
-        const response = await getProducts(filters)
-        setProducts(response.products || [])
-        setPagination(response.pagination)
-        setAvailableFilters(response.filters || {})
-      } catch (err) {
-        setError(err.message || 'Не удалось загрузить товары')
-      } finally {
-        setIsLoading(false)
-      }
-    }
+    const page = parseInt(filters.page, 10)
     
-    fetchProducts()
-  }, [searchParams])
+    // Для смены страницы используем мгновенную загрузку (если закэшировано)
+    if (isCached(filters)) {
+      fetchImmediate(filters)
+    } else {
+      // Для фильтров используем debouncing
+      fetchProducts(filters, page === 1 ? 300 : 0)
+    }
+  }, [filters, fetchProducts, fetchImmediate, isCached])
   
   /**
    * Обработчик добавления в корзину
    */
-  const handleAddToCart = async (product, quantity = 1) => {
+  const handleAddToCart = useCallback(async (product, quantity = 1) => {
     if (!isAuthenticated) {
       if (confirm('Для добавления в корзину необходимо войти в аккаунт. Перейти на страницу входа?')) {
         navigate('/login', { state: { from: { pathname: '/shop' } } })
@@ -548,14 +589,33 @@ function Shop() {
     const result = await addItem(product.id, quantity)
     if (result) {
       const itemText = quantity === 1 ? 'Товар' : `${quantity} товара`
-      success(`${itemText} добавлен${quantity > 1 ? 'ы' : ''} в корзину. Перейдите в корзину для оформления заказа.`, 5000)
+      success(`${itemText} добавлен${quantity > 1 ? 'ы' : ''} в корзину.`, 3000)
       return true
     }
     return false
-  }
+  }, [isAuthenticated, navigate, addItem, success])
+  
+  // Определяем, есть ли активный выбор питомца
+  const selectedPet = useMemo(() => {
+    if (filters.pet_id && availableFilters.user_pets) {
+      return availableFilters.user_pets.find(p => p.id === filters.pet_id)
+    }
+    return null
+  }, [filters.pet_id, availableFilters.user_pets])
+  
+  // Индикатор фоновой загрузки
+  const showRefetchIndicator = isRefetching && !isLoading
   
   return (
     <div className="animate-fadeIn relative max-w-none px-4 sm:px-6 lg:px-8 xl:px-12 2xl:px-16">
+      {/* Индикатор фоновой загрузки */}
+      {showRefetchIndicator && (
+        <div className="fixed top-4 right-4 z-50 px-3 py-1.5 bg-purple-100 text-purple-700 rounded-full text-sm flex items-center gap-2 shadow-lg">
+          <div className="w-3 h-3 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />
+          Обновление...
+        </div>
+      )}
+      
       {/* Заголовок и поиск */}
       <div className="mb-6">
         <h1 className="page-title mb-4 lg:ml-80">Магазин товаров для питомцев</h1>
@@ -569,7 +629,11 @@ function Shop() {
             placeholder="Поиск по названию..."
             className="flex-1 px-4 py-2 border border-purple-200 rounded-lg focus:ring-purple-500 focus:border-purple-500 bg-white/90 backdrop-blur-sm"
           />
-          <button type="submit" className="btn-primary px-6 bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700">
+          <button 
+            type="submit" 
+            disabled={isLoading}
+            className="btn-primary px-6 bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 disabled:opacity-50"
+          >
             Найти
           </button>
         </form>
@@ -583,6 +647,7 @@ function Shop() {
             availableFilters={availableFilters}
             onFilterChange={handleFilterChange}
             onReset={handleReset}
+            isLoading={isLoading}
           />
         </aside>
         
@@ -590,7 +655,6 @@ function Shop() {
         <main className="flex-1 min-w-0 animate-fadeIn lg:pl-72">
           {/* Мобильные фильтры */}
           <div className="lg:hidden mb-4">
-            {/* Кнопка сброса фильтров */}
             <div className="mb-3">
               <button
                 onClick={handleReset}
@@ -644,14 +708,11 @@ function Shop() {
             </div>
           </div>
           
-          {/* Состояние загрузки */}
-          {isLoading && <PageLoader />}
-          
           {/* Состояние ошибки */}
           {error && !isLoading && (
             <div className="card text-center py-12">
               <p className="text-red-500 mb-4">{error}</p>
-              <button onClick={() => window.location.reload()} className="btn-primary">
+              <button onClick={() => fetchImmediate(filters)} className="btn-primary">
                 Попробовать снова
               </button>
             </div>
@@ -674,47 +735,37 @@ function Shop() {
           )}
           
           {/* Результаты */}
-          {!isLoading && !error && products.length > 0 && (
+          {(products.length > 0 || isLoading) && !error && (
             <>
               {/* Информация о выбранном питомце */}
-              {filters.pet_id && availableFilters.user_pets && (
-                (() => {
-                  const selectedPet = availableFilters.user_pets.find(p => p.id === filters.pet_id)
-                  return selectedPet ? (
-                    <div className="mb-4 p-3 bg-primary-50 border border-primary-200 rounded-lg">
-                      <p className="text-sm text-primary-800">
-                        <span className="font-medium">⭐ Персональная подборка для {selectedPet.name}</span>
-                        <span className="text-primary-600 ml-2">({selectedPet.species_label})</span>
-                      </p>
-                    </div>
-                  ) : null
-                })()
+              {selectedPet && (
+                <div className="mb-4 p-3 bg-primary-50 border border-primary-200 rounded-lg">
+                  <p className="text-sm text-primary-800">
+                    <span className="font-medium">⭐ Персональная подборка для {selectedPet.name}</span>
+                    <span className="text-primary-600 ml-2">({selectedPet.species_label})</span>
+                  </p>
+                </div>
               )}
               
-              <p className="text-purple-600 mb-4 font-medium">
-                Найдено товаров: {pagination?.total || products.length}
-              </p>
+              {/* Счётчик товаров */}
+              {!isLoading && (
+                <p className="text-purple-600 mb-4 font-medium">
+                  Найдено товаров: {pagination?.total || products.length}
+                </p>
+              )}
               
-              {/* Сетка товаров */}
-              <div className="grid responsive-grid gap-4">
-                {products.map((product, index) => (
-                  <div
-                    key={product.id}
-                    className="animate-scaleIn"
-                    style={{ animationDelay: `${index * 0.1}s` }}
-                  >
-                    <ProductCard
-                      product={product}
-                      onAddToCart={handleAddToCart}
-                    />
-                  </div>
-                ))}
-              </div>
+              {/* Сетка товаров (с skeleton при загрузке) */}
+              <ProductGrid
+                products={products}
+                onAddToCart={handleAddToCart}
+                isLoading={isLoading && products.length === 0}
+              />
               
               {/* Пагинация */}
               <Pagination
                 pagination={pagination}
-                onPageChange={(page) => handleFilterChange('page', String(page))}
+                onPageChange={handlePageChange}
+                isLoading={isLoading}
               />
             </>
           )}

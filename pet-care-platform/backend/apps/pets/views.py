@@ -40,8 +40,10 @@ from core.exceptions import ApiError, safe_api_operation
 from .models import Pet, CalendarEvent
 from .models import Breed
 from .services import pet_service
+from .autofill_service import pet_autofill
+from .calorie_calculator import calorie_calculator
 from .serializers import (
-    PetCreateSerializer, PetUpdateSerializer,
+    PetCreateSerializer, PetUpdateSerializer, PetSerializer,
     BreedSerializer, BreedListSerializer,
     CalendarEventSerializer, CalendarEventListSerializer, CalendarEventCreateSerializer
 )
@@ -70,7 +72,7 @@ class PetListCreateView(BaseListCreateView):
 
     def get_queryset(self):
         """Получить питомцев текущего пользователя."""
-        return Pet.objects.select_related('owner').filter(owner=self.request.user)
+        return Pet.objects.select_related('owner', 'breed').filter(owner=self.request.user)
 
     def filter_queryset(self, queryset, request):
         """Применить фильтры к queryset."""
@@ -81,38 +83,96 @@ class PetListCreateView(BaseListCreateView):
             queryset = queryset.filter(is_draft=False)
         return queryset
 
-    @safe_api_operation("create_pet")
-    def perform_create(self, serializer):
-        """Создание питомца через PetService."""
-        logger.info(f"Raw request data: {self.request.data}")
-        logger.info(f"Raw breed value: {self.request.data.get('breed')} (type: {type(self.request.data.get('breed'))})")
-        logger.info(f"Creating pet with validated data: {serializer.validated_data}")
+    def get(self, request, *args, **kwargs):
+        """Получить список питомцев с полными данными."""
+        try:
+            queryset = self.get_queryset()
+            queryset = self.filter_queryset(queryset, request)
+            
+            # Используем PetSerializer для полного вывода данных
+            serializer = PetSerializer(queryset, many=True)
+            return Response({
+                'pets': serializer.data,
+                'count': len(serializer.data)
+            })
+        except Exception as exc:
+            return self.handle_exception(exc)
 
-        # Конвертация даты из строки
-        data = serializer.validated_data.copy()
-        date_of_birth = data.get('date_of_birth')
-        if date_of_birth and isinstance(date_of_birth, str):
-            from datetime import datetime
-            data['date_of_birth'] = datetime.strptime(date_of_birth, '%Y-%m-%d').date()
+    def post(self, request, *args, **kwargs):
+        """
+        Создание питомца через PetService.
+        После создания вызывается автозаполнение из породы.
+        
+        Возвращает созданного питомца с id для фронтенда.
+        """
+        try:
+            logger.info(f"POST /api/pets/ - request.data: {request.data}")
+            logger.info(f"User: {request.user}, authenticated: {request.user.is_authenticated}")
+            
+            serializer = self.get_serializer(data=request.data)
+            if not serializer.is_valid():
+                logger.error(f"Validation errors: {serializer.errors}")
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            
+            logger.info(f"Creating pet with data: {serializer.validated_data}")
 
-        # Контакты владельца: по умолчанию из User, но можно переопределить
-        if 'owner_phone' not in data or not data['owner_phone']:
-            data['owner_phone'] = self.request.user.phone
-        if 'owner_email' not in data or not data['owner_email']:
-            data['owner_email'] = self.request.user.email
-        if 'owner_city' not in data or not data['owner_city']:
-            data['owner_city'] = self.request.user.city
+            # Конвертация даты из строки
+            data = serializer.validated_data.copy()
+            date_of_birth = data.get('date_of_birth')
+            if date_of_birth and isinstance(date_of_birth, str):
+                data['date_of_birth'] = datetime.strptime(date_of_birth, '%Y-%m-%d').date()
 
-        # Создание питомца через сервис
-        pet = pet_service.create_pet(data, self.request.user)
+            # Удаляем поля, которых нет в модели Pet
+            data.pop('is_draft', None)
+            data.pop('draft_step', None)
 
-        # Обработка фото если загружено
-        if 'photo' in self.request.FILES:
-            pet.photo = self.request.FILES['photo']
-            pet.save(update_fields=['photo'])
+            # Преобразуем breed ID в объект Breed
+            breed_id = data.get('breed')
+            if breed_id:
+                try:
+                    data['breed'] = Breed.objects.get(id=breed_id)
+                except Breed.DoesNotExist:
+                    return Response(
+                        {'error': f'Порода с ID {breed_id} не найдена'},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
 
-        logger.info(f"Питомец создан: {pet.name}, owner={self.request.user.email}")
-        return pet
+            # Создание питомца через сервис
+            pet = pet_service.create_pet(data, request.user)
+
+            # АВТОЗАПОЛНЕНИЕ из породы
+            autofilled = pet_autofill.autofill_from_breed(pet)
+            if autofilled:
+                logger.info(f"Autofilled fields for pet {pet.id}: {autofilled}")
+
+            # Обработка фото если загружено
+            if 'photo' in request.FILES:
+                pet.photo = request.FILES['photo']
+                pet.save(update_fields=['photo'])
+
+            logger.info(f"Питомец создан: {pet.name}, owner={request.user.email}")
+            
+            # Возвращаем данные питомца с ID
+            return Response({
+                'message': 'Питомец успешно создан',
+                'data': {
+                    'id': str(pet.id),
+                    'name': pet.name,
+                    'species': pet.species,
+                    'breed_id': pet.breed_id,
+                    'weight': float(pet.weight) if pet.weight else None,
+                    'date_of_birth': pet.date_of_birth.isoformat() if pet.date_of_birth else None,
+                    'sex': pet.sex,
+                    'is_neutered': pet.is_neutered,
+                    'profile_completeness': pet.profile_completeness,
+                }
+            }, status=status.HTTP_201_CREATED)
+            
+        except Exception as exc:
+            import traceback
+            logger.error(f"Error creating pet: {exc}")
+            logger.error(traceback.format_exc())
+            return self.handle_exception(exc)
 
 
 class PetDetailView(BaseDetailView):
@@ -127,12 +187,18 @@ class PetDetailView(BaseDetailView):
     model = Pet
     serializer_class = PetUpdateSerializer
     permission_classes = [IsAuthenticated]
-    lookup_field = 'pet_id'
+    lookup_field = 'id'
     lookup_url_kwarg = 'pet_id'
+
+    def get_serializer_class(self):
+        """Разные сериализаторы для чтения и записи."""
+        if self.request.method == 'GET':
+            return PetSerializer
+        return PetUpdateSerializer
 
     def get_queryset(self):
         """Получить queryset с оптимизацией."""
-        return Pet.objects.select_related('owner')
+        return Pet.objects.select_related('owner', 'breed')
 
     def check_object_permissions(self, request, obj):
         """Проверить права доступа к питомцу."""
@@ -140,31 +206,48 @@ class PetDetailView(BaseDetailView):
             raise ApiError.forbidden("Нет доступа к этому питомцу")
 
     def perform_update(self, serializer):
-        """Обновление питомца с дополнительной логикой."""
+        """
+        Обновление питомца (Этап 2 - Расширенный профиль).
+        Все поля соответствуют документации Integration_PetID_Breeds_Calculator.md
+        
+        При изменении breed или weight — пересчитываются автозаполняемые поля.
+        """
+        # Полный список полей по документации
         all_fields = [
-            # Основные поля
-            'name', 'species', 'breed', 'date_of_birth', 'weight', 'gender', 'is_neutered',
-            'favorite_foods', 'allergies', 'activity_level',
-            # Расширенные поля для курсов
-            'behavior_type', 'social_level', 'training_experience', 'special_needs', 
-            'preferred_activities', 'behavioral_problems',
-            # Новые поля PetID
-            'size', 'body_type',
-            # Питание
-            'diet_type', 'feeding_frequency', 'sensitive_digestion', 'excluded_ingredients', 
-            'vitamins_supplements',
-            # Поведение
-            'character_traits', 'training_goals',
-            # Здоровье
-            'chronic_conditions', 'vaccinations', 'medications', 'dental_health', 'vet_visits',
-            # Образ жизни
-            'housing_type', 'has_yard', 'other_pets', 'has_children', 'walk_frequency', 'walk_duration',
-            # Контакты владельца
-            'owner_phone', 'owner_email', 'owner_city'
+            # Базовые данные (Этап 1)
+            'name', 'species', 'breed', 'date_of_birth', 'weight', 'sex', 'is_neutered',
+            
+            # Автозаполняемые поля (могут быть переопределены)
+            'size_category', 'coat_type', 'ideal_weight_kg', 'activity_level',
+            
+            # Жильё и условия (Этап 2)
+            'housing_type', 'has_yard', 'yard_size', 'has_children', 'has_other_pets',
+            
+            # Питание (Этап 2)
+            'diet_type', 'feeding_frequency', 'current_food', 'sensitive_digestion',
+            
+            # Репродукция (Этап 2)
+            'neutering_date', 'reproductive_state', 'pregnancy_week', 'litter_size', 'lactation_week',
+            
+            # Поведение (Этап 2)
+            'temperament', 'social_level', 'behavioral_problems',
+            
+            # Здоровье (Этап 2)
+            'chronic_conditions_notes', 'last_vet_visit', 'body_condition_score',
+            
+            # Климат и прогулки
+            'living_climate', 'walk_frequency', 'walk_duration',
+            
+            # Флаги
+            'is_extended_profile', 'is_draft',
         ]
 
         pet = serializer.instance
         update_fields = []
+        
+        # Запоминаем старые значения для проверки изменений
+        old_breed_id = pet.breed_id
+        old_weight = float(pet.weight) if pet.weight else None
         
         for field in all_fields:
             value = serializer.validated_data.get(field)
@@ -183,6 +266,22 @@ class PetDetailView(BaseDetailView):
             raise ApiError.bad_request("Нет данных для обновления")
 
         pet.save(update_fields=update_fields + ['updated_at'])
+        
+        # АВТОЗАПОЛНЕНИЕ: если изменилась порода — пересчитываем всё
+        new_breed_id = pet.breed_id
+        new_weight = float(pet.weight) if pet.weight else None
+        
+        if new_breed_id != old_breed_id:
+            # Изменилась порода — полный пересчёт (только незаполненные поля)
+            autofilled = pet_autofill.autofill_from_breed(pet)
+            if autofilled:
+                logger.info(f"Autofilled on breed change for pet {pet.id}: {autofilled}")
+        elif new_weight != old_weight and not pet.breed_id:
+            # Изменился вес у дворняги — пересчёт размера
+            recalculated = pet_autofill.recalculate_on_weight_change(pet, old_weight)
+            if recalculated:
+                logger.info(f"Size recalculated for pet {pet.id}: {recalculated}")
+        
         logger.info(f"Питомец обновлён: {pet.id}")
         return pet
 
@@ -765,6 +864,95 @@ class CalendarEventUpcomingView(APIView):
         })
 
 
+# =============================================================================
+# КАЛЬКУЛЯТОР КАЛОРИЙ
+# =============================================================================
+
+class PetCalorieCalculatorView(APIView):
+    """
+    Расчёт дневной нормы калорий для питомца.
+    
+    GET /api/pets/{pet_id}/calculate-calories/
+        Возвращает: CalorieResult с RER, MER, рекомендациями по кормлению
+    
+    POST /api/pets/{pet_id}/calculate-calories/
+        Body: {food_calorie_density: 3500}  — опционально
+        Возвращает: CalorieResult с расчётом для указанного корма
+    """
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request, pet_id):
+        """Расчёт калорий для питомца."""
+        try:
+            pet = Pet.objects.select_related('breed').get(id=pet_id, owner=request.user)
+        except Pet.DoesNotExist:
+            raise ApiError.not_found("Питомец не найден")
+        
+        result = calorie_calculator.calculate_daily_calories(pet)
+        
+        return Response({
+            'success': True,
+            'pet_id': str(pet.id),
+            'pet_name': pet.name,
+            'result': result.to_dict()
+        })
+    
+    def post(self, request, pet_id):
+        """Расчёт калорий с учётом калорийности конкретного корма."""
+        try:
+            pet = Pet.objects.select_related('breed').get(id=pet_id, owner=request.user)
+        except Pet.DoesNotExist:
+            raise ApiError.not_found("Питомец не найден")
+        
+        food_calorie_density = request.data.get('food_calorie_density')
+        days = request.data.get('days', 7)
+        
+        # Базовый расчёт
+        result = calorie_calculator.calculate_daily_calories(pet)
+        
+        # План кормления если указана калорийность корма
+        feeding_plan = None
+        if food_calorie_density:
+            feeding_plan = calorie_calculator.calculate_feeding_plan(
+                pet, 
+                food_calorie_density=float(food_calorie_density),
+                days=int(days)
+            )
+        
+        return Response({
+            'success': True,
+            'pet_id': str(pet.id),
+            'pet_name': pet.name,
+            'result': result.to_dict(),
+            'feeding_plan': feeding_plan,
+        })
+
+
+class PetAutofillSuggestionsView(APIView):
+    """
+    Предварительный просмотр автозаполнения перед сохранением.
+    
+    GET /api/pets/{pet_id}/autofill-suggestions/
+        Возвращает: предложенные значения из породы
+    """
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request, pet_id):
+        """Получить предложения автозаполнения."""
+        try:
+            pet = Pet.objects.select_related('breed').get(id=pet_id, owner=request.user)
+        except Pet.DoesNotExist:
+            raise ApiError.not_found("Питомец не найден")
+        
+        suggestions = pet_autofill.get_autofill_suggestions(pet)
+        
+        return Response({
+            'success': True,
+            'pet_id': str(pet.id),
+            'suggestions': suggestions
+        })
+
+
 class CalendarEventTypesView(APIView):
     """
     Получение доступных типов событий.
@@ -792,6 +980,7 @@ class CalendarEventTypesView(APIView):
         })
 
 
+
 # =============================================================================
 # ЭКСПОРТЫ
 # =============================================================================
@@ -808,6 +997,9 @@ __all__ = [
     'BreedSerializer',
     # Analysis
     'PetAnalysisView',
+    # Калькулятор и автозаполнение
+    'PetCalorieCalculatorView',
+    'PetAutofillSuggestionsView',
     # Calendar
     'CalendarEventListView',
     'CalendarEventDetailView',

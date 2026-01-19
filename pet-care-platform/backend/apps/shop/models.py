@@ -28,6 +28,8 @@ class Product(models.Model):
     
     CATEGORY_CHOICES = [
         ('food', 'Корм'),
+        ('treats', 'Лакомства'),
+        ('supplements', 'Добавки и витамины'),
         ('pharmacy', 'Ветаптека'),
         ('ammunition', 'Амуниция'),
         ('care', 'Средства по уходу'),
@@ -45,6 +47,20 @@ class Product(models.Model):
         ('holistic', 'Холистик'),
         ('diet', 'Диетический'),
         ('hypoallergenic', 'Гипоаллергенный'),
+        # Лакомства
+        ('dental', 'Для зубов'),
+        ('training', 'Для дрессировки'),
+        ('functional', 'Функциональные'),
+        ('natural', 'Натуральные'),
+        # Добавки
+        ('vitamins', 'Витамины'),
+        ('omega3', 'Омега-3'),
+        ('calcium', 'Кальций'),
+        ('joint', 'Для суставов'),
+        ('senior', 'Для пожилых'),
+        ('immune', 'Иммунитет'),
+        ('skin', 'Кожа и шерсть'),
+        ('digestion', 'Пищеварение'),
         # Аптека
         ('antiparasite', 'Средства от паразитов'),
         # Амуниция
@@ -136,6 +152,114 @@ class Product(models.Model):
         help_text='Дополнительные параметры товара в формате словаря'
     )
     
+    # === ПОЛЯ ДЛЯ ПОДБОРА КОРМА ===
+    
+    # Калорийность (ккал на 100г) — для расчёта порций
+    kcal_per_100g = models.DecimalField(
+        max_digits=6, 
+        decimal_places=1,
+        null=True, 
+        blank=True,
+        verbose_name='Калорийность (ккал/100г)',
+        help_text='Калорийность продукта для расчёта порций. Обязательно для кормов.'
+    )
+    
+    # БЖУ (белки, жиры, углеводы в %)
+    nutrition_protein = models.DecimalField(
+        max_digits=5, decimal_places=2, null=True, blank=True,
+        verbose_name='Белок (%)', help_text='Содержание белка в %'
+    )
+    nutrition_fat = models.DecimalField(
+        max_digits=5, decimal_places=2, null=True, blank=True,
+        verbose_name='Жир (%)', help_text='Содержание жира в %'
+    )
+    nutrition_fiber = models.DecimalField(
+        max_digits=5, decimal_places=2, null=True, blank=True,
+        verbose_name='Клетчатка (%)', help_text='Содержание клетчатки в %'
+    )
+    nutrition_ash = models.DecimalField(
+        max_digits=5, decimal_places=2, null=True, blank=True,
+        verbose_name='Зола (%)', help_text='Содержание золы в %'
+    )
+    nutrition_moisture = models.DecimalField(
+        max_digits=5, decimal_places=2, null=True, blank=True,
+        verbose_name='Влажность (%)', help_text='Содержание влаги в %'
+    )
+    
+    # Минералы (в %)
+    nutrition_calcium = models.DecimalField(
+        max_digits=5, decimal_places=3, null=True, blank=True,
+        verbose_name='Кальций (%)', help_text='Содержание кальция в %'
+    )
+    nutrition_phosphorus = models.DecimalField(
+        max_digits=5, decimal_places=3, null=True, blank=True,
+        verbose_name='Фосфор (%)', help_text='Содержание фосфора в %'
+    )
+    nutrition_omega3 = models.DecimalField(
+        max_digits=5, decimal_places=2, null=True, blank=True,
+        verbose_name='Омега-3 (%)', help_text='Содержание омега-3 жирных кислот в %'
+    )
+    nutrition_omega6 = models.DecimalField(
+        max_digits=5, decimal_places=2, null=True, blank=True,
+        verbose_name='Омега-6 (%)', help_text='Содержание омега-6 жирных кислот в %'
+    )
+    
+    # Возрастные ограничения (в месяцах)
+    min_age_months = models.PositiveIntegerField(
+        null=True, blank=True,
+        verbose_name='Мин. возраст (мес.)', 
+        help_text='Минимальный возраст питомца в месяцах'
+    )
+    max_age_months = models.PositiveIntegerField(
+        null=True, blank=True,
+        verbose_name='Макс. возраст (мес.)', 
+        help_text='Максимальный возраст питомца в месяцах. NULL = без ограничений'
+    )
+    
+    # Размер питомца
+    SIZE_TARGETS = [
+        ('all', 'Все размеры'),
+        ('toy', 'Той'),
+        ('small', 'Маленький'),
+        ('medium', 'Средний'),
+        ('large', 'Крупный'),
+        ('giant', 'Гигантский'),
+    ]
+    target_size = models.CharField(
+        max_length=10, choices=SIZE_TARGETS, 
+        default='all', verbose_name='Целевой размер',
+        help_text='Для какого размера питомца предназначен корм'
+    )
+    
+    # Группа совместимости (для мультипитания)
+    COMPATIBILITY_GROUPS = [
+        ('regular', 'Обычный'),
+        ('hypoallergenic', 'Гипоаллергенный'),
+        ('therapeutic_renal', 'Лечебный: почки'),
+        ('therapeutic_diabetic', 'Лечебный: диабет'),
+        ('therapeutic_digestive', 'Лечебный: ЖКТ'),
+        ('therapeutic_weight', 'Лечебный: вес'),
+        ('therapeutic_urinary', 'Лечебный: МКБ'),
+    ]
+    compatibility_group = models.CharField(
+        max_length=30, choices=COMPATIBILITY_GROUPS, 
+        default='regular', verbose_name='Группа совместимости',
+        help_text='Группа для определения совместимости с другими кормами'
+    )
+    
+    # Приоритет бренда для рекомендаций (0-10)
+    brand_priority = models.PositiveSmallIntegerField(
+        default=0, verbose_name='Приоритет бренда',
+        help_text='Приоритет бренда для рекомендаций (0-10)'
+    )
+    
+    # Аллергены в составе (для фильтрации)
+    allergens = models.JSONField(
+        default=list, blank=True,
+        verbose_name='Аллергены',
+        help_text='Список аллергенов в составе: ["chicken", "beef", "fish", ...]'
+    )
+    
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
@@ -148,10 +272,19 @@ class Product(models.Model):
         verbose_name_plural = 'Товары'
         ordering = ['name']
         indexes = [
+            # Составные индексы для основных фильтров каталога
             models.Index(fields=['animal', 'category']),
             models.Index(fields=['animal', 'category', 'subcategory']),
             models.Index(fields=['vendor']),
             models.Index(fields=['price']),
+            # Индексы для оптимизации фильтрации доступных товаров
+            models.Index(fields=['price', 'stock_count'], name='idx_products_available'),
+            models.Index(fields=['in_stock', 'price'], name='idx_products_in_stock'),
+            # Индексы для сортировки
+            models.Index(fields=['order_count'], name='idx_products_popularity'),
+            models.Index(fields=['-id'], name='idx_products_newest'),
+            # Индекс для скидок
+            models.Index(fields=['discount_percent'], name='idx_products_discount'),
         ]
     
     def __str__(self):

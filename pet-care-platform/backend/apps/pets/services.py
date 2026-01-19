@@ -88,46 +88,50 @@ ACTIVITY_LEVEL_KEYWORDS = {
 class PetContext:
     """
     Контекст персонализации для одного питомца.
+    Соответствует документации Integration_PetID_Breeds_Calculator.md
     
     Attributes:
         pet_id: UUID питомца
-        name: Имя питомца
+        name: Имя питомца  
         species: Вид (dog, cat)
-        breed: Порода
+        breed_id: ID породы
+        breed_name: Название породы
         age: Возраст в годах
+        age_months: Возраст в месяцах
         age_category: Категория возраста (puppy/kitten, adult, senior)
         weight: Вес в кг
-        gender: Пол
+        sex: Пол (male/female)
         is_neutered: Стерилизован/кастрирован
-        favorite_foods: Список любимых продуктов
-        allergies: Список аллергенов
-        health_issues: Проблемы здоровья
+        size_category: Категория размера (toy/small/medium/large/giant)
         activity_level: Уровень активности
-        behavior_type: Тип поведения (для курсов)
+        temperament: Темперамент
         social_level: Уровень социализации
-        training_experience: Опыт дрессировки
-        behavioral_problems: Поведенческие проблемы
+        behavioral_problems: Поведенческие проблемы (массив кодов)
         profile_completeness: Процент заполненности профиля
+        diet_type: Тип питания
+        body_condition_score: Оценка упитанности (BCS)
     """
     pet_id: str
     name: str
     species: str
-    breed: Optional[str] = None
+    breed_id: Optional[int] = None
+    breed_name: Optional[str] = None
     age: Optional[int] = None
+    age_months: Optional[int] = None
     age_category: Optional[str] = None
     weight: Optional[float] = None
-    gender: Optional[str] = None
+    sex: Optional[str] = None
     is_neutered: bool = False
-    favorite_foods: List[str] = field(default_factory=list)
-    allergies: List[str] = field(default_factory=list)
-    health_issues: List[str] = field(default_factory=list)
-    activity_level: str = 'medium'
-    # Новые поля PetID для персонализации курсов
-    behavior_type: Optional[str] = None
+    size_category: Optional[str] = None
+    activity_level: str = 'moderate'
+    # Поведение
+    temperament: Optional[str] = None
     social_level: Optional[str] = None
-    training_experience: Optional[str] = None
     behavioral_problems: List[str] = field(default_factory=list)
     profile_completeness: int = 0
+    # Питание
+    diet_type: Optional[str] = None
+    body_condition_score: Optional[str] = None
     # Данные породы (из справочника)
     breed_energy_level: Optional[str] = None
     breed_trainability: Optional[str] = None
@@ -156,17 +160,38 @@ class PetContext:
         return 'adult'
     
     @property
-    def size_category(self) -> Optional[str]:
-        """Категория размера для собак."""
-        if self.species != 'dog' or self.weight is None:
+    def calculated_size_category(self) -> Optional[str]:
+        """
+        Рассчитанная категория размера по весу.
+        Возвращает сохранённый size_category или рассчитывает по весу.
+        """
+        # Если есть сохранённый размер — возвращаем его
+        if self.size_category:
+            return self.size_category
+        
+        # Рассчитываем по весу
+        if self.weight is None:
             return None
         
-        if self.weight < 10:
-            return 'small'
-        elif self.weight < 25:
-            return 'medium'
-        else:
-            return 'large'
+        if self.species == 'dog':
+            if self.weight < 5:
+                return 'toy'
+            elif self.weight < 10:
+                return 'small'
+            elif self.weight < 25:
+                return 'medium'
+            elif self.weight < 45:
+                return 'large'
+            else:
+                return 'giant'
+        elif self.species == 'cat':
+            if self.weight < 4:
+                return 'small'
+            elif self.weight < 6:
+                return 'medium'
+            else:
+                return 'large'
+        return None
     
     @property
     def animal_type(self) -> str:
@@ -182,9 +207,7 @@ class PersonalizationContext:
     Attributes:
         user_id: UUID пользователя
         pets: Список контекстов питомцев
-        animal_types: Множество видов животных
-        all_allergies: Объединённый список аллергенов
-        all_favorites: Объединённый список любимых продуктов
+        animal_types: Множество видов животных (dog, cat)
         has_senior_pets: Есть ли пожилые питомцы
         has_young_pets: Есть ли молодые питомцы
     """
@@ -193,24 +216,8 @@ class PersonalizationContext:
     
     @property
     def animal_types(self) -> Set[str]:
-        """Все виды животных пользователя."""
+        """Все виды животных пользователя (dog/cat)."""
         return {pet.animal_type for pet in self.pets}
-    
-    @property
-    def all_allergies(self) -> Set[str]:
-        """Все аллергены всех питомцев."""
-        allergies = set()
-        for pet in self.pets:
-            allergies.update(pet.allergies)
-        return allergies
-    
-    @property
-    def all_favorites(self) -> Set[str]:
-        """Все любимые продукты всех питомцев."""
-        favorites = set()
-        for pet in self.pets:
-            favorites.update(pet.favorite_foods)
-        return favorites
     
     @property
     def has_senior_pets(self) -> bool:
@@ -264,42 +271,40 @@ class PersonalizationService:
         if not user or not user.is_authenticated:
             return context
         
-        pets = Pet.objects.filter(owner=user)
+        pets = Pet.objects.select_related('breed').filter(owner=user)
         
         for pet in pets:
-            # Получаем данные породы из справочника
+            # Получаем данные породы из связанной записи
             breed_data = {}
             if pet.breed and pet.species in ['dog', 'cat']:
-                try:
-                    breed = Breed.objects.get(name__iexact=pet.breed, species=pet.species)
-                    breed_data = {
-                        'breed_energy_level': breed.energy_level,
-                        'breed_trainability': breed.trainability,
-                        'breed_health_risks': breed.genetic_risks or [],
-                    }
-                except Breed.DoesNotExist:
-                    pass
+                breed_data = {
+                    'breed_energy_level': pet.breed.energy_level,
+                    'breed_trainability': pet.breed.trainability,
+                    'breed_health_risks': pet.breed.genetic_risks or [],
+                }
             
             pet_context = PetContext(
                 pet_id=str(pet.id),
                 name=pet.name,
                 species=pet.species,
-                breed=pet.breed,
+                breed_id=pet.breed_id,
+                breed_name=pet.breed.name if pet.breed else None,
                 age=pet.age,
+                age_months=pet.age_months,
                 age_category=pet.age_category,
                 weight=float(pet.weight) if pet.weight else None,
-                gender=pet.gender,
+                sex=getattr(pet, 'sex', None),
                 is_neutered=getattr(pet, 'is_neutered', False),
-                favorite_foods=pet.favorite_foods or [],
-                allergies=pet.allergies or [],
-                health_issues=getattr(pet, 'health_issues', []) or [],
-                activity_level=getattr(pet, 'activity_level', 'medium') or 'medium',
-                # Новые поля PetID
-                behavior_type=getattr(pet, 'behavior_type', None),
+                size_category=getattr(pet, 'size_category', None),
+                activity_level=getattr(pet, 'activity_level', 'moderate') or 'moderate',
+                # Поведение
+                temperament=getattr(pet, 'temperament', None),
                 social_level=getattr(pet, 'social_level', None),
-                training_experience=getattr(pet, 'training_experience', None),
                 behavioral_problems=getattr(pet, 'behavioral_problems', []) or [],
                 profile_completeness=pet.profile_completeness,
+                # Питание
+                diet_type=getattr(pet, 'diet_type', None),
+                body_condition_score=getattr(pet, 'body_condition_score', None),
                 # Данные породы
                 **breed_data
             )
@@ -322,20 +327,25 @@ class PersonalizationService:
         from .models import Pet
         
         try:
-            pet = Pet.objects.get(id=pet_id, owner=user)
+            pet = Pet.objects.select_related('breed').get(id=pet_id, owner=user)
             return PetContext(
                 pet_id=str(pet.id),
                 name=pet.name,
                 species=pet.species,
-                breed=pet.breed,
+                breed_id=pet.breed_id,
+                breed_name=pet.breed.name if pet.breed else None,
                 age=pet.age,
+                age_months=pet.age_months,
+                age_category=pet.age_category,
                 weight=float(pet.weight) if pet.weight else None,
-                gender=pet.gender,
+                sex=getattr(pet, 'sex', None),
                 is_neutered=getattr(pet, 'is_neutered', False),
-                favorite_foods=pet.favorite_foods or [],
-                allergies=pet.allergies or [],
-                health_issues=getattr(pet, 'health_issues', []) or [],
-                activity_level=getattr(pet, 'activity_level', 'medium') or 'medium'
+                size_category=getattr(pet, 'size_category', None),
+                activity_level=getattr(pet, 'activity_level', 'moderate') or 'moderate',
+                temperament=getattr(pet, 'temperament', None),
+                social_level=getattr(pet, 'social_level', None),
+                behavioral_problems=getattr(pet, 'behavioral_problems', []) or [],
+                profile_completeness=pet.profile_completeness,
             )
         except Pet.DoesNotExist:
             return None
@@ -345,6 +355,10 @@ class PersonalizationService:
                        pet_id: Optional[str] = None) -> QuerySet:
         """
         Фильтрация товаров на основе контекста персонализации.
+        
+        Аллергии и исключения теперь хранятся в M2M таблицах:
+        - PetAllergy (связь Pet → Allergy)
+        - PetFoodExclusion (связь Pet → excluded_item)
         
         Args:
             queryset: QuerySet товаров
@@ -366,25 +380,14 @@ class PersonalizationService:
                     Q(animal=pet.animal_type) | Q(animal='all')
                 )
                 
-                # Исключаем товары с аллергенами
-                for allergen in pet.allergies:
-                    queryset = queryset.exclude(
-                        Q(name__icontains=allergen) | 
-                        Q(description__icontains=allergen)
-                    )
+                # TODO: Исключение товаров с аллергенами через M2M PetAllergy
+                # Это будет реализовано после интеграции PetAllergy с Product.ingredients
         else:
             # Фильтруем по всем видам животных пользователя
             animal_types = list(context.animal_types)
             if animal_types:
                 queryset = queryset.filter(
                     Q(animal__in=animal_types) | Q(animal='all')
-                )
-            
-            # Исключаем товары с любыми аллергенами
-            for allergen in context.all_allergies:
-                queryset = queryset.exclude(
-                    Q(name__icontains=allergen) | 
-                    Q(description__icontains=allergen)
                 )
         
         return queryset
@@ -429,6 +432,12 @@ class PersonalizationService:
         """
         Получить персонализированные рекомендации товаров.
         
+        Учитывает:
+        - Вид животного (dog/cat)
+        - Категорию размера (для подбора порций)
+        - Возрастную категорию (puppy/kitten/adult/senior)
+        - Уровень активности
+        
         Args:
             user: Объект пользователя
             limit: Максимальное количество рекомендаций
@@ -453,31 +462,9 @@ class PersonalizationService:
                 in_stock=True
             ).exclude(id__in=seen_ids)
             
-            # Исключаем аллергены
-            for allergen in pet.allergies:
-                products = products.exclude(
-                    Q(name__icontains=allergen) | 
-                    Q(description__icontains=allergen)
-                )
+            # TODO: Исключение товаров с аллергенами через M2M PetAllergy
             
-            # 1. Рекомендации по любимым продуктам
-            for favorite in pet.favorite_foods[:3]:
-                matching = products.filter(
-                    Q(name__icontains=favorite) | 
-                    Q(description__icontains=favorite)
-                )[:2]
-                
-                for product in matching:
-                    if product.id not in seen_ids:
-                        recommendations.append({
-                            'product': product.to_dict(),
-                            'reason': f'Подходит для {pet.name} — {favorite}',
-                            'pet_id': pet.pet_id,
-                            'pet_name': pet.name
-                        })
-                        seen_ids.add(product.id)
-            
-            # 2. Рекомендации по возрасту
+            # 1. Рекомендации по возрасту
             life_stage_keywords = {
                 'puppy': ['щенок', 'puppy', 'junior', 'starter'],
                 'kitten': ['котенок', 'kitten', 'junior', 'starter'],
@@ -490,7 +477,7 @@ class PersonalizationService:
                 for kw in keywords:
                     q_filter |= Q(name__icontains=kw) | Q(category_name__icontains=kw)
                 
-                age_products = products.filter(q_filter).exclude(id__in=seen_ids)[:2]
+                age_products = products.filter(q_filter).exclude(id__in=seen_ids)[:3]
                 
                 for product in age_products:
                     recommendations.append({
@@ -501,13 +488,40 @@ class PersonalizationService:
                     })
                     seen_ids.add(product.id)
             
+            # 2. Рекомендации по размеру (для собак)
+            size_keywords = {
+                'toy': ['mini', 'мини', 'toy', 'x-small'],
+                'small': ['small', 'маленьк'],
+                'medium': ['medium', 'средн'],
+                'large': ['large', 'крупн'],
+                'giant': ['giant', 'гигант', 'xxl'],
+            }
+            
+            if pet.species == 'dog' and pet.calculated_size_category in size_keywords:
+                keywords = size_keywords[pet.calculated_size_category]
+                q_filter = Q()
+                for kw in keywords:
+                    q_filter |= Q(name__icontains=kw)
+                
+                size_products = products.filter(q_filter).exclude(id__in=seen_ids)[:2]
+                
+                for product in size_products:
+                    recommendations.append({
+                        'product': product.to_dict(),
+                        'reason': f'Подходит по размеру для {pet.name}',
+                        'pet_id': pet.pet_id,
+                        'pet_name': pet.name
+                    })
+                    seen_ids.add(product.id)
+            
             # 3. Популярные товары для вида
             popular = products.exclude(id__in=seen_ids).order_by('-order_count')[:2]
             
+            species_display = {'dog': 'собак', 'cat': 'кошек'}.get(pet.species, pet.species)
             for product in popular:
                 recommendations.append({
                     'product': product.to_dict(),
-                    'reason': f'Популярно для {pet.get_species_display() if hasattr(pet, "get_species_display") else pet.species}',
+                    'reason': f'Популярно для {species_display}',
                     'pet_id': pet.pet_id,
                     'pet_name': pet.name
                 })
@@ -808,13 +822,12 @@ class PetService(BaseCRUDService):
             return self.model.objects.filter(owner=user)
         return super().get_queryset(user)
 
-    def create_pet(self, data, user, validator=None):
+    def create_pet(self, data, user):
         """
         Создать питомца с дополнительной валидацией.
 
         @param data: Данные питомца
         @param user: Владелец
-        @param validator: Дополнительная валидация
         @return: Созданный питомец
         """
         # Валидация обязательных полей
@@ -828,8 +841,14 @@ class PetService(BaseCRUDService):
         if pets_count >= 50:  # Максимум 50 питомцев на пользователя
             raise ValueError("Превышен лимит количества питомцев")
 
+        # Добавляем owner к данным
+        data['owner'] = user
+        
         # Создание через базовый сервис
-        return self.create(data, user, validator)
+        success, result = self.create(data, user)
+        if not success:
+            raise ValueError(result)
+        return result
 
     def update_pet_profile(self, pet_id, data, user):
         """

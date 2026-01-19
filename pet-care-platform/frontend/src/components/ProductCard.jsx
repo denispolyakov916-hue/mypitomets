@@ -1,8 +1,14 @@
 /**
- * Компонент карточки товара
+ * Оптимизированный компонент карточки товара
  *
  * Отображает информацию о товаре для каталога магазина.
  * Автоматически определяет, добавлен ли товар в корзину.
+ *
+ * Оптимизации:
+ * - Мемоизация компонента для предотвращения лишних ререндеров
+ * - Native lazy loading изображений (loading="lazy")
+ * - Intersection Observer для загрузки изображений в viewport
+ * - Оптимистичные обновления корзины
  *
  * Поведение кнопки:
  * - Товар НЕ в корзине: Синяя кнопка "Купить" (добавляет 1 единицу)
@@ -19,7 +25,7 @@
  *   isLoading: Состояние загрузки для добавления в корзину
  */
 
-import { useState } from 'react'
+import { useState, useCallback, memo, useRef, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import PropTypes from 'prop-types'
 import { ButtonLoader } from './Loader'
@@ -49,23 +55,91 @@ const categoryLabels = {
 }
 
 /**
- * Форматирование цены с символом рубля
+ * Форматирование цены с символом рубля (мемоизировано)
  * @param {number} price - Цена в рублях
  * @returns {string} Форматированная строка цены
  */
-const formatPrice = (price) => {
-  return new Intl.NumberFormat('ru-RU', {
-    style: 'currency',
-    currency: 'RUB',
-    maximumFractionDigits: 0
-  }).format(price)
-}
+const priceFormatter = new Intl.NumberFormat('ru-RU', {
+  style: 'currency',
+  currency: 'RUB',
+  maximumFractionDigits: 0
+})
+
+const formatPrice = (price) => priceFormatter.format(price)
 
 /**
- * Компонент ProductCard
+ * Компонент оптимизированного изображения товара
+ * Использует Intersection Observer для ленивой загрузки
+ */
+const ProductImage = memo(function ProductImage({ src, alt, animal }) {
+  const [isLoaded, setIsLoaded] = useState(false)
+  const [hasError, setHasError] = useState(false)
+  const [isInView, setIsInView] = useState(false)
+  const imgRef = useRef(null)
+  
+  // Intersection Observer для загрузки изображений только в viewport
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setIsInView(true)
+          observer.disconnect()
+        }
+      },
+      {
+        rootMargin: '200px', // Начинаем загрузку за 200px до появления в viewport
+        threshold: 0
+      }
+    )
+    
+    if (imgRef.current) {
+      observer.observe(imgRef.current)
+    }
+    
+    return () => observer.disconnect()
+  }, [])
+  
+  const animalEmoji = animal === 'dog' ? '🐕' : animal === 'cat' ? '🐱' : '🐾'
+  
+  return (
+    <div ref={imgRef} className="w-full h-full relative">
+      {/* Placeholder пока изображение не загружено */}
+      {(!isLoaded || !isInView) && !hasError && (
+        <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-purple-50 to-orange-50">
+          <span className="text-6xl opacity-40 animate-pulse">{animalEmoji}</span>
+        </div>
+      )}
+      
+      {/* Изображение */}
+      {isInView && src && !hasError && (
+        <img
+          src={src}
+          alt={alt}
+          className={`w-full h-full object-contain p-2 transition-opacity duration-300 ${
+            isLoaded ? 'opacity-100' : 'opacity-0'
+          }`}
+          loading="lazy"
+          decoding="async"
+          onLoad={() => setIsLoaded(true)}
+          onError={() => setHasError(true)}
+        />
+      )}
+      
+      {/* Fallback при ошибке */}
+      {(hasError || !src) && (
+        <div className="absolute inset-0 flex items-center justify-center">
+          <span className="text-6xl opacity-40">{animalEmoji}</span>
+        </div>
+      )}
+    </div>
+  )
+})
+
+/**
+ * Компонент ProductCard (мемоизированный)
  *
  * Отображает товар с:
- * - Изображением товара
+ * - Изображением товара (lazy loading)
  * - Названием и брендом
  * - Ценой
  * - Бейджами категорий
@@ -73,11 +147,10 @@ const formatPrice = (price) => {
  *   - Товар не в корзине: Синяя кнопка "Купить"
  *   - Товар в корзине: Серый счетчик с +/- + зеленая кнопка "В корзину"
  */
-function ProductCard({ product, onAddToCart, isLoading = false }) {
+const ProductCard = memo(function ProductCard({ product, onAddToCart, isLoading = false }) {
   const [isAdding, setIsAdding] = useState(false)
-  const [imageError, setImageError] = useState(false)
   const navigate = useNavigate()
-  const { getItemInCart, addItem, updateQuantity } = useCartStore()
+  const { getItemInCart, updateQuantity } = useCartStore()
 
   // Проверяем, есть ли товар уже в корзине
   const cartItem = getItemInCart(product.id)
@@ -87,23 +160,21 @@ function ProductCard({ product, onAddToCart, isLoading = false }) {
   /**
    * Обработчик клика по добавлению в корзину (добавляет 1 товар)
    */
-  const handleAddToCart = async () => {
+  const handleAddToCart = useCallback(async () => {
     if (isAdding || isLoading) return
 
     setIsAdding(true)
     try {
-      const result = await onAddToCart?.(product, 1)
-      // После успешного добавления кнопка изменится на "В корзину"
-      // Навигация происходит только при клике на зелёную кнопку
+      await onAddToCart?.(product, 1)
     } finally {
       setIsAdding(false)
     }
-  }
+  }, [isAdding, isLoading, onAddToCart, product])
 
   /**
    * Обработчик изменения количества товара в корзине
    */
-  const handleQuantityChange = async (delta) => {
+  const handleQuantityChange = useCallback(async (delta) => {
     const newQuantity = cartQuantity + delta
 
     // Проверяем ограничения
@@ -116,37 +187,27 @@ function ProductCard({ product, onAddToCart, isLoading = false }) {
 
     // Используем updateQuantity для изменения количества (включая удаление при 0)
     await updateQuantity(product.id, newQuantity)
-  }
+  }, [cartQuantity, product.stock_count, product.id, updateQuantity])
 
   /**
    * Обработчик клика по кнопке "К корзине"
    */
-  const handleGoToCart = () => {
+  const handleGoToCart = useCallback(() => {
     navigate('/cart')
-  }
+  }, [navigate])
   
   // Главное изображение товара
   const mainImage = product.main_image || (product.images && product.images[0])
   
   return (
     <div className="group bg-white/95 backdrop-blur-sm rounded-xl shadow-sm hover:shadow-lg border border-white/20 transition-all duration-300 flex flex-col h-full overflow-hidden hover:scale-[1.02]">
-      {/* Изображение товара - кликабельное */}
+      {/* Изображение товара - кликабельное с оптимизированной загрузкой */}
       <Link to={`/shop/products/${product.id}`} className="aspect-square bg-gradient-to-br from-purple-50 to-orange-50 relative overflow-hidden block">
-        {mainImage && !imageError ? (
-          <img
-            src={mainImage}
-            alt={product.name}
-            className="w-full h-full object-contain p-2"
-            loading="lazy"
-            onError={() => setImageError(true)}
-          />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center">
-            <span className="text-6xl opacity-40">
-              {product.animal === 'dog' ? '🐕' : product.animal === 'cat' ? '🐱' : '🐾'}
-            </span>
-          </div>
-        )}
+        <ProductImage 
+          src={mainImage} 
+          alt={product.name} 
+          animal={product.animal} 
+        />
 
         {/* Бейдж скидки */}
         {product.discount_percent > 0 && (
@@ -312,7 +373,7 @@ function ProductCard({ product, onAddToCart, isLoading = false }) {
       </div>
     </div>
   )
-}
+})
 
 ProductCard.propTypes = {
   product: ProductPropTypes.isRequired,

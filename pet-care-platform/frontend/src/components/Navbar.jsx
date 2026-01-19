@@ -35,8 +35,8 @@ const XIcon = () => (
 );
 
 const services = [
-
-  { id: 'pet-id', label: 'PetID' },  // ← Добавить
+  { id: 'pet-id', label: 'PetID' },
+  { id: 'food-recommendation', label: 'Подбор корма' },
   { id: 'shop', label: 'Магазин' },
   { id: 'courses', label: 'Курсы' },
   { id: 'health-diary', label: 'Дневник здоровья' },

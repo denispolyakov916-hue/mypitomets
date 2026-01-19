@@ -65,6 +65,8 @@ const Orders = lazy(() => import('./pages/Orders/Orders'))
 const OrderDetail = lazy(() => import('./pages/Orders/OrderDetail'))
 const PetIdPage = lazy(() => import('./pages/PetId/PetIdPage'))
 const PetDetailPage = lazy(() => import('./pages/PetId/PetDetailPage'))
+const PetEditPage = lazy(() => import('./pages/PetId/PetEditPage'))
+const FoodRecommendationPage = lazy(() => import('./pages/FoodRecommendation/FoodRecommendationPage'))
 
 // Ленивая загрузка тяжёлых страниц обучения
 const CourseLearningPage = lazy(() => import('./pages/Training/Learning/CourseLearningPage'))
@@ -168,11 +170,9 @@ function App() {
 
               {/* Защищённые маршруты - Требуют аутентификации */}
               <Route element={<PrivateRoute />}>
-                {/* Питомцы - редиректы на Pet ID */}
+                {/* Питомцы - редиректы на Pet ID (для старых URL) */}
                 <Route path="/pets" element={<Navigate to="/pet-id" replace />} />
                 <Route path="/pets/new" element={<Navigate to="/pet-id" replace />} />
-                <Route path="/pets/:id" element={<Navigate to="/pet-id" replace />} />
-                <Route path="/pets/:id/edit" element={<Navigate to="/pet-id" replace />} />
 
                 {/* Pet ID (ленивая загрузка) */}
                 <Route
@@ -189,6 +189,36 @@ function App() {
                   element={
                     <Suspense fallback={<Loader />}>
                       <PetDetailPage />
+                    </Suspense>
+                  }
+                />
+                
+                {/* Редактирование питомца (Этап 2 - расширенный профиль) */}
+                <Route
+                  path="/pets/:petId/edit"
+                  element={
+                    <Suspense fallback={<Loader />}>
+                      <PetEditPage />
+                    </Suspense>
+                  }
+                />
+                
+                {/* Анализ питомца */}
+                <Route
+                  path="/pets/:petId/analysis"
+                  element={
+                    <Suspense fallback={<Loader />}>
+                      <PetDetailPage />
+                    </Suspense>
+                  }
+                />
+                
+                {/* Подбор корма */}
+                <Route
+                  path="/food-recommendation"
+                  element={
+                    <Suspense fallback={<Loader />}>
+                      <FoodRecommendationPage />
                     </Suspense>
                   }
                 />

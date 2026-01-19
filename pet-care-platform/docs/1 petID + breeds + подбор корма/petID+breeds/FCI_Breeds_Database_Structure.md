@@ -1,4 +1,4 @@
-# Структура базы данных пород собак и кошек по FCI и CFA
+# Структура базы данных пород собак и кошек по FCI и WCF
 
 ## Оглавление
 
@@ -46,10 +46,10 @@
 | `country_origin` | String(100) | NOT NULL | Официальный стандарт FCI породы | Страна происхождения |
 | `purpose` | String(100) | NOT NULL, CHECK (purpose IN ('Hunting', 'Herding', 'Guarding', 'Companion', 'Working', 'Sporting', 'Sled', 'Terrier', 'Scent Hound', 'Sighthound', 'Pointing', 'Retrieving', 'Water Dog', 'Toy', 'Primitive')) | Официальный стандарт FCI породы | Предназначение породы по классификации FCI (Hunting=охота, Herding=пастушья, Guarding=охрана, Companion=компаньон, Working=рабочий, Sporting=спортивный, Sled=ездовой, Terrier=терьер, Scent Hound=гончий, Sighthound=борзой, Pointing=легавая, Retrieving=ретривер, Water Dog=водяной, Toy=декоративный, Primitive=примитивный) |
 | `short_description` | Text | NOT NULL | Официальный стандарт FCI породы | Краткое описание породы |
-| `coat_type` | String(50) | NOT NULL, CHECK (coat_type IN ('Short/Smooth', 'Medium', 'Long', 'Wire/Wiry', 'Curly', 'Wavy', 'Silky', 'Double Coat', 'Single Coat', 'Hairless', 'Combination')) | Официальный стандарт FCI породы | Тип шерсти по классификации груминга (Short/Smooth=короткая, Medium=средняя, Long=длинная, Wire/Wiry=жесткая, Curly=кудрявая, Wavy=волнистая, Silky=шелковистая, Double Coat=двойная, Single Coat=одинарная, Hairless=без шерсти, Combination=комбинированная) |
-| `size_category` | String(20) | NOT NULL, CHECK (size_category IN ('Toy', 'Small', 'Medium', 'Large', 'Giant')) | Расчет на основе веса взрослой особи по стандарту FCI | Базовая категория размера породы (Toy=до 3кг, Small=3-10кг, Medium=10-25кг, Large=25-45кг, Giant=45кг+).|
+| `coat_type` | String(50) | NOT NULL, CHECK (coat_type IN ('hairless', 'short', 'medium', 'long', 'double', 'wire', 'curly')) | Официальный стандарт FCI породы | Тип шерсти (УНИФИЦИРОВАНО: hairless=бесшёрстный, short=короткая, medium=средняя, long=длинная, double=двойная с подшёрстком, wire=жёсткая, curly=курчавая) |
+| `size_category` | String(20) | NOT NULL, CHECK (size_category IN ('toy', 'small', 'medium', 'large', 'giant')) | Расчет на основе веса взрослой особи по стандарту FCI | Базовая категория размера породы (УНИФИЦИРОВАНО: toy=до 5кг, small=5-10кг, medium=10-25кг, large=25-45кг, giant=45кг+)|
 | `average_lifespan` | Integer | NOT NULL, CHECK (average_lifespan BETWEEN 5 AND 18) | Ветеринарные исследования, базы данных (AKC, KC, Purina, страховые компании). FCI не предоставляет официальные данные о продолжительности жизни | Средняя продолжительность жизни (лет).|
-| `activity_level` | String(20) | NOT NULL, CHECK (activity_level IN ('Low', 'Moderate', 'High', 'Very High')) | Экспертная оценка на основе стандартов FCI | Базовый уровень активности породы. Реальная активность рассчитывается с учетом возраста|
+| `base_activity_level` | String(20) | NOT NULL, CHECK (activity_level IN ('very_low', 'low', 'moderate', 'high', 'very_high')) | Экспертная оценка на основе стандартов FCI | Базовый уровень активности породы (УНИФИЦИРОВАНО: 5 уровней). Реальная активность рассчитывается с учетом возраста|
 | `trainability` | String(20) | NOT NULL, CHECK (trainability IN ('Easy', 'Moderate', 'Difficult')) | Экспертная оценка на основе характера породы | Обучаемость (Easy, Moderate, Difficult) |
 | `created_at` | DateTime | NOT NULL, DEFAULT CURRENT_TIMESTAMP | Генерируется БД | Дата создания записи |
 | `updated_at` | DateTime | NOT NULL, DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP | Генерируется БД | Дата последнего обновления |
@@ -68,7 +68,7 @@
 | `height_max_cm` | Decimal(5,1) | NOT NULL, CHECK (height_max_cm > height_min_cm AND height_max_cm < 200) | Официальный стандарт FCI породы | Максимальный рост (см) |
 | `weight_min_kg` | Decimal(5,2) | NOT NULL, CHECK (weight_min_kg > 0 AND weight_min_kg < 200) | Официальный стандарт FCI породы | Минимальный вес (кг) |
 | `weight_max_kg` | Decimal(5,2) | NOT NULL, CHECK (weight_max_kg > weight_min_kg AND weight_max_kg < 200) | Официальный стандарт FCI породы | Максимальный вес (кг) |
-| `activity_level` | String(20) | NOT NULL, CHECK (activity_level IN ('Low', 'Moderate', 'High', 'Very High')) | Расчет на основе возраста и базового уровня породы | Уровень активности с учетом возраста (Low=низкий, Moderate=умеренный, High=высокий, Very High=очень высокий) |
+| `activity_level` | String(20) | NOT NULL, CHECK (activity_level IN ('very_low', 'low', 'moderate', 'high', 'very_high')) | Расчет на основе возраста и базового уровня породы | Уровень активности с учетом возраста (УНИФИЦИРОВАНО: very_low, low, moderate, high, very_high) |
 
 ### 2.3 Связь с заболеваниями: `breed_health_issues`
 

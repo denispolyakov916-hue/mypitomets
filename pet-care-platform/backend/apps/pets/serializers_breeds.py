@@ -42,8 +42,13 @@ class BreedCareSerializer(serializers.ModelSerializer):
 class BreedListSerializer(serializers.ModelSerializer):
     """Сериализатор для списка пород (краткий)"""
 
+    weight_min = serializers.FloatField(read_only=True)
+    weight_max = serializers.FloatField(read_only=True)
+    min_weight = serializers.FloatField(read_only=True)
+    max_weight = serializers.FloatField(read_only=True)
     average_weight = serializers.FloatField(read_only=True)
     average_lifespan = serializers.SerializerMethodField()
+    energy_level = serializers.CharField(source='base_activity_level', read_only=True)
 
     def get_average_lifespan(self, obj):
         return obj.average_lifespan
@@ -53,19 +58,22 @@ class BreedListSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'species', 'name', 'name_en', 'slug',
             'short_description', 'size_category', 'weight_min', 'weight_max',
-            'average_weight', 'average_lifespan', 'energy_level', 'trainability',
-            'health_risk_level', 'brachycephalic', 'apartment_friendly'
+            'min_weight', 'max_weight', 'average_weight', 'average_lifespan', 
+            'energy_level', 'trainability',
         ]
 
 
 class BreedDetailSerializer(serializers.ModelSerializer):
     """Сериализатор для детальной информации о породе"""
 
+    weight_min = serializers.FloatField(read_only=True)
+    weight_max = serializers.FloatField(read_only=True)
+    min_weight = serializers.FloatField(read_only=True)
+    max_weight = serializers.FloatField(read_only=True)
     average_weight = serializers.FloatField(read_only=True)
     average_lifespan = serializers.SerializerMethodField()
-    health_risks = BreedHealthSerializer(many=True, read_only=True)
-    nutrition = BreedNutritionSerializer(read_only=True)
-    care_procedures = BreedCareSerializer(many=True, read_only=True)
+    energy_level = serializers.CharField(source='base_activity_level', read_only=True)
+    health_risks_data = serializers.JSONField(source='health_risks', read_only=True)
 
     def get_average_lifespan(self, obj):
         return obj.average_lifespan
@@ -74,28 +82,20 @@ class BreedDetailSerializer(serializers.ModelSerializer):
         model = Breed
         fields = [
             'id', 'species', 'name', 'name_en', 'slug',
-            'description', 'short_description',
+            'short_description',
             
             # Размеры
-            'size_category', 'weight_min', 'weight_max', 'average_weight',
-            'height_min', 'height_max', 'lifespan_min', 'lifespan_max', 'average_lifespan',
+            'size_category', 'weight_min', 'weight_max', 'min_weight', 'max_weight', 
+            'average_weight', 'average_lifespan',
             
             # Поведение
-            'energy_level', 'trainability', 'intelligence',
-            'friendliness_to_children', 'friendliness_to_pets', 'friendliness_to_strangers',
-            'independence',
+            'energy_level', 'trainability', 'base_activity_level',
             
             # Уход
-            'grooming_frequency', 'shedding_level', 'coat_type',
+            'grooming_needs', 'coat_type',
             
             # Здоровье
-            'health_risk_level', 'hypoallergenic', 'brachycephalic',
-            
-            # Другое
-            'apartment_friendly', 'good_for_novice',
-            
-            # Связанные данные
-            'health_risks', 'nutrition', 'care_procedures'
+            'health_risks_data',
         ]
 
 

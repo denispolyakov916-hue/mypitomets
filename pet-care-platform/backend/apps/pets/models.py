@@ -19,22 +19,24 @@ class Pet(models.Model):
     
     Хранит всю базовую информацию о питомце, которая используется
     во всех модулях платформы (рекомендации магазина, события календаря и т.д.)
+    
+    Принципы работы (по документации Integration_PetID_Breeds_Calculator.md):
+    1. Минимальный ввод — пользователь заполняет только базовые поля (Этап 1)
+    2. Автозаполнение — сервис дополняет поля из данных о породе
+    3. Редактирование — пользователь может уточнить любое автозаполненное поле (Этап 2)
+    4. Расчёт всегда — калькулятор работает с любым объёмом данных
     """
+    
+    # === ENUM-ТИПЫ ПО ДОКУМЕНТАЦИИ ===
     
     SPECIES_CHOICES = [
         ('dog', 'Собака'),
         ('cat', 'Кошка'),
-        ('bird', 'Птица'),
-        ('rodent', 'Грызун'),
-        ('fish', 'Рыбка'),
-        ('reptile', 'Рептилия'),
-        ('other', 'Другое'),
     ]
     
-    GENDER_CHOICES = [
+    SEX_CHOICES = [
         ('male', 'Самец'),
         ('female', 'Самка'),
-        ('unknown', 'Не указан'),
     ]
     
     id = models.CharField(
@@ -92,12 +94,13 @@ class Pet(models.Model):
         help_text="Вес в кг для рекомендаций по питанию"
     )
     
-    # Дополнительные поля базового паспорта
-    gender = models.CharField(
+    # Дополнительные поля базового паспорта (Этап 1)
+    sex = models.CharField(
         max_length=10,
-        choices=GENDER_CHOICES,
-        default='unknown',
-        verbose_name='Пол'
+        choices=SEX_CHOICES,
+        default='male',
+        verbose_name='Пол',
+        help_text='Пол питомца: male / female'
     )
     is_neutered = models.BooleanField(default=False, verbose_name='Кастрирован/Стерилизован')
     photo = models.ImageField(
@@ -107,43 +110,112 @@ class Pet(models.Model):
         verbose_name='Фото'
     )
     
-    # Вкусовые предпочтения и аллергии
-    favorite_foods = models.JSONField(
-        default=list,
-        blank=True,
-        verbose_name='Любимые продукты/корма',
-        help_text='Список названий продуктов или кормов, которые любит питомец',
-        validators=[validate_string_list]
-    )
-    allergies = models.JSONField(
-        default=list,
-        blank=True,
-        verbose_name='Аллергии',
-        help_text='Список продуктов или ингредиентов, на которые у питомца аллергия',
-        validators=[validate_string_list]
-    )
-    
-    # Проблемы здоровья для персонализированных рекомендаций
-    health_issues = models.JSONField(
-        default=list,
-        blank=True,
-        verbose_name='Проблемы здоровья',
-        help_text='Список проблем здоровья питомца (лишний вес, чувствительное пищеварение и т.д.)',
-        validators=[validate_string_list]
-    )
+    # === СВЯЗИ M2M (через отдельные таблицы в nutrition_models.py) ===
+    # Аллергии: PetAllergy (pet_id → allergy_id)
+    # Заболевания: PetHealthCondition (pet_id → condition_id)
+    # Исключения продуктов: PetFoodExclusion (pet_id → excluded_item)
     
     # Активность питомца
     ACTIVITY_LEVELS = [
+        ('very_low', 'Очень низкая'),
         ('low', 'Низкая'),
-        ('medium', 'Средняя'),
+        ('moderate', 'Умеренная'),
         ('high', 'Высокая'),
+        ('very_high', 'Очень высокая'),
     ]
     activity_level = models.CharField(
-        max_length=10,
+        max_length=15,
         choices=ACTIVITY_LEVELS,
-        default='medium',
+        default='moderate',
         verbose_name='Уровень активности',
         help_text='Уровень физической активности питомца'
+    )
+    
+    # ===== ПОЛЯ ДЛЯ КАЛЬКУЛЯТОРА ПИТАНИЯ =====
+    COAT_TYPE_CHOICES = [
+        ('hairless', 'Бесшёрстный'),
+        ('short', 'Короткая'),
+        ('medium', 'Средняя'),
+        ('long', 'Длинная'),
+        ('double', 'Двойная (с подшёрстком)'),
+        ('wire', 'Жёсткая'),
+        ('curly', 'Курчавая'),
+    ]
+    coat_type = models.CharField(
+        max_length=15,
+        choices=COAT_TYPE_CHOICES,
+        blank=True,
+        null=True,
+        verbose_name='Тип шерсти',
+        help_text='Автозаполняется из породы или указывается вручную для дворняг'
+    )
+    
+    ideal_weight_kg = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        verbose_name='Идеальный вес (кг)',
+        help_text='Рассчитывается из породы или указывается вручную'
+    )
+    
+    # === РЕПРОДУКЦИЯ (Этап 2, условно) ===
+    
+    neutering_date = models.DateField(
+        null=True,
+        blank=True,
+        verbose_name='Дата кастрации/стерилизации',
+        help_text='Дата операции (если is_neutered=True)'
+    )
+    
+    REPRODUCTIVE_STATE_CHOICES = [
+        ('none', 'Обычное состояние'),
+        ('heat', 'Течка'),
+        ('pregnant', 'Беременность'),
+        ('lactating', 'Лактация'),
+    ]
+    reproductive_state = models.CharField(
+        max_length=15,
+        choices=REPRODUCTIVE_STATE_CHOICES,
+        default='none',
+        verbose_name='Репродуктивное состояние',
+        help_text='Только для некастрированных самок'
+    )
+    
+    pregnancy_week = models.PositiveSmallIntegerField(
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(1), MaxValueValidator(9)],
+        verbose_name='Неделя беременности',
+        help_text='Неделя беременности (1-9), если reproductive_state=pregnant'
+    )
+    
+    litter_size = models.PositiveSmallIntegerField(
+        null=True,
+        blank=True,
+        verbose_name='Количество детёнышей',
+        help_text='Для расчёта калорий при лактации'
+    )
+    
+    lactation_week = models.PositiveSmallIntegerField(
+        null=True,
+        blank=True,
+        verbose_name='Неделя лактации',
+        help_text='Неделя лактации, если reproductive_state=lactating'
+    )
+    
+    CLIMATE_CHOICES = [
+        ('hot', 'Жаркий'),
+        ('warm', 'Тёплый'),
+        ('cool', 'Прохладный'),
+        ('cold', 'Холодный'),
+        ('very_cold', 'Очень холодный'),
+    ]
+    living_climate = models.CharField(
+        max_length=15,
+        choices=CLIMATE_CHOICES,
+        default='warm',
+        verbose_name='Климат проживания'
     )
 
     # ===== ПЕРСОНАЛИЗАЦИЯ ДЛЯ КУРСОВ ОБУЧЕНИЯ =====
@@ -166,10 +238,10 @@ class Pet(models.Model):
     )
 
     SOCIAL_LEVELS = [
-        ('home_only', 'Только домашний'),
-        ('street', 'Уличный'),
-        ('social', 'Социальный'),
-        ('mixed', 'Смешанный'),
+        ('antisocial', 'Избегает контактов'),
+        ('reserved', 'Сдержанный'),
+        ('friendly', 'Дружелюбный'),
+        ('very_social', 'Очень общительный'),
     ]
     social_level = models.CharField(
         max_length=20,
@@ -177,72 +249,67 @@ class Pet(models.Model):
         blank=True,
         null=True,
         verbose_name='Уровень социализации',
-        help_text='Уровень социализации питомца (домашний/уличный/социальный)'
+        help_text='Уровень социализации питомца (Этап 2)'
     )
-
-    # Расширенные поля для глубокой персонализации (опциональные)
-    TRAINING_EXPERIENCE_LEVELS = [
-        ('none', 'Без опыта'),
-        ('basic', 'Базовый'),
-        ('intermediate', 'Средний'),
-        ('advanced', 'Продвинутый'),
-        ('professional', 'Профессиональный'),
+    
+    # Темперамент по документации
+    TEMPERAMENT_CHOICES = [
+        ('calm', 'Спокойный'),
+        ('balanced', 'Уравновешенный'),
+        ('active', 'Активный'),
+        ('hyperactive', 'Гиперактивный'),
     ]
-    training_experience = models.CharField(
+    temperament = models.CharField(
         max_length=20,
-        choices=TRAINING_EXPERIENCE_LEVELS,
+        choices=TEMPERAMENT_CHOICES,
         blank=True,
         null=True,
-        verbose_name='Опыт дрессировки',
-        help_text='Уровень опыта дрессировки питомца'
+        verbose_name='Темперамент',
+        help_text='Темперамент питомца (Этап 2)'
     )
 
-    special_needs = models.JSONField(
-        default=list,
-        blank=True,
-        verbose_name='Особые потребности',
-        help_text='Особые потребности питомца (инвалидность, хронические заболевания и т.д.)',
-        validators=[validate_string_list]
-    )
-
-    preferred_activities = models.JSONField(
-        default=list,
-        blank=True,
-        verbose_name='Предпочитаемые активности',
-        help_text='Виды активностей, которые предпочитает питомец',
-        validators=[validate_string_list]
-    )
-
+    # === ПОВЕДЕНЧЕСКИЕ ПРОБЛЕМЫ (ENUM массив по документации) ===
+    # Хранится как JSONField с валидацией по allowed values
+    BEHAVIORAL_PROBLEM_CHOICES = [
+        ('aggression_dogs', 'Агрессия к собакам'),
+        ('aggression_people', 'Агрессия к людям'),
+        ('aggression_cats', 'Агрессия к кошкам'),
+        ('separation_anxiety', 'Тревога разлуки'),
+        ('excessive_barking', 'Чрезмерный лай'),
+        ('destructive_behavior', 'Деструктивное поведение'),
+        ('fear_phobias', 'Страхи/фобии'),
+        ('marking_territory', 'Метки территории'),
+        ('excessive_licking', 'Чрезмерное вылизывание'),
+        ('food_aggression', 'Агрессия за еду'),
+        ('leash_pulling', 'Тянет поводок'),
+        ('jumping_on_people', 'Прыгает на людей'),
+        ('none', 'Нет проблем'),
+    ]
     behavioral_problems = models.JSONField(
         default=list,
         blank=True,
         verbose_name='Поведенческие проблемы',
-        help_text='Поведенческие проблемы питомца для персонализированных курсов коррекции',
-        validators=[validate_string_list]
+        help_text='Массив кодов проблем из BEHAVIORAL_PROBLEM_CHOICES'
     )
 
-    # ===== НОВЫЕ ПОЛЯ PETID =====
+    # ===== АВТОЗАПОЛНЯЕМЫЕ ПОЛЯ (Триггер/Сервис) =====
 
-    # Физические параметры
-    SIZE_CHOICES = [
-        ('small', 'Маленький (до 10 кг)'),
+    # Категория размера — по документации 5 значений
+    SIZE_CATEGORY_CHOICES = [
+        ('toy', 'Той (до 5 кг)'),
+        ('small', 'Маленький (5-10 кг)'),
         ('medium', 'Средний (10-25 кг)'),
-        ('large', 'Крупный (более 25 кг)'),
+        ('large', 'Крупный (25-45 кг)'),
+        ('giant', 'Гигантский (более 45 кг)'),
     ]
-    size = models.CharField(max_length=20, choices=SIZE_CHOICES, blank=True, null=True, verbose_name='Размер')
-
-    BODY_TYPE_CHOICES = [
-        ('slim', 'Недостаточный вес'),
-        ('normal', 'Идеальный вес'),
-        ('overweight', 'Избыточный вес'),
-        ('obese', 'Ожирение'),
-    ]
-    body_type = models.CharField(max_length=20, choices=BODY_TYPE_CHOICES, blank=True, null=True, verbose_name='Тип телосложения')
-
-    # Контакты владельца (переопределяемые)
-    owner_phone = models.CharField(max_length=20, blank=True, verbose_name='Телефон владельца')
-    owner_email = models.EmailField(blank=True, verbose_name='Email владельца')
-    owner_city = models.CharField(max_length=100, blank=True, verbose_name='Город владельца')
+    size_category = models.CharField(
+        max_length=20, 
+        choices=SIZE_CATEGORY_CHOICES, 
+        blank=True, 
+        null=True, 
+        verbose_name='Категория размера',
+        help_text='Автозаполняется из породы или рассчитывается по весу/возрасту'
+    )
 
     # ===== РАСШИРЕННОЕ ПИТАНИЕ =====
     DIET_TYPE_CHOICES = [
@@ -263,80 +330,54 @@ class Pet(models.Model):
     feeding_frequency = models.CharField(max_length=10, choices=FEEDING_FREQUENCY_CHOICES, blank=True, null=True, verbose_name='Частота кормления')
 
     sensitive_digestion = models.BooleanField(default=False, verbose_name='Чувствительное пищеварение')
-    excluded_ingredients = models.JSONField(
-        default=list,
+    # Исключаемые ингредиенты → M2M таблица PetFoodExclusion
+    
+    # Текущий корм (структура по документации)
+    current_food = models.JSONField(
+        default=dict,
         blank=True,
-        verbose_name='Исключаемые ингредиенты',
-        validators=[validate_string_list]
-    )
-    vitamins_supplements = models.JSONField(
-        default=list,
-        blank=True,
-        verbose_name='Добавки и витамины',
-        help_text='Список витаминов и добавок из справочника',
-        validators=[validate_string_list]
+        verbose_name='Текущий корм',
+        help_text='{"source": "catalog"|"other", "food_id": "uuid", "brand_name": "", "product_name": "", "daily_amount_grams": 250}'
     )
 
-    # ===== РАСШИРЕННОЕ ПОВЕДЕНИЕ =====
-    character_traits = models.JSONField(
-        default=list,
+    # ===== ЗДОРОВЬЕ (Этап 2) =====
+    # Хронические заболевания → M2M таблица PetHealthCondition
+    chronic_conditions_notes = models.TextField(
         blank=True,
-        verbose_name='Черты характера',
-        validators=[validate_string_list]
+        verbose_name='Дополнительные заметки по здоровью',
+        help_text='Свободный текст для дополнительных заметок врача/владельца'
     )
-    training_goals = models.JSONField(
-        default=list,
-        blank=True,
-        verbose_name='Цели дрессировки',
-        help_text='Список целей дрессировки из предопределённого списка',
-        validators=[validate_string_list]
-    )
+    # last_vet_visit, body_condition_score и др. → секция "ДАННЫЕ ВЕТЕРИНАРНОГО ОСМОТРА"
+    # Вакцинации и препараты — Phase 2 (extended-features-specification.md)
 
-    # ===== РАСШИРЕННОЕ ЗДОРОВЬЕ =====
-    chronic_conditions = models.JSONField(
-        default=list,
-        blank=True,
-        verbose_name='Хронические заболевания',
-        help_text='Список хронических заболеваний из справочника',
-        validators=[validate_string_list]
-    )
-    vaccinations = models.JSONField(
-        default=list,
-        blank=True,
-        verbose_name='Вакцинации',
-        help_text='Список вакцинаций с датами и следующими датами'
-    )
-    medications = models.JSONField(
-        default=list,
-        blank=True,
-        verbose_name='Принимаемые препараты',
-        help_text='Список препаратов с дозировками и частотой приёма'
-    )
-
-    DENTAL_HEALTH_CHOICES = [
-        ('excellent', 'Отличное'),
-        ('good', 'Хорошее'),
-        ('fair', 'Удовлетворительное'),
-        ('needs_attention', 'Требует лечения'),
-    ]
-    dental_health = models.CharField(max_length=20, choices=DENTAL_HEALTH_CHOICES, blank=True, null=True, verbose_name='Состояние зубов')
-
-    # ===== ОБРАЗ ЖИЗНИ =====
+    # ===== ЖИЛЬЁ И УСЛОВИЯ (Этап 2) =====
     HOUSING_TYPE_CHOICES = [
         ('apartment', 'Квартира'),
         ('house', 'Частный дом'),
-        ('cottage', 'Дача/Коттедж'),
-        ('other', 'Другое'),
+        ('farm', 'Ферма/сельская местность'),
+        ('outdoor', 'Вольерное содержание'),
     ]
     housing_type = models.CharField(max_length=20, choices=HOUSING_TYPE_CHOICES, blank=True, null=True, verbose_name='Тип жилья')
-    has_yard = models.BooleanField(default=False, verbose_name='Есть двор')
-    other_pets = models.JSONField(
-        default=list,
-        blank=True,
-        verbose_name='Другие питомцы дома',
-        help_text='Список других питомцев с типом и кличкой'
+    
+    has_yard = models.BooleanField(default=False, verbose_name='Есть двор', help_text='Зависит от housing_type')
+    
+    YARD_SIZE_CHOICES = [
+        ('small', 'Маленький (до 100 м²)'),
+        ('medium', 'Средний (100-500 м²)'),
+        ('large', 'Большой (более 500 м²)'),
+    ]
+    yard_size = models.CharField(
+        max_length=20, 
+        choices=YARD_SIZE_CHOICES, 
+        blank=True, 
+        null=True, 
+        verbose_name='Размер двора',
+        help_text='Отображается только если has_yard=True'
     )
-    has_children = models.BooleanField(default=False, verbose_name='В доме есть дети')
+    
+    has_children = models.BooleanField(default=False, verbose_name='Есть дети в доме')
+    has_other_pets = models.BooleanField(default=False, verbose_name='Есть другие питомцы')
+    # Детали других питомцев хранятся в M2M таблице pet_other_pets
     
     WALK_FREQUENCY_CHOICES = [
         ('none', 'Не гуляет'),
@@ -507,13 +548,24 @@ class Pet(models.Model):
                 return 'adult'
     
     @property
-    def calculated_size(self):
-        """Автоматический расчёт размера по весу."""
+    def calculated_size_category(self):
+        """
+        Автоматический расчёт категории размера по весу и возрасту.
+        По документации: toy (<5кг), small (5-10), medium (10-25), large (25-45), giant (>45)
+        """
         if not self.weight:
-            return self.size  # Возвращаем заданный размер
+            return self.size_category  # Возвращаем заданную категорию
         
         weight = float(self.weight)
+        age_months = self.age_months or 24  # По умолчанию взрослый
+        
         if self.species == 'dog':
+            # Для щенков корректируем ожидаемый взрослый размер
+            if age_months < 12:
+                # Грубая оценка: щенок в 6 мес = ~60% взрослого веса
+                estimated_adult_weight = weight * (24 / max(age_months, 3))
+                weight = estimated_adult_weight
+            
             if weight < 5:
                 return 'toy'
             elif weight < 10:
@@ -525,77 +577,71 @@ class Pet(models.Model):
             else:
                 return 'giant'
         elif self.species == 'cat':
-            if weight < 3:
+            # Кошки: small (<4кг), medium (4-6кг), large (>6кг)
+            if weight < 4:
                 return 'small'
             elif weight < 6:
                 return 'medium'
             else:
                 return 'large'
-        return self.size
+        return self.size_category
     
     @property
     def profile_completeness(self):
-        """Процент заполненности профиля (0-100)."""
-        # Обязательные поля (базовый профиль) - 70% веса
+        """
+        Процент заполненности профиля (0-100).
+        Базовый профиль (Этап 1) = 60%, Расширенный профиль (Этап 2) = 40%
+        """
+        # Обязательные поля базового профиля (Этап 1)
         required_fields = [
             self.name,
             self.species,
             self.date_of_birth,
-            self.breed,
+            self.breed_id is not None,  # Связь с породой
             self.weight,
-            self.gender != 'unknown',
+            self.sex,  # Обязательное поле
+            self.is_neutered is not None,
         ]
         
-        # Поля здоровья и питания - важны для персонализации
-        health_fields = [
-            bool(self.health_issues),
-            bool(self.allergies) or bool(self.excluded_ingredients),
+        # Автозаполняемые поля (из породы или расчёт)
+        autofill_fields = [
+            self.size_category,
+            self.coat_type,
             self.activity_level,
         ]
         
-        # Поведенческие поля - важны для курсов
-        if self.species in ['dog', 'cat']:
-            behavior_fields = [
-                bool(self.behavioral_problems) or self.behavior_type,
-            ]
-        else:
-            behavior_fields = []
-        
-        # Опциональные поля - дают дополнительные баллы
-        optional_fields = [
-            self.is_neutered is not None,
-            bool(self.photo),
-            self.behavior_type,
-            self.social_level,
-            self.training_experience,
-            self.diet_type,
+        # Расширенные поля (Этап 2) - опциональные
+        extended_fields = [
             self.housing_type,
-            bool(self.owner_phone) or bool(self.owner_email),
+            self.diet_type,
+            self.temperament,
+            self.social_level,
+            bool(self.photo),
         ]
         
-        # Расчёт
+        # Расчёт заполненности
         required_filled = sum(1 for f in required_fields if f)
-        health_filled = sum(1 for f in health_fields if f)
-        behavior_filled = sum(1 for f in behavior_fields if f)
-        optional_filled = sum(1 for f in optional_fields if f)
+        autofill_filled = sum(1 for f in autofill_fields if f)
+        extended_filled = sum(1 for f in extended_fields if f)
         
         # Веса категорий
-        required_weight = 50  # 50% за базовые поля
-        health_weight = 20    # 20% за здоровье
-        behavior_weight = 10  # 10% за поведение
-        optional_weight = 20  # 20% за опциональные
+        required_weight = 60  # 60% за базовый профиль (Этап 1)
+        autofill_weight = 20  # 20% за автозаполняемые поля
+        extended_weight = 20  # 20% за расширенный профиль (Этап 2)
         
         required_score = (required_filled / max(len(required_fields), 1)) * required_weight
-        health_score = (health_filled / max(len(health_fields), 1)) * health_weight
-        behavior_score = (behavior_filled / max(len(behavior_fields), 1)) * behavior_weight if behavior_fields else behavior_weight
-        optional_score = (optional_filled / max(len(optional_fields), 1)) * optional_weight
+        autofill_score = (autofill_filled / max(len(autofill_fields), 1)) * autofill_weight
+        extended_score = (extended_filled / max(len(extended_fields), 1)) * extended_weight
         
-        total = required_score + health_score + behavior_score + optional_score
+        total = required_score + autofill_score + extended_score
         return min(100, int(total))
     
     def to_dict(self):
-        """Сериализация для API."""
-        # Обработка date_of_birth - может быть date объектом или строкой
+        """
+        Сериализация для API.
+        Структура соответствует документации Integration_PetID_Breeds_Calculator.md
+        """
+        # Обработка date_of_birth
         dob = None
         if self.date_of_birth:
             if hasattr(self.date_of_birth, 'isoformat'):
@@ -603,7 +649,7 @@ class Pet(models.Model):
             else:
                 dob = str(self.date_of_birth)
         
-        # Обработка фото - возвращаем URL если есть
+        # Обработка фото
         photo_url = None
         if self.photo:
             try:
@@ -612,73 +658,77 @@ class Pet(models.Model):
                 photo_url = None
         
         return {
+            # === ИДЕНТИФИКАЦИЯ ===
             'id': str(self.id),
-            'owner_id': str(self.owner_id),
+            'user_id': str(self.owner_id),  # По документации user_id
             'name': self.name,
             'species': self.species,
-            'breed': self.breed if self.breed else None,
-            'date_of_birth': dob,
-            'weight': float(self.weight) if self.weight is not None else None,
-            'gender': self.gender,
-            'is_neutered': self.is_neutered,
+            'breed_id': self.breed_id,
+            'breed_name': self.breed.name if self.breed else None,
             'photo': photo_url,
-            'favorite_foods': self.favorite_foods if self.favorite_foods else [],
-            'allergies': self.allergies if self.allergies else [],
-            'health_issues': self.health_issues if self.health_issues else [],
+            
+            # === БАЗОВЫЕ ДАННЫЕ (Этап 1) ===
+            'date_of_birth': dob,
+            'sex': self.sex,
+            'weight_kg': float(self.weight) if self.weight is not None else None,
+            'is_neutered': self.is_neutered,
+            
+            # === АВТОЗАПОЛНЯЕМЫЕ ПОЛЯ (Триггер) ===
+            'size_category': self.size_category,
+            'coat_type': self.coat_type,
+            'ideal_weight_kg': float(self.ideal_weight_kg) if self.ideal_weight_kg else None,
+            'body_condition_score': self.body_condition_score,
             'activity_level': self.activity_level,
-            # Новые поля для персонализации курсов
-            'behavior_type': self.behavior_type,
-            'social_level': self.social_level,
-            'training_experience': self.training_experience,
-            'special_needs': self.special_needs if self.special_needs else [],
-            'preferred_activities': self.preferred_activities if self.preferred_activities else [],
-            'behavioral_problems': self.behavioral_problems if self.behavioral_problems else [],
-            # Новые поля PetID
-            'size': self.size,
-            'body_type': self.body_type,
-            'diet_type': self.diet_type,
-            'feeding_frequency': self.feeding_frequency,
-            'sensitive_digestion': self.sensitive_digestion,
-            'excluded_ingredients': self.excluded_ingredients if self.excluded_ingredients else [],
-            'vitamins_supplements': self.vitamins_supplements if self.vitamins_supplements else [],
-            'character_traits': self.character_traits if self.character_traits else [],
-            'training_goals': self.training_goals if self.training_goals else [],
-            'chronic_conditions': self.chronic_conditions if self.chronic_conditions else [],
-            'vaccinations': self.vaccinations if self.vaccinations else [],
-            'medications': self.medications if self.medications else [],
-            'dental_health': self.dental_health,
+            
+            # === ЖИЛЬЁ И УСЛОВИЯ (Этап 2) ===
             'housing_type': self.housing_type,
             'has_yard': self.has_yard,
-            'other_pets': self.other_pets if self.other_pets else [],
+            'yard_size': self.yard_size,
             'has_children': self.has_children,
-            'walk_frequency': self.walk_frequency,
-            'walk_duration': self.walk_duration,
-            # Данные ветеринарного осмотра
+            'has_other_pets': self.has_other_pets,
+            
+            # === ПИТАНИЕ (Этап 2) ===
+            'diet_type': self.diet_type,
+            'feeding_frequency': self.feeding_frequency,
+            'current_food': self.current_food if self.current_food else None,
+            'sensitive_digestion': self.sensitive_digestion,
+            
+            # === РЕПРОДУКЦИЯ (Этап 2) ===
+            'neutering_date': self.neutering_date.isoformat() if self.neutering_date else None,
+            'reproductive_state': self.reproductive_state,
+            'pregnancy_week': self.pregnancy_week,
+            'litter_size': self.litter_size,
+            'lactation_week': self.lactation_week,
+            
+            # === ПОВЕДЕНИЕ (Этап 2) ===
+            'temperament': self.temperament,
+            'social_level': self.social_level,
+            
+            # === ЗДОРОВЬЕ (Этап 2) ===
+            'chronic_conditions_notes': self.chronic_conditions_notes,
             'last_vet_visit': self.last_vet_visit.isoformat() if self.last_vet_visit else None,
-            'body_condition_score': self.body_condition_score,
-            'heart_rate': self.heart_rate,
-            'respiratory_rate': self.respiratory_rate,
-            'temperature': float(self.temperature) if self.temperature else None,
-            'vet_notes': self.vet_notes,
-            # Контакты владельца
-            'owner_phone': self.owner_phone,
-            'owner_email': self.owner_email,
-            'owner_city': self.owner_city,
+            
+            # === КЛИМАТ ===
+            'living_climate': self.living_climate,
+            
+            # === СЛУЖЕБНЫЕ ПОЛЯ ===
             'is_extended_profile': self.is_extended_profile,
-            # Вычисляемые поля PetID
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+            
+            # === ВЫЧИСЛЯЕМЫЕ ПОЛЯ ===
             'age': self.age,
             'age_months': self.age_months,
             'age_category': self.age_category,
-            'calculated_size': self.calculated_size,
+            'calculated_size_category': self.calculated_size_category,
             'profile_completeness': self.profile_completeness,
-            'created_at': self.created_at.isoformat() if self.created_at else None,
-            'updated_at': self.updated_at.isoformat() if self.updated_at else None
         }
 
 
 # Импортируем модели для регистрации в Django
 from .reminder_models import Reminder, ReminderCategory, ReminderFrequency
 from .breed_models import Breed, BreedHealth, BreedNutrition, BreedCare
+from .nutrition_models import HealthCondition, Allergy, PetHealthCondition, PetAllergy, PetFoodExclusion
 
 
 # ============================================================================
