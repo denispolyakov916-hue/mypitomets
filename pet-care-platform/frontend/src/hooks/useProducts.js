@@ -175,10 +175,11 @@ export function useProducts(initialFilters = {}) {
   
   /**
    * Prefetch следующей страницы
+   * ВАЖНО: Не зависит от pagination напрямую, чтобы избежать пересоздания
    */
-  const prefetchNextPage = useCallback((currentFilters) => {
+  const prefetchNextPage = useCallback((currentFilters, currentPagination) => {
     const currentPage = parseInt(currentFilters.page || '1', 10)
-    const totalPages = pagination?.total_pages || 1
+    const totalPages = currentPagination?.total_pages || 1
     
     if (currentPage < totalPages) {
       const nextPageFilters = { ...currentFilters, page: String(currentPage + 1) }
@@ -196,10 +197,11 @@ export function useProducts(initialFilters = {}) {
         }, 100)
       }
     }
-  }, [pagination, fetchProducts])
+  }, [fetchProducts]) // Убрали pagination из зависимостей
   
   /**
    * Загрузка с debouncing
+   * ВАЖНО: Не зависит от prefetchNextPage напрямую через замыкание
    */
   const debouncedFetch = useCallback((filters, delay = 300) => {
     if (debounceTimerRef.current) {
@@ -211,9 +213,11 @@ export function useProducts(initialFilters = {}) {
     
     debounceTimerRef.current = setTimeout(() => {
       currentFiltersRef.current = filters
-      fetchProducts(filters).then(() => {
-        // После загрузки prefetch следующую страницу
-        prefetchNextPage(filters)
+      fetchProducts(filters).then((response) => {
+        // После загрузки prefetch следующую страницу (передаём pagination из ответа)
+        if (response?.pagination) {
+          prefetchNextPage(filters, response.pagination)
+        }
       })
     }, delay)
   }, [fetchProducts, prefetchNextPage])
@@ -228,8 +232,8 @@ export function useProducts(initialFilters = {}) {
     
     currentFiltersRef.current = filters
     return fetchProducts(filters).then((result) => {
-      if (result) {
-        prefetchNextPage(filters)
+      if (result?.pagination) {
+        prefetchNextPage(filters, result.pagination)
       }
       return result
     })

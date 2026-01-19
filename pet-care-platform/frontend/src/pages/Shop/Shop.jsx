@@ -562,7 +562,10 @@ function Shop() {
   
   /**
    * Эффект загрузки товаров при изменении фильтров
+   * ВАЖНО: Зависимости только от filters (сериализованный ключ), чтобы избежать бесконечных циклов
    */
+  const filtersKey = useMemo(() => JSON.stringify(filters), [filters])
+  
   useEffect(() => {
     const page = parseInt(filters.page, 10)
     
@@ -573,7 +576,8 @@ function Shop() {
       // Для фильтров используем debouncing
       fetchProducts(filters, page === 1 ? 300 : 0)
     }
-  }, [filters, fetchProducts, fetchImmediate, isCached])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filtersKey]) // Зависимость только от сериализованных фильтров
   
   /**
    * Обработчик добавления в корзину
