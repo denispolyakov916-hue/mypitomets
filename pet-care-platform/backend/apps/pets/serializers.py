@@ -706,6 +706,13 @@ class PetUpdateSerializer(serializers.Serializer):
             attrs['weight'] = weight_kg
         attrs.pop('weight_kg', None)
 
+        species = attrs.get('species') or (self.instance.species if self.instance else None)
+        if attrs.get('weight') is not None and species:
+            if species == 'cat' and attrs['weight'] > 20:
+                raise serializers.ValidationError({'weight': 'Максимум 20 кг для кошки'})
+            if species == 'dog' and attrs['weight'] > 100:
+                raise serializers.ValidationError({'weight': 'Максимум 100 кг для собаки'})
+
         breed = attrs.get('breed')
         breed_id = attrs.get('breed_id')
         if breed is None and breed_id is not None:

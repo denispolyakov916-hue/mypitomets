@@ -658,6 +658,17 @@ const ToggleField = ({ label, checked, onChange, description }) => (
   </div>
 );
 
+const calculateBcs = (weightValue, idealWeightValue) => {
+  if (!weightValue || !idealWeightValue) return null;
+  const ratio = weightValue / idealWeightValue;
+
+  if (ratio < 0.85) return Math.max(1, Math.round(5 * ratio));
+  if (ratio < 1.10) return 5;
+  if (ratio < 1.20) return 6;
+  if (ratio < 1.30) return 7;
+  return ratio < 1.40 ? 8 : 9;
+};
+
 // ===== ОСНОВНОЙ КОМПОНЕНТ =====
 export default function PetProfileEditor({ pet, onClose, onSave, isLoading }) {
   const [formData, setFormData] = useState({});
@@ -682,6 +693,7 @@ export default function PetProfileEditor({ pet, onClose, onSave, isLoading }) {
         gender: pet.sex || 'unknown',
         is_neutered: pet.is_neutered || false,
         weight: pet.weight_kg || '',
+        ideal_weight_kg: pet.ideal_weight_kg || null,
         size: pet.size_category || pet.calculated_size_category || '',
         body_type: pet.body_type || '',
         activity_level: pet.activity_level || 'moderate',
@@ -754,7 +766,22 @@ export default function PetProfileEditor({ pet, onClose, onSave, isLoading }) {
   }, [pet?.id, pet?.species]);
 
   const handleChange = useCallback((field, value) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    if (field === 'weight') {
+      setFormData(prev => {
+        const nextState = { ...prev, weight: value };
+        const weightValue = parseFloat(value);
+        const idealWeightValue = parseFloat(prev.ideal_weight_kg);
+        if (!Number.isNaN(weightValue) && !Number.isNaN(idealWeightValue)) {
+          const bcs = calculateBcs(weightValue, idealWeightValue);
+          if (bcs) {
+            nextState.body_condition_score = String(bcs);
+          }
+        }
+        return nextState;
+      });
+    } else {
+      setFormData(prev => ({ ...prev, [field]: value }));
+    }
     setHasChanges(true);
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: null }));
@@ -764,6 +791,18 @@ export default function PetProfileEditor({ pet, onClose, onSave, isLoading }) {
   const validateForm = () => {
     const newErrors = {};
     if (!formData.name?.trim()) newErrors.name = 'Обязательное поле';
+    if (formData.weight !== '' && formData.weight !== null && formData.weight !== undefined) {
+      const weightValue = parseFloat(formData.weight);
+      if (Number.isNaN(weightValue) || weightValue <= 0) {
+        newErrors.weight = 'Введите корректный вес';
+      } else if (weightValue < 0.3) {
+        newErrors.weight = 'Минимальный вес 0.3 кг';
+      } else if (formData.species === 'cat' && weightValue > 20) {
+        newErrors.weight = 'Максимум 20 кг для кошки';
+      } else if (formData.species === 'dog' && weightValue > 100) {
+        newErrors.weight = 'Максимум 100 кг для собаки';
+      }
+    }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -1246,12 +1285,14 @@ export default function PetProfileEditor({ pet, onClose, onSave, isLoading }) {
                 <input
                   type="number"
                   step="0.1"
-                  min="0"
+                  min="0.3"
+                  max={formData.species === 'cat' ? 20 : 100}
                   value={formData.weight || ''}
                   onChange={(e) => handleChange('weight', e.target.value)}
                   placeholder="Вес при осмотре"
                   className="w-full px-4 py-2.5 rounded-xl border-2 border-gray-200 focus:border-purple-500 focus:outline-none transition-all"
                 />
+                {errors.weight && <p className="mt-2 text-sm text-red-500">{errors.weight}</p>}
               </div>
               <SelectField
                 label="Оценка упитанности (BCS)"

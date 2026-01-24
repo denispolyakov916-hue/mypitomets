@@ -286,11 +286,11 @@ class PetDetailView(BaseDetailView):
             autofilled = pet_autofill.autofill_from_breed(pet)
             if autofilled:
                 logger.info(f"Autofilled on breed change for pet {pet.id}: {autofilled}")
-        elif new_weight != old_weight and not pet.breed_id:
-            # Изменился вес у дворняги — пересчёт размера
+        if new_weight != old_weight:
+            # Изменился вес — пересчёт BCS (и размера для дворняг)
             recalculated = pet_autofill.recalculate_on_weight_change(pet, old_weight)
             if recalculated:
-                logger.info(f"Size recalculated for pet {pet.id}: {recalculated}")
+                logger.info(f"Recalculated on weight change for pet {pet.id}: {recalculated}")
         
         logger.info(f"Питомец обновлён: {pet.id}")
         return pet
