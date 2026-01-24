@@ -7,6 +7,7 @@ from .nutrition_models import (
     HealthCondition, Allergy, 
     PetHealthCondition, PetAllergy, PetFoodExclusion
 )
+from .models import Pet
 
 
 class HealthConditionSerializer(serializers.ModelSerializer):
@@ -80,13 +81,25 @@ class PetHealthConditionCreateSerializer(serializers.ModelSerializer):
             'pet', 'condition',
             'diagnosis_date', 'severity', 'is_active', 'notes'
         ]
+        extra_kwargs = {
+            'pet': {'read_only': True},
+        }
     
     def validate(self, data):
         # Проверка, что заболевание подходит для вида питомца
-        pet = data['pet']
-        condition = data['condition']
-        
-        if condition.species not in ['both', pet.species]:
+        pet = data.get('pet')
+        condition = data.get('condition')
+
+        if not pet:
+            view = self.context.get('view')
+            request = self.context.get('request')
+            pet_id = getattr(view, 'kwargs', {}).get('pet_id') if view else None
+            if pet_id and request:
+                pet = Pet.objects.filter(id=pet_id, owner=request.user).first()
+            if not pet:
+                raise serializers.ValidationError({'pet': 'Питомец не найден или нет доступа'})
+
+        if condition and condition.species not in ['both', pet.species]:
             raise serializers.ValidationError({
                 'condition': f'Заболевание "{condition.name_ru}" не применимо к {pet.get_species_display()}'
             })
@@ -119,6 +132,9 @@ class PetAllergyCreateSerializer(serializers.ModelSerializer):
             'pet', 'allergy',
             'diagnosis_date', 'severity', 'is_active', 'notes'
         ]
+        extra_kwargs = {
+            'pet': {'read_only': True},
+        }
 
 
 class PetFoodExclusionSerializer(serializers.ModelSerializer):

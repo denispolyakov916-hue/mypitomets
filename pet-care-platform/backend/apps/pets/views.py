@@ -122,10 +122,6 @@ class PetListCreateView(BaseListCreateView):
             if date_of_birth and isinstance(date_of_birth, str):
                 data['date_of_birth'] = datetime.strptime(date_of_birth, '%Y-%m-%d').date()
 
-            # Удаляем поля, которых нет в модели Pet
-            data.pop('is_draft', None)
-            data.pop('draft_step', None)
-
             # Преобразуем breed ID в объект Breed
             breed_id = data.get('breed')
             if breed_id:
@@ -165,6 +161,8 @@ class PetListCreateView(BaseListCreateView):
                     'sex': pet.sex,
                     'is_neutered': pet.is_neutered,
                     'profile_completeness': pet.profile_completeness,
+                    'is_draft': pet.is_draft,
+                    'draft_step': pet.draft_step,
                 }
             }, status=status.HTTP_201_CREATED)
             
@@ -239,11 +237,22 @@ class PetDetailView(BaseDetailView):
             'living_climate', 'walk_frequency', 'walk_duration',
             
             # Флаги
-            'is_extended_profile', 'is_draft',
+            'is_extended_profile', 'is_draft', 'draft_step',
         ]
 
         pet = serializer.instance
         update_fields = []
+
+        # Преобразуем breed ID в объект Breed (как в создании)
+        if 'breed' in serializer.validated_data:
+            breed_value = serializer.validated_data.get('breed')
+            if breed_value is None:
+                serializer.validated_data['breed'] = None
+            elif isinstance(breed_value, (int, str)):
+                try:
+                    serializer.validated_data['breed'] = Breed.objects.get(id=breed_value)
+                except Breed.DoesNotExist:
+                    raise ApiError.bad_request(f'Порода с ID {breed_value} не найдена')
         
         # Запоминаем старые значения для проверки изменений
         old_breed_id = pet.breed_id

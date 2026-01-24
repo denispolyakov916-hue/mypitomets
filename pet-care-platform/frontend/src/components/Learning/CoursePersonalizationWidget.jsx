@@ -168,7 +168,7 @@ const CoursePersonalizationWidget = ({
               <div>
                 <span className="font-medium">Активность:</span>{' '}
                 {petInfo.activity_level === 'low' && 'Низкая'}
-                {petInfo.activity_level === 'medium' && 'Средняя'}
+                {petInfo.activity_level === 'moderate' && 'Средняя'}
                 {petInfo.activity_level === 'high' && 'Высокая'}
               </div>
             )}

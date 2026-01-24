@@ -317,17 +317,16 @@ class Pet(models.Model):
         ('wet', 'Влажный корм'),
         ('mixed', 'Смешанное питание'),
         ('raw', 'Натуральное питание'),
-        ('home', 'Домашняя еда'),
+        ('homemade', 'Домашняя еда'),
     ]
     diet_type = models.CharField(max_length=20, choices=DIET_TYPE_CHOICES, blank=True, null=True, verbose_name='Тип питания')
 
-    FEEDING_FREQUENCY_CHOICES = [
-        ('1', '1 раз в день'),
-        ('2', '2 раза в день'),
-        ('3', '3 раза в день'),
-        ('free', 'Свободный доступ'),
-    ]
-    feeding_frequency = models.CharField(max_length=10, choices=FEEDING_FREQUENCY_CHOICES, blank=True, null=True, verbose_name='Частота кормления')
+    feeding_frequency = models.PositiveSmallIntegerField(
+        blank=True,
+        null=True,
+        validators=[MinValueValidator(1), MaxValueValidator(6)],
+        verbose_name='Частота кормления'
+    )
 
     sensitive_digestion = models.BooleanField(default=False, verbose_name='Чувствительное пищеварение')
     # Исключаемые ингредиенты → M2M таблица PetFoodExclusion
@@ -423,11 +422,10 @@ class Pet(models.Model):
         4: 'Недостаток веса', 5: 'Идеальный вес', 6: 'Избыток веса',
         7: 'Полнота', 8: 'Ожирение', 9: 'Тяжёлое ожирение'
     }[i]) for i in range(1, 10)]
-    body_condition_score = models.CharField(
-        max_length=2,
-        choices=BODY_CONDITION_SCORE_CHOICES,
+    body_condition_score = models.PositiveSmallIntegerField(
         blank=True,
         null=True,
+        validators=[MinValueValidator(1), MaxValueValidator(9)],
         verbose_name='Оценка упитанности (BCS)',
         help_text='Шкала от 1 до 9'
     )
@@ -462,6 +460,19 @@ class Pet(models.Model):
         default=False,
         verbose_name='Расширенный профиль заполнен',
         help_text='Показывает, заполнены ли расширенные поля профиля PetID'
+    )
+
+    # Черновики профиля (для частичного сохранения)
+    is_draft = models.BooleanField(
+        default=False,
+        verbose_name='Черновик профиля',
+        help_text='Флаг незавершенного профиля PetID'
+    )
+    draft_step = models.PositiveSmallIntegerField(
+        null=True,
+        blank=True,
+        verbose_name='Шаг черновика',
+        help_text='Последний шаг заполнения для продолжения'
     )
     
     created_at = models.DateTimeField(
@@ -725,12 +736,254 @@ class Pet(models.Model):
         }
 
 
+# ============================================================================
+# ДОПОЛНИТЕЛЬНЫЕ ТАБЛИЦЫ PetID (M2M/History) ПО ТЗ
+# ============================================================================
+
+class PetVaccination(models.Model):
+    """История вакцинаций питомца."""
+
+    id = models.CharField(
+        primary_key=True,
+        max_length=36,
+        default=generate_uuid7,
+        editable=False
+    )
+    pet = models.ForeignKey(
+        Pet,
+        on_delete=models.CASCADE,
+        related_name='vaccinations',
+        verbose_name='Питомец'
+    )
+    vaccine_code = models.CharField(max_length=50, verbose_name='Код вакцины')
+    date_administered = models.DateField(verbose_name='Дата вакцинации')
+    next_due_date = models.DateField(null=True, blank=True, verbose_name='Следующая вакцинация')
+    manufacturer = models.CharField(max_length=200, blank=True, verbose_name='Производитель')
+    batch_number = models.CharField(max_length=100, blank=True, verbose_name='Номер партии')
+    administered_by = models.CharField(max_length=200, blank=True, verbose_name='Кем проведена')
+    notes = models.TextField(blank=True, verbose_name='Примечания')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'pet_vaccinations'
+        ordering = ['-date_administered']
+
+    def __str__(self):
+        return f"{self.pet.name}: {self.vaccine_code} ({self.date_administered})"
+
+
+class PetMedication(models.Model):
+    """Принимаемые препараты питомца."""
+
+    FREQUENCY_CHOICES = [
+        ('three_times_daily', '3 раза в день'),
+        ('twice_daily', '2 раза в день'),
+        ('once_daily', '1 раз в день'),
+        ('every_other_day', 'Через день'),
+        ('weekly', 'Раз в неделю'),
+        ('monthly', 'Раз в месяц'),
+    ]
+
+    id = models.CharField(
+        primary_key=True,
+        max_length=36,
+        default=generate_uuid7,
+        editable=False
+    )
+    pet = models.ForeignKey(
+        Pet,
+        on_delete=models.CASCADE,
+        related_name='medications',
+        verbose_name='Питомец'
+    )
+    medication_code = models.CharField(max_length=50, verbose_name='Код препарата')
+    medication_name = models.CharField(max_length=200, verbose_name='Название препарата')
+    dosage = models.CharField(max_length=100, blank=True, verbose_name='Дозировка')
+    frequency = models.CharField(max_length=30, choices=FREQUENCY_CHOICES, verbose_name='Периодичность')
+    start_date = models.DateField(verbose_name='Дата начала')
+    end_date = models.DateField(null=True, blank=True, verbose_name='Дата окончания')
+    prescribed_for = models.CharField(max_length=200, blank=True, verbose_name='Для чего назначен')
+    prescribing_vet = models.CharField(max_length=200, blank=True, verbose_name='Назначивший ветеринар')
+    notes = models.TextField(blank=True, verbose_name='Примечания')
+    is_active = models.BooleanField(default=True, verbose_name='Активный приём')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'pet_medications'
+        ordering = ['-start_date']
+
+    def __str__(self):
+        return f"{self.pet.name}: {self.medication_name}"
+
+
+class PetActivity(models.Model):
+    """Активности питомца."""
+
+    ACTIVITY_TYPE_CHOICES = [
+        ('walking', 'Прогулка'),
+        ('running', 'Бег'),
+        ('swimming', 'Плавание'),
+        ('training', 'Тренировка'),
+        ('playing', 'Активные игры'),
+        ('hiking', 'Походы'),
+        ('agility', 'Аджилити'),
+        ('hunting', 'Охота'),
+        ('guarding', 'Служебная работа'),
+    ]
+
+    FREQUENCY_CHOICES = [
+        ('three_times_daily', '3 раза в день'),
+        ('twice_daily', '2 раза в день'),
+        ('once_daily', '1 раз в день'),
+        ('every_other_day', 'Через день'),
+        ('twice_weekly', '2 раза в неделю'),
+        ('weekly', 'Раз в неделю'),
+        ('twice_monthly', '2 раза в месяц'),
+        ('monthly', 'Раз в месяц'),
+        ('seasonal', 'Сезонно'),
+    ]
+
+    INTENSITY_CHOICES = [
+        ('low', 'Низкая'),
+        ('moderate', 'Умеренная'),
+        ('high', 'Высокая'),
+    ]
+
+    id = models.CharField(
+        primary_key=True,
+        max_length=36,
+        default=generate_uuid7,
+        editable=False
+    )
+    pet = models.ForeignKey(
+        Pet,
+        on_delete=models.CASCADE,
+        related_name='activities',
+        verbose_name='Питомец'
+    )
+    activity_type = models.CharField(max_length=30, choices=ACTIVITY_TYPE_CHOICES, verbose_name='Тип активности')
+    duration_minutes = models.PositiveIntegerField(verbose_name='Продолжительность (мин)')
+    frequency = models.CharField(max_length=30, choices=FREQUENCY_CHOICES, verbose_name='Периодичность')
+    intensity = models.CharField(
+        max_length=10,
+        choices=INTENSITY_CHOICES,
+        null=True,
+        blank=True,
+        verbose_name='Интенсивность'
+    )
+    notes = models.TextField(blank=True, verbose_name='Примечания')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'pet_activities'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.pet.name}: {self.activity_type}"
+
+
+class PetOtherPet(models.Model):
+    """Другие питомцы, живущие вместе."""
+
+    OTHER_PET_TYPE_CHOICES = [
+        ('dog', 'Собака'),
+        ('cat', 'Кошка'),
+        ('bird', 'Птица'),
+        ('rodent', 'Грызун'),
+        ('fish', 'Рыба'),
+        ('reptile', 'Рептилия'),
+        ('other', 'Другое'),
+    ]
+
+    RELATIONSHIP_CHOICES = [
+        ('friendly', 'Дружелюбные'),
+        ('neutral', 'Нейтральные'),
+        ('tense', 'Напряжённые'),
+    ]
+
+    id = models.CharField(
+        primary_key=True,
+        max_length=36,
+        default=generate_uuid7,
+        editable=False
+    )
+    pet = models.ForeignKey(
+        Pet,
+        on_delete=models.CASCADE,
+        related_name='other_pets',
+        verbose_name='Питомец'
+    )
+    other_pet_type = models.CharField(max_length=20, choices=OTHER_PET_TYPE_CHOICES, verbose_name='Тип питомца')
+    linked_pet = models.ForeignKey(
+        Pet,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='linked_other_pets',
+        verbose_name='Связанный питомец'
+    )
+    other_pet_name = models.CharField(max_length=100, blank=True, verbose_name='Имя питомца')
+    relationship = models.CharField(
+        max_length=20,
+        choices=RELATIONSHIP_CHOICES,
+        null=True,
+        blank=True,
+        verbose_name='Отношение'
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'pet_other_pets'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.pet.name}: {self.other_pet_type}"
+
+
+class PetAnalysisHistory(models.Model):
+    """История анализов питомца."""
+
+    STATUS_CHOICES = [
+        ('good', 'Хорошо'),
+        ('attention', 'Требует внимания'),
+        ('warning', 'Предупреждение'),
+        ('critical', 'Критично'),
+    ]
+
+    id = models.CharField(
+        primary_key=True,
+        max_length=36,
+        default=generate_uuid7,
+        editable=False
+    )
+    pet = models.ForeignKey(
+        Pet,
+        on_delete=models.CASCADE,
+        related_name='analysis_history',
+        verbose_name='Питомец'
+    )
+    analysis_date = models.DateTimeField(verbose_name='Дата анализа')
+    analysis_result = models.JSONField(verbose_name='Результат анализа')
+    overall_status = models.CharField(max_length=20, choices=STATUS_CHOICES, verbose_name='Общий статус')
+    warnings_count = models.PositiveIntegerField(default=0, verbose_name='Количество предупреждений')
+    recommendations_count = models.PositiveIntegerField(default=0, verbose_name='Количество рекомендаций')
+    weight_at_analysis = models.DecimalField(
+        max_digits=5, decimal_places=2, null=True, blank=True, verbose_name='Вес на момент анализа'
+    )
+    bcs_at_analysis = models.PositiveSmallIntegerField(null=True, blank=True, verbose_name='BCS на момент анализа')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'pet_analysis_history'
+        ordering = ['-analysis_date']
+
+    def __str__(self):
+        return f"{self.pet.name}: {self.analysis_date}"
+
 # Импортируем модели для регистрации в Django
 from .reminder_models import Reminder, ReminderCategory, ReminderFrequency
 from .breed_models import Breed, BreedHealth, BreedNutrition, BreedCare
 from .nutrition_models import HealthCondition, Allergy, PetHealthCondition, PetAllergy, PetFoodExclusion
-
-
 # ============================================================================
 # МОДЕЛИ КАЛЕНДАРЯ СОБЫТИЙ (перенесены из calendar app)
 # ============================================================================
@@ -931,6 +1184,7 @@ class EventReminder(models.Model):
         verbose_name = 'Напоминание'
         verbose_name_plural = 'Напоминания'
         ordering = ['scheduled_at']
-
+    
     def __str__(self):
         return f"{self.event.title} - {self.get_reminder_type_display()}"
+        

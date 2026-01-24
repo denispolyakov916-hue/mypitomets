@@ -14,7 +14,7 @@ import {
   AlertCircle, TrendingUp, Heart, Activity,
   FileEdit, Clock, ChevronRight, UtensilsCrossed, BarChart3
 } from 'lucide-react';
-import { getPets, createPet, updatePet, deletePet, getPetAnalysis, savePetDraft } from '../../api/pets';
+import { getPets, createPet, updatePet, updatePetPartial, deletePet, getPetAnalysis, savePetDraft } from '../../api/pets';
 import PetCreateForm from './components/PetCreateForm';
 import PetProfileEditor from './components/PetProfileEditor';
 import { PageLoader } from '../../components/Loader';
@@ -475,12 +475,21 @@ export default function PetIdPage() {
     }
   }, [editingDraft, fetchPets]);
 
-  const handleUpdate = useCallback(async (formData) => {
+  const handleUpdate = useCallback(async (formData, options = {}) => {
     if (!editingPet) return;
 
     setIsSubmitting(true);
     try {
-      await updatePet(editingPet.id, formData);
+      const payload = {
+        ...formData,
+        is_draft: options.isDraft ?? formData.is_draft ?? false,
+        draft_step: options.draftStep ?? formData.draft_step ?? null,
+      };
+      if (options.partial) {
+        await updatePetPartial(editingPet.id, payload);
+      } else {
+        await updatePet(editingPet.id, payload);
+      }
       setEditingPet(null);
       await fetchPets();
     } catch (err) {

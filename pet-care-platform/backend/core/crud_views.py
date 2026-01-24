@@ -18,6 +18,8 @@
 """
 
 import logging
+from django.core.exceptions import ValidationError as DjangoValidationError
+from rest_framework.exceptions import ValidationError as DRFValidationError, APIException
 from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -146,6 +148,13 @@ class BaseCRUDMixin:
                 exc.get_full_details(),
                 status=exc.status_code
             )
+        if isinstance(exc, DRFValidationError):
+            return Response(exc.detail, status=status.HTTP_400_BAD_REQUEST)
+        if isinstance(exc, DjangoValidationError):
+            return Response({'error': exc.message_dict if hasattr(exc, 'message_dict') else exc.messages},
+                            status=status.HTTP_400_BAD_REQUEST)
+        if isinstance(exc, APIException):
+            return Response({'error': exc.detail}, status=exc.status_code)
 
         logger.error(f"Необработанная ошибка в {self.__class__.__name__}: {str(exc)}")
         return Response(

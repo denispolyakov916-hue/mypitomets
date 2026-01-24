@@ -136,6 +136,16 @@ class PetAutofillService:
             if activity_level:
                 pet.activity_level = activity_level
                 updated_fields['activity_level'] = activity_level
+
+        # 5. Автозаполнение BCS (если есть идеальный вес и не задано вручную)
+        if (pet.ideal_weight_kg and not pet.body_condition_score) or 'body_condition_score' in force_update:
+            bcs = self._calculate_bcs(
+                weight=float(pet.weight) if pet.weight else None,
+                ideal_weight=float(pet.ideal_weight_kg) if pet.ideal_weight_kg else None
+            )
+            if bcs:
+                pet.body_condition_score = bcs
+                updated_fields['body_condition_score'] = bcs
         
         # Сохраняем изменения
         if updated_fields:
@@ -258,7 +268,7 @@ class PetAutofillService:
                     return round((weight_min + weight_max) / 2 * 0.9, 1)
         
         # Для дворняг: если BCS идеальный (5) — текущий вес = идеальный
-        if pet.weight and pet.body_condition_score == '5':
+        if pet.weight and pet.body_condition_score == 5:
             return float(pet.weight)
         
         return None
@@ -334,12 +344,27 @@ class PetAutofillService:
             age_months=pet.age_months
         )
         
+        updated_fields = {}
+
         if new_size and new_size != pet.size_category:
             pet.size_category = new_size
-            pet.save(update_fields=['size_category'])
-            logger.info(f"Size recalculated for pet {pet.id}: {new_size}")
-            return {'size_category': new_size}
-        
+            updated_fields['size_category'] = new_size
+
+        # Обновляем BCS, если есть идеальный вес и BCS не задан вручную
+        if pet.ideal_weight_kg and not pet.body_condition_score:
+            bcs = self._calculate_bcs(
+                weight=float(pet.weight) if pet.weight else None,
+                ideal_weight=float(pet.ideal_weight_kg) if pet.ideal_weight_kg else None
+            )
+            if bcs:
+                pet.body_condition_score = bcs
+                updated_fields['body_condition_score'] = bcs
+
+        if updated_fields:
+            pet.save(update_fields=list(updated_fields.keys()))
+            logger.info(f"Autofill recalculated for pet {pet.id}: {updated_fields}")
+            return updated_fields
+
         return {}
     
     def get_autofill_suggestions(self, pet) -> Dict[str, Any]:
@@ -361,9 +386,32 @@ class PetAutofillService:
             'coat_type': breed_data.get('coat_type') if breed_data else None,
             'ideal_weight_kg': self._determine_ideal_weight(pet, breed_data),
             'activity_level': self._determine_activity_level(pet, breed_data),
+            'body_condition_score': self._calculate_bcs(
+                weight=float(pet.weight) if pet.weight else None,
+                ideal_weight=self._determine_ideal_weight(pet, breed_data)
+            ),
             'is_from_breed': breed_data is not None,
             'breed_name': pet.breed.name if pet.breed else None,
         }
+
+    def _calculate_bcs(self, weight: Optional[float], ideal_weight: Optional[float]) -> Optional[int]:
+        """
+        Рассчитать BCS (Body Condition Score) по весу и идеальному весу.
+        """
+        if not weight or not ideal_weight:
+            return None
+
+        ratio = weight / ideal_weight
+
+        if ratio < 0.85:
+            return max(1, int(round(5 * ratio)))
+        if ratio < 1.10:
+            return 5
+        if ratio < 1.20:
+            return 6
+        if ratio < 1.30:
+            return 7
+        return 8 if ratio < 1.40 else 9
 
 
 # Глобальный экземпляр сервиса

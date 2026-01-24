@@ -18,7 +18,7 @@
 
 from rest_framework import serializers
 from datetime import datetime
-from .models import Pet, Breed
+from .models import Pet, Breed, PetVaccination, PetMedication
 from .models import CalendarEvent
 
 
@@ -160,10 +160,17 @@ class PetCreateSerializer(serializers.Serializer):
     )
     
     weight = serializers.FloatField(
-        required=True,
+        required=False,
         min_value=0.1,
         max_value=200,
         help_text="Текущий вес в килограммах (0.1 - 200)"
+    )
+
+    weight_kg = serializers.FloatField(
+        required=False,
+        min_value=0.1,
+        max_value=200,
+        help_text="Алиас для weight (ТЗ: weight_kg)"
     )
     
     is_neutered = serializers.BooleanField(
@@ -177,6 +184,12 @@ class PetCreateSerializer(serializers.Serializer):
         required=False,
         allow_null=True,
         help_text="ID породы из справочника (NULL для дворняг)"
+    )
+
+    breed_id = serializers.IntegerField(
+        required=False,
+        allow_null=True,
+        help_text="Алиас для breed (ТЗ: breed_id)"
     )
     
     # === ПОЛЯ ДЛЯ ЧЕРНОВИКОВ ===
@@ -192,6 +205,16 @@ class PetCreateSerializer(serializers.Serializer):
         default=1,
         help_text="Шаг wizard'а при сохранении черновика"
     )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        data = kwargs.get('data') or {}
+        raw_is_draft = data.get('is_draft')
+        is_draft = str(raw_is_draft).lower() in {'1', 'true', 'yes'} if raw_is_draft is not None else False
+        if is_draft:
+            for field_name in ('date_of_birth', 'sex', 'weight', 'weight_kg', 'is_neutered'):
+                if field_name in self.fields:
+                    self.fields[field_name].required = False
     
     def validate_name(self, value):
         """Валидация клички питомца."""
@@ -235,6 +258,25 @@ class PetCreateSerializer(serializers.Serializer):
         
         return round(value, 2)
 
+    def validate(self, attrs):
+        """Поддержка алиасов weight_kg и breed_id."""
+        weight = attrs.get('weight')
+        weight_kg = attrs.get('weight_kg')
+        if weight is None and weight_kg is not None:
+            attrs['weight'] = weight_kg
+        attrs.pop('weight_kg', None)
+
+        if not attrs.get('is_draft') and attrs.get('weight') is None:
+            raise serializers.ValidationError({'weight': 'Вес обязателен для создания питомца'})
+
+        breed = attrs.get('breed')
+        breed_id = attrs.get('breed_id')
+        if breed is None and breed_id is not None:
+            attrs['breed'] = breed_id
+        attrs.pop('breed_id', None)
+
+        return attrs
+
 
 class PetUpdateSerializer(serializers.Serializer):
     """
@@ -259,10 +301,17 @@ class PetUpdateSerializer(serializers.Serializer):
         help_text="Вид животного"
     )
     
-    breed = serializers.IntegerField(
+    breed = serializers.PrimaryKeyRelatedField(
+        queryset=Breed.objects.all(),
         required=False,
         allow_null=True,
         help_text="ID породы"
+    )
+
+    breed_id = serializers.IntegerField(
+        required=False,
+        allow_null=True,
+        help_text="Алиас для breed (ТЗ: breed_id)"
     )
     
     date_of_birth = serializers.CharField(
@@ -283,6 +332,12 @@ class PetUpdateSerializer(serializers.Serializer):
         required=False,
         allow_null=True,
         help_text="Вес в кг"
+    )
+
+    weight_kg = serializers.FloatField(
+        required=False,
+        allow_null=True,
+        help_text="Алиас для weight (ТЗ: weight_kg)"
     )
     
     is_neutered = serializers.BooleanField(
@@ -459,9 +514,10 @@ class PetUpdateSerializer(serializers.Serializer):
         help_text="Дата последнего визита к ветеринару"
     )
     
-    body_condition_score = serializers.ChoiceField(
+    body_condition_score = serializers.IntegerField(
         required=False,
-        choices=[(str(i), str(i)) for i in range(1, 10)],
+        min_value=1,
+        max_value=9,
         allow_null=True,
         help_text="Оценка упитанности (BCS) 1-9"
     )
@@ -524,6 +580,12 @@ class PetUpdateSerializer(serializers.Serializer):
         default=False,
         help_text="Флаг черновика"
     )
+
+    draft_step = serializers.IntegerField(
+        required=False,
+        allow_null=True,
+        help_text="Шаг черновика"
+    )
     
     def validate_date_of_birth(self, value):
         """Валидация даты рождения при обновлении."""
@@ -561,6 +623,63 @@ class PetUpdateSerializer(serializers.Serializer):
         
         return round(value, 2)
 
+    def validate_current_food(self, value):
+        """Валидация структуры current_food по ТЗ."""
+        if value is None:
+            return None
+        if value == {}:
+            return None
+        raw_is_draft = self.initial_data.get('is_draft') if hasattr(self, 'initial_data') else None
+        is_draft = str(raw_is_draft).lower() in {'1', 'true', 'yes'} if raw_is_draft is not None else False
+        if is_draft:
+            return value
+
+        if not isinstance(value, dict):
+            raise serializers.ValidationError("current_food должен быть объектом")
+
+        source = value.get('source')
+        if source not in ['catalog', 'other']:
+            raise serializers.ValidationError("current_food.source должен быть 'catalog' или 'other'")
+
+        if source == 'catalog' and not value.get('food_id'):
+            raise serializers.ValidationError("current_food.food_id обязателен для source='catalog'")
+
+        if source == 'other':
+            if not value.get('brand_name'):
+                raise serializers.ValidationError("current_food.brand_name обязателен для source='other'")
+            if not value.get('product_name'):
+                raise serializers.ValidationError("current_food.product_name обязателен для source='other'")
+
+        daily_amount = value.get('daily_amount_grams')
+        if daily_amount is not None:
+            try:
+                daily_amount_val = float(daily_amount)
+            except (TypeError, ValueError):
+                raise serializers.ValidationError("current_food.daily_amount_grams должен быть числом")
+            if daily_amount_val <= 0:
+                raise serializers.ValidationError("current_food.daily_amount_grams должен быть положительным")
+
+        return value
+
+    def validate(self, attrs):
+        """Поддержка алиасов weight_kg и breed_id."""
+        weight = attrs.get('weight')
+        weight_kg = attrs.get('weight_kg')
+        if weight is None and weight_kg is not None:
+            attrs['weight'] = weight_kg
+        attrs.pop('weight_kg', None)
+
+        breed = attrs.get('breed')
+        breed_id = attrs.get('breed_id')
+        if breed is None and breed_id is not None:
+            try:
+                attrs['breed'] = Breed.objects.get(id=breed_id)
+            except Breed.DoesNotExist:
+                raise serializers.ValidationError({'breed_id': f'Порода с ID {breed_id} не найдена'})
+        attrs.pop('breed_id', None)
+
+        return attrs
+
 
 class PetSerializer(serializers.Serializer):
     """
@@ -587,7 +706,7 @@ class PetSerializer(serializers.Serializer):
     size_category = serializers.CharField(read_only=True, allow_null=True)
     coat_type = serializers.CharField(read_only=True, allow_null=True)
     ideal_weight_kg = serializers.FloatField(read_only=True, allow_null=True)
-    body_condition_score = serializers.CharField(read_only=True, allow_null=True)
+    body_condition_score = serializers.IntegerField(read_only=True, allow_null=True)
     activity_level = serializers.CharField(read_only=True, allow_null=True)
     
     # === ЖИЛЬЁ И УСЛОВИЯ ===
@@ -599,7 +718,7 @@ class PetSerializer(serializers.Serializer):
     
     # === ПИТАНИЕ ===
     diet_type = serializers.CharField(read_only=True, allow_null=True)
-    feeding_frequency = serializers.CharField(read_only=True, allow_null=True)
+    feeding_frequency = serializers.IntegerField(read_only=True, allow_null=True)
     current_food = serializers.JSONField(read_only=True, allow_null=True)
     sensitive_digestion = serializers.BooleanField(read_only=True)
     
@@ -624,6 +743,8 @@ class PetSerializer(serializers.Serializer):
     
     # === СЛУЖЕБНЫЕ ПОЛЯ ===
     is_extended_profile = serializers.BooleanField(read_only=True)
+    is_draft = serializers.BooleanField(read_only=True)
+    draft_step = serializers.IntegerField(read_only=True, allow_null=True)
     created_at = serializers.DateTimeField(read_only=True)
     updated_at = serializers.DateTimeField(read_only=True)
     
@@ -646,6 +767,35 @@ class PetSerializer(serializers.Serializer):
             except (ValueError, AttributeError):
                 pass
         return None
+
+
+# =============================================================================
+# СЕРИАЛИЗАТОРЫ ДОПОЛНИТЕЛЬНЫХ МЕДИЦИНСКИХ ЗАПИСЕЙ
+# =============================================================================
+
+class PetVaccinationSerializer(serializers.ModelSerializer):
+    """Сериализатор вакцинаций питомца."""
+
+    class Meta:
+        model = PetVaccination
+        fields = [
+            'id', 'pet', 'vaccine_code', 'date_administered', 'next_due_date',
+            'manufacturer', 'batch_number', 'administered_by', 'notes', 'created_at'
+        ]
+        read_only_fields = ['id', 'created_at', 'pet']
+
+
+class PetMedicationSerializer(serializers.ModelSerializer):
+    """Сериализатор препаратов питомца."""
+
+    class Meta:
+        model = PetMedication
+        fields = [
+            'id', 'pet', 'medication_code', 'medication_name', 'dosage', 'frequency',
+            'start_date', 'end_date', 'prescribed_for', 'prescribing_vet',
+            'notes', 'is_active', 'created_at'
+        ]
+        read_only_fields = ['id', 'created_at', 'pet']
 
 
 # =============================================================================

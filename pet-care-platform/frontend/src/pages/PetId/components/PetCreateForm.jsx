@@ -739,15 +739,15 @@ const PetCreateForm = ({ onClose }) => {
         name: formData.name.trim(),
         species: formData.species,
         sex: formData.sex,
-        breed: formData.breedId,
+        breed_id: formData.breedId,
         date_of_birth: dateOfBirth?.toISOString().split('T')[0],
-        weight: parseFloat(formData.weightKg),
+        weight_kg: parseFloat(formData.weightKg),
         is_neutered: formData.isNeutered,
       };
       
       // Добавляем фото если есть
       if (formData.photo) {
-        payload.photo = formData.photoPreview; // base64
+        payload.photo = formData.photo;
       }
       
       const response = await createPet(payload);
