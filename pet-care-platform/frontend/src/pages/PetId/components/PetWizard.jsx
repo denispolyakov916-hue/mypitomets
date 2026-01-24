@@ -557,7 +557,7 @@ const Step2Info = ({ formData, onChange, errors, breeds, loadingBreeds, onBreedS
       if (weight > 100) return { type: 'error', message: 'Максимальный вес собаки 100 кг' };
       if (weight > 80) return { type: 'warning', message: 'Очень крупная собака' };
     } else if (formData.species === 'cat') {
-      if (weight > 15) return { type: 'error', message: 'Максимальный вес кошки 15 кг' };
+      if (weight > 20) return { type: 'error', message: 'Максимальный вес кошки 20 кг' };
       if (weight > 10) return { type: 'warning', message: 'Крупная кошка или избыточный вес' };
     }
     
@@ -799,16 +799,16 @@ const Step2Info = ({ formData, onChange, errors, breeds, loadingBreeds, onBreedS
             type="number"
             step="0.1"
             min="0.3"
-            max={formData.species === 'cat' ? 15 : 100}
+            max={formData.species === 'cat' ? 20 : 100}
             value={formData.weight}
             onChange={(e) => {
               const val = e.target.value;
               // Ограничиваем ввод
-              if (val === '' || (parseFloat(val) >= 0 && parseFloat(val) <= (formData.species === 'cat' ? 15 : 100))) {
+              if (val === '' || (parseFloat(val) >= 0 && parseFloat(val) <= (formData.species === 'cat' ? 20 : 100))) {
                 onChange('weight', val);
               }
             }}
-            placeholder={formData.species === 'cat' ? 'От 0.3 до 15 кг' : 'От 0.3 до 100 кг'}
+            placeholder={formData.species === 'cat' ? 'От 0.3 до 20 кг' : 'От 0.3 до 100 кг'}
             className={`
               w-full px-4 py-3 rounded-xl border-2 transition-all
               focus:outline-none focus:ring-4 focus:ring-purple-500/20
@@ -1549,7 +1549,7 @@ export default function PetWizard({ onClose, onSubmit, isLoading, editingDraft =
         } else {
           const weight = parseFloat(formData.weight);
           if (isNaN(weight) || weight < 0.3) newErrors.weight = 'Минимальный вес 0.3 кг';
-          else if (formData.species === 'cat' && weight > 15) newErrors.weight = 'Максимум 15 кг для кошки';
+          else if (formData.species === 'cat' && weight > 20) newErrors.weight = 'Максимум 20 кг для кошки';
           else if (formData.species === 'dog' && weight > 100) newErrors.weight = 'Максимум 100 кг';
         }
         break;

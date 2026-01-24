@@ -490,7 +490,9 @@ export default function PetIdPage() {
       } else {
         await updatePet(editingPet.id, payload);
       }
-      setEditingPet(null);
+      if (!options.partial) {
+        setEditingPet(null);
+      }
       await fetchPets();
     } catch (err) {
       console.error('Ошибка обновления питомца:', err);

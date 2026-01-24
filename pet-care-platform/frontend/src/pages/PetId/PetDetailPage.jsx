@@ -287,9 +287,9 @@ export default function PetDetailPage() {
       };
       if (options.partial) {
         await updatePetPartial(id, payload);
-      } else {
-        await updatePet(id, payload);
+        return;
       }
+      await updatePet(id, payload);
       setShowWizard(false);
       loadPetData();
     } catch (err) {

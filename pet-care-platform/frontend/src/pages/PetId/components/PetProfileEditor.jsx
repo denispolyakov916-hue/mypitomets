@@ -413,18 +413,24 @@ const VaccinationsField = ({ vaccinations = [], onAdd, onRemove }) => {
             className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm"
           />
           <div className="grid grid-cols-2 gap-2">
-            <input
-              type="date"
-              value={newVaccine.date_administered}
-              onChange={(e) => setNewVaccine({ ...newVaccine, date_administered: e.target.value })}
-              className="px-3 py-2 rounded-lg border border-gray-200 text-sm"
-            />
-            <input
-              type="date"
-              value={newVaccine.next_due_date}
-              onChange={(e) => setNewVaccine({ ...newVaccine, next_due_date: e.target.value })}
-              className="px-3 py-2 rounded-lg border border-gray-200 text-sm"
-            />
+            <div className="space-y-1">
+              <label className="text-xs text-gray-500">Дата вакцинации</label>
+              <input
+                type="date"
+                value={newVaccine.date_administered}
+                onChange={(e) => setNewVaccine({ ...newVaccine, date_administered: e.target.value })}
+                className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs text-gray-500">Следующая вакцинация</label>
+              <input
+                type="date"
+                value={newVaccine.next_due_date}
+                onChange={(e) => setNewVaccine({ ...newVaccine, next_due_date: e.target.value })}
+                className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm"
+              />
+            </div>
           </div>
           <div className="grid grid-cols-2 gap-2">
             <input
@@ -575,18 +581,24 @@ const MedicationsField = ({ medications = [], onAdd, onRemove }) => {
             </select>
           </div>
           <div className="grid grid-cols-2 gap-2">
-            <input
-              type="date"
-              value={newMed.start_date}
-              onChange={(e) => setNewMed({ ...newMed, start_date: e.target.value })}
-              className="px-3 py-2 rounded-lg border border-gray-200 text-sm"
-            />
-            <input
-              type="date"
-              value={newMed.end_date}
-              onChange={(e) => setNewMed({ ...newMed, end_date: e.target.value })}
-              className="px-3 py-2 rounded-lg border border-gray-200 text-sm"
-            />
+            <div className="space-y-1">
+              <label className="text-xs text-gray-500">Начало приёма</label>
+              <input
+                type="date"
+                value={newMed.start_date}
+                onChange={(e) => setNewMed({ ...newMed, start_date: e.target.value })}
+                className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs text-gray-500">Окончание приёма</label>
+              <input
+                type="date"
+                value={newMed.end_date}
+                onChange={(e) => setNewMed({ ...newMed, end_date: e.target.value })}
+                className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm"
+              />
+            </div>
           </div>
           <button
             type="button"
@@ -652,7 +664,6 @@ export default function PetProfileEditor({ pet, onClose, onSave, isLoading }) {
   const [activeSection, setActiveSection] = useState('basic');
   const [hasChanges, setHasChanges] = useState(false);
   const [errors, setErrors] = useState({});
-  const [isSavingProgress, setIsSavingProgress] = useState(false);
   const [healthConditionOptions, setHealthConditionOptions] = useState([]);
   const [allergyOptions, setAllergyOptions] = useState([]);
   const [petHealthConditions, setPetHealthConditions] = useState([]);
@@ -804,6 +815,10 @@ export default function PetProfileEditor({ pet, onClose, onSave, isLoading }) {
       body_condition_score: formData.body_condition_score
         ? parseInt(formData.body_condition_score, 10)
         : null,
+      heart_rate: formData.heart_rate ? parseInt(formData.heart_rate, 10) : null,
+      respiratory_rate: formData.respiratory_rate ? parseInt(formData.respiratory_rate, 10) : null,
+      temperature: formData.temperature ? parseFloat(formData.temperature) : null,
+      vet_notes: formData.vet_notes?.trim() || null,
       walk_frequency: formData.walk_frequency || null,
       walk_duration: formData.walk_duration || null,
       is_draft: isDraft,
@@ -865,18 +880,6 @@ export default function PetProfileEditor({ pet, onClose, onSave, isLoading }) {
     }
   };
 
-  const handleProgressSave = async () => {
-    setIsSavingProgress(true);
-    try {
-      const dataToSave = buildPayload({ isDraft: false });
-      await onSave(dataToSave, { isDraft: false, partial: true });
-      setHasChanges(false);
-    } catch (error) {
-      console.error('Ошибка сохранения прогресса:', error);
-    } finally {
-      setIsSavingProgress(false);
-    }
-  };
 
   // Расчёт заполненности каждого раздела
   const sectionProgress = useMemo(() => {
@@ -1424,19 +1427,6 @@ export default function PetProfileEditor({ pet, onClose, onSave, isLoading }) {
                     className="px-6 py-2.5 rounded-xl border-2 border-gray-200 text-gray-600 font-medium hover:bg-gray-100 transition-all"
                   >
                     Отмена
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleProgressSave}
-                    disabled={isLoading || isSavingProgress || !hasChanges}
-                    className="px-6 py-2.5 rounded-xl border-2 border-purple-200 text-purple-600 font-medium hover:bg-purple-50 transition-all disabled:opacity-50 flex items-center gap-2"
-                  >
-                    {isSavingProgress ? (
-                      <div className="w-5 h-5 border-2 border-purple-300 border-t-purple-600 rounded-full animate-spin" />
-                    ) : (
-                      <Save className="w-5 h-5" />
-                    )}
-                    Сохранить прогресс
                   </button>
                   <button
                     type="submit"

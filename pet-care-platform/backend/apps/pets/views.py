@@ -232,6 +232,7 @@ class PetDetailView(BaseDetailView):
             
             # Здоровье (Этап 2)
             'chronic_conditions_notes', 'last_vet_visit', 'body_condition_score',
+            'heart_rate', 'respiratory_rate', 'temperature', 'vet_notes',
             
             # Климат и прогулки
             'living_climate', 'walk_frequency', 'walk_duration',

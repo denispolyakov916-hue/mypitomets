@@ -154,9 +154,9 @@ export default function PetEditPage() {
       };
       if (options.partial) {
         await updatePetPartial(petId, payload);
-      } else {
-        await updatePet(petId, payload);
+        return true;
       }
+      await updatePet(petId, payload);
       // Перезагружаем данные
       const response = await getPet(petId);
       setPet(response.data || response);

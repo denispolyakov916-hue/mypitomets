@@ -124,7 +124,7 @@ export const updatePet = async (petId, petData) => {
  * @returns {Promise<Object>}
  */
 export const updatePetPartial = async (petId, petData) => {
-  return await petsApi.patch(petId, petData)
+  return await petsApi.update(petId, petData)
 }
 
 /**

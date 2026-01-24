@@ -259,7 +259,7 @@ class PetCreateSerializer(serializers.Serializer):
         return round(value, 2)
 
     def validate(self, attrs):
-        """Поддержка алиасов weight_kg и breed_id."""
+        """Поддержка алиасов weight_kg и breed_id + проверки веса по виду."""
         weight = attrs.get('weight')
         weight_kg = attrs.get('weight_kg')
         if weight is None and weight_kg is not None:
@@ -268,6 +268,14 @@ class PetCreateSerializer(serializers.Serializer):
 
         if not attrs.get('is_draft') and attrs.get('weight') is None:
             raise serializers.ValidationError({'weight': 'Вес обязателен для создания питомца'})
+
+        weight = attrs.get('weight')
+        species = attrs.get('species') or (self.initial_data.get('species') if hasattr(self, 'initial_data') else None)
+        if weight is not None and species:
+            if species == 'cat' and weight > 20:
+                raise serializers.ValidationError({'weight': 'Максимум 20 кг для кошки'})
+            if species == 'dog' and weight > 100:
+                raise serializers.ValidationError({'weight': 'Максимум 100 кг для собаки'})
 
         breed = attrs.get('breed')
         breed_id = attrs.get('breed_id')
@@ -521,6 +529,35 @@ class PetUpdateSerializer(serializers.Serializer):
         allow_null=True,
         help_text="Оценка упитанности (BCS) 1-9"
     )
+
+    heart_rate = serializers.IntegerField(
+        required=False,
+        min_value=1,
+        allow_null=True,
+        help_text="ЧСС (уд/мин)"
+    )
+
+    respiratory_rate = serializers.IntegerField(
+        required=False,
+        min_value=1,
+        allow_null=True,
+        help_text="ЧДД (дых/мин)"
+    )
+
+    temperature = serializers.DecimalField(
+        required=False,
+        max_digits=4,
+        decimal_places=1,
+        allow_null=True,
+        help_text="Температура (°C)"
+    )
+
+    vet_notes = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        allow_null=True,
+        help_text="Заметки ветеринара"
+    )
     
     # === КЛИМАТ ===
     
@@ -737,9 +774,15 @@ class PetSerializer(serializers.Serializer):
     # === ЗДОРОВЬЕ ===
     chronic_conditions_notes = serializers.CharField(read_only=True, allow_blank=True)
     last_vet_visit = serializers.DateField(read_only=True, allow_null=True)
+    heart_rate = serializers.IntegerField(read_only=True, allow_null=True)
+    respiratory_rate = serializers.IntegerField(read_only=True, allow_null=True)
+    temperature = serializers.DecimalField(read_only=True, allow_null=True, max_digits=4, decimal_places=1)
+    vet_notes = serializers.CharField(read_only=True, allow_blank=True, allow_null=True)
     
     # === КЛИМАТ ===
     living_climate = serializers.CharField(read_only=True, allow_null=True)
+    walk_frequency = serializers.CharField(read_only=True, allow_null=True)
+    walk_duration = serializers.CharField(read_only=True, allow_null=True)
     
     # === СЛУЖЕБНЫЕ ПОЛЯ ===
     is_extended_profile = serializers.BooleanField(read_only=True)
