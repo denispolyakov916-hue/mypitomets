@@ -81,9 +81,8 @@ function ReviewsSection({ type, itemId, isPurchased = false }) {
       setCanReview(response.can_review || false)
     } catch (err) {
       console.error('Ошибка проверки возможности отзыва:', err)
-      // При ошибке API (например, 401) доверяем isPurchased из надежного API товара
-      // isPurchased проверяется на backend с валидной аутентификацией
-      setCanReview(isPurchased)
+      // Без подтверждения доставки не даем оставить отзыв
+      setCanReview(false)
     } finally {
       setEligibilityLoading(false)
     }

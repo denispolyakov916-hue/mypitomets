@@ -151,25 +151,6 @@ const CartButton = memo(function CartButton({
   onQuantityChange 
 }) {
   const navigate = useNavigate()
-  const [isAnimating, setIsAnimating] = useState(false)
-  const [showCounter, setShowCounter] = useState(isInCart)
-  
-  // Синхронизация с состоянием корзины
-  useEffect(() => {
-    if (isInCart && !showCounter) {
-      // Товар добавлен - запускаем анимацию
-      setIsAnimating(true)
-      const timer = setTimeout(() => {
-        setShowCounter(true)
-        setIsAnimating(false)
-      }, 300)
-      return () => clearTimeout(timer)
-    } else if (!isInCart && showCounter) {
-      // Товар удалён - сбрасываем состояние
-      setShowCounter(false)
-      setIsAnimating(false)
-    }
-  }, [isInCart, showCounter])
 
   if (!isAvailable) {
     return (
@@ -182,11 +163,14 @@ const CartButton = memo(function CartButton({
     )
   }
 
-  // Если товар в корзине или анимация завершается - показываем две кнопки
-  if (showCounter || isInCart) {
-    return (
-      <div className="flex items-stretch gap-1.5 h-10">
-        {/* Кнопка "В корзине" - занимает основное пространство */}
+  // Показываем счётчик, когда товар в корзине
+  const showCounter = isInCart
+  const counterWidthClass = showCounter ? 'w-[88px]' : 'w-0'
+
+  return (
+    <div className="flex items-stretch gap-1.5 h-10">
+      {/* Основная кнопка: либо "В корзину", либо "В корзине" */}
+      {showCounter ? (
         <button
           onClick={() => navigate('/cart')}
           className="flex-1 min-w-0 px-3 rounded-2xl flex flex-col items-center justify-center bg-green-500 hover:bg-green-600 text-white transition-all duration-300"
@@ -194,60 +178,59 @@ const CartButton = memo(function CartButton({
           <span className="text-xs font-medium leading-tight">В корзине</span>
           <span className="text-[10px] opacity-80 leading-tight">Перейти</span>
         </button>
-        
-        {/* Счётчик количества - компактный */}
-        <div 
-          className={`flex-shrink-0 flex items-center bg-gray-100 rounded-2xl overflow-hidden transition-all duration-300 ${
-            showCounter ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-4'
-          }`}
-        >
-          <button
-            onClick={() => onQuantityChange(-1)}
-            className="w-8 h-full flex items-center justify-center text-purple-600 hover:bg-gray-200 transition-colors"
-          >
-            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M4 12a1.5 1.5 0 0 1 1.5-1.5h13a1.5 1.5 0 0 1 0 3h-13A1.5 1.5 0 0 1 4 12" />
-            </svg>
-          </button>
-          
-          <span className="text-sm font-semibold text-gray-800 w-6 text-center">
-            {cartQuantity}
-          </span>
-          
-          <button
-            onClick={() => onQuantityChange(1)}
-            disabled={cartQuantity >= (product.stock_count || 999)}
-            className="w-8 h-full flex items-center justify-center text-purple-600 hover:bg-gray-200 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M12 4a1.5 1.5 0 0 1 1.5 1.5v5h5a1.5 1.5 0 0 1 0 3h-5v5a1.5 1.5 0 0 1-3 0v-5h-5a1.5 1.5 0 0 1 0-3h5v-5A1.5 1.5 0 0 1 12 4" />
-            </svg>
-          </button>
-        </div>
-      </div>
-    )
-  }
-
-  // Исходное состояние - кнопка "В корзину"
-  return (
-    <button
-      onClick={onAdd}
-      disabled={isAdding}
-      className={`w-full h-10 rounded-2xl flex flex-col items-center justify-center text-white transition-all duration-300 ${
-        isAnimating 
-          ? 'bg-green-500 animate-shrinkLeft' 
-          : 'bg-purple-600 hover:bg-purple-700 active:scale-[0.98]'
-      }`}
-    >
-      {isAdding ? (
-        <ButtonLoader />
       ) : (
-        <>
-          <span className="text-sm font-medium leading-tight">В корзину</span>
-          <span className="text-[10px] opacity-80 leading-tight">Быстрая доставка</span>
-        </>
+        <button
+          onClick={onAdd}
+          disabled={isAdding}
+          className="flex-1 min-w-0 h-10 rounded-2xl flex flex-col items-center justify-center text-white transition-all duration-300 bg-primary-600 hover:bg-primary-700 active:scale-[0.98]"
+        >
+          {isAdding ? (
+            <ButtonLoader />
+          ) : (
+            <>
+              <span className="text-sm font-medium leading-tight">В корзину</span>
+              <span className="text-[10px] opacity-80 leading-tight">Добавить</span>
+            </>
+          )}
+        </button>
       )}
-    </button>
+      
+      {/* Счётчик количества - ширина и появление синхронизированы с кнопкой */}
+      <div
+        className={`
+          flex-shrink-0 flex items-center bg-gray-100 rounded-2xl overflow-hidden
+          transition-all duration-300
+          ${counterWidthClass}
+          ${showCounter ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-2 pointer-events-none'}
+        `.trim().replace(/\s+/g, ' ')}
+        aria-hidden={!showCounter}
+      >
+        <button
+          onClick={() => onQuantityChange(-1)}
+          className="w-8 h-full flex items-center justify-center text-primary-700 hover:bg-gray-200 transition-colors"
+          tabIndex={showCounter ? 0 : -1}
+        >
+          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M4 12a1.5 1.5 0 0 1 1.5-1.5h13a1.5 1.5 0 0 1 0 3h-13A1.5 1.5 0 0 1 4 12" />
+          </svg>
+        </button>
+        
+        <span className="text-sm font-semibold text-gray-800 w-6 text-center">
+          {cartQuantity}
+        </span>
+        
+        <button
+          onClick={() => onQuantityChange(1)}
+          disabled={cartQuantity >= (product.stock_count || 999)}
+          className="w-8 h-full flex items-center justify-center text-primary-700 hover:bg-gray-200 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+          tabIndex={showCounter ? 0 : -1}
+        >
+          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M12 4a1.5 1.5 0 0 1 1.5 1.5v5h5a1.5 1.5 0 0 1 0 3h-5v5a1.5 1.5 0 0 1-3 0v-5h-5a1.5 1.5 0 0 1 0-3h5v-5A1.5 1.5 0 0 1 12 4" />
+          </svg>
+        </button>
+      </div>
+    </div>
   )
 })
 
@@ -305,7 +288,7 @@ const ProductCard = memo(function ProductCard({ product, onAddToCart, isLoading 
   }, [cartQuantity, product.stock_count, product.id, updateQuantity])
 
   return (
-    <div className="group bg-white rounded-xl shadow-sm hover:shadow-xl border border-gray-100 transition-all duration-300 flex flex-col h-full overflow-hidden">
+    <div className="group bg-white rounded-2xl shadow-sm hover:shadow-lg border border-gray-100 transition-all duration-300 flex flex-col h-full overflow-hidden">
       {/* Изображение */}
       <Link to={`/shop/products/${product.id}`} className="aspect-square relative overflow-hidden bg-gray-50 block">
         <ProductImage src={mainImage} alt={product.name} animal={animalType} />
@@ -319,20 +302,10 @@ const ProductCard = memo(function ProductCard({ product, onAddToCart, isLoading 
             </span>
           )}
           
-          {/* Особенности */}
-          {product.is_veterinary && (
-            <span className="px-2 py-0.5 bg-orange-500 text-white text-[10px] font-medium rounded">
-              Ветдиета
-            </span>
-          )}
-          {product.is_hypoallergenic && (
-            <span className="px-2 py-0.5 bg-green-500 text-white text-[10px] font-medium rounded">
-              Гипоаллерг.
-            </span>
-          )}
-          {product.is_grain_free && (
-            <span className="px-2 py-0.5 bg-amber-500 text-white text-[10px] font-medium rounded">
-              Без зерна
+          {/* Особенность (снижаем шум: показываем одну, по приоритету) */}
+          {(product.is_veterinary || product.is_hypoallergenic || product.is_grain_free) && (
+            <span className="px-2 py-0.5 bg-white/90 text-gray-700 text-[10px] font-semibold rounded shadow-sm border border-gray-200">
+              {product.is_veterinary ? '⚕️ Ветдиета' : product.is_hypoallergenic ? '🛡️ Гипоаллерг.' : '🌾 Без зерна'}
             </span>
           )}
         </div>
@@ -346,10 +319,10 @@ const ProductCard = memo(function ProductCard({ product, onAddToCart, isLoading 
         <div className="absolute bottom-2 left-2">
           <span className={`px-2 py-0.5 text-[10px] font-medium rounded ${
             animalType === 'dog' ? 'bg-blue-100 text-blue-700' :
-            animalType === 'cat' ? 'bg-purple-100 text-purple-700' :
+            animalType === 'cat' ? 'bg-primary-100 text-primary-700' :
             'bg-gray-100 text-gray-700'
           }`}>
-            {animalType === 'dog' ? '🐕 Собаки' : animalType === 'cat' ? '🐱 Кошки' : '🐾 Все'}
+            {animalType === 'dog' ? 'Для собак' : animalType === 'cat' ? 'Для кошек' : 'Для всех'}
           </span>
         </div>
         
@@ -373,7 +346,7 @@ const ProductCard = memo(function ProductCard({ product, onAddToCart, isLoading 
       </Link>
       
       {/* Информация */}
-      <div className="flex-1 flex flex-col p-3">
+      <div className="flex-1 flex flex-col p-4">
         {/* Цена */}
         <div className="flex items-baseline gap-2 mb-1">
           <span className={`text-lg font-bold ${discountPercent > 0 ? 'text-red-600' : 'text-gray-900'}`}>
@@ -388,20 +361,20 @@ const ProductCard = memo(function ProductCard({ product, onAddToCart, isLoading 
         
         {/* Бренд */}
         {(product.brand_name || product.vendor) && (
-          <p className="text-xs text-purple-600 font-medium mb-0.5 truncate">
+          <p className="text-xs text-primary-700 font-semibold mb-1 truncate">
             {product.brand_name || product.vendor}
           </p>
         )}
         
         {/* Название */}
         <Link to={`/shop/products/${product.id}`} className="block">
-          <h3 className="text-sm text-gray-800 leading-tight line-clamp-2 hover:text-purple-600 transition-colors mb-1.5 min-h-[2.5rem]">
+          <h3 className="text-sm text-gray-900 leading-snug line-clamp-2 hover:text-primary-700 transition-colors mb-2 min-h-[2.6rem]">
             {product.name}
           </h3>
         </Link>
         
         {/* Рейтинг и отзывы */}
-        <div className="flex items-center gap-1 mb-2">
+        <div className="flex items-center gap-1 mb-3">
           <div className="flex items-center">
             <svg className="w-4 h-4 text-yellow-400 fill-current" viewBox="0 0 20 20">
               <path d="M10 15l-5.878 3.09 1.123-6.545L.489 6.91l6.572-.955L10 0l2.939 5.955 6.572.955-4.756 4.635 1.123 6.545z"/>

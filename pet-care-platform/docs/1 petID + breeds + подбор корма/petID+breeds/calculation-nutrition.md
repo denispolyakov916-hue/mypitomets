@@ -753,6 +753,7 @@ MER = RER × K_base × K_health × K_activity_extra
 | all | cancer | Онкология | 1.00 | 1.20 | CRITICAL | NEUTRAL | Clinical |
 | all | arthritis | Артрит | 1.00 | 1.00 | LOW | NEUTRAL | Clinical |
 
+
 #### Специфичные для собак
 
 | species | code | name_ru | coef_min | coef_max | priority | direction | source |
