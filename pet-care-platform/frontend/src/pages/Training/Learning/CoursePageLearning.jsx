@@ -218,7 +218,7 @@ const CoursePageLearning = () => {
   if (loading && !course) {
     return (
       <div className="min-h-screen bg-gray-50">
-        <div className="max-w-7xl mx-auto px-4 py-8">
+        <div className="max-w-[1400px] mx-auto px-4 py-8">
           <div className="animate-pulse">
             <div className="h-8 bg-gray-200 rounded w-1/2 mb-6"></div>
             <div className="bg-white rounded-lg shadow p-6 mb-8">
@@ -239,7 +239,7 @@ const CoursePageLearning = () => {
   if (!course && !loading) {
     return (
       <div className="min-h-screen bg-gray-50">
-        <div className="max-w-7xl mx-auto px-4 py-8">
+        <div className="max-w-[1400px] mx-auto px-4 py-8">
           <div className="text-center">
             <h1 className="text-2xl font-bold text-gray-900 mb-4">Курс не найден</h1>
             <p className="text-gray-600 mb-6">Запрашиваемый курс не существует или недоступен.</p>
@@ -254,7 +254,7 @@ const CoursePageLearning = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 py-8">
+      <div className="max-w-[1400px] mx-auto px-4 py-8">
         {/* Заголовок и навигация */}
         <div className="mb-6">
           <div className="flex items-center justify-between mb-4">

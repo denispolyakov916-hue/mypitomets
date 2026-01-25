@@ -1650,6 +1650,11 @@ class CartItem(models.Model):
 
     Может содержать либо товар (product), либо курс (course).
     Курсы всегда имеют quantity = 1.
+    
+    При добавлении товара с вариациями:
+    - product указывает на основной товар
+    - sku указывает на конкретную вариацию (опционально)
+    - Цена берётся из sku.price если указан, иначе из product.price
     """
 
     id = models.AutoField(primary_key=True)
@@ -1665,6 +1670,14 @@ class CartItem(models.Model):
         null=True,
         blank=True,
         verbose_name='Товар'
+    )
+    sku = models.ForeignKey(
+        ProductSKU,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        verbose_name='Вариация товара',
+        help_text='Конкретная вариация (вес, вкус, размер)'
     )
     course = models.ForeignKey(
         'training.Course',
@@ -1695,12 +1708,14 @@ class CartItem(models.Model):
         db_table = 'cart_items'
         verbose_name = 'Элемент корзины'
         verbose_name_plural = 'Элементы корзины'
-        # Уникальность: один товар или курс в корзине
-        # Для курсов с питомцем - уникальность по курсу и питомцу
+        # Уникальность: один товар/SKU или курс в корзине
+        # - Для товаров с SKU: уникальность по cart + product + sku
+        # - Для товаров без SKU: уникальность по cart + product (sku=NULL)
+        # - Для курсов: уникальность по cart + course + pet
         constraints = [
             models.UniqueConstraint(
-                fields=['cart', 'product'],
-                name='unique_cart_product',
+                fields=['cart', 'product', 'sku'],
+                name='unique_cart_product_sku',
                 condition=models.Q(product__isnull=False)
             ),
             models.UniqueConstraint(
@@ -1718,9 +1733,22 @@ class CartItem(models.Model):
             return f"{self.course.title}{pet_name}"
         return f"CartItem {self.id}"
 
+    def get_unit_price(self):
+        """Цена за единицу с учётом SKU."""
+        if self.sku:
+            return self.sku.price
+        elif self.product:
+            return self.product.discounted_price
+        elif self.course:
+            return self.course.price
+        return Decimal('0.00')
+
     def get_total(self):
-        """Стоимость позиции с учётом скидки."""
+        """Стоимость позиции с учётом скидки и SKU."""
         if self.product:
+            # Если указан SKU, берём цену из него
+            if self.sku:
+                return self.sku.price * self.quantity
             return self.product.discounted_price * self.quantity
         elif self.course:
             return self.course.price
@@ -1729,12 +1757,19 @@ class CartItem(models.Model):
     def to_dict(self):
         """Сериализация для API."""
         if self.product:
-            return {
+            data = {
                 'id': self.id,
                 'product': self.product.to_dict(),
                 'quantity': self.quantity,
                 'price': self.get_total()
             }
+            # Добавляем информацию о SKU если есть
+            if self.sku:
+                data['sku'] = self.sku.to_dict()
+                data['unit_price'] = float(self.sku.price)
+            else:
+                data['unit_price'] = float(self.product.discounted_price)
+            return data
         elif self.course:
             data = {
                 'id': self.id,
@@ -2055,6 +2090,13 @@ class OrderItem(models.Model):
         blank=True,
         verbose_name='Товар'
     )
+    sku = models.ForeignKey(
+        ProductSKU,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        verbose_name='Вариация товара'
+    )
     course = models.ForeignKey(
         'training.Course',
         on_delete=models.SET_NULL,
@@ -2073,6 +2115,13 @@ class OrderItem(models.Model):
 
     # Снимок данных на момент заказа
     product_name = models.CharField(max_length=200, verbose_name='Название товара/курса')
+    sku_name = models.CharField(
+        max_length=100, 
+        blank=True, 
+        null=True,
+        verbose_name='Название вариации',
+        help_text='Например: "2 кг", "Курица", "M"'
+    )
     price = models.DecimalField(max_digits=10, decimal_places=2, verbose_name='Цена')
     quantity = models.PositiveIntegerField(verbose_name='Количество')
     disclaimer_accepted = models.BooleanField(

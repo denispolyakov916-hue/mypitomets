@@ -522,11 +522,54 @@ function Cart() {
                               {itemName}
                             </h3>
                           </div>
-                          <p className="text-sm text-gray-500 line-clamp-2 leading-relaxed">
+                          
+                          {/* Информация о вариации (SKU) */}
+                          {item.sku && (
+                            <div className="flex flex-wrap gap-1.5 mb-1">
+                              {item.sku.weight_display && (
+                                <span className="inline-flex items-center px-2 py-0.5 bg-gray-100 text-gray-700 text-xs rounded-full">
+                                  ⚖️ {item.sku.weight_display}
+                                </span>
+                              )}
+                              {item.sku.flavor_display && (
+                                <span className="inline-flex items-center px-2 py-0.5 bg-amber-50 text-amber-700 text-xs rounded-full">
+                                  🍖 {item.sku.flavor_display}
+                                </span>
+                              )}
+                              {item.sku.color_display && (
+                                <span className="inline-flex items-center px-2 py-0.5 bg-purple-50 text-purple-700 text-xs rounded-full gap-1">
+                                  {item.sku.color_hex && (
+                                    <span 
+                                      className="w-3 h-3 rounded-full border border-gray-300"
+                                      style={{ backgroundColor: item.sku.color_hex }}
+                                    />
+                                  )}
+                                  {item.sku.color_display}
+                                </span>
+                              )}
+                              {item.sku.size_code && (
+                                <span className="inline-flex items-center px-2 py-0.5 bg-blue-50 text-blue-700 text-xs rounded-full">
+                                  📏 {item.sku.size_code}
+                                </span>
+                              )}
+                              {item.sku.volume_display && (
+                                <span className="inline-flex items-center px-2 py-0.5 bg-cyan-50 text-cyan-700 text-xs rounded-full">
+                                  💧 {item.sku.volume_display}
+                                </span>
+                              )}
+                              {item.sku.pack_quantity && (
+                                <span className="inline-flex items-center px-2 py-0.5 bg-green-50 text-green-700 text-xs rounded-full">
+                                  📦 {item.sku.pack_quantity} шт
+                                </span>
+                              )}
+                            </div>
+                          )}
+                          
+                          <p className="text-sm text-gray-500 line-clamp-1 leading-relaxed">
                             {itemDescription}
                           </p>
                           <p className="font-medium text-gray-900 mt-1">
-                            {formatPrice(itemPrice)}
+                            {formatPrice(item.unit_price || item.sku?.price || itemPrice)}
                           </p>
                         </div>
 
@@ -554,7 +597,7 @@ function Cart() {
                         {/* Сумма и удаление */}
                         <div className="text-right">
                           <p className="font-semibold text-gray-900">
-                            {formatPrice(itemPrice * itemQuantity)}
+                            {formatPrice((item.unit_price || item.sku?.price || itemPrice) * itemQuantity)}
                           </p>
                           <button
                             onClick={() => handleRemove(itemId, false, cartItemId)}

@@ -132,7 +132,7 @@ const LessonPage = () => {
   if (loadingLesson && !lesson) {
     return (
       <div className="min-h-screen bg-gray-50">
-        <div className="max-w-7xl mx-auto px-4 py-8">
+        <div className="max-w-[1400px] mx-auto px-4 py-8">
           <div className="animate-pulse">
             <div className="flex items-center justify-between mb-6">
               <div className="h-8 bg-gray-200 rounded w-32"></div>
@@ -161,7 +161,7 @@ const LessonPage = () => {
   if (!lesson && !loadingLesson) {
     return (
       <div className="min-h-screen bg-gray-50">
-        <div className="max-w-7xl mx-auto px-4 py-8">
+        <div className="max-w-[1400px] mx-auto px-4 py-8">
           <div className="text-center">
             <h1 className="text-2xl font-bold text-gray-900 mb-4">Урок не найден</h1>
             <p className="text-gray-600 mb-6">Запрашиваемый урок не существует или недоступен.</p>
@@ -176,7 +176,7 @@ const LessonPage = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 py-8">
+      <div className="max-w-[1400px] mx-auto px-4 py-8">
         {/* Заголовок и навигация */}
         <div className="mb-6">
           <div className="flex items-center justify-between mb-4">

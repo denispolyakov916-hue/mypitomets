@@ -46,7 +46,7 @@ urlpatterns = [
 # URLs для данных питомца (вложенные в /pets/{pet_id}/)
 pet_nutrition_patterns = [
     path(
-        '<str:pet_id>/health-conditions/',
+        '<uuid:pet_id>/health-conditions/',
         PetHealthConditionViewSet.as_view({
             'get': 'list',
             'post': 'create'
@@ -54,7 +54,7 @@ pet_nutrition_patterns = [
         name='pet-health-conditions-list'
     ),
     path(
-        '<str:pet_id>/health-conditions/<int:pk>/',
+        '<uuid:pet_id>/health-conditions/<int:pk>/',
         PetHealthConditionViewSet.as_view({
             'get': 'retrieve',
             'put': 'update',
@@ -64,7 +64,7 @@ pet_nutrition_patterns = [
         name='pet-health-conditions-detail'
     ),
     path(
-        '<str:pet_id>/allergies/',
+        '<uuid:pet_id>/allergies/',
         PetAllergyViewSet.as_view({
             'get': 'list',
             'post': 'create'
@@ -72,7 +72,7 @@ pet_nutrition_patterns = [
         name='pet-allergies-list'
     ),
     path(
-        '<str:pet_id>/allergies/<int:pk>/',
+        '<uuid:pet_id>/allergies/<int:pk>/',
         PetAllergyViewSet.as_view({
             'get': 'retrieve',
             'put': 'update',
@@ -82,7 +82,7 @@ pet_nutrition_patterns = [
         name='pet-allergies-detail'
     ),
     path(
-        '<str:pet_id>/food-exclusions/',
+        '<uuid:pet_id>/food-exclusions/',
         PetFoodExclusionViewSet.as_view({
             'get': 'list',
             'post': 'create'
@@ -90,7 +90,7 @@ pet_nutrition_patterns = [
         name='pet-food-exclusions-list'
     ),
     path(
-        '<str:pet_id>/food-exclusions/<int:pk>/',
+        '<uuid:pet_id>/food-exclusions/<int:pk>/',
         PetFoodExclusionViewSet.as_view({
             'get': 'retrieve',
             'put': 'update',

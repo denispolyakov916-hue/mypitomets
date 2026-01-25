@@ -287,12 +287,20 @@ class CartItemAddSerializer(serializers.Serializer):
 
     Поля:
         product_id (int): ID товара для добавления - опционально (если не указан course_id)
+        sku_id (int): ID вариации товара (SKU) - опционально
         course_id (int): ID курса для добавления - опционально (если не указан product_id)
         pet_id (str): ID питомца для привязки курса - опционально
         disclaimer_accepted (bool): Согласие с условиями - опционально, по умолчанию False
         quantity (int): Количество - опционально, по умолчанию 1 (только для товаров)
 
-    Пример запроса для товара:
+    Пример запроса для товара с вариацией:
+        {
+            "product_id": 5,
+            "sku_id": 123,
+            "quantity": 2
+        }
+
+    Пример запроса для товара без указания вариации:
         {
             "product_id": 5,
             "quantity": 2
@@ -308,6 +316,7 @@ class CartItemAddSerializer(serializers.Serializer):
     Правила валидации:
         - Должен быть указан либо product_id, либо course_id, но не оба одновременно
         - product_id и course_id должны быть положительными числами
+        - sku_id должен принадлежать указанному product_id
         - quantity должно быть положительным (минимум 1, только для товаров)
         - Для платных курсов disclaimer_accepted должно быть true
         - pet_id должен быть валидным UUID
@@ -316,6 +325,10 @@ class CartItemAddSerializer(serializers.Serializer):
     product_id = serializers.IntegerField(
         required=False,
         help_text="ID товара для добавления в корзину"
+    )
+    sku_id = serializers.IntegerField(
+        required=False,
+        help_text="ID вариации товара (SKU) для добавления в корзину"
     )
     course_id = serializers.IntegerField(
         required=False,
@@ -357,6 +370,28 @@ class CartItemAddSerializer(serializers.Serializer):
         if value <= 0:
             raise serializers.ValidationError(
                 "ID товара должен быть положительным числом"
+            )
+        return value
+
+    def validate_sku_id(self, value):
+        """
+        Валидация ID вариации (SKU).
+
+        Проверяет, что ID является положительным целым числом.
+        Проверка существования SKU и его принадлежности товару выполняется во view.
+
+        Аргументы:
+            value (int): ID SKU
+
+        Возвращает:
+            int: Валидированный ID SKU
+
+        Исключения:
+            ValidationError: Если ID не положительный
+        """
+        if value <= 0:
+            raise serializers.ValidationError(
+                "ID SKU должен быть положительным числом"
             )
         return value
 
@@ -418,6 +453,7 @@ class CartItemAddSerializer(serializers.Serializer):
         Проверяет взаимосвязи между полями:
         - Должен быть указан либо product_id, либо course_id
         - Нельзя указывать оба одновременно
+        - sku_id можно указывать только вместе с product_id
         - Для курсов quantity игнорируется
         - pet_id только для курсов
 
@@ -431,6 +467,7 @@ class CartItemAddSerializer(serializers.Serializer):
             ValidationError: При нарушении правил валидации
         """
         product_id = attrs.get('product_id')
+        sku_id = attrs.get('sku_id')
         course_id = attrs.get('course_id')
         pet_id = attrs.get('pet_id')
         quantity = attrs.get('quantity', 1)
@@ -445,6 +482,12 @@ class CartItemAddSerializer(serializers.Serializer):
         if product_id and course_id:
             raise serializers.ValidationError(
                 "Нельзя указывать одновременно product_id и course_id"
+            )
+
+        # sku_id можно указывать только с product_id
+        if sku_id and not product_id:
+            raise serializers.ValidationError(
+                "sku_id можно указывать только вместе с product_id"
             )
 
         # Для курсов quantity всегда = 1

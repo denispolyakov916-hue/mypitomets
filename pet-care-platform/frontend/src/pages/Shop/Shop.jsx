@@ -77,7 +77,7 @@ const FilterSidebar = memo(function FilterSidebar({ filters, availableFilters, o
       className={`bg-white/95 backdrop-blur-sm rounded-xl shadow-lg border border-white/20 p-5 overflow-y-auto transition-opacity duration-200 ${isLoading ? 'opacity-70' : 'opacity-100'}`}
       style={{
         overscrollBehavior: 'contain',
-        height: 'calc(100vh - 6rem)'
+        maxHeight: 'calc(100vh - 8rem)'
       }}
     >
       <div className="flex justify-between items-center mb-4">
@@ -738,7 +738,7 @@ function Shop() {
   const showRefetchIndicator = isRefetching && !isLoading
   
   return (
-    <div className="animate-fadeIn relative max-w-none px-4 sm:px-6 lg:px-8 xl:px-12 2xl:px-16">
+    <div className="animate-fadeIn page-container-with-sidebar">
       {/* Индикатор фоновой загрузки */}
       {showRefetchIndicator && (
         <div className="fixed top-4 right-4 z-50 px-3 py-1.5 bg-purple-100 text-purple-700 rounded-full text-sm flex items-center gap-2 shadow-lg">
@@ -747,32 +747,14 @@ function Shop() {
         </div>
       )}
       
-      {/* Заголовок и поиск */}
+      {/* Заголовок */}
       <div className="mb-6">
-        <h1 className="page-title mb-4 lg:ml-80">Магазин товаров для питомцев</h1>
-
-        {/* Поиск */}
-        <form onSubmit={handleSearch} className="flex gap-2 max-w-xl lg:ml-80">
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Поиск по названию..."
-            className="flex-1 px-4 py-2 border border-purple-200 rounded-lg focus:ring-purple-500 focus:border-purple-500 bg-white/90 backdrop-blur-sm"
-          />
-          <button 
-            type="submit" 
-            disabled={isLoading}
-            className="btn-primary px-6 bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 disabled:opacity-50"
-          >
-            Найти
-          </button>
-        </form>
+        <h1 className="page-title mb-4">Магазин товаров для питомцев</h1>
       </div>
 
       <div className="flex gap-6">
-        {/* Боковая панель с фильтрами */}
-        <aside className="w-64 flex-shrink-0 hidden lg:block fixed left-4 top-24 z-10">
+        {/* Боковая панель с фильтрами - внутри контейнера */}
+        <aside className="w-60 flex-shrink-0 hidden lg:block sticky top-24 self-start">
           <FilterSidebar
             filters={filters}
             availableFilters={availableFilters}
@@ -783,7 +765,24 @@ function Shop() {
         </aside>
         
         {/* Основной контент */}
-        <main className="flex-1 min-w-0 animate-fadeIn lg:pl-72">
+        <main className="flex-1 min-w-0 animate-fadeIn">
+          {/* Поиск */}
+          <form onSubmit={handleSearch} className="flex gap-2 max-w-xl mb-6">
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Поиск по названию..."
+              className="flex-1 px-4 py-2 border border-purple-200 rounded-lg focus:ring-purple-500 focus:border-purple-500 bg-white/90 backdrop-blur-sm"
+            />
+            <button 
+              type="submit" 
+              disabled={isLoading}
+              className="btn-primary px-6 bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 disabled:opacity-50"
+            >
+              Найти
+            </button>
+          </form>
           {/* Мобильные фильтры */}
           <div className="lg:hidden mb-4">
             <div className="mb-3">

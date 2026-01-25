@@ -83,7 +83,7 @@ const BreedsPage = () => {
     <div className="min-h-screen bg-gray-50">
       {/* Заголовок */}
       <div className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white py-12">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8">
           <h1 className="text-3xl md:text-4xl font-bold mb-4">Каталог пород</h1>
           <p className="text-indigo-100 text-lg">
             Более 100 пород собак и кошек с подробной информацией
@@ -91,7 +91,7 @@ const BreedsPage = () => {
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Фильтры */}
         <div className="bg-white rounded-xl shadow-sm p-6 mb-8">
           <form onSubmit={handleSearch} className="space-y-4">

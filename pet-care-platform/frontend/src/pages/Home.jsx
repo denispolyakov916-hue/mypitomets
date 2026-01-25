@@ -363,7 +363,7 @@ function Home() {
         </div>
 
         <motion.div 
-          className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20"
+          className="relative z-10 max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-20"
           style={{ opacity: heroOpacity, scale: heroScale }}
         >
           <div className="grid lg:grid-cols-2 gap-12 items-center">
@@ -571,7 +571,7 @@ function Home() {
           }} />
         </div>
         
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <motion.div
             className="text-center max-w-3xl mx-auto mb-16"
             initial={{ opacity: 0, y: 30 }}
@@ -644,7 +644,7 @@ function Home() {
 
       {/* ========== 5 DOMAINS SECTION ========== */}
       <section className="py-24 bg-gradient-to-b from-gray-50 to-white relative">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div
             className="text-center max-w-3xl mx-auto mb-16"
             initial={{ opacity: 0, y: 30 }}
@@ -699,7 +699,7 @@ function Home() {
 
       {/* ========== FEATURES SECTION ========== */}
       <section className="py-24 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div
             className="text-center max-w-3xl mx-auto mb-16"
             initial={{ opacity: 0, y: 30 }}
@@ -743,7 +743,7 @@ function Home() {
           ))}
         </div>
         
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-8">
             {statistics.map((stat, i) => (
               <motion.div
@@ -766,7 +766,7 @@ function Home() {
       {/* ========== PERSONAL RECOMMENDATIONS (for authenticated) ========== */}
       {isAuthenticated && (
         <section className="py-16 bg-gray-50">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8">
             <PersonalRecommendations />
           </div>
         </section>

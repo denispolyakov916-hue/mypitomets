@@ -74,24 +74,18 @@ class PetHealthConditionSerializer(serializers.ModelSerializer):
 class PetHealthConditionCreateSerializer(serializers.ModelSerializer):
     """Сериализатор для создания записи заболевания питомца."""
     
+    # condition принимается как код (primary key)
+    condition = serializers.PrimaryKeyRelatedField(
+        queryset=HealthCondition.objects.all()
+    )
+    
     class Meta:
         model = PetHealthCondition
         fields = [
-            'pet', 'condition',
+            'condition',
             'diagnosis_date', 'severity', 'is_active', 'notes'
         ]
-    
-    def validate(self, data):
-        # Проверка, что заболевание подходит для вида питомца
-        pet = data['pet']
-        condition = data['condition']
-        
-        if condition.species not in ['both', pet.species]:
-            raise serializers.ValidationError({
-                'condition': f'Заболевание "{condition.name_ru}" не применимо к {pet.get_species_display()}'
-            })
-        
-        return data
+        # pet добавляется через perform_create, не требуется в запросе
 
 
 class PetAllergySerializer(serializers.ModelSerializer):
@@ -113,12 +107,18 @@ class PetAllergySerializer(serializers.ModelSerializer):
 class PetAllergyCreateSerializer(serializers.ModelSerializer):
     """Сериализатор для создания записи аллергии питомца."""
     
+    # allergy принимается как код (primary key)
+    allergy = serializers.PrimaryKeyRelatedField(
+        queryset=Allergy.objects.all()
+    )
+    
     class Meta:
         model = PetAllergy
         fields = [
-            'pet', 'allergy',
+            'allergy',
             'diagnosis_date', 'severity', 'is_active', 'notes'
         ]
+        # pet добавляется через perform_create, не требуется в запросе
 
 
 class PetFoodExclusionSerializer(serializers.ModelSerializer):

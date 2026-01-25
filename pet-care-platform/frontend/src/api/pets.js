@@ -73,28 +73,57 @@ export const getPet = async (petId) => {
  *   })
  */
 export const createPet = async (petData) => {
-  const formData = new FormData()
+  // Проверяем, есть ли файл для загрузки
+  const hasFile = petData.photo instanceof File
 
-  Object.keys(petData).forEach(key => {
-    const value = petData[key]
-    if (value === null || value === undefined) return
+  if (hasFile) {
+    // С файлом используем FormData
+    const formData = new FormData()
 
-    if (key === 'photo' && value instanceof File) {
-      formData.append('photo', value)
-      return
-    }
+    Object.keys(petData).forEach(key => {
+      const value = petData[key]
+      if (value === null || value === undefined) return
 
-    if (Array.isArray(value) || typeof value === 'object') {
-      formData.append(key, JSON.stringify(value))
-      return
-    }
+      if (key === 'photo' && value instanceof File) {
+        formData.append('photo', value)
+        return
+      }
 
-    formData.append(key, value)
-  })
+      // Boolean значения нужно явно преобразовать в строку
+      if (typeof value === 'boolean') {
+        formData.append(key, value ? 'true' : 'false')
+        return
+      }
 
-  return await api.post('/pets/', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' }
-  })
+      // Числа преобразуем в строку
+      if (typeof value === 'number') {
+        formData.append(key, String(value))
+        return
+      }
+
+      if (Array.isArray(value) || typeof value === 'object') {
+        formData.append(key, JSON.stringify(value))
+        return
+      }
+
+      formData.append(key, value)
+    })
+
+    return await api.post('/pets/', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
+  } else {
+    // Без файла отправляем JSON (лучше типизация)
+    const jsonData = {}
+    Object.keys(petData).forEach(key => {
+      const value = petData[key]
+      if (value === null || value === undefined) return
+      if (key === 'photo') return // Пропускаем пустое фото
+      jsonData[key] = value
+    })
+
+    return await api.post('/pets/', jsonData)
+  }
 }
 
 /**

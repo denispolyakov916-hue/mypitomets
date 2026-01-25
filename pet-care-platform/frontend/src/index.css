@@ -162,9 +162,16 @@ button {
     @apply text-sm text-red-500 mt-1;
   }
   
-  /* Контейнер страницы */
+  /* Контейнер страницы - единая ширина для всего сайта */
   .page-container {
-    @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8;
+    @apply mx-auto px-4 sm:px-6 lg:px-8 py-8;
+    max-width: 1400px;
+  }
+  
+  /* Контейнер для страниц с фильтром (магазин, курсы) */
+  .page-container-with-sidebar {
+    @apply mx-auto px-4 sm:px-6 lg:px-8 py-8;
+    max-width: 1400px;
   }
   
   /* Заголовок страницы */
@@ -912,36 +919,29 @@ button {
 }
 
 /* Адаптивная сетка для товаров и курсов */
+/* Рассчитано для контейнера 1400px, сайдбар 260px, контент ~1100px */
 .responsive-grid {
-  grid-template-columns: repeat(2, minmax(280px, 1fr)) !important;
+  display: grid;
+  grid-template-columns: repeat(1, 1fr);
+  gap: 1rem;
 }
 
-@media (min-width: 1240px) {
+@media (min-width: 640px) {
   .responsive-grid {
-    grid-template-columns: repeat(3, minmax(280px, 1fr)) !important;
+    grid-template-columns: repeat(2, 1fr);
   }
 }
 
-@media (min-width: 1550px) {
+/* На десктопе с сайдбаром - 3 колонки */
+@media (min-width: 1024px) {
   .responsive-grid {
-    grid-template-columns: repeat(4, minmax(280px, 1fr)) !important;
+    grid-template-columns: repeat(3, 1fr);
   }
 }
 
-@media (min-width: 1870px) {
+/* На очень широких экранах - 4 колонки (но только если места достаточно) */
+@media (min-width: 1600px) {
   .responsive-grid {
-    grid-template-columns: repeat(5, minmax(280px, 1fr)) !important;
-  }
-}
-
-@media (min-width: 2160px) {
-  .responsive-grid {
-    grid-template-columns: repeat(6, minmax(280px, 1fr)) !important;
-  }
-}
-
-@media (min-width: 2470px) {
-  .responsive-grid {
-    grid-template-columns: repeat(7, minmax(280px, 1fr)) !important;
+    grid-template-columns: repeat(4, 1fr);
   }
 }

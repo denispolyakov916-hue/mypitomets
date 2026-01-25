@@ -16,7 +16,7 @@ from rest_framework.decorators import action, api_view, permission_classes
 from apps.payments.models import Payment
 from apps.training.models import UserCourse
 
-from .models import Product, Cart, CartItem, Order, OrderItem, Address, Reservation
+from .models import Product, ProductSKU, Cart, CartItem, Order, OrderItem, Address, Reservation
 from .serializers import (
     CartItemAddSerializer,
     CartItemUpdateSerializer,
@@ -668,13 +668,13 @@ class CartView(APIView):
         )
 
     def _add_product_to_cart(self, cart, data):
-        """Добавление товара в корзину."""
+        """Добавление товара в корзину с поддержкой SKU."""
         product_id = data['product_id']
+        sku_id = data.get('sku_id')
         quantity = data.get('quantity', 1)
 
         # Проверка существования товара
         try:
-            # Оптимизация: используем with_ratings() для консистентности (хотя рейтинг не нужен здесь)
             product = Product.objects.get(id=product_id)
         except Product.DoesNotExist:
             return Response(
@@ -682,23 +682,50 @@ class CartView(APIView):
                 status=status.HTTP_404_NOT_FOUND
             )
 
-        # Проверка доступности товара (соответствует логике фронтенда)
-        # Товар доступен если: is_available=True ИЛИ in_stock=True ИЛИ stock_count > 0
-        is_product_available = product.is_available or product.in_stock or product.stock_count > 0
-        if not is_product_available:
-            return Response(
-                {'error': 'Товар закончился на складе'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+        # Проверка SKU если указан
+        sku = None
+        if sku_id:
+            try:
+                sku = ProductSKU.objects.get(id=sku_id, product=product)
+            except ProductSKU.DoesNotExist:
+                return Response(
+                    {'error': 'Вариация товара не найдена или не принадлежит этому товару'},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+            
+            # Проверка доступности SKU
+            if not sku.available:
+                return Response(
+                    {'error': f'Вариация "{sku.name}" недоступна'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            available_stock = sku.stock_quantity if sku.stock_quantity and sku.stock_quantity > 0 else 999
+        else:
+            # Если SKU не указан, проверяем доступность товара в целом
+            # Товар доступен если: is_available=True ИЛИ in_stock=True ИЛИ stock_count > 0
+            is_product_available = product.is_available or product.in_stock or product.stock_count > 0
+            if not is_product_available:
+                return Response(
+                    {'error': 'Товар закончился на складе'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Если у товара есть SKU, но он не указан - берём default или первый доступный
+            default_sku = product.skus.filter(is_default=True, available=True, status=1).first()
+            if not default_sku:
+                default_sku = product.skus.filter(available=True, status=1).order_by('sort_order').first()
+            
+            if default_sku:
+                sku = default_sku
+                available_stock = sku.stock_quantity if sku.stock_quantity and sku.stock_quantity > 0 else 999
+            else:
+                available_stock = product.stock_count if product.stock_count > 0 else 999
 
         # Проверка текущего количества в корзине
-        existing_item = CartItem.objects.filter(cart=cart, product=product).first()
+        existing_item = CartItem.objects.filter(cart=cart, product=product, sku=sku).first()
         current_quantity = existing_item.quantity if existing_item else 0
         new_total_quantity = current_quantity + quantity
-
-        # Определяем доступное количество
-        # Если stock_count > 0, используем его. Если is_available=True но stock_count=0, считаем что товар доступен без ограничений
-        available_stock = product.stock_count if product.stock_count > 0 else 999
 
         # Проверка, что запрашиваемое количество доступно
         if new_total_quantity > available_stock:
@@ -711,7 +738,7 @@ class CartView(APIView):
             existing_item.quantity = new_total_quantity
             existing_item.save()
         else:
-            CartItem.objects.create(cart=cart, product=product, quantity=quantity)
+            CartItem.objects.create(cart=cart, product=product, sku=sku, quantity=quantity)
 
         # Возврат обновлённой корзины в правильной структуре
         items = cart.items.select_related('product', 'course', 'pet').order_by('id').all()

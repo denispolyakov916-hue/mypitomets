@@ -106,7 +106,8 @@ class PetListCreateView(BaseListCreateView):
         Возвращает созданного питомца с id для фронтенда.
         """
         try:
-            logger.info(f"POST /api/pets/ - request.data: {request.data}")
+            logger.info(f"POST /api/pets/ - request.data: {dict(request.data)}")
+            logger.info(f"POST /api/pets/ - Content-Type: {request.content_type}")
             logger.info(f"User: {request.user}, authenticated: {request.user.is_authenticated}")
             
             serializer = self.get_serializer(data=request.data)
@@ -114,7 +115,7 @@ class PetListCreateView(BaseListCreateView):
                 logger.error(f"Validation errors: {serializer.errors}")
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
             
-            logger.info(f"Creating pet with data: {serializer.validated_data}")
+            logger.info(f"Validated data: {serializer.validated_data}")
 
             # Конвертация даты из строки
             data = serializer.validated_data.copy()
@@ -151,9 +152,13 @@ class PetListCreateView(BaseListCreateView):
                 pet.photo = request.FILES['photo']
                 pet.save(update_fields=['photo'])
 
-            logger.info(f"Питомец создан: {pet.name}, owner={request.user.email}")
+            # Логируем все сохранённые поля для отладки
+            logger.info(f"Питомец создан: id={pet.id}, name={pet.name}, species={pet.species}, "
+                       f"breed_id={pet.breed_id}, sex={pet.sex}, weight={pet.weight}, "
+                       f"date_of_birth={pet.date_of_birth}, is_neutered={pet.is_neutered}, "
+                       f"owner={request.user.email}")
             
-            # Возвращаем данные питомца с ID
+            # Возвращаем полные данные питомца с ID
             return Response({
                 'message': 'Питомец успешно создан',
                 'data': {
@@ -161,10 +166,14 @@ class PetListCreateView(BaseListCreateView):
                     'name': pet.name,
                     'species': pet.species,
                     'breed_id': pet.breed_id,
+                    'breed_name': pet.breed.name if pet.breed else None,
                     'weight': float(pet.weight) if pet.weight else None,
                     'date_of_birth': pet.date_of_birth.isoformat() if pet.date_of_birth else None,
                     'sex': pet.sex,
                     'is_neutered': pet.is_neutered,
+                    'activity_level': pet.activity_level,
+                    'size_category': pet.size_category,
+                    'coat_type': pet.coat_type,
                     'profile_completeness': pet.profile_completeness,
                     'is_draft': pet.is_draft,
                     'draft_step': pet.draft_step,

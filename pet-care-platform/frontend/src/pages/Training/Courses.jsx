@@ -128,10 +128,10 @@ function FilterSidebar({ filters, availableFilters, onFilterChange, onReset }) {
   return (
     <div
       ref={sidebarRef}
-      className="bg-white rounded-xl shadow-sm p-5 overflow-y-auto"
+      className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 overflow-y-auto"
       style={{
         overscrollBehavior: 'contain',
-        height: 'calc(100vh - 6rem)' // 100vh минус header + top offset
+        maxHeight: 'calc(100vh - 8rem)'
       }}
     >
       <div className="flex justify-between items-center mb-4">
@@ -677,29 +677,15 @@ function Courses() {
   }
   
   return (
-    <div className="animate-fadeIn max-w-none px-4 sm:px-6 lg:px-8 xl:px-12 2xl:px-16">
-      {/* Заголовок и поиск */}
+    <div className="animate-fadeIn page-container-with-sidebar">
+      {/* Заголовок */}
       <div className="mb-6">
-        <h1 className="page-title mb-4 lg:ml-80">Обучающие курсы</h1>
-
-        {/* Поиск */}
-        <form onSubmit={handleSearch} className="flex gap-2 max-w-xl lg:ml-80">
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Поиск по названию курса..."
-            className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-primary-500 focus:border-primary-500"
-          />
-          <button type="submit" className="btn-primary px-6">
-            Найти
-          </button>
-        </form>
+        <h1 className="page-title mb-4">Обучающие курсы</h1>
       </div>
       
       <div className="flex gap-6">
-        {/* Боковая панель с фильтрами */}
-        <aside className="w-64 flex-shrink-0 hidden lg:block fixed left-4 top-24 z-10">
+        {/* Боковая панель с фильтрами - внутри контейнера */}
+        <aside className="w-60 flex-shrink-0 hidden lg:block sticky top-24 self-start">
           <FilterSidebar
             filters={filters}
             availableFilters={availableFilters}
@@ -709,7 +695,20 @@ function Courses() {
         </aside>
         
         {/* Основной контент */}
-        <main className="flex-1 min-w-0 lg:pl-72">
+        <main className="flex-1 min-w-0">
+          {/* Поиск */}
+          <form onSubmit={handleSearch} className="flex gap-2 max-w-xl mb-6">
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Поиск по названию курса..."
+              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-primary-500 focus:border-primary-500"
+            />
+            <button type="submit" className="btn-primary px-6">
+              Найти
+            </button>
+          </form>
           {/* Мобильные фильтры */}
           <div className="lg:hidden mb-4">
             {/* Кнопка сброса фильтров */}

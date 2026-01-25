@@ -166,11 +166,23 @@ function ProductDetail() {
       return
     }
     
+    // Проверяем доступность выбранного SKU
+    if (selectedSku && !selectedSku.available) {
+      showError('Выбранная вариация недоступна')
+      return
+    }
+    
     setIsAddingToCart(true)
     try {
-      await addToCart(product.id, quantity)
+      // Передаём sku_id если выбран SKU
+      await addToCart(product.id, quantity, selectedSku?.id || null)
       await refreshCart()
-      success('Товар добавлен в корзину. Перейдите в корзину для оформления заказа.', 5000)
+      
+      // Формируем сообщение с информацией о вариации
+      const skuInfo = selectedSku?.name || selectedSku?.weight_display 
+        ? ` (${selectedSku.name || selectedSku.weight_display})` 
+        : ''
+      success(`Товар${skuInfo} добавлен в корзину. Перейдите в корзину для оформления заказа.`, 5000)
     } catch (err) {
       showError(err.message || 'Не удалось добавить товар в корзину')
     } finally {
@@ -422,34 +434,256 @@ function ProductDetail() {
           
           {/* Выбор варианта (SKU) */}
           {product.skus && product.skus.length > 1 && (
-            <div className="border-t border-gray-200 pt-4">
-              <h3 className="text-sm font-medium text-gray-700 mb-3">Выберите вариант:</h3>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                {product.skus.map(sku => (
-                  <button
-                    key={sku.id || sku.sku}
-                    onClick={() => setSelectedSku(sku)}
-                    className={`p-3 rounded-lg border-2 text-left transition-all ${
-                      selectedSku?.id === sku.id || selectedSku?.sku === sku.sku
-                        ? 'border-purple-500 bg-purple-50'
-                        : 'border-gray-200 hover:border-purple-300'
-                    } ${!sku.available ? 'opacity-50' : ''}`}
-                  >
-                    <div className="text-sm font-medium text-gray-900">
-                      {sku.weight_display || sku.name || `${sku.weight_kg} кг`}
+            <div className="border-t border-gray-200 pt-4 space-y-4">
+              {/* Группируем SKU по типам атрибутов */}
+              {(() => {
+                // Определяем, какие типы атрибутов есть у SKU
+                const hasWeight = product.skus.some(s => s.weight_display || s.weight_kg)
+                const hasFlavor = product.skus.some(s => s.flavor_display || s.flavor)
+                const hasColor = product.skus.some(s => s.color_display || s.color)
+                const hasSize = product.skus.some(s => s.size_code)
+                const hasVolume = product.skus.some(s => s.volume_display || s.volume_ml)
+                const hasPack = product.skus.some(s => s.pack_quantity)
+                
+                // Если только вес - показываем простой список
+                const singleAttribute = [hasWeight, hasFlavor, hasColor, hasSize, hasVolume, hasPack].filter(Boolean).length <= 1
+                
+                if (singleAttribute) {
+                  // Простой вариант - один тип атрибута
+                  return (
+                    <div>
+                      <h3 className="text-sm font-medium text-gray-700 mb-3">
+                        {hasWeight && 'Выберите вес:'}
+                        {hasFlavor && 'Выберите вкус:'}
+                        {hasColor && 'Выберите цвет:'}
+                        {hasSize && 'Выберите размер:'}
+                        {hasVolume && 'Выберите объём:'}
+                        {hasPack && 'Выберите упаковку:'}
+                        {!hasWeight && !hasFlavor && !hasColor && !hasSize && !hasVolume && !hasPack && 'Выберите вариант:'}
+                      </h3>
+                      <div className="flex flex-wrap gap-2">
+                        {product.skus.map(sku => {
+                          const isSelected = selectedSku?.id === sku.id || selectedSku?.sku === sku.sku
+                          const label = sku.weight_display || sku.flavor_display || sku.color_display || 
+                                       sku.size_code || sku.volume_display || 
+                                       (sku.pack_quantity ? `${sku.pack_quantity} шт` : null) ||
+                                       sku.name || 'Вариант'
+                          
+                          return (
+                            <button
+                              key={sku.id || sku.sku}
+                              onClick={() => setSelectedSku(sku)}
+                              disabled={!sku.available}
+                              className={`px-4 py-2.5 rounded-lg border-2 transition-all flex flex-col items-center min-w-[80px] ${
+                                isSelected
+                                  ? 'border-purple-500 bg-purple-50 shadow-sm'
+                                  : 'border-gray-200 hover:border-purple-300 hover:bg-gray-50'
+                              } ${!sku.available ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}`}
+                            >
+                              {/* Цвет (если есть) */}
+                              {sku.color_hex && (
+                                <div 
+                                  className="w-6 h-6 rounded-full border border-gray-300 mb-1"
+                                  style={{ backgroundColor: sku.color_hex }}
+                                />
+                              )}
+                              
+                              <span className="text-sm font-medium text-gray-900">{label}</span>
+                              <span className="text-xs font-semibold text-purple-600 mt-0.5">
+                                {formatPrice(sku.price)}
+                              </span>
+                              
+                              {!sku.available && (
+                                <span className="text-[10px] text-red-500 mt-0.5">Нет в наличии</span>
+                              )}
+                            </button>
+                          )
+                        })}
+                      </div>
                     </div>
-                    {sku.flavor_display && (
-                      <div className="text-xs text-gray-500">{sku.flavor_display}</div>
+                  )
+                }
+                
+                // Сложный вариант - несколько типов атрибутов
+                // Группируем уникальные значения
+                const weightOptions = [...new Set(product.skus.filter(s => s.weight_display).map(s => s.weight_display))]
+                const flavorOptions = [...new Set(product.skus.filter(s => s.flavor_display).map(s => s.flavor_display))]
+                const colorOptions = [...new Set(product.skus.filter(s => s.color_display).map(s => JSON.stringify({ display: s.color_display, hex: s.color_hex })))]
+                const sizeOptions = [...new Set(product.skus.filter(s => s.size_code).map(s => s.size_code))]
+                
+                return (
+                  <div className="space-y-4">
+                    {/* Выбор веса */}
+                    {weightOptions.length > 0 && (
+                      <div>
+                        <h3 className="text-sm font-medium text-gray-700 mb-2">Вес:</h3>
+                        <div className="flex flex-wrap gap-2">
+                          {weightOptions.map(weight => {
+                            const matchingSku = product.skus.find(s => s.weight_display === weight)
+                            const isSelected = selectedSku?.weight_display === weight
+                            
+                            return (
+                              <button
+                                key={weight}
+                                onClick={() => {
+                                  // Находим SKU с этим весом (и текущим вкусом/цветом если есть)
+                                  const bestMatch = product.skus.find(s => 
+                                    s.weight_display === weight &&
+                                    (!selectedSku?.flavor_display || s.flavor_display === selectedSku.flavor_display) &&
+                                    (!selectedSku?.color_display || s.color_display === selectedSku.color_display)
+                                  ) || matchingSku
+                                  setSelectedSku(bestMatch)
+                                }}
+                                disabled={!matchingSku?.available}
+                                className={`px-4 py-2 rounded-lg border-2 transition-all ${
+                                  isSelected
+                                    ? 'border-purple-500 bg-purple-50'
+                                    : 'border-gray-200 hover:border-purple-300'
+                                } ${!matchingSku?.available ? 'opacity-40 cursor-not-allowed' : ''}`}
+                              >
+                                <span className="text-sm font-medium">{weight}</span>
+                              </button>
+                            )
+                          })}
+                        </div>
+                      </div>
                     )}
-                    <div className="mt-1 text-sm font-bold text-purple-600">
-                      {formatPrice(sku.price)}
-                    </div>
-                    {!sku.available && (
-                      <div className="text-xs text-red-500">Нет в наличии</div>
+                    
+                    {/* Выбор вкуса */}
+                    {flavorOptions.length > 0 && (
+                      <div>
+                        <h3 className="text-sm font-medium text-gray-700 mb-2">Вкус:</h3>
+                        <div className="flex flex-wrap gap-2">
+                          {flavorOptions.map(flavor => {
+                            const matchingSku = product.skus.find(s => s.flavor_display === flavor)
+                            const isSelected = selectedSku?.flavor_display === flavor
+                            
+                            return (
+                              <button
+                                key={flavor}
+                                onClick={() => {
+                                  const bestMatch = product.skus.find(s => 
+                                    s.flavor_display === flavor &&
+                                    (!selectedSku?.weight_display || s.weight_display === selectedSku.weight_display)
+                                  ) || matchingSku
+                                  setSelectedSku(bestMatch)
+                                }}
+                                disabled={!matchingSku?.available}
+                                className={`px-4 py-2 rounded-lg border-2 transition-all ${
+                                  isSelected
+                                    ? 'border-purple-500 bg-purple-50'
+                                    : 'border-gray-200 hover:border-purple-300'
+                                } ${!matchingSku?.available ? 'opacity-40 cursor-not-allowed' : ''}`}
+                              >
+                                <span className="text-sm font-medium">{flavor}</span>
+                              </button>
+                            )
+                          })}
+                        </div>
+                      </div>
                     )}
-                  </button>
-                ))}
-              </div>
+                    
+                    {/* Выбор цвета */}
+                    {colorOptions.length > 0 && (
+                      <div>
+                        <h3 className="text-sm font-medium text-gray-700 mb-2">Цвет:</h3>
+                        <div className="flex flex-wrap gap-2">
+                          {colorOptions.map(colorJson => {
+                            const color = JSON.parse(colorJson)
+                            const matchingSku = product.skus.find(s => s.color_display === color.display)
+                            const isSelected = selectedSku?.color_display === color.display
+                            
+                            return (
+                              <button
+                                key={colorJson}
+                                onClick={() => {
+                                  const bestMatch = product.skus.find(s => 
+                                    s.color_display === color.display &&
+                                    (!selectedSku?.size_code || s.size_code === selectedSku.size_code)
+                                  ) || matchingSku
+                                  setSelectedSku(bestMatch)
+                                }}
+                                disabled={!matchingSku?.available}
+                                className={`px-3 py-2 rounded-lg border-2 transition-all flex items-center gap-2 ${
+                                  isSelected
+                                    ? 'border-purple-500 bg-purple-50'
+                                    : 'border-gray-200 hover:border-purple-300'
+                                } ${!matchingSku?.available ? 'opacity-40 cursor-not-allowed' : ''}`}
+                              >
+                                {color.hex && (
+                                  <div 
+                                    className="w-5 h-5 rounded-full border border-gray-300"
+                                    style={{ backgroundColor: color.hex }}
+                                  />
+                                )}
+                                <span className="text-sm font-medium">{color.display}</span>
+                              </button>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    )}
+                    
+                    {/* Выбор размера */}
+                    {sizeOptions.length > 0 && (
+                      <div>
+                        <h3 className="text-sm font-medium text-gray-700 mb-2">Размер:</h3>
+                        <div className="flex flex-wrap gap-2">
+                          {sizeOptions.map(size => {
+                            const matchingSku = product.skus.find(s => s.size_code === size)
+                            const isSelected = selectedSku?.size_code === size
+                            
+                            return (
+                              <button
+                                key={size}
+                                onClick={() => {
+                                  const bestMatch = product.skus.find(s => 
+                                    s.size_code === size &&
+                                    (!selectedSku?.color_display || s.color_display === selectedSku.color_display)
+                                  ) || matchingSku
+                                  setSelectedSku(bestMatch)
+                                }}
+                                disabled={!matchingSku?.available}
+                                className={`px-4 py-2 rounded-lg border-2 transition-all min-w-[50px] text-center ${
+                                  isSelected
+                                    ? 'border-purple-500 bg-purple-50'
+                                    : 'border-gray-200 hover:border-purple-300'
+                                } ${!matchingSku?.available ? 'opacity-40 cursor-not-allowed' : ''}`}
+                              >
+                                <span className="text-sm font-bold">{size}</span>
+                                {matchingSku?.size_back_cm && (
+                                  <div className="text-[10px] text-gray-500">
+                                    спина {matchingSku.size_back_cm} см
+                                  </div>
+                                )}
+                              </button>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    )}
+                    
+                    {/* Показываем цену выбранного SKU */}
+                    {selectedSku && (
+                      <div className="bg-purple-50 rounded-lg px-4 py-2 flex items-center justify-between">
+                        <span className="text-sm text-gray-600">
+                          Выбрано: <span className="font-medium text-gray-900">
+                            {[
+                              selectedSku.weight_display,
+                              selectedSku.flavor_display,
+                              selectedSku.color_display,
+                              selectedSku.size_code
+                            ].filter(Boolean).join(' / ')}
+                          </span>
+                        </span>
+                        <span className="text-lg font-bold text-purple-600">
+                          {formatPrice(selectedSku.price)}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                )
+              })()}
             </div>
           )}
           

@@ -280,20 +280,28 @@ export const getCart = async () => {
 /**
  * Добавление товара в корзину
  * 
- * Если товар уже в корзине, количество увеличивается.
+ * Если товар уже в корзине (с тем же SKU), количество увеличивается.
  * 
  * @param {number} productId - Товар для добавления
  * @param {number} [quantity=1] - Количество для добавления
+ * @param {number} [skuId] - ID вариации товара (SKU) - опционально
  * @returns {Promise<Object>} Обновлённые данные корзины
  * 
  * @example
- *   await addToCart(5, 2)  // Добавить 2 единицы товара #5
+ *   await addToCart(5, 2)           // Добавить 2 единицы товара #5 (default SKU)
+ *   await addToCart(5, 1, 123)      // Добавить 1 единицу товара #5, вариация #123
  */
-export const addToCart = async (productId, quantity = 1) => {
-  return await api.post('/shop/cart/', {
+export const addToCart = async (productId, quantity = 1, skuId = null) => {
+  const body = {
     product_id: productId,
     quantity
-  })
+  }
+  
+  if (skuId) {
+    body.sku_id = skuId
+  }
+  
+  return await api.post('/shop/cart/', body)
 }
 
 /**
