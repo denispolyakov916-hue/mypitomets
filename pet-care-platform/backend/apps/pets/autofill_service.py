@@ -136,6 +136,16 @@ class PetAutofillService:
             if activity_level:
                 pet.activity_level = activity_level
                 updated_fields['activity_level'] = activity_level
+
+        # 5. Автозаполнение BCS (если есть идеальный вес и не задано вручную)
+        if (pet.ideal_weight_kg and not pet.body_condition_score) or 'body_condition_score' in force_update:
+            bcs = self._calculate_bcs(
+                weight=float(pet.weight) if pet.weight else None,
+                ideal_weight=float(pet.ideal_weight_kg) if pet.ideal_weight_kg else None
+            )
+            if bcs:
+                pet.body_condition_score = bcs
+                updated_fields['body_condition_score'] = bcs
         
         # Сохраняем изменения
         if updated_fields:
@@ -163,6 +173,10 @@ class PetAutofillService:
             'size_category': breed.size_category,
             'weight_min': float(breed.weight_min) if breed.weight_min else None,
             'weight_max': float(breed.weight_max) if breed.weight_max else None,
+            'weight_male_min': float(breed.weight_male_min) if breed.weight_male_min else None,
+            'weight_male_max': float(breed.weight_male_max) if breed.weight_male_max else None,
+            'weight_female_min': float(breed.weight_female_min) if breed.weight_female_min else None,
+            'weight_female_max': float(breed.weight_female_max) if breed.weight_female_max else None,
             'energy_level': breed.base_activity_level,  # используем base_activity_level
             'coat_type': breed.coat_type,
             'trainability': breed.trainability,
@@ -248,17 +262,20 @@ class PetAutofillService:
         2. Если дворняга — текущий вес (если BCS = 5) или расчёт
         """
         if breed_data:
-            weight_min = breed_data.get('weight_min')
-            weight_max = breed_data.get('weight_max')
+            if pet.sex == 'female':
+                weight_min = breed_data.get('weight_female_min') or breed_data.get('weight_min')
+                weight_max = breed_data.get('weight_female_max') or breed_data.get('weight_max')
+            elif pet.sex == 'male':
+                weight_min = breed_data.get('weight_male_min') or breed_data.get('weight_min')
+                weight_max = breed_data.get('weight_male_max') or breed_data.get('weight_max')
+            else:
+                weight_min = breed_data.get('weight_min')
+                weight_max = breed_data.get('weight_max')
             if weight_min and weight_max:
-                # Учитываем пол: самцы обычно крупнее
-                if pet.sex == 'male':
-                    return round((weight_min + weight_max) / 2 * 1.1, 1)
-                else:
-                    return round((weight_min + weight_max) / 2 * 0.9, 1)
+                return round((weight_min + weight_max) / 2, 1)
         
         # Для дворняг: если BCS идеальный (5) — текущий вес = идеальный
-        if pet.weight and pet.body_condition_score == '5':
+        if pet.weight and pet.body_condition_score == 5:
             return float(pet.weight)
         
         return None
@@ -324,22 +341,35 @@ class PetAutofillService:
         Returns:
             Dict с обновлёнными полями
         """
+        updated_fields = {}
+
         # Пересчитываем размер только для дворняг
-        if pet.breed_id:
-            return {}
-        
-        new_size = self.calculate_size_by_weight_age(
-            species=pet.species,
-            weight=float(pet.weight) if pet.weight else None,
-            age_months=pet.age_months
-        )
-        
-        if new_size and new_size != pet.size_category:
-            pet.size_category = new_size
-            pet.save(update_fields=['size_category'])
-            logger.info(f"Size recalculated for pet {pet.id}: {new_size}")
-            return {'size_category': new_size}
-        
+        if not pet.breed_id:
+            new_size = self.calculate_size_by_weight_age(
+                species=pet.species,
+                weight=float(pet.weight) if pet.weight else None,
+                age_months=pet.age_months
+            )
+
+            if new_size and new_size != pet.size_category:
+                pet.size_category = new_size
+                updated_fields['size_category'] = new_size
+
+        # Обновляем BCS при изменении веса, если есть идеальный вес
+        if pet.ideal_weight_kg:
+            bcs = self._calculate_bcs(
+                weight=float(pet.weight) if pet.weight else None,
+                ideal_weight=float(pet.ideal_weight_kg) if pet.ideal_weight_kg else None
+            )
+            if bcs and bcs != pet.body_condition_score:
+                pet.body_condition_score = bcs
+                updated_fields['body_condition_score'] = bcs
+
+        if updated_fields:
+            pet.save(update_fields=list(updated_fields.keys()))
+            logger.info(f"Autofill recalculated for pet {pet.id}: {updated_fields}")
+            return updated_fields
+
         return {}
     
     def get_autofill_suggestions(self, pet) -> Dict[str, Any]:
@@ -361,9 +391,32 @@ class PetAutofillService:
             'coat_type': breed_data.get('coat_type') if breed_data else None,
             'ideal_weight_kg': self._determine_ideal_weight(pet, breed_data),
             'activity_level': self._determine_activity_level(pet, breed_data),
+            'body_condition_score': self._calculate_bcs(
+                weight=float(pet.weight) if pet.weight else None,
+                ideal_weight=self._determine_ideal_weight(pet, breed_data)
+            ),
             'is_from_breed': breed_data is not None,
             'breed_name': pet.breed.name if pet.breed else None,
         }
+
+    def _calculate_bcs(self, weight: Optional[float], ideal_weight: Optional[float]) -> Optional[int]:
+        """
+        Рассчитать BCS (Body Condition Score) по весу и идеальному весу.
+        """
+        if not weight or not ideal_weight:
+            return None
+
+        ratio = weight / ideal_weight
+
+        if ratio < 0.85:
+            return max(1, int(round(5 * ratio)))
+        if ratio < 1.10:
+            return 5
+        if ratio < 1.20:
+            return 6
+        if ratio < 1.30:
+            return 7
+        return 8 if ratio < 1.40 else 9
 
 
 # Глобальный экземпляр сервиса

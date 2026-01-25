@@ -122,10 +122,6 @@ class PetListCreateView(BaseListCreateView):
             if date_of_birth and isinstance(date_of_birth, str):
                 data['date_of_birth'] = datetime.strptime(date_of_birth, '%Y-%m-%d').date()
 
-            # Удаляем поля, которых нет в модели Pet
-            data.pop('is_draft', None)
-            data.pop('draft_step', None)
-
             # Преобразуем breed ID в объект Breed
             breed_id = data.get('breed')
             if breed_id:
@@ -141,7 +137,12 @@ class PetListCreateView(BaseListCreateView):
             pet = pet_service.create_pet(data, request.user)
 
             # АВТОЗАПОЛНЕНИЕ из породы
-            autofilled = pet_autofill.autofill_from_breed(pet)
+            # Если activity_level не передан пользователем, принудительно
+            # пересчитываем его, чтобы не оставлять дефолт 'moderate'.
+            force_update = []
+            if not request.data.get('activity_level'):
+                force_update.append('activity_level')
+            autofilled = pet_autofill.autofill_from_breed(pet, force_update=force_update)
             if autofilled:
                 logger.info(f"Autofilled fields for pet {pet.id}: {autofilled}")
 
@@ -165,6 +166,8 @@ class PetListCreateView(BaseListCreateView):
                     'sex': pet.sex,
                     'is_neutered': pet.is_neutered,
                     'profile_completeness': pet.profile_completeness,
+                    'is_draft': pet.is_draft,
+                    'draft_step': pet.draft_step,
                 }
             }, status=status.HTTP_201_CREATED)
             
@@ -234,16 +237,28 @@ class PetDetailView(BaseDetailView):
             
             # Здоровье (Этап 2)
             'chronic_conditions_notes', 'last_vet_visit', 'body_condition_score',
+            'heart_rate', 'respiratory_rate', 'temperature', 'vet_notes',
             
             # Климат и прогулки
             'living_climate', 'walk_frequency', 'walk_duration',
             
             # Флаги
-            'is_extended_profile', 'is_draft',
+            'is_extended_profile', 'is_draft', 'draft_step',
         ]
 
         pet = serializer.instance
         update_fields = []
+
+        # Преобразуем breed ID в объект Breed (как в создании)
+        if 'breed' in serializer.validated_data:
+            breed_value = serializer.validated_data.get('breed')
+            if breed_value is None:
+                serializer.validated_data['breed'] = None
+            elif isinstance(breed_value, (int, str)):
+                try:
+                    serializer.validated_data['breed'] = Breed.objects.get(id=breed_value)
+                except Breed.DoesNotExist:
+                    raise ApiError.bad_request(f'Порода с ID {breed_value} не найдена')
         
         # Запоминаем старые значения для проверки изменений
         old_breed_id = pet.breed_id
@@ -276,11 +291,11 @@ class PetDetailView(BaseDetailView):
             autofilled = pet_autofill.autofill_from_breed(pet)
             if autofilled:
                 logger.info(f"Autofilled on breed change for pet {pet.id}: {autofilled}")
-        elif new_weight != old_weight and not pet.breed_id:
-            # Изменился вес у дворняги — пересчёт размера
+        if new_weight != old_weight:
+            # Изменился вес — пересчёт BCS (и размера для дворняг)
             recalculated = pet_autofill.recalculate_on_weight_change(pet, old_weight)
             if recalculated:
-                logger.info(f"Size recalculated for pet {pet.id}: {recalculated}")
+                logger.info(f"Recalculated on weight change for pet {pet.id}: {recalculated}")
         
         logger.info(f"Питомец обновлён: {pet.id}")
         return pet

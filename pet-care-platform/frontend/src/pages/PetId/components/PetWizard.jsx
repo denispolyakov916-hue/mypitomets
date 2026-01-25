@@ -22,10 +22,12 @@ import {
   getBreeds,
   getBreedSuggestions,
   getPetAutofillSuggestions,
+  getHealthConditions,
+  getAllergies,
+  addPetHealthCondition,
+  addPetAllergy,
   ACTIVITY_LEVEL_OPTIONS,
   HOUSING_TYPE_OPTIONS,
-  HEALTH_ISSUES_OPTIONS,
-  EXCLUDED_INGREDIENTS_OPTIONS,
   BEHAVIORAL_PROBLEMS,
   SIZE_OPTIONS,
   COAT_TYPE_OPTIONS,
@@ -555,7 +557,7 @@ const Step2Info = ({ formData, onChange, errors, breeds, loadingBreeds, onBreedS
       if (weight > 100) return { type: 'error', message: 'Максимальный вес собаки 100 кг' };
       if (weight > 80) return { type: 'warning', message: 'Очень крупная собака' };
     } else if (formData.species === 'cat') {
-      if (weight > 15) return { type: 'error', message: 'Максимальный вес кошки 15 кг' };
+      if (weight > 20) return { type: 'error', message: 'Максимальный вес кошки 20 кг' };
       if (weight > 10) return { type: 'warning', message: 'Крупная кошка или избыточный вес' };
     }
     
@@ -797,16 +799,16 @@ const Step2Info = ({ formData, onChange, errors, breeds, loadingBreeds, onBreedS
             type="number"
             step="0.1"
             min="0.3"
-            max={formData.species === 'cat' ? 15 : 100}
+            max={formData.species === 'cat' ? 20 : 100}
             value={formData.weight}
             onChange={(e) => {
               const val = e.target.value;
               // Ограничиваем ввод
-              if (val === '' || (parseFloat(val) >= 0 && parseFloat(val) <= (formData.species === 'cat' ? 15 : 100))) {
+              if (val === '' || (parseFloat(val) >= 0 && parseFloat(val) <= (formData.species === 'cat' ? 20 : 100))) {
                 onChange('weight', val);
               }
             }}
-            placeholder={formData.species === 'cat' ? 'От 0.3 до 15 кг' : 'От 0.3 до 100 кг'}
+            placeholder={formData.species === 'cat' ? 'От 0.3 до 20 кг' : 'От 0.3 до 100 кг'}
             className={`
               w-full px-4 py-3 rounded-xl border-2 transition-all
               focus:outline-none focus:ring-4 focus:ring-purple-500/20
@@ -844,7 +846,15 @@ const Step2Info = ({ formData, onChange, errors, breeds, loadingBreeds, onBreedS
 // ШАГ 3: ЗДОРОВЬЕ И ОСОБЕННОСТИ
 // ============================================
 
-const Step3Health = ({ formData, onChange, errors }) => {
+const Step3Health = ({
+  formData,
+  onChange,
+  errors,
+  healthOptions,
+  allergyOptions,
+  isHealthOptionsLoading,
+  isAllergyOptionsLoading
+}) => {
   const [showHealthOptions, setShowHealthOptions] = useState(false);
   const [showAllergyOptions, setShowAllergyOptions] = useState(false);
 
@@ -920,33 +930,39 @@ const Step3Health = ({ formData, onChange, errors }) => {
               exit={{ opacity: 0, height: 0 }}
               className="space-y-2 overflow-hidden"
             >
-              {HEALTH_ISSUES_OPTIONS.filter(o => o.value !== 'none').map(option => (
-                <button
-                  key={option.value}
-                  type="button"
-                  onClick={() => toggleOption('health_issues', option.value)}
-                  className={`
-                    w-full px-4 py-2.5 rounded-xl border transition-all flex items-center gap-3 text-left
-                    ${formData.health_issues.includes(option.value)
-                      ? 'border-purple-500 bg-purple-50'
-                      : 'border-gray-200 hover:bg-gray-50'
-                    }
-                  `}
-                >
-                  <div className={`
-                    w-5 h-5 rounded-md border-2 flex items-center justify-center
-                    ${formData.health_issues.includes(option.value)
-                      ? 'border-purple-500 bg-purple-500'
-                      : 'border-gray-300'
-                    }
-                  `}>
-                    {formData.health_issues.includes(option.value) && (
-                      <Check className="w-3 h-3 text-white" />
-                    )}
-                  </div>
-                  <span className="text-gray-700">{option.label}</span>
-                </button>
-              ))}
+              {isHealthOptionsLoading ? (
+                <div className="text-sm text-gray-500 py-2">Загрузка списка заболеваний...</div>
+              ) : healthOptions.length === 0 ? (
+                <div className="text-sm text-gray-500 py-2">Список заболеваний пока пуст</div>
+              ) : (
+                healthOptions.map(option => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() => toggleOption('health_issues', option.value)}
+                    className={`
+                      w-full px-4 py-2.5 rounded-xl border transition-all flex items-center gap-3 text-left
+                      ${formData.health_issues.includes(option.value)
+                        ? 'border-purple-500 bg-purple-50'
+                        : 'border-gray-200 hover:bg-gray-50'
+                      }
+                    `}
+                  >
+                    <div className={`
+                      w-5 h-5 rounded-md border-2 flex items-center justify-center
+                      ${formData.health_issues.includes(option.value)
+                        ? 'border-purple-500 bg-purple-500'
+                        : 'border-gray-300'
+                      }
+                    `}>
+                      {formData.health_issues.includes(option.value) && (
+                        <Check className="w-3 h-3 text-white" />
+                      )}
+                    </div>
+                    <span className="text-gray-700">{option.label}</span>
+                  </button>
+                ))
+              )}
             </motion.div>
           )}
         </AnimatePresence>
@@ -1005,33 +1021,39 @@ const Step3Health = ({ formData, onChange, errors }) => {
               exit={{ opacity: 0, height: 0 }}
               className="grid grid-cols-2 gap-2 overflow-hidden"
             >
-              {EXCLUDED_INGREDIENTS_OPTIONS.filter(o => o.value !== 'none').map(option => (
-                <button
-                  key={option.value}
-                  type="button"
-                  onClick={() => toggleOption('excluded_ingredients', option.value)}
-                  className={`
-                    px-3 py-2 rounded-xl border transition-all flex items-center gap-2 text-sm
-                    ${formData.excluded_ingredients.includes(option.value)
-                      ? 'border-purple-500 bg-purple-50'
-                      : 'border-gray-200 hover:bg-gray-50'
-                    }
-                  `}
-                >
-                  <div className={`
-                    w-4 h-4 rounded border flex items-center justify-center
-                    ${formData.excluded_ingredients.includes(option.value)
-                      ? 'border-purple-500 bg-purple-500'
-                      : 'border-gray-300'
-                    }
-                  `}>
-                    {formData.excluded_ingredients.includes(option.value) && (
-                      <Check className="w-2.5 h-2.5 text-white" />
-                    )}
-                  </div>
-                  <span className="text-gray-700">{option.label}</span>
-                </button>
-              ))}
+              {isAllergyOptionsLoading ? (
+                <div className="text-sm text-gray-500 py-2 col-span-2">Загрузка списка аллергий...</div>
+              ) : allergyOptions.length === 0 ? (
+                <div className="text-sm text-gray-500 py-2 col-span-2">Список аллергий пока пуст</div>
+              ) : (
+                allergyOptions.map(option => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() => toggleOption('excluded_ingredients', option.value)}
+                    className={`
+                      px-3 py-2 rounded-xl border transition-all flex items-center gap-2 text-sm
+                      ${formData.excluded_ingredients.includes(option.value)
+                        ? 'border-purple-500 bg-purple-50'
+                        : 'border-gray-200 hover:bg-gray-50'
+                      }
+                    `}
+                  >
+                    <div className={`
+                      w-4 h-4 rounded border flex items-center justify-center
+                      ${formData.excluded_ingredients.includes(option.value)
+                        ? 'border-purple-500 bg-purple-500'
+                        : 'border-gray-300'
+                      }
+                    `}>
+                      {formData.excluded_ingredients.includes(option.value) && (
+                        <Check className="w-2.5 h-2.5 text-white" />
+                      )}
+                    </div>
+                    <span className="text-gray-700">{option.label}</span>
+                  </button>
+                ))
+              )}
             </motion.div>
           )}
         </AnimatePresence>
@@ -1313,6 +1335,10 @@ export default function PetWizard({ onClose, onSubmit, isLoading, editingDraft =
   const [isSavingDraft, setIsSavingDraft] = useState(false);
   const [showCloseConfirm, setShowCloseConfirm] = useState(false);
   const [draftSavedMessage, setDraftSavedMessage] = useState(false);
+  const [healthConditionOptions, setHealthConditionOptions] = useState([]);
+  const [allergyOptions, setAllergyOptions] = useState([]);
+  const [loadingHealthOptions, setLoadingHealthOptions] = useState(false);
+  const [loadingAllergyOptions, setLoadingAllergyOptions] = useState(false);
   const [restoredFromStorage, setRestoredFromStorage] = useState(() => {
     if (editingDraft) return false;
     const saved = localStorage.getItem(DRAFT_STORAGE_KEY);
@@ -1354,6 +1380,48 @@ export default function PetWizard({ onClose, onSubmit, isLoading, editingDraft =
     }
   }, [formData.species]);
 
+  useEffect(() => {
+    if (!formData.species) return;
+
+    let isMounted = true;
+
+    const loadHealthOptions = async () => {
+      setLoadingHealthOptions(true);
+      setLoadingAllergyOptions(true);
+      try {
+        const [conditionsResponse, allergiesResponse] = await Promise.all([
+          getHealthConditions({ species: formData.species }),
+          getAllergies({ animal_type: formData.species })
+        ]);
+
+        const conditions = conditionsResponse?.results || conditionsResponse?.data || conditionsResponse || [];
+        const allergies = allergiesResponse?.results || allergiesResponse?.data || allergiesResponse || [];
+
+        if (isMounted) {
+          setHealthConditionOptions(conditions);
+          setAllergyOptions(allergies);
+        }
+      } catch (error) {
+        console.error('Ошибка загрузки заболеваний/аллергий:', error);
+        if (isMounted) {
+          setHealthConditionOptions([]);
+          setAllergyOptions([]);
+        }
+      } finally {
+        if (isMounted) {
+          setLoadingHealthOptions(false);
+          setLoadingAllergyOptions(false);
+        }
+      }
+    };
+
+    loadHealthOptions();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [formData.species]);
+
   const loadBreeds = async (species) => {
     setLoadingBreeds(true);
     try {
@@ -1365,6 +1433,22 @@ export default function PetWizard({ onClose, onSubmit, isLoading, editingDraft =
       setLoadingBreeds(false);
     }
   };
+
+  const healthIssueOptions = useMemo(
+    () => (healthConditionOptions || []).map((condition) => ({
+      value: condition.code,
+      label: condition.name_ru
+    })),
+    [healthConditionOptions]
+  );
+
+  const allergyIssueOptions = useMemo(
+    () => (allergyOptions || []).map((allergy) => ({
+      value: allergy.code,
+      label: allergy.display_name
+    })),
+    [allergyOptions]
+  );
 
   // Обработка выбора породы с автозаполнением из API
   const handleBreedSelect = async (breed) => {
@@ -1465,7 +1549,7 @@ export default function PetWizard({ onClose, onSubmit, isLoading, editingDraft =
         } else {
           const weight = parseFloat(formData.weight);
           if (isNaN(weight) || weight < 0.3) newErrors.weight = 'Минимальный вес 0.3 кг';
-          else if (formData.species === 'cat' && weight > 15) newErrors.weight = 'Максимум 15 кг для кошки';
+          else if (formData.species === 'cat' && weight > 20) newErrors.weight = 'Максимум 20 кг для кошки';
           else if (formData.species === 'dog' && weight > 100) newErrors.weight = 'Максимум 100 кг';
         }
         break;
@@ -1561,15 +1645,13 @@ export default function PetWizard({ onClose, onSubmit, isLoading, editingDraft =
       const draftData = {
         name: formData.name || 'Без имени',
         species: formData.species || 'dog',
-        breed: (finalBreedId && finalBreedId !== '') ? finalBreedId : null,
+        breed_id: (finalBreedId && finalBreedId !== '') ? finalBreedId : null,
         date_of_birth: formData.date_of_birth 
           ? formData.date_of_birth.toISOString().split('T')[0] 
           : null,
-        weight: formData.weight ? parseFloat(formData.weight) : null,
-        gender: formData.gender || null,
-        health_issues: formData.health_issues || [],
-        excluded_ingredients: formData.excluded_ingredients || [],
-        activity_level: formData.activity_level || 'medium',
+        weight_kg: formData.weight ? parseFloat(formData.weight) : null,
+        sex: formData.gender || null,
+        activity_level: formData.activity_level || 'moderate',
         housing_type: formData.housing_type || null,
         behavioral_problems: formData.behavioral_problems || [],
         size_category: formData.size_category || null,
@@ -1577,7 +1659,7 @@ export default function PetWizard({ onClose, onSubmit, isLoading, editingDraft =
         is_neutered: formData.is_neutered || false,
         reproductive_state: formData.reproductive_state || 'none',
         temperament: formData.temperament || null,
-        climate: formData.climate || null,
+        living_climate: formData.climate || null,
         has_other_pets: formData.has_other_pets || false,
         ideal_weight_kg: formData.ideal_weight_kg || null,
         is_draft: true,
@@ -1681,15 +1763,13 @@ export default function PetWizard({ onClose, onSubmit, isLoading, editingDraft =
     const submitData = {
       name: formData.name.trim(),
       species: formData.species,
-      breed: (finalBreedId && finalBreedId !== '') ? finalBreedId : null,
+      breed_id: (finalBreedId && finalBreedId !== '') ? finalBreedId : null,
       date_of_birth: formData.date_of_birth
         ? formData.date_of_birth.toISOString().split('T')[0]
         : null,
-      weight: formData.weight ? parseFloat(formData.weight) : null,
-      gender: formData.gender,
-      health_issues: formData.health_issues.includes('none') ? [] : formData.health_issues,
-      excluded_ingredients: formData.excluded_ingredients.includes('none') ? [] : formData.excluded_ingredients,
-      activity_level: formData.activity_level || 'medium',
+      weight_kg: formData.weight ? parseFloat(formData.weight) : null,
+      sex: formData.gender,
+      activity_level: formData.activity_level || 'moderate',
       housing_type: formData.housing_type || null,
       behavioral_problems: formData.behavioral_problems.includes('Нет проблем') ? [] : formData.behavioral_problems,
       size_category: formData.size_category,
@@ -1698,7 +1778,7 @@ export default function PetWizard({ onClose, onSubmit, isLoading, editingDraft =
       is_neutered: formData.is_neutered || false,
       reproductive_state: formData.reproductive_state || 'none',
       temperament: formData.temperament || null,
-      climate: formData.climate || null,
+      living_climate: formData.climate || null,
       has_other_pets: formData.has_other_pets || false,
       ideal_weight_kg: formData.ideal_weight_kg || null,
       is_draft: false,
@@ -1707,7 +1787,20 @@ export default function PetWizard({ onClose, onSubmit, isLoading, editingDraft =
     setIsSubmittingFinal(true);
     try {
       // Отправляем данные
-      await onSubmit(submitData, false);
+      const created = await onSubmit(submitData, false);
+
+      const petId = created?.data?.id || created?.data?.data?.id || created?.id;
+      const healthIssueCodes = [...new Set((formData.health_issues || []).filter(code => code && code !== 'none'))];
+      const allergyCodes = [...new Set((formData.excluded_ingredients || []).filter(code => code && code !== 'none'))];
+
+      if (petId) {
+        await Promise.all([
+          ...healthIssueCodes.map(code => addPetHealthCondition(petId, { condition: code })),
+          ...allergyCodes.map(code => addPetAllergy(petId, { allergy: code }))
+        ]);
+      } else {
+        console.warn('Не удалось определить ID созданного питомца для сохранения M2M');
+      }
 
       // Очищаем localStorage после успешного создания
       localStorage.removeItem(DRAFT_STORAGE_KEY);
@@ -1870,6 +1963,10 @@ export default function PetWizard({ onClose, onSubmit, isLoading, editingDraft =
                           formData={formData}
                           onChange={handleChange}
                           errors={errors}
+                          healthOptions={healthIssueOptions}
+                          allergyOptions={allergyIssueOptions}
+                          isHealthOptionsLoading={loadingHealthOptions}
+                          isAllergyOptionsLoading={loadingAllergyOptions}
                         />
                       )}
                       {currentStep === 4 && (

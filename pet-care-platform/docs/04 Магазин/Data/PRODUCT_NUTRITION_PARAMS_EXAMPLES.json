@@ -1,0 +1,435 @@
+{
+  "examples": [
+    {
+      "product_name": "Royal Canin Labrador Retriever Adult",
+      "category": "food",
+      "subcategory": "dry",
+      "animal": "dog",
+      "nutrition_params": {
+        "food_type": "dry",
+        "age_group": "adult",
+        "size_category": "large",
+        "activity_level": "normal",
+        
+        "protein_percent": 28.0,
+        "fat_percent": 14.0,
+        "carbs_percent": 42.0,
+        "fiber_percent": 3.8,
+        "moisture_percent": 10.0,
+        "ash_percent": 6.5,
+        
+        "calories_per_100g": 365,
+        "calorie_density": "medium",
+        
+        "main_protein_source": "chicken",
+        "protein_sources": ["chicken", "chicken_meal"],
+        "grain_free": false,
+        "ingredients": [
+          "chicken", "rice", "corn", "wheat", "barley",
+          "chicken_fat", "fish_oil", "beet_pulp",
+          "vitamins", "minerals", "glucosamine", "chondroitin"
+        ],
+        
+        "common_allergens": ["chicken", "wheat", "corn"],
+        
+        "diet_type": "standard",
+        "health_benefits": ["joint_support", "healthy_weight", "skin_coat"],
+        
+        "supplements": ["glucosamine", "chondroitin", "omega_3", "omega_6"],
+        
+        "breed_specific": true,
+        "recommended_breeds": [1],
+        "brachycephalic_friendly": false,
+        
+        "recommended_daily_amount": {
+          "25kg": "240g",
+          "30kg": "280g",
+          "35kg": "315g"
+        },
+        
+        "quality_class": "super_premium",
+        "natural": true,
+        "organic": false,
+        
+        "features": [
+          "high_protein",
+          "breed_specific",
+          "joint_support",
+          "no_artificial_colors"
+        ]
+      }
+    },
+    
+    {
+      "product_name": "Hill's Science Diet Adult Sensitive Stomach & Skin",
+      "category": "food",
+      "subcategory": "dry",
+      "animal": "dog",
+      "nutrition_params": {
+        "food_type": "dry",
+        "age_group": "adult",
+        "size_category": "all",
+        "activity_level": "normal",
+        
+        "protein_percent": 22.5,
+        "fat_percent": 15.5,
+        "carbs_percent": 47.0,
+        "fiber_percent": 2.5,
+        "moisture_percent": 10.0,
+        "ash_percent": 5.5,
+        
+        "calories_per_100g": 370,
+        "calorie_density": "medium",
+        
+        "main_protein_source": "chicken",
+        "protein_sources": ["chicken", "chicken_meal"],
+        "grain_free": false,
+        "ingredients": [
+          "chicken", "rice", "oat", "barley",
+          "chicken_fat", "flaxseed", "beet_pulp",
+          "vitamins", "minerals", "probiotics"
+        ],
+        
+        "common_allergens": ["chicken"],
+        
+        "diet_type": "sensitive",
+        "health_benefits": ["digestive_health", "skin_coat", "immune_support"],
+        
+        "supplements": ["probiotics", "omega_3", "omega_6", "vitamin_e"],
+        
+        "breed_specific": false,
+        "recommended_breeds": [],
+        "brachycephalic_friendly": false,
+        
+        "recommended_daily_amount": {
+          "small": "80-120g",
+          "medium": "150-250g",
+          "large": "280-400g"
+        },
+        
+        "quality_class": "super_premium",
+        "natural": true,
+        "organic": false,
+        
+        "features": [
+          "sensitive_formula",
+          "easy_to_digest",
+          "probiotics",
+          "clinically_proven"
+        ]
+      }
+    },
+    
+    {
+      "product_name": "Purina Pro Plan Weight Control",
+      "category": "food",
+      "subcategory": "dry",
+      "animal": "dog",
+      "nutrition_params": {
+        "food_type": "dry",
+        "age_group": "adult",
+        "size_category": "all",
+        "activity_level": "low",
+        
+        "protein_percent": 29.0,
+        "fat_percent": 10.0,
+        "carbs_percent": 45.0,
+        "fiber_percent": 5.0,
+        "moisture_percent": 12.0,
+        "ash_percent": 7.0,
+        
+        "calories_per_100g": 320,
+        "calorie_density": "low",
+        
+        "main_protein_source": "chicken",
+        "protein_sources": ["chicken", "turkey"],
+        "grain_free": false,
+        "ingredients": [
+          "chicken", "rice", "corn_gluten", "wheat_bran",
+          "chicken_fat", "fish_oil", "l_carnitine",
+          "vitamins", "minerals"
+        ],
+        
+        "common_allergens": ["chicken", "corn", "wheat"],
+        
+        "diet_type": "weight_control",
+        "health_benefits": ["weight_management", "muscle_maintenance", "healthy_metabolism"],
+        
+        "supplements": ["l_carnitine", "omega_3", "glucosamine"],
+        
+        "breed_specific": false,
+        "recommended_breeds": [],
+        "brachycephalic_friendly": false,
+        
+        "recommended_daily_amount": {
+          "5kg": "60-80g",
+          "10kg": "110-140g",
+          "20kg": "190-240g",
+          "30kg": "260-320g",
+          "40kg": "325-400g"
+        },
+        
+        "quality_class": "premium",
+        "natural": true,
+        "organic": false,
+        
+        "features": [
+          "high_protein",
+          "low_fat",
+          "weight_control",
+          "muscle_support"
+        ]
+      }
+    },
+    
+    {
+      "product_name": "Royal Canin Kitten",
+      "category": "food",
+      "subcategory": "dry",
+      "animal": "cat",
+      "nutrition_params": {
+        "food_type": "dry",
+        "age_group": "kitten",
+        "size_category": "all",
+        "activity_level": "high",
+        
+        "protein_percent": 34.0,
+        "fat_percent": 18.0,
+        "carbs_percent": 33.0,
+        "fiber_percent": 2.3,
+        "moisture_percent": 10.0,
+        "ash_percent": 7.7,
+        
+        "calories_per_100g": 400,
+        "calorie_density": "high",
+        
+        "main_protein_source": "chicken",
+        "protein_sources": ["chicken", "chicken_meal", "fish"],
+        "grain_free": false,
+        "ingredients": [
+          "chicken", "rice", "corn", "wheat",
+          "chicken_fat", "fish_oil", "taurine",
+          "vitamins", "minerals", "dha", "probiotics"
+        ],
+        
+        "common_allergens": ["chicken", "wheat", "corn"],
+        
+        "diet_type": "standard",
+        "health_benefits": ["growth_support", "immune_support", "digestive_health", "brain_development"],
+        
+        "supplements": ["taurine", "dha", "omega_3", "omega_6", "probiotics"],
+        
+        "breed_specific": false,
+        "recommended_breeds": [],
+        "brachycephalic_friendly": false,
+        
+        "recommended_daily_amount": {
+          "2months": "25-35g",
+          "4months": "40-55g",
+          "6months": "50-65g",
+          "10months": "60-75g"
+        },
+        
+        "quality_class": "super_premium",
+        "natural": true,
+        "organic": false,
+        
+        "features": [
+          "kitten_formula",
+          "high_energy",
+          "small_kibble",
+          "easy_to_digest"
+        ]
+      }
+    },
+    
+    {
+      "product_name": "Hill's Prescription Diet z/d Hypoallergenic (Cat)",
+      "category": "food",
+      "subcategory": "dry",
+      "animal": "cat",
+      "nutrition_params": {
+        "food_type": "dry",
+        "age_group": "adult",
+        "size_category": "all",
+        "activity_level": "normal",
+        
+        "protein_percent": 36.0,
+        "fat_percent": 17.0,
+        "carbs_percent": 32.0,
+        "fiber_percent": 2.8,
+        "moisture_percent": 10.0,
+        "ash_percent": 6.2,
+        
+        "calories_per_100g": 390,
+        "calorie_density": "medium",
+        
+        "main_protein_source": "hydrolyzed_chicken",
+        "protein_sources": ["hydrolyzed_chicken_liver"],
+        "grain_free": true,
+        "ingredients": [
+          "hydrolyzed_chicken_liver", "rice_starch", "potato_starch",
+          "soybean_oil", "taurine", "l_tryptophan",
+          "vitamins", "minerals"
+        ],
+        
+        "common_allergens": [],
+        
+        "diet_type": "hypoallergenic",
+        "health_benefits": ["allergy_management", "digestive_health", "skin_coat"],
+        
+        "supplements": ["taurine", "l_tryptophan", "omega_3", "omega_6"],
+        
+        "breed_specific": false,
+        "recommended_breeds": [],
+        "brachycephalic_friendly": false,
+        
+        "recommended_daily_amount": {
+          "2kg": "30g",
+          "3kg": "40g",
+          "4kg": "50g",
+          "5kg": "60g",
+          "6kg": "70g"
+        },
+        
+        "quality_class": "super_premium",
+        "natural": true,
+        "organic": false,
+        
+        "features": [
+          "hypoallergenic",
+          "single_protein",
+          "hydrolyzed_protein",
+          "grain_free",
+          "limited_ingredients",
+          "veterinary_formula"
+        ]
+      }
+    },
+    
+    {
+      "product_name": "Acana Grasslands (Grain-Free Dog)",
+      "category": "food",
+      "subcategory": "dry",
+      "animal": "dog",
+      "nutrition_params": {
+        "food_type": "dry",
+        "age_group": "adult",
+        "size_category": "all",
+        "activity_level": "high",
+        
+        "protein_percent": 35.0,
+        "fat_percent": 17.0,
+        "carbs_percent": 31.0,
+        "fiber_percent": 6.0,
+        "moisture_percent": 12.0,
+        "ash_percent": 7.5,
+        
+        "calories_per_100g": 385,
+        "calorie_density": "high",
+        
+        "main_protein_source": "lamb",
+        "protein_sources": ["lamb", "duck", "fish", "egg"],
+        "grain_free": true,
+        "ingredients": [
+          "fresh_lamb", "lamb_meal", "duck_meat", "whole_herring",
+          "duck_meal", "lamb_liver", "whole_egg",
+          "peas", "lentils", "chickpeas",
+          "lamb_fat", "fish_oil", "glucosamine", "chondroitin"
+        ],
+        
+        "common_allergens": [],
+        
+        "diet_type": "standard",
+        "health_benefits": ["muscle_development", "joint_support", "skin_coat", "digestive_health"],
+        
+        "supplements": ["glucosamine", "chondroitin", "omega_3", "probiotics"],
+        
+        "breed_specific": false,
+        "recommended_breeds": [],
+        "brachycephalic_friendly": false,
+        
+        "recommended_daily_amount": {
+          "5kg": "60g",
+          "10kg": "120g",
+          "20kg": "180g",
+          "30kg": "240g",
+          "40kg": "300g"
+        },
+        
+        "quality_class": "holistic",
+        "natural": true,
+        "organic": false,
+        
+        "features": [
+          "grain_free",
+          "high_protein",
+          "biologically_appropriate",
+          "fresh_meat",
+          "no_artificial_additives",
+          "no_preservatives"
+        ]
+      }
+    }
+  ],
+  
+  "field_descriptions": {
+    "food_type": "Тип корма: dry (сухой), wet (влажный), canned (консервы), pouch (паучи), pate (паштет)",
+    "age_group": "Возрастная группа: puppy/kitten (щенки/котята), adult (взрослые), senior (пожилые), all (все возрасты)",
+    "size_category": "Размер породы: toy, small, medium, large, giant, all",
+    "activity_level": "Уровень активности: low, normal, high",
+    
+    "protein_percent": "Процент белка от общего состава (не от калорий)",
+    "fat_percent": "Процент жира",
+    "carbs_percent": "Процент углеводов",
+    "fiber_percent": "Процент клетчатки",
+    "moisture_percent": "Процент влажности",
+    "ash_percent": "Процент золы (минералы)",
+    
+    "calories_per_100g": "Калорийность на 100 грамм продукта",
+    "calorie_density": "Калорийность: low (< 340 ккал), medium (340-370 ккал), high (> 370 ккал)",
+    
+    "main_protein_source": "Основной источник белка: chicken, beef, lamb, fish, turkey, duck, etc.",
+    "protein_sources": "Все источники белка в корме",
+    "grain_free": "Беззерновой корм (true/false)",
+    "ingredients": "Полный список ингредиентов (для исключения аллергенов)",
+    
+    "common_allergens": "Основные аллергены в составе (chicken, beef, wheat, corn, soy, dairy, etc.)",
+    
+    "diet_type": "Специализация: standard, weight_control, sensitive, hypoallergenic, diabetes_management, renal_support, etc.",
+    "health_benefits": "Целевые проблемы здоровья: digestive_health, joint_support, weight_management, skin_coat, urinary_health, cardiac_health, etc.",
+    
+    "supplements": "Добавки: glucosamine, chondroitin, omega_3, omega_6, probiotics, taurine, l_carnitine, dha, etc.",
+    
+    "breed_specific": "Специфичен для конкретной породы (true/false)",
+    "recommended_breeds": "ID пород из breeds.json, для которых предназначен",
+    "brachycephalic_friendly": "Подходит для короткомордых пород (true/false)",
+    
+    "recommended_daily_amount": "Рекомендуемая дневная порция по весу",
+    
+    "quality_class": "Класс качества: economy, premium, super_premium, holistic",
+    "natural": "Натуральный состав (true/false)",
+    "organic": "Органический корм (true/false)",
+    
+    "features": "Особенности корма: high_protein, low_fat, grain_free, single_protein, limited_ingredients, no_artificial_colors, no_preservatives, etc."
+  },
+  
+  "validation_rules": {
+    "protein_percent": "Обязательное поле, 10-50%",
+    "fat_percent": "Обязательное поле, 5-30%",
+    "calories_per_100g": "Обязательное поле, 250-450 ккал",
+    "ingredients": "Обязательное поле, минимум 5 ингредиентов",
+    "diet_type": "Обязательное поле",
+    "age_group": "Обязательное поле",
+    "quality_class": "Обязательное поле"
+  },
+  
+  "notes": [
+    "БЖУ указывается в процентах от общего веса, а не от калорий",
+    "common_allergens используется для исключения корма при аллергиях пользователя",
+    "health_benefits используется для подбора корма при проблемах здоровья",
+    "Для вычисления процента белка от калорий: (protein_percent * 4) / calories_per_100g * 100",
+    "Сумма protein_percent + fat_percent + carbs_percent + fiber_percent + moisture_percent + ash_percent должна быть ~100%"
+  ]
+}
+

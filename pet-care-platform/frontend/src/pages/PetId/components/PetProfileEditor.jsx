@@ -15,14 +15,15 @@ import {
 import {
   ACTIVITY_LEVEL_OPTIONS, SIZE_OPTIONS,
   DIET_TYPE_OPTIONS, FEEDING_FREQUENCY_OPTIONS, HOUSING_TYPE_OPTIONS,
-  DENTAL_HEALTH_OPTIONS, BEHAVIOR_TYPE_OPTIONS, SOCIAL_LEVEL_OPTIONS,
-  TRAINING_EXPERIENCE_OPTIONS, getBreeds
+  SOCIAL_LEVEL_OPTIONS, TEMPERAMENT_OPTIONS, BEHAVIORAL_PROBLEMS_OPTIONS, getBreeds,
+  getHealthConditions, getAllergies,
+  getPetHealthConditions, addPetHealthCondition, deletePetHealthCondition,
+  getPetAllergies, addPetAllergy, deletePetAllergy,
+  getPetVaccinations, addPetVaccination, deletePetVaccination,
+  getPetMedications, addPetMedication, deletePetMedication
 } from '../../../api/pets';
 import {
-  getChronicConditions, getVaccinations, getMedications, getBehavioralProblems,
-  PET_FOOD_PRODUCTS, ALLERGIES_LIST, CHARACTER_TRAITS_EXTENDED,
-  WALK_FREQUENCY_OPTIONS, WALK_DURATION_OPTIONS, TRAINING_GOALS, OTHER_PET_TYPES,
-  calculateNextVaccinationDate, getExcludedFoodsByMedications
+  WALK_FREQUENCY_OPTIONS, WALK_DURATION_OPTIONS
 } from '../../../data/petHealthData';
 
 // ===== СЕКЦИИ РЕДАКТИРОВАНИЯ =====
@@ -31,43 +32,43 @@ const SECTIONS = [
     id: 'basic', 
     label: 'Основное', 
     icon: User,
-    fields: ['name', 'breed', 'date_of_birth', 'gender', 'is_neutered', 'owner_phone', 'owner_email', 'owner_city']
+    fields: ['name', 'breed', 'date_of_birth', 'gender', 'is_neutered']
   },
   { 
     id: 'health', 
     label: 'Здоровье', 
     icon: Heart,
-    fields: ['health_issues', 'chronic_conditions', 'allergies', 'sensitive_digestion']
-  },
-  { 
-    id: 'medical', 
-    label: 'Медицина', 
-    icon: Activity,
-    fields: ['vaccinations', 'medications']
+    fields: [
+      'health_conditions',
+      'allergies',
+      'sensitive_digestion',
+      'vaccinations',
+      'medications'
+    ]
   },
   { 
     id: 'nutrition', 
     label: 'Питание', 
     icon: Utensils,
-    fields: ['diet_type', 'feeding_frequency', 'favorite_foods', 'excluded_ingredients', 'vitamins_supplements']
+    fields: ['diet_type', 'feeding_frequency', 'current_food']
   },
   { 
     id: 'behavior', 
     label: 'Поведение', 
     icon: Brain,
-    fields: ['behavior_type', 'social_level', 'training_experience', 'character_traits', 'behavioral_problems', 'training_goals']
+    fields: ['temperament', 'social_level', 'behavioral_problems']
   },
   { 
     id: 'lifestyle', 
     label: 'Образ жизни', 
     icon: Home,
-    fields: ['housing_type', 'has_yard', 'other_pets', 'has_children', 'walk_frequency', 'walk_duration']
+    fields: ['housing_type', 'has_yard', 'has_children', 'walk_frequency', 'walk_duration']
   },
   {
     id: 'vet_exam',
     label: 'Осмотр ветеринара',
     icon: Stethoscope,
-    fields: ['last_vet_visit', 'dental_health', 'body_type', 'weight', 'body_condition_score', 'heart_rate', 'respiratory_rate', 'temperature', 'vet_notes']
+    fields: ['last_vet_visit', 'weight', 'body_condition_score', 'heart_rate', 'respiratory_rate', 'temperature', 'vet_notes']
   }
 ];
 
@@ -273,7 +274,11 @@ const BreedAutocomplete = ({ species, value, onChange }) => {
   const containerRef = useRef(null);
 
   useEffect(() => {
-    if (value) setSearch(value);
+    if (value?.name) {
+      setSearch(value.name);
+    } else if (!value) {
+      setSearch('');
+    }
   }, [value]);
 
   useEffect(() => {
@@ -306,7 +311,7 @@ const BreedAutocomplete = ({ species, value, onChange }) => {
 
   const handleSelect = (breed) => {
     setSearch(breed.name);
-    onChange(breed.name);
+    onChange({ id: breed.id, name: breed.name });
     setIsOpen(false);
   };
 
@@ -358,27 +363,27 @@ const BreedAutocomplete = ({ species, value, onChange }) => {
 };
 
 // ===== КОМПОНЕНТ ВАКЦИНАЦИЙ =====
-const VaccinationsField = ({ species, value = [], onChange }) => {
-  const availableVaccinations = useMemo(() => getVaccinations(species), [species]);
+const VaccinationsField = ({ vaccinations = [], onAdd, onRemove }) => {
   const [showAdd, setShowAdd] = useState(false);
-  const [newVaccine, setNewVaccine] = useState({ vaccine_id: '', date: '' });
+  const [newVaccine, setNewVaccine] = useState({
+    vaccine_code: '',
+    date_administered: '',
+    next_due_date: '',
+    manufacturer: '',
+    batch_number: '',
+  });
 
-  const addVaccination = () => {
-    if (!newVaccine.vaccine_id || !newVaccine.date) return;
-    const vaccine = availableVaccinations.find(v => v.id === newVaccine.vaccine_id);
-    const nextDate = calculateNextVaccinationDate(vaccine, newVaccine.date);
-    
-    onChange([...value, {
-      ...newVaccine,
-      name: vaccine.name,
-      next_date: nextDate?.toISOString().split('T')[0]
-    }]);
-    setNewVaccine({ vaccine_id: '', date: '' });
+  const addVaccination = async () => {
+    if (!newVaccine.vaccine_code || !newVaccine.date_administered) return;
+    await onAdd(newVaccine);
+    setNewVaccine({
+      vaccine_code: '',
+      date_administered: '',
+      next_due_date: '',
+      manufacturer: '',
+      batch_number: '',
+    });
     setShowAdd(false);
-  };
-
-  const removeVaccination = (index) => {
-    onChange(value.filter((_, i) => i !== index));
   };
 
   return (
@@ -400,55 +405,78 @@ const VaccinationsField = ({ species, value = [], onChange }) => {
           animate={{ opacity: 1, height: 'auto' }}
           className="p-3 bg-purple-50 rounded-xl space-y-2"
         >
-          <select
-            value={newVaccine.vaccine_id}
-            onChange={(e) => setNewVaccine({ ...newVaccine, vaccine_id: e.target.value })}
+          <input
+            type="text"
+            value={newVaccine.vaccine_code}
+            onChange={(e) => setNewVaccine({ ...newVaccine, vaccine_code: e.target.value })}
+            placeholder="Код вакцины (например: rabies)"
             className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm"
-          >
-            <option value="">Выберите вакцину</option>
-            {availableVaccinations.map(v => (
-              <option key={v.id} value={v.id}>
-                {v.name} {v.mandatory && '(обязательная)'}
-              </option>
-            ))}
-          </select>
-          <div className="flex gap-2">
-            <input
-              type="date"
-              value={newVaccine.date}
-              onChange={(e) => setNewVaccine({ ...newVaccine, date: e.target.value })}
-              className="flex-1 px-3 py-2 rounded-lg border border-gray-200 text-sm"
-            />
-            <button
-              type="button"
-              onClick={addVaccination}
-              disabled={!newVaccine.vaccine_id || !newVaccine.date}
-              className="px-4 py-2 bg-purple-600 text-white rounded-lg text-sm disabled:opacity-50"
-            >
-              Добавить
-            </button>
+          />
+          <div className="grid grid-cols-2 gap-2">
+            <div className="space-y-1">
+              <label className="text-xs text-gray-500">Дата вакцинации</label>
+              <input
+                type="date"
+                value={newVaccine.date_administered}
+                onChange={(e) => setNewVaccine({ ...newVaccine, date_administered: e.target.value })}
+                className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs text-gray-500">Следующая вакцинация</label>
+              <input
+                type="date"
+                value={newVaccine.next_due_date}
+                onChange={(e) => setNewVaccine({ ...newVaccine, next_due_date: e.target.value })}
+                className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm"
+              />
+            </div>
           </div>
+          <div className="grid grid-cols-2 gap-2">
+            <input
+              type="text"
+              value={newVaccine.manufacturer}
+              onChange={(e) => setNewVaccine({ ...newVaccine, manufacturer: e.target.value })}
+              placeholder="Производитель"
+              className="px-3 py-2 rounded-lg border border-gray-200 text-sm"
+            />
+            <input
+              type="text"
+              value={newVaccine.batch_number}
+              onChange={(e) => setNewVaccine({ ...newVaccine, batch_number: e.target.value })}
+              placeholder="Номер партии"
+              className="px-3 py-2 rounded-lg border border-gray-200 text-sm"
+            />
+          </div>
+          <button
+            type="button"
+            onClick={addVaccination}
+            disabled={!newVaccine.vaccine_code || !newVaccine.date_administered}
+            className="w-full px-4 py-2 bg-purple-600 text-white rounded-lg text-sm disabled:opacity-50"
+          >
+            Добавить
+          </button>
         </motion.div>
       )}
 
-      {value.length > 0 ? (
+      {vaccinations.length > 0 ? (
         <div className="space-y-2">
-          {value.map((vac, index) => (
-            <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+          {vaccinations.map((vac) => (
+            <div key={vac.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
               <div>
-                <div className="font-medium text-sm">{vac.name}</div>
+                <div className="font-medium text-sm">{vac.vaccine_code}</div>
                 <div className="text-xs text-gray-500">
-                  Дата: {new Date(vac.date).toLocaleDateString('ru-RU')}
-                  {vac.next_date && (
+                  Дата: {new Date(vac.date_administered).toLocaleDateString('ru-RU')}
+                  {vac.next_due_date && (
                     <span className="ml-2 text-orange-600">
-                      Следующая: {new Date(vac.next_date).toLocaleDateString('ru-RU')}
+                      Следующая: {new Date(vac.next_due_date).toLocaleDateString('ru-RU')}
                     </span>
                   )}
                 </div>
               </div>
               <button
                 type="button"
-                onClick={() => removeVaccination(index)}
+                onClick={() => onRemove(vac.id)}
                 className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg"
               >
                 <Trash2 className="w-4 h-4" />
@@ -466,47 +494,38 @@ const VaccinationsField = ({ species, value = [], onChange }) => {
 };
 
 // ===== КОМПОНЕНТ ПРЕПАРАТОВ =====
-const MedicationsField = ({ species, value = [], onChange, onExcludedFoodsUpdate }) => {
-  const availableMedications = useMemo(() => getMedications(species), [species]);
+const MedicationsField = ({ medications = [], onAdd, onRemove }) => {
   const [showAdd, setShowAdd] = useState(false);
-  const [newMed, setNewMed] = useState({ medication_id: '', dosage: '', frequency: '' });
+  const [newMed, setNewMed] = useState({
+    medication_code: '',
+    medication_name: '',
+    dosage: '',
+    frequency: '',
+    start_date: '',
+    end_date: '',
+  });
 
   const frequencyOptions = [
-    { value: '1x_day', label: '1 раз в день' },
-    { value: '2x_day', label: '2 раза в день' },
-    { value: '3x_day', label: '3 раза в день' },
-    { value: 'as_needed', label: 'По необходимости' },
+    { value: 'three_times_daily', label: '3 раза в день' },
+    { value: 'twice_daily', label: '2 раза в день' },
+    { value: 'once_daily', label: '1 раз в день' },
+    { value: 'every_other_day', label: 'Через день' },
     { value: 'weekly', label: 'Раз в неделю' },
     { value: 'monthly', label: 'Раз в месяц' },
   ];
 
-  const addMedication = () => {
-    if (!newMed.medication_id) return;
-    const med = availableMedications.find(m => m.id === newMed.medication_id);
-    
-    const updatedValue = [...value, {
-      ...newMed,
-      name: med.name,
-      brandNames: med.brandNames,
-      foodInteractions: med.foodInteractions
-    }];
-    
-    onChange(updatedValue);
-    
-    // Обновляем исключённые продукты
-    const excludedFoods = getExcludedFoodsByMedications(updatedValue.map(m => m.medication_id));
-    onExcludedFoodsUpdate?.(excludedFoods);
-    
-    setNewMed({ medication_id: '', dosage: '', frequency: '' });
+  const addMedication = async () => {
+    if (!newMed.medication_name || !newMed.start_date || !newMed.frequency) return;
+    await onAdd(newMed);
+    setNewMed({
+      medication_code: '',
+      medication_name: '',
+      dosage: '',
+      frequency: '',
+      start_date: '',
+      end_date: '',
+    });
     setShowAdd(false);
-  };
-
-  const removeMedication = (index) => {
-    const updatedValue = value.filter((_, i) => i !== index);
-    onChange(updatedValue);
-    
-    const excludedFoods = getExcludedFoodsByMedications(updatedValue.map(m => m.medication_id));
-    onExcludedFoodsUpdate?.(excludedFoods);
   };
 
   return (
@@ -528,18 +547,20 @@ const MedicationsField = ({ species, value = [], onChange, onExcludedFoodsUpdate
           animate={{ opacity: 1, height: 'auto' }}
           className="p-3 bg-purple-50 rounded-xl space-y-2"
         >
-          <select
-            value={newMed.medication_id}
-            onChange={(e) => setNewMed({ ...newMed, medication_id: e.target.value })}
+          <input
+            type="text"
+            value={newMed.medication_code}
+            onChange={(e) => setNewMed({ ...newMed, medication_code: e.target.value })}
+            placeholder="Код препарата (необязательно)"
             className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm"
-          >
-            <option value="">Выберите препарат</option>
-            {availableMedications.map(m => (
-              <option key={m.id} value={m.id}>
-                {m.name} ({m.brandNames.slice(0, 2).join(', ')})
-              </option>
-            ))}
-          </select>
+          />
+          <input
+            type="text"
+            value={newMed.medication_name}
+            onChange={(e) => setNewMed({ ...newMed, medication_name: e.target.value })}
+            placeholder="Название препарата"
+            className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm"
+          />
           <div className="grid grid-cols-2 gap-2">
             <input
               type="text"
@@ -554,15 +575,35 @@ const MedicationsField = ({ species, value = [], onChange, onExcludedFoodsUpdate
               className="px-3 py-2 rounded-lg border border-gray-200 text-sm"
             >
               <option value="">Частота приёма</option>
-              {frequencyOptions.map(f => (
+              {frequencyOptions.map((f) => (
                 <option key={f.value} value={f.value}>{f.label}</option>
               ))}
             </select>
           </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div className="space-y-1">
+              <label className="text-xs text-gray-500">Начало приёма</label>
+              <input
+                type="date"
+                value={newMed.start_date}
+                onChange={(e) => setNewMed({ ...newMed, start_date: e.target.value })}
+                className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs text-gray-500">Окончание приёма</label>
+              <input
+                type="date"
+                value={newMed.end_date}
+                onChange={(e) => setNewMed({ ...newMed, end_date: e.target.value })}
+                className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm"
+              />
+            </div>
+          </div>
           <button
             type="button"
             onClick={addMedication}
-            disabled={!newMed.medication_id}
+            disabled={!newMed.medication_name || !newMed.start_date || !newMed.frequency}
             className="w-full px-4 py-2 bg-purple-600 text-white rounded-lg text-sm disabled:opacity-50"
           >
             Добавить препарат
@@ -570,129 +611,30 @@ const MedicationsField = ({ species, value = [], onChange, onExcludedFoodsUpdate
         </motion.div>
       )}
 
-      {value.length > 0 ? (
+      {medications.length > 0 ? (
         <div className="space-y-2">
-          {value.map((med, index) => (
-            <div key={index} className="p-3 bg-gray-50 rounded-xl">
-              <div className="flex items-start justify-between">
-                <div>
-                  <div className="font-medium text-sm">{med.name}</div>
-                  {med.brandNames && (
-                    <div className="text-xs text-gray-500">{med.brandNames.join(', ')}</div>
-                  )}
-                  {med.dosage && <div className="text-xs text-gray-600 mt-1">Дозировка: {med.dosage}</div>}
+          {medications.map((med) => (
+            <div key={med.id} className="p-3 bg-gray-50 rounded-xl flex items-start justify-between">
+              <div>
+                <div className="font-medium text-sm">{med.medication_name}</div>
+                {med.dosage && <div className="text-xs text-gray-600">Дозировка: {med.dosage}</div>}
+                <div className="text-xs text-gray-500">
+                  Начало: {new Date(med.start_date).toLocaleDateString('ru-RU')}
                 </div>
-                <button
-                  type="button"
-                  onClick={() => removeMedication(index)}
-                  className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
               </div>
-              {med.foodInteractions?.note && (
-                <div className="mt-2 p-2 bg-yellow-50 rounded-lg text-xs text-yellow-700">
-                  ⚠️ {med.foodInteractions.note}
-                </div>
-              )}
+              <button
+                type="button"
+                onClick={() => onRemove(med.id)}
+                className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
             </div>
           ))}
         </div>
       ) : (
         <div className="text-sm text-gray-400 text-center py-4">
           Нет принимаемых препаратов
-        </div>
-      )}
-    </div>
-  );
-};
-
-// ===== КОМПОНЕНТ ДРУГИХ ПИТОМЦЕВ =====
-const OtherPetsField = ({ value = [], onChange }) => {
-  const [showAdd, setShowAdd] = useState(false);
-  const [newPet, setNewPet] = useState({ type: '', breed: '', name: '' });
-
-  const addPet = () => {
-    if (!newPet.type) return;
-    const petType = OTHER_PET_TYPES.find(p => p.id === newPet.type);
-    onChange([...value, { ...newPet, typeName: petType?.name }]);
-    setNewPet({ type: '', breed: '', name: '' });
-    setShowAdd(false);
-  };
-
-  const removePet = (index) => {
-    onChange(value.filter((_, i) => i !== index));
-  };
-
-  return (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <label className="text-sm font-medium text-gray-700">Другие питомцы дома</label>
-        <button
-          type="button"
-          onClick={() => setShowAdd(!showAdd)}
-          className="text-sm text-purple-600 hover:text-purple-700 flex items-center gap-1"
-        >
-          <Plus className="w-4 h-4" /> Добавить
-        </button>
-      </div>
-
-      {showAdd && (
-        <motion.div
-          initial={{ opacity: 0, height: 0 }}
-          animate={{ opacity: 1, height: 'auto' }}
-          className="p-3 bg-purple-50 rounded-xl space-y-2"
-        >
-          <select
-            value={newPet.type}
-            onChange={(e) => setNewPet({ ...newPet, type: e.target.value })}
-            className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm"
-          >
-            <option value="">Тип животного</option>
-            {OTHER_PET_TYPES.map(p => (
-              <option key={p.id} value={p.id}>{p.icon} {p.name}</option>
-            ))}
-          </select>
-          <input
-            type="text"
-            value={newPet.name}
-            onChange={(e) => setNewPet({ ...newPet, name: e.target.value })}
-            placeholder="Кличка (необязательно)"
-            className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm"
-          />
-          <button
-            type="button"
-            onClick={addPet}
-            disabled={!newPet.type}
-            className="w-full px-4 py-2 bg-purple-600 text-white rounded-lg text-sm disabled:opacity-50"
-          >
-            Добавить
-          </button>
-        </motion.div>
-      )}
-
-      {value.length > 0 ? (
-        <div className="flex flex-wrap gap-2">
-          {value.map((pet, index) => {
-            const petType = OTHER_PET_TYPES.find(p => p.id === pet.type);
-            return (
-              <div key={index} className="inline-flex items-center gap-2 px-3 py-1.5 bg-gray-100 rounded-full">
-                <span>{petType?.icon}</span>
-                <span className="text-sm">{pet.name || petType?.name}</span>
-                <button
-                  type="button"
-                  onClick={() => removePet(index)}
-                  className="text-gray-400 hover:text-red-500"
-                >
-                  <X className="w-3 h-3" />
-                </button>
-              </div>
-            );
-          })}
-        </div>
-      ) : (
-        <div className="text-sm text-gray-400 text-center py-2">
-          Нет других питомцев
         </div>
       )}
     </div>
@@ -716,13 +658,29 @@ const ToggleField = ({ label, checked, onChange, description }) => (
   </div>
 );
 
+const calculateBcs = (weightValue, idealWeightValue) => {
+  if (!weightValue || !idealWeightValue) return null;
+  const ratio = weightValue / idealWeightValue;
+
+  if (ratio < 0.85) return Math.max(1, Math.round(5 * ratio));
+  if (ratio < 1.10) return 5;
+  if (ratio < 1.20) return 6;
+  if (ratio < 1.30) return 7;
+  return ratio < 1.40 ? 8 : 9;
+};
+
 // ===== ОСНОВНОЙ КОМПОНЕНТ =====
 export default function PetProfileEditor({ pet, onClose, onSave, isLoading }) {
   const [formData, setFormData] = useState({});
   const [activeSection, setActiveSection] = useState('basic');
   const [hasChanges, setHasChanges] = useState(false);
   const [errors, setErrors] = useState({});
-  const [medicationExcludedFoods, setMedicationExcludedFoods] = useState([]);
+  const [healthConditionOptions, setHealthConditionOptions] = useState([]);
+  const [allergyOptions, setAllergyOptions] = useState([]);
+  const [petHealthConditions, setPetHealthConditions] = useState([]);
+  const [petAllergies, setPetAllergies] = useState([]);
+  const [petVaccinations, setPetVaccinations] = useState([]);
+  const [petMedications, setPetMedications] = useState([]);
 
   // Инициализация данных формы
   useEffect(() => {
@@ -730,44 +688,33 @@ export default function PetProfileEditor({ pet, onClose, onSave, isLoading }) {
       setFormData({
         name: pet.name || '',
         species: pet.species || '',
-        breed: pet.breed || '',
+        breed: pet.breed_id ? { id: pet.breed_id, name: pet.breed_name || '' } : null,
         date_of_birth: pet.date_of_birth || '',
-        gender: pet.gender || 'unknown',
+        gender: pet.sex || 'unknown',
         is_neutered: pet.is_neutered || false,
-        weight: pet.weight || '',
-        size: pet.size || pet.calculated_size || '',
+        weight: pet.weight_kg || '',
+        ideal_weight_kg: pet.ideal_weight_kg || null,
+        size: pet.size_category || pet.calculated_size_category || '',
         body_type: pet.body_type || '',
-        activity_level: pet.activity_level || 'medium',
-        health_issues: pet.health_issues || [],
-        chronic_conditions: pet.chronic_conditions || [],
-        vaccinations: pet.vaccinations || [],
-        medications: pet.medications || [],
-        allergies: pet.allergies || [],
-        dental_health: pet.dental_health || '',
+        activity_level: pet.activity_level || 'moderate',
+        health_conditions: [],
+        allergies: [],
         diet_type: pet.diet_type || '',
         feeding_frequency: pet.feeding_frequency || '',
-        favorite_foods: pet.favorite_foods || [],
         sensitive_digestion: pet.sensitive_digestion || false,
-        excluded_ingredients: pet.excluded_ingredients || [],
-        vitamins_supplements: pet.vitamins_supplements || [],
-        behavior_type: pet.behavior_type || '',
+        current_food: pet.current_food || null,
+        temperament: pet.temperament || '',
         social_level: pet.social_level || '',
-        training_experience: pet.training_experience || '',
-        character_traits: pet.character_traits || [],
         behavioral_problems: pet.behavioral_problems || [],
-        training_goals: pet.training_goals || [],
         housing_type: pet.housing_type || '',
         has_yard: pet.has_yard || false,
-        other_pets: pet.other_pets || [],
+        has_other_pets: pet.has_other_pets || false,
         has_children: pet.has_children || false,
         walk_frequency: pet.walk_frequency || '',
         walk_duration: pet.walk_duration || '',
-        owner_phone: pet.owner_phone || '',
-        owner_email: pet.owner_email || '',
-        owner_city: pet.owner_city || '',
         // Поля осмотра ветеринара
         last_vet_visit: pet.last_vet_visit || '',
-        body_condition_score: pet.body_condition_score || '',
+        body_condition_score: pet.body_condition_score ? String(pet.body_condition_score) : '',
         heart_rate: pet.heart_rate || '',
         respiratory_rate: pet.respiratory_rate || '',
         temperature: pet.temperature || '',
@@ -776,8 +723,65 @@ export default function PetProfileEditor({ pet, onClose, onSave, isLoading }) {
     }
   }, [pet]);
 
+  useEffect(() => {
+    if (!pet?.id) return;
+
+    const fetchHealthData = async () => {
+      try {
+        const [conditionsResponse, allergiesResponse, petConditions, petAllergiesResponse, vaccinationsResponse, medicationsResponse] =
+          await Promise.all([
+            getHealthConditions({ species: pet.species }),
+            getAllergies({ animal_type: pet.species }),
+            getPetHealthConditions(pet.id),
+            getPetAllergies(pet.id),
+            getPetVaccinations(pet.id),
+            getPetMedications(pet.id),
+          ]);
+
+        const conditions = conditionsResponse.results || conditionsResponse.data || conditionsResponse || [];
+        const allergies = allergiesResponse.results || allergiesResponse.data || allergiesResponse || [];
+
+        setHealthConditionOptions(conditions);
+        setAllergyOptions(allergies);
+
+        const healthRecords = petConditions.results || petConditions.data || petConditions || [];
+        const allergyRecords = petAllergiesResponse.results || petAllergiesResponse.data || petAllergiesResponse || [];
+
+        setPetHealthConditions(healthRecords);
+        setPetAllergies(allergyRecords);
+        setPetVaccinations(vaccinationsResponse.results || vaccinationsResponse.data || vaccinationsResponse || []);
+        setPetMedications(medicationsResponse.results || medicationsResponse.data || medicationsResponse || []);
+
+        setFormData(prev => ({
+          ...prev,
+          health_conditions: healthRecords.map((record) => record.condition),
+          allergies: allergyRecords.map((record) => record.allergy),
+        }));
+      } catch (error) {
+        console.error('Ошибка загрузки данных здоровья:', error);
+      }
+    };
+
+    fetchHealthData();
+  }, [pet?.id, pet?.species]);
+
   const handleChange = useCallback((field, value) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    if (field === 'weight') {
+      setFormData(prev => {
+        const nextState = { ...prev, weight: value };
+        const weightValue = parseFloat(value);
+        const idealWeightValue = parseFloat(prev.ideal_weight_kg);
+        if (!Number.isNaN(weightValue) && !Number.isNaN(idealWeightValue)) {
+          const bcs = calculateBcs(weightValue, idealWeightValue);
+          if (bcs) {
+            nextState.body_condition_score = String(bcs);
+          }
+        }
+        return nextState;
+      });
+    } else {
+      setFormData(prev => ({ ...prev, [field]: value }));
+    }
     setHasChanges(true);
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: null }));
@@ -787,32 +791,134 @@ export default function PetProfileEditor({ pet, onClose, onSave, isLoading }) {
   const validateForm = () => {
     const newErrors = {};
     if (!formData.name?.trim()) newErrors.name = 'Обязательное поле';
+    if (formData.weight !== '' && formData.weight !== null && formData.weight !== undefined) {
+      const weightValue = parseFloat(formData.weight);
+      if (Number.isNaN(weightValue) || weightValue <= 0) {
+        newErrors.weight = 'Введите корректный вес';
+      } else if (weightValue < 0.3) {
+        newErrors.weight = 'Минимальный вес 0.3 кг';
+      } else if (formData.species === 'cat' && weightValue > 20) {
+        newErrors.weight = 'Максимум 20 кг для кошки';
+      } else if (formData.species === 'dog' && weightValue > 100) {
+        newErrors.weight = 'Максимум 100 кг для собаки';
+      }
+    }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e) => {
+  const buildPayload = (options = {}) => {
+    const { isDraft = false } = options;
+    const rawCurrentFood = formData.current_food || null;
+    const currentFood = isDraft
+      ? rawCurrentFood
+      : rawCurrentFood?.source
+        ? {
+            ...rawCurrentFood,
+            daily_amount_grams: rawCurrentFood.daily_amount_grams
+              ? Number(rawCurrentFood.daily_amount_grams)
+              : undefined,
+          }
+        : null;
+
+    return {
+      name: formData.name,
+      species: formData.species,
+      breed_id: formData.breed?.id || null,
+      date_of_birth: formData.date_of_birth || null,
+      sex: formData.gender || null,
+      weight_kg: formData.weight ? parseFloat(formData.weight) : null,
+      is_neutered: formData.is_neutered,
+      size_category: formData.size || null,
+      coat_type: formData.coat_type || null,
+      ideal_weight_kg: formData.ideal_weight_kg || null,
+      activity_level: formData.activity_level || null,
+      housing_type: formData.housing_type || null,
+      has_yard: formData.has_yard || false,
+      yard_size: formData.yard_size || null,
+      has_children: formData.has_children || false,
+      has_other_pets: formData.has_other_pets || false,
+      diet_type: formData.diet_type || null,
+      feeding_frequency: formData.feeding_frequency ? parseInt(formData.feeding_frequency, 10) : null,
+      current_food: currentFood,
+      sensitive_digestion: formData.sensitive_digestion || false,
+      neutering_date: formData.neutering_date || null,
+      reproductive_state: formData.reproductive_state || null,
+      pregnancy_week: formData.pregnancy_week || null,
+      litter_size: formData.litter_size || null,
+      lactation_week: formData.lactation_week || null,
+      temperament: formData.temperament || null,
+      social_level: formData.social_level || null,
+      behavioral_problems: formData.behavioral_problems || [],
+      last_vet_visit: formData.last_vet_visit || null,
+      body_condition_score: formData.body_condition_score
+        ? parseInt(formData.body_condition_score, 10)
+        : null,
+      heart_rate: formData.heart_rate ? parseInt(formData.heart_rate, 10) : null,
+      respiratory_rate: formData.respiratory_rate ? parseInt(formData.respiratory_rate, 10) : null,
+      temperature: formData.temperature ? parseFloat(formData.temperature) : null,
+      vet_notes: formData.vet_notes?.trim() || null,
+      walk_frequency: formData.walk_frequency || null,
+      walk_duration: formData.walk_duration || null,
+      is_draft: isDraft,
+    };
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validateForm()) return;
+
+    const dataToSave = buildPayload({ isDraft: false });
     
-    // Подготовка данных для отправки
-    const dataToSave = {
-      ...formData,
-      // Преобразуем массивы для бэкенда
-      chronic_conditions: formData.chronic_conditions || [],
-      vaccinations: formData.vaccinations || [],
-      medications: formData.medications || [],
-      allergies: formData.allergies || [],
-      favorite_foods: formData.favorite_foods || [],
-      excluded_ingredients: [...(formData.excluded_ingredients || []), ...medicationExcludedFoods],
-      character_traits: formData.character_traits || [],
-      behavioral_problems: formData.behavioral_problems || [],
-      training_goals: formData.training_goals || [],
-      other_pets: formData.other_pets || [],
-    };
-    
-    onSave(dataToSave);
+    try {
+      await onSave(dataToSave, { isDraft: false });
+
+      // Синхронизация хронических заболеваний
+      const desiredConditions = new Set(formData.health_conditions || []);
+      const existingConditions = new Map(
+        (petHealthConditions || []).map((record) => [record.condition, record])
+      );
+
+      for (const code of desiredConditions) {
+        if (!existingConditions.has(code)) {
+          await addPetHealthCondition(pet.id, { condition: code });
+        }
+      }
+
+      for (const [code, record] of existingConditions.entries()) {
+        if (!desiredConditions.has(code)) {
+          await deletePetHealthCondition(pet.id, record.id);
+        }
+      }
+
+      // Синхронизация аллергий
+      const desiredAllergies = new Set(formData.allergies || []);
+      const existingAllergies = new Map(
+        (petAllergies || []).map((record) => [record.allergy, record])
+      );
+
+      for (const code of desiredAllergies) {
+        if (!existingAllergies.has(code)) {
+          await addPetAllergy(pet.id, { allergy: code });
+        }
+      }
+
+      for (const [code, record] of existingAllergies.entries()) {
+        if (!desiredAllergies.has(code)) {
+          await deletePetAllergy(pet.id, record.id);
+        }
+      }
+
+      // Обновляем локальные данные после синхронизации
+      const updatedConditions = await getPetHealthConditions(pet.id);
+      const updatedAllergies = await getPetAllergies(pet.id);
+      setPetHealthConditions(updatedConditions.results || updatedConditions.data || updatedConditions || []);
+      setPetAllergies(updatedAllergies.results || updatedAllergies.data || updatedAllergies || []);
+    } catch (error) {
+      console.error('Ошибка сохранения данных здоровья:', error);
+    }
   };
+
 
   // Расчёт заполненности каждого раздела
   const sectionProgress = useMemo(() => {
@@ -823,7 +929,15 @@ export default function PetProfileEditor({ pet, onClose, onSave, isLoading }) {
       let filled = 0;
       
       fields.forEach(field => {
-        const value = formData[field];
+        let value = formData[field];
+
+        if (field === 'vaccinations') {
+          value = petVaccinations;
+        }
+        if (field === 'medications') {
+          value = petMedications;
+        }
+
         if (Array.isArray(value)) {
           if (value.length > 0) filled++;
         } else if (typeof value === 'boolean') {
@@ -846,48 +960,10 @@ export default function PetProfileEditor({ pet, onClose, onSave, isLoading }) {
   }, [sectionProgress]);
 
   // Получение данных по виду животного
-  const chronicConditionsOptions = useMemo(() => 
-    getChronicConditions(pet?.species || 'dog').map(c => ({ id: c.id, name: c.name, category: c.category })),
-    [pet?.species]
-  );
-
-  const behavioralProblemsOptions = useMemo(() => 
-    getBehavioralProblems(pet?.species || 'dog').map(p => ({ id: p.id, name: p.name })),
-    [pet?.species]
-  );
-
-  const foodProductsOptions = useMemo(() => 
-    PET_FOOD_PRODUCTS.map(p => ({ id: p.id, name: p.name, category: p.category })),
-    []
-  );
-
-  const trainingGoalsOptions = useMemo(() => 
-    TRAINING_GOALS.map(g => ({ id: g.id, name: g.name })),
-    []
-  );
-
-  const characterTraitsOptions = useMemo(() => 
-    CHARACTER_TRAITS_EXTENDED.map(t => ({ id: t.id, name: t.name })),
-    []
-  );
-
-  const allergiesOptions = useMemo(() => 
-    ALLERGIES_LIST.map(a => ({ id: a.id, name: a.name, category: a.category })),
-    []
-  );
-
-  const supplementsOptions = [
-    { id: 'omega3', name: 'Омега-3 жирные кислоты' },
-    { id: 'glucosamine', name: 'Глюкозамин' },
-    { id: 'chondroitin', name: 'Хондроитин' },
-    { id: 'probiotics', name: 'Пробиотики' },
-    { id: 'multivitamins', name: 'Мультивитамины' },
-    { id: 'biotin', name: 'Биотин' },
-    { id: 'taurine', name: 'Таурин' },
-    { id: 'lysine', name: 'Лизин' },
-    { id: 'calcium', name: 'Кальций' },
-    { id: 'iron', name: 'Железо' },
-  ];
+  const behavioralProblemsOptions = BEHAVIORAL_PROBLEMS_OPTIONS.map((item) => ({
+    id: item.value,
+    name: item.label,
+  }));
 
   const bodyConditionOptions = [
     { value: '1', label: '1 - Истощение' },
@@ -964,36 +1040,6 @@ export default function PetProfileEditor({ pet, onClose, onSave, isLoading }) {
               onChange={(v) => handleChange('is_neutered', v)}
             />
             
-            <div className="grid grid-cols-3 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Телефон</label>
-                <input
-                  type="tel"
-                  value={formData.owner_phone || ''}
-                  onChange={(e) => handleChange('owner_phone', e.target.value)}
-                  placeholder="+7..."
-                  className="w-full px-4 py-2.5 rounded-xl border-2 border-gray-200 focus:border-purple-500 focus:outline-none transition-all"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Email</label>
-                <input
-                  type="email"
-                  value={formData.owner_email || ''}
-                  onChange={(e) => handleChange('owner_email', e.target.value)}
-                  className="w-full px-4 py-2.5 rounded-xl border-2 border-gray-200 focus:border-purple-500 focus:outline-none transition-all"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Город</label>
-                <input
-                  type="text"
-                  value={formData.owner_city || ''}
-                  onChange={(e) => handleChange('owner_city', e.target.value)}
-                  className="w-full px-4 py-2.5 rounded-xl border-2 border-gray-200 focus:border-purple-500 focus:outline-none transition-all"
-                />
-              </div>
-            </div>
           </div>
         );
 
@@ -1002,9 +1048,13 @@ export default function PetProfileEditor({ pet, onClose, onSave, isLoading }) {
           <div className="space-y-4">
             <SearchableSelect
               label="Хронические заболевания"
-              value={formData.chronic_conditions}
-              onChange={(v) => handleChange('chronic_conditions', v)}
-              options={chronicConditionsOptions}
+              value={formData.health_conditions}
+              onChange={(v) => handleChange('health_conditions', v)}
+              options={healthConditionOptions.map(item => ({
+                id: item.code,
+                name: item.name_ru || item.name_en || item.code,
+                category: item.category,
+              }))}
               placeholder="Выберите заболевания..."
               multiple
             />
@@ -1013,7 +1063,11 @@ export default function PetProfileEditor({ pet, onClose, onSave, isLoading }) {
               label="Аллергии и непереносимости"
               value={formData.allergies}
               onChange={(v) => handleChange('allergies', v)}
-              options={allergiesOptions}
+              options={allergyOptions.map(item => ({
+                id: item.code,
+                name: item.display_name || item.code,
+                category: item.allergen_type,
+              }))}
               placeholder="Выберите аллергии..."
               multiple
             />
@@ -1025,36 +1079,30 @@ export default function PetProfileEditor({ pet, onClose, onSave, isLoading }) {
               description="Склонность к расстройствам ЖКТ"
             />
 
-            {medicationExcludedFoods.length > 0 && (
-              <div className="p-4 bg-yellow-50 rounded-xl">
-                <div className="flex items-start gap-2">
-                  <AlertTriangle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
-                  <div>
-                    <h4 className="font-medium text-yellow-800">Ограничения из-за препаратов</h4>
-                    <p className="text-sm text-yellow-700 mt-1">
-                      На основе принимаемых препаратов рекомендуется исключить: {medicationExcludedFoods.join(', ')}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        );
-
-      case 'medical':
-        return (
-          <div className="space-y-6">
             <VaccinationsField
-              species={pet?.species}
-              value={formData.vaccinations}
-              onChange={(v) => handleChange('vaccinations', v)}
+              vaccinations={petVaccinations}
+              onAdd={async (payload) => {
+                const response = await addPetVaccination(pet.id, payload);
+                const created = response.data || response;
+                setPetVaccinations(prev => [created, ...prev]);
+              }}
+              onRemove={async (recordId) => {
+                await deletePetVaccination(pet.id, recordId);
+                setPetVaccinations(prev => prev.filter(item => item.id !== recordId));
+              }}
             />
-            
+
             <MedicationsField
-              species={pet?.species}
-              value={formData.medications}
-              onChange={(v) => handleChange('medications', v)}
-              onExcludedFoodsUpdate={setMedicationExcludedFoods}
+              medications={petMedications}
+              onAdd={async (payload) => {
+                const response = await addPetMedication(pet.id, payload);
+                const created = response.data || response;
+                setPetMedications(prev => [created, ...prev]);
+              }}
+              onRemove={async (recordId) => {
+                await deletePetMedication(pet.id, recordId);
+                setPetMedications(prev => prev.filter(item => item.id !== recordId));
+              }}
             />
           </div>
         );
@@ -1077,32 +1125,55 @@ export default function PetProfileEditor({ pet, onClose, onSave, isLoading }) {
               />
             </div>
             
-            <SearchableSelect
-              label="Любимые продукты"
-              value={formData.favorite_foods}
-              onChange={(v) => handleChange('favorite_foods', v)}
-              options={foodProductsOptions}
-              placeholder="Выберите продукты..."
-              multiple
-            />
-            
-            <SearchableSelect
-              label="Исключённые ингредиенты"
-              value={formData.excluded_ingredients}
-              onChange={(v) => handleChange('excluded_ingredients', v)}
-              options={foodProductsOptions}
-              placeholder="Продукты для исключения..."
-              multiple
-            />
-            
-            <SearchableSelect
-              label="Витамины и добавки"
-              value={formData.vitamins_supplements}
-              onChange={(v) => handleChange('vitamins_supplements', v)}
-              options={supplementsOptions}
-              placeholder="Выберите добавки..."
-              multiple
-            />
+            <div className="space-y-2">
+              <SelectField
+                label="Текущий корм (источник)"
+                value={formData.current_food?.source || ''}
+                onChange={(v) => handleChange('current_food', { ...(formData.current_food || {}), source: v })}
+                options={[
+                  { value: 'catalog', label: 'Из каталога' },
+                  { value: 'other', label: 'Другой корм' }
+                ]}
+              />
+
+              {formData.current_food?.source === 'catalog' && (
+                <input
+                  type="text"
+                  value={formData.current_food?.food_id || ''}
+                    onChange={(e) => handleChange('current_food', { ...(formData.current_food || {}), food_id: e.target.value })}
+                  placeholder="ID корма из каталога"
+                  className="w-full px-4 py-2.5 rounded-xl border-2 border-gray-200 focus:border-purple-500 focus:outline-none transition-all"
+                />
+              )}
+
+              {formData.current_food?.source === 'other' && (
+                <div className="grid grid-cols-2 gap-2">
+                  <input
+                    type="text"
+                    value={formData.current_food?.brand_name || ''}
+                    onChange={(e) => handleChange('current_food', { ...(formData.current_food || {}), brand_name: e.target.value })}
+                    placeholder="Бренд"
+                    className="w-full px-4 py-2.5 rounded-xl border-2 border-gray-200 focus:border-purple-500 focus:outline-none transition-all"
+                  />
+                  <input
+                    type="text"
+                    value={formData.current_food?.product_name || ''}
+                    onChange={(e) => handleChange('current_food', { ...(formData.current_food || {}), product_name: e.target.value })}
+                    placeholder="Название продукта"
+                    className="w-full px-4 py-2.5 rounded-xl border-2 border-gray-200 focus:border-purple-500 focus:outline-none transition-all"
+                  />
+                </div>
+              )}
+
+              <input
+                type="number"
+                min="1"
+                value={formData.current_food?.daily_amount_grams || ''}
+                onChange={(e) => handleChange('current_food', { ...(formData.current_food || {}), daily_amount_grams: e.target.value })}
+                placeholder="Суточная порция (граммы)"
+                className="w-full px-4 py-2.5 rounded-xl border-2 border-gray-200 focus:border-purple-500 focus:outline-none transition-all"
+              />
+            </div>
           </div>
         );
 
@@ -1111,10 +1182,10 @@ export default function PetProfileEditor({ pet, onClose, onSave, isLoading }) {
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <SelectField
-                label="Тип поведения"
-                value={formData.behavior_type}
-                onChange={(v) => handleChange('behavior_type', v)}
-                options={BEHAVIOR_TYPE_OPTIONS}
+                label="Темперамент"
+                value={formData.temperament}
+                onChange={(v) => handleChange('temperament', v)}
+                options={TEMPERAMENT_OPTIONS}
               />
               <SelectField
                 label="Уровень социализации"
@@ -1123,38 +1194,13 @@ export default function PetProfileEditor({ pet, onClose, onSave, isLoading }) {
                 options={SOCIAL_LEVEL_OPTIONS}
               />
             </div>
-            
-            <SelectField
-              label="Опыт дрессировки"
-              value={formData.training_experience}
-              onChange={(v) => handleChange('training_experience', v)}
-              options={TRAINING_EXPERIENCE_OPTIONS}
-            />
-            
-            <SearchableSelect
-              label="Черты характера"
-              value={formData.character_traits}
-              onChange={(v) => handleChange('character_traits', v)}
-              options={characterTraitsOptions}
-              placeholder="Выберите черты характера..."
-              multiple
-            />
-            
+
             <SearchableSelect
               label="Поведенческие проблемы"
               value={formData.behavioral_problems}
               onChange={(v) => handleChange('behavioral_problems', v)}
               options={behavioralProblemsOptions}
               placeholder="Выберите проблемы..."
-              multiple
-            />
-            
-            <SearchableSelect
-              label="Цели дрессировки"
-              value={formData.training_goals}
-              onChange={(v) => handleChange('training_goals', v)}
-              options={trainingGoalsOptions}
-              placeholder="Выберите цели..."
               multiple
             />
           </div>
@@ -1175,10 +1221,11 @@ export default function PetProfileEditor({ pet, onClose, onSave, isLoading }) {
               checked={formData.has_yard}
               onChange={(v) => handleChange('has_yard', v)}
             />
-            
-            <OtherPetsField
-              value={formData.other_pets}
-              onChange={(v) => handleChange('other_pets', v)}
+
+            <ToggleField
+              label="Есть другие питомцы"
+              checked={formData.has_other_pets}
+              onChange={(v) => handleChange('has_other_pets', v)}
             />
             
             <ToggleField
@@ -1238,12 +1285,14 @@ export default function PetProfileEditor({ pet, onClose, onSave, isLoading }) {
                 <input
                   type="number"
                   step="0.1"
-                  min="0"
+                  min="0.3"
+                  max={formData.species === 'cat' ? 20 : 100}
                   value={formData.weight || ''}
                   onChange={(e) => handleChange('weight', e.target.value)}
                   placeholder="Вес при осмотре"
                   className="w-full px-4 py-2.5 rounded-xl border-2 border-gray-200 focus:border-purple-500 focus:outline-none transition-all"
                 />
+                {errors.weight && <p className="mt-2 text-sm text-red-500">{errors.weight}</p>}
               </div>
               <SelectField
                 label="Оценка упитанности (BCS)"
@@ -1253,13 +1302,6 @@ export default function PetProfileEditor({ pet, onClose, onSave, isLoading }) {
                 placeholder="Шкала 1-9"
               />
             </div>
-            
-            <SelectField
-              label="Состояние зубов"
-              value={formData.dental_health}
-              onChange={(v) => handleChange('dental_health', v)}
-              options={DENTAL_HEALTH_OPTIONS}
-            />
             
             <div className="grid grid-cols-3 gap-4">
               <div>

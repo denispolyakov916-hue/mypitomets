@@ -131,7 +131,7 @@ class PetContext:
     profile_completeness: int = 0
     # Питание
     diet_type: Optional[str] = None
-    body_condition_score: Optional[str] = None
+    body_condition_score: Optional[int] = None
     # Данные породы (из справочника)
     breed_energy_level: Optional[str] = None
     breed_trainability: Optional[str] = None

@@ -6,7 +6,7 @@ import {
   Scale, Activity, Utensils, Brain, Heart, Home, Scissors,
   ChevronRight, Info, CheckCircle, AlertTriangle, XCircle, UtensilsCrossed
 } from 'lucide-react';
-import { getPet, deletePet, getPetBreedComparison } from '../../api/pets';
+import { getPet, deletePet, getPetBreedComparison, updatePet, updatePetPartial } from '../../api/pets';
 import { PageLoader } from '../../components/Loader';
 import PetProfileEditor from './components/PetProfileEditor';
 
@@ -278,9 +278,24 @@ export default function PetDetailPage() {
     }
   };
 
-  const handleEditComplete = () => {
-    setShowWizard(false);
-    loadPetData();
+  const handleEditComplete = async (formData, options = {}) => {
+    try {
+      const payload = {
+        ...formData,
+        is_draft: options.isDraft ?? formData?.is_draft ?? false,
+        draft_step: options.draftStep ?? formData?.draft_step ?? null,
+      };
+      if (options.partial) {
+        await updatePetPartial(id, payload);
+        return;
+      }
+      await updatePet(id, payload);
+      setShowWizard(false);
+      loadPetData();
+    } catch (err) {
+      console.error('Ошибка сохранения:', err);
+      alert('Не удалось сохранить изменения. Попробуйте ещё раз.');
+    }
   };
 
   if (isLoading) return <PageLoader />;
@@ -333,7 +348,7 @@ export default function PetDetailPage() {
         <div className="flex-1">
           <h1 className="text-2xl font-bold text-gray-800">{pet.name}</h1>
           <p className="text-sm text-gray-500">
-            {pet.breed || 'Порода не указана'} • {pet.species === 'dog' ? 'Собака' : 'Кошка'}
+            {pet.breed_name || 'Порода не указана'} • {pet.species === 'dog' ? 'Собака' : 'Кошка'}
           </p>
         </div>
         <div className="flex gap-2">
@@ -378,15 +393,15 @@ export default function PetDetailPage() {
             <div>
               <div className="flex items-center gap-2 mb-2">
                 <h2 className="text-2xl font-bold text-gray-800">{pet.name}</h2>
-                <span className={`px-2 py-0.5 rounded-full text-xs ${pet.gender === 'male' ? 'bg-blue-100 text-blue-700' : 'bg-pink-100 text-pink-700'}`}>
-                  {pet.gender === 'male' ? '♂' : '♀'}
+                <span className={`px-2 py-0.5 rounded-full text-xs ${pet.sex === 'male' ? 'bg-blue-100 text-blue-700' : 'bg-pink-100 text-pink-700'}`}>
+                  {pet.sex === 'male' ? '♂' : '♀'}
                 </span>
               </div>
-              <p className="text-gray-600 mb-3">{pet.breed || 'Порода не указана'}</p>
+              <p className="text-gray-600 mb-3">{pet.breed_name || 'Порода не указана'}</p>
               <div className="flex flex-wrap gap-2">
-                {pet.weight && (
+                {pet.weight_kg && (
                   <span className="px-3 py-1 bg-gray-100 rounded-full text-sm text-gray-600">
-                    ⚖️ {pet.weight} кг
+                    ⚖️ {pet.weight_kg} кг
                   </span>
                 )}
                 {comparison?.pet?.age && (
@@ -396,7 +411,7 @@ export default function PetDetailPage() {
                 )}
                 {pet.activity_level && (
                   <span className="px-3 py-1 bg-gray-100 rounded-full text-sm text-gray-600">
-                    ⚡ {pet.activity_level === 'low' ? 'Низкая' : pet.activity_level === 'medium' ? 'Средняя' : 'Высокая'} активность
+                    ⚡ {pet.activity_level === 'low' ? 'Низкая' : pet.activity_level === 'moderate' ? 'Средняя' : 'Высокая'} активность
                   </span>
                 )}
               </div>
@@ -451,7 +466,7 @@ export default function PetDetailPage() {
               <div>
                 <h4 className="font-medium text-yellow-800">Порода не найдена в базе знаний</h4>
                 <p className="text-sm text-yellow-700 mt-1">
-                  Порода "{pet.breed}" не найдена. Для полного анализа выберите породу из списка при редактировании профиля.
+                  Порода "{pet.breed_name || '—'}" не найдена. Для полного анализа выберите породу из списка при редактировании профиля.
                 </p>
               </div>
             </div>
@@ -524,12 +539,12 @@ export default function PetDetailPage() {
               <h3 className="font-semibold text-gray-800 mb-4">📋 Информация о питомце</h3>
               <div className="grid md:grid-cols-2 gap-4">
                 <InfoRow label="Вид" value={pet.species === 'dog' ? 'Собака' : 'Кошка'} />
-                <InfoRow label="Порода" value={pet.breed || 'Не указана'} />
-                <InfoRow label="Пол" value={pet.gender === 'male' ? 'Мужской' : 'Женский'} />
-                <InfoRow label="Вес" value={pet.weight ? `${pet.weight} кг` : 'Не указан'} />
+                <InfoRow label="Порода" value={pet.breed_name || 'Не указана'} />
+                <InfoRow label="Пол" value={pet.sex === 'male' ? 'Мужской' : 'Женский'} />
+                <InfoRow label="Вес" value={pet.weight_kg ? `${pet.weight_kg} кг` : 'Не указан'} />
                 <InfoRow label="Активность" value={
                   pet.activity_level === 'low' ? 'Низкая' :
-                  pet.activity_level === 'medium' ? 'Средняя' : 'Высокая'
+                  pet.activity_level === 'moderate' ? 'Средняя' : 'Высокая'
                 } />
                 <InfoRow label="Кастрация" value={pet.is_neutered ? 'Да' : 'Нет'} />
                 <InfoRow label="Тип питания" value={
@@ -537,12 +552,13 @@ export default function PetDetailPage() {
                   pet.diet_type === 'wet' ? 'Влажный корм' :
                   pet.diet_type === 'mixed' ? 'Смешанное' :
                   pet.diet_type === 'raw' ? 'Натуральное' :
-                  pet.diet_type === 'home' ? 'Домашняя еда' : 'Не указан'
+                  pet.diet_type === 'homemade' ? 'Домашняя еда' : 'Не указан'
                 } />
                 <InfoRow label="Тип жилья" value={
                   pet.housing_type === 'apartment' ? 'Квартира' :
                   pet.housing_type === 'house' ? 'Частный дом' :
-                  pet.housing_type === 'cottage' ? 'Дача/Коттедж' : 'Не указан'
+                  pet.housing_type === 'farm' ? 'Ферма/сельская местность' :
+                  pet.housing_type === 'outdoor' ? 'Вольерное содержание' : 'Не указан'
                 } />
               </div>
             </div>

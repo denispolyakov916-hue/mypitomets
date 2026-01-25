@@ -513,7 +513,7 @@ const AgeSelect = ({ ageType, dateOfBirth, ageYears, ageMonths, onChange, error,
 };
 
 // Ввод веса
-const WeightInput = ({ value, onChange, error, required, selectedBreed, ageMonths }) => {
+const WeightInput = ({ value, onChange, error, required, selectedBreed, ageMonths, species }) => {
   // Рассчитываем подсказку веса с учётом возраста
   const getWeightHint = () => {
     if (!selectedBreed || !selectedBreed.min_weight || !selectedBreed.max_weight) {
@@ -556,10 +556,18 @@ const WeightInput = ({ value, onChange, error, required, selectedBreed, ageMonth
           type="number"
           step="0.1"
           min="0.1"
-          max="200"
+          max={species === 'cat' ? 20 : 100}
           value={value}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder="Введите вес"
+          onChange={(e) => {
+            const val = e.target.value;
+            if (
+              val === '' ||
+              (parseFloat(val) >= 0 && parseFloat(val) <= (species === 'cat' ? 20 : 100))
+            ) {
+              onChange(val);
+            }
+          }}
+          placeholder={species === 'cat' ? 'От 0.1 до 20 кг' : 'От 0.1 до 100 кг'}
           className={`w-full px-4 py-3 pr-12 rounded-xl border-2 transition-all
             ${error 
               ? 'border-red-300 focus:border-red-500' 
@@ -693,6 +701,10 @@ const PetCreateForm = ({ onClose }) => {
     
     if (!formData.weightKg || parseFloat(formData.weightKg) <= 0) {
       newErrors.weight = 'Укажите вес';
+    } else {
+      const weight = parseFloat(formData.weightKg);
+      if (formData.species === 'cat' && weight > 20) newErrors.weight = 'Максимум 20 кг для кошки';
+      if (formData.species === 'dog' && weight > 100) newErrors.weight = 'Максимум 100 кг для собаки';
     }
     
     if (formData.isNeutered === null) {
@@ -739,15 +751,15 @@ const PetCreateForm = ({ onClose }) => {
         name: formData.name.trim(),
         species: formData.species,
         sex: formData.sex,
-        breed: formData.breedId,
+        breed_id: formData.breedId,
         date_of_birth: dateOfBirth?.toISOString().split('T')[0],
-        weight: parseFloat(formData.weightKg),
+        weight_kg: parseFloat(formData.weightKg),
         is_neutered: formData.isNeutered,
       };
       
       // Добавляем фото если есть
       if (formData.photo) {
-        payload.photo = formData.photoPreview; // base64
+        payload.photo = formData.photo;
       }
       
       const response = await createPet(payload);
@@ -874,6 +886,7 @@ const PetCreateForm = ({ onClose }) => {
               ? (formData.dateOfBirth ? Math.floor((new Date() - new Date(formData.dateOfBirth)) / (1000 * 60 * 60 * 24 * 30)) : null)
               : ((parseInt(formData.ageYears) || 0) * 12 + (parseInt(formData.ageMonths) || 0))
             }
+            species={formData.species}
           />
           
           {/* Кастрация */}

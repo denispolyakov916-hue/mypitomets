@@ -73,7 +73,28 @@ export const getPet = async (petId) => {
  *   })
  */
 export const createPet = async (petData) => {
-  return await petsApi.create(petData)
+  const formData = new FormData()
+
+  Object.keys(petData).forEach(key => {
+    const value = petData[key]
+    if (value === null || value === undefined) return
+
+    if (key === 'photo' && value instanceof File) {
+      formData.append('photo', value)
+      return
+    }
+
+    if (Array.isArray(value) || typeof value === 'object') {
+      formData.append(key, JSON.stringify(value))
+      return
+    }
+
+    formData.append(key, value)
+  })
+
+  return await api.post('/pets/', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  })
 }
 
 /**
@@ -90,6 +111,19 @@ export const createPet = async (petData) => {
  *   const { data } = await updatePet(1, { weight: 5.5 })
  */
 export const updatePet = async (petId, petData) => {
+  return await petsApi.update(petId, petData)
+}
+
+/**
+ * Частичное обновление профиля питомца
+ *
+ * Используется для сохранения прогресса без потери уже заполненных данных.
+ *
+ * @param {number|string} petId
+ * @param {Object} petData
+ * @returns {Promise<Object>}
+ */
+export const updatePetPartial = async (petId, petData) => {
   return await petsApi.update(petId, petData)
 }
 
@@ -294,6 +328,76 @@ export const getPetAnalysis = async (petId) => {
   return await api.get(`/pets/${petId}/analysis/`)
 }
 
+// ===== СПРАВОЧНИКИ ЗДОРОВЬЯ (v1) =====
+
+export const getHealthConditions = async (params = {}) => {
+  const queryParams = new URLSearchParams()
+  if (params.species) queryParams.append('species', params.species)
+  if (params.category) queryParams.append('category', params.category)
+  if (params.priority) queryParams.append('priority', params.priority)
+  const queryString = queryParams.toString()
+  return await api.get(`/v1/nutrition/conditions/${queryString ? '?' + queryString : ''}`)
+}
+
+export const getAllergies = async (params = {}) => {
+  const queryParams = new URLSearchParams()
+  if (params.animal_type) queryParams.append('animal_type', params.animal_type)
+  if (params.allergen_type) queryParams.append('allergen_type', params.allergen_type)
+  if (params.search) queryParams.append('search', params.search)
+  const queryString = queryParams.toString()
+  return await api.get(`/v1/nutrition/allergies/${queryString ? '?' + queryString : ''}`)
+}
+
+// ===== ПРИВЯЗКА К ПИТОМЦУ (M2M) =====
+
+export const getPetHealthConditions = async (petId) => {
+  return await api.get(`/pets/${petId}/health-conditions/`)
+}
+
+export const addPetHealthCondition = async (petId, payload) => {
+  return await api.post(`/pets/${petId}/health-conditions/`, payload)
+}
+
+export const deletePetHealthCondition = async (petId, recordId) => {
+  return await api.delete(`/pets/${petId}/health-conditions/${recordId}/`)
+}
+
+export const getPetAllergies = async (petId) => {
+  return await api.get(`/pets/${petId}/allergies/`)
+}
+
+export const addPetAllergy = async (petId, payload) => {
+  return await api.post(`/pets/${petId}/allergies/`, payload)
+}
+
+export const deletePetAllergy = async (petId, recordId) => {
+  return await api.delete(`/pets/${petId}/allergies/${recordId}/`)
+}
+
+export const getPetVaccinations = async (petId) => {
+  return await api.get(`/pets/${petId}/vaccinations/`)
+}
+
+export const addPetVaccination = async (petId, payload) => {
+  return await api.post(`/pets/${petId}/vaccinations/`, payload)
+}
+
+export const deletePetVaccination = async (petId, recordId) => {
+  return await api.delete(`/pets/${petId}/vaccinations/${recordId}/`)
+}
+
+export const getPetMedications = async (petId) => {
+  return await api.get(`/pets/${petId}/medications/`)
+}
+
+export const addPetMedication = async (petId, payload) => {
+  return await api.post(`/pets/${petId}/medications/`, payload)
+}
+
+export const deletePetMedication = async (petId, recordId) => {
+  return await api.delete(`/pets/${petId}/medications/${recordId}/`)
+}
+
 // ===== ДОПОЛНИТЕЛЬНЫЕ КОНСТАНТЫ =====
 
 /**
@@ -304,17 +408,19 @@ export const DIET_TYPE_OPTIONS = [
   { value: 'wet', label: 'Влажный корм' },
   { value: 'mixed', label: 'Смешанное питание' },
   { value: 'raw', label: 'Натуральное (BARF)' },
-  { value: 'home', label: 'Домашняя еда' },
+  { value: 'homemade', label: 'Домашняя еда' },
 ]
 
 /**
  * Варианты частоты кормления
  */
 export const FEEDING_FREQUENCY_OPTIONS = [
-  { value: '1', label: '1 раз в день' },
-  { value: '2', label: '2 раза в день' },
-  { value: '3', label: '3 раза в день' },
-  { value: 'free', label: 'Свободный доступ' },
+  { value: 1, label: '1 раз в день' },
+  { value: 2, label: '2 раза в день' },
+  { value: 3, label: '3 раза в день' },
+  { value: 4, label: '4 раза в день' },
+  { value: 5, label: '5 раз в день' },
+  { value: 6, label: '6 раз в день' },
 ]
 
 /**

@@ -12,7 +12,7 @@ import {
   ArrowLeft, Save, Sparkles, Info, CheckCircle2, 
   AlertCircle, Loader2, Home, UtensilsCrossed
 } from 'lucide-react';
-import { getPet, updatePet } from '../../api/pets';
+import { getPet, updatePet, updatePetPartial } from '../../api/pets';
 import PetProfileEditor from './components/PetProfileEditor';
 
 // Компонент баннера автозаполнения
@@ -144,10 +144,19 @@ export default function PetEditPage() {
   }, [petId]);
   
   // Сохранение изменений
-  const handleSave = useCallback(async (formData) => {
+  const handleSave = useCallback(async (formData, options = {}) => {
     setIsSaving(true);
     try {
-      await updatePet(petId, formData);
+      const payload = {
+        ...formData,
+        is_draft: options.isDraft ?? formData.is_draft ?? false,
+        draft_step: options.draftStep ?? formData.draft_step ?? null,
+      };
+      if (options.partial) {
+        await updatePetPartial(petId, payload);
+        return true;
+      }
+      await updatePet(petId, payload);
       // Перезагружаем данные
       const response = await getPet(petId);
       setPet(response.data || response);
