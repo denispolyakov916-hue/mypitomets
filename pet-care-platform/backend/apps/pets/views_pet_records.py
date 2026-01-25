@@ -25,6 +25,11 @@ class PetVaccinationViewSet(BasePetRecordViewSet):
 
     serializer_class = PetVaccinationSerializer
 
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context['pet'] = self.get_pet()
+        return context
+
     def get_queryset(self):
         pet = self.get_pet()
         return PetVaccination.objects.filter(pet=pet).order_by('-date_administered')
@@ -38,6 +43,11 @@ class PetMedicationViewSet(BasePetRecordViewSet):
     """CRUD для препаратов питомца."""
 
     serializer_class = PetMedicationSerializer
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context['pet'] = self.get_pet()
+        return context
 
     def get_queryset(self):
         pet = self.get_pet()

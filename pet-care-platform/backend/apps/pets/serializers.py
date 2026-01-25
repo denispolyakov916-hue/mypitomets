@@ -18,7 +18,7 @@
 
 from rest_framework import serializers
 from datetime import datetime
-from .models import Pet, Breed, PetVaccination, PetMedication
+from .models import Pet, Breed, Vaccine, Medication, PetVaccination, PetMedication
 from .models import CalendarEvent
 
 
@@ -823,29 +823,116 @@ class PetSerializer(serializers.Serializer):
 # СЕРИАЛИЗАТОРЫ ДОПОЛНИТЕЛЬНЫХ МЕДИЦИНСКИХ ЗАПИСЕЙ
 # =============================================================================
 
+class VaccineListSerializer(serializers.ModelSerializer):
+    """Сериализатор справочника вакцин (для списков)."""
+
+    class Meta:
+        model = Vaccine
+        fields = [
+            'code', 'name_ru', 'name_en', 'species', 'vaccine_type',
+            'booster_interval_months'
+        ]
+
+
+class VaccineDetailSerializer(serializers.ModelSerializer):
+    """Сериализатор справочника вакцин (для карточки)."""
+
+    class Meta:
+        model = Vaccine
+        fields = [
+            'code', 'name_ru', 'name_en', 'species', 'vaccine_type',
+            'protects_against', 'first_vaccination_age_weeks',
+            'booster_interval_months', 'is_mandatory',
+            'contraindications', 'side_effects', 'notes', 'created_at'
+        ]
+
+
+class VaccineShortSerializer(serializers.ModelSerializer):
+    """Короткий сериализатор для отображения в записях."""
+
+    class Meta:
+        model = Vaccine
+        fields = ['code', 'name_ru', 'name_en', 'species']
+
+
+class MedicationListSerializer(serializers.ModelSerializer):
+    """Сериализатор справочника медикаментов (для списков)."""
+
+    class Meta:
+        model = Medication
+        fields = ['code', 'name_trade', 'name_active', 'species', 'category', 'form']
+
+
+class MedicationDetailSerializer(serializers.ModelSerializer):
+    """Сериализатор справочника медикаментов (для карточки)."""
+
+    class Meta:
+        model = Medication
+        fields = [
+            'code', 'name_trade', 'name_active', 'category', 'form', 'species',
+            'indications', 'contraindications', 'side_effects', 'dosage_info',
+            'typical_frequency', 'typical_duration_days',
+            'interactions', 'storage_conditions', 'notes', 'created_at'
+        ]
+
+
+class MedicationShortSerializer(serializers.ModelSerializer):
+    """Короткий сериализатор для отображения в записях."""
+
+    class Meta:
+        model = Medication
+        fields = ['code', 'name_trade', 'name_active', 'species']
+
+
 class PetVaccinationSerializer(serializers.ModelSerializer):
     """Сериализатор вакцинаций питомца."""
+
+    vaccine_detail = VaccineShortSerializer(source='vaccine_code', read_only=True)
 
     class Meta:
         model = PetVaccination
         fields = [
-            'id', 'pet', 'vaccine_code', 'date_administered', 'next_due_date',
+            'id', 'pet', 'vaccine_code', 'vaccine_detail',
+            'date_administered', 'next_due_date',
             'manufacturer', 'batch_number', 'administered_by', 'notes', 'created_at'
         ]
         read_only_fields = ['id', 'created_at', 'pet']
+
+    def validate(self, attrs):
+        pet = self.context.get('pet')
+        vaccine = attrs.get('vaccine_code')
+        if pet and vaccine and vaccine.species not in (pet.species, 'both'):
+            raise serializers.ValidationError(
+                {'vaccine_code': 'Вакцина не соответствует виду питомца.'}
+            )
+        return attrs
 
 
 class PetMedicationSerializer(serializers.ModelSerializer):
     """Сериализатор препаратов питомца."""
 
+    medication_detail = MedicationShortSerializer(source='medication_code', read_only=True)
+
     class Meta:
         model = PetMedication
         fields = [
-            'id', 'pet', 'medication_code', 'medication_name', 'dosage', 'frequency',
+            'id', 'pet', 'medication_code', 'medication_detail',
+            'medication_name', 'dosage', 'frequency',
             'start_date', 'end_date', 'prescribed_for', 'prescribing_vet',
             'notes', 'is_active', 'created_at'
         ]
         read_only_fields = ['id', 'created_at', 'pet']
+
+    def validate(self, attrs):
+        pet = self.context.get('pet')
+        medication = attrs.get('medication_code')
+        if pet and medication and medication.species not in (pet.species, 'both'):
+            raise serializers.ValidationError(
+                {'medication_code': 'Препарат не соответствует виду питомца.'}
+            )
+        if medication and not attrs.get('medication_name'):
+            attrs['medication_name'] = medication.name_trade
+        return attrs
 
 
 # =============================================================================

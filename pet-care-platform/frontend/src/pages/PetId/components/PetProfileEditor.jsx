@@ -16,7 +16,7 @@ import {
   ACTIVITY_LEVEL_OPTIONS, SIZE_OPTIONS,
   DIET_TYPE_OPTIONS, FEEDING_FREQUENCY_OPTIONS, HOUSING_TYPE_OPTIONS,
   SOCIAL_LEVEL_OPTIONS, TEMPERAMENT_OPTIONS, BEHAVIORAL_PROBLEMS_OPTIONS, getBreeds,
-  getHealthConditions, getAllergies,
+  getHealthConditions, getAllergies, getVaccines, getMedications, getMedicationCategories,
   getPetHealthConditions, addPetHealthCondition, deletePetHealthCondition,
   getPetAllergies, addPetAllergy, deletePetAllergy,
   getPetVaccinations, addPetVaccination, deletePetVaccination,
@@ -118,7 +118,7 @@ const SectionProgressBar = ({ percent, label }) => {
 };
 
 // ===== КОМПОНЕНТ ВЫПАДАЮЩЕГО СПИСКА =====
-const SelectField = ({ label, value, onChange, options, placeholder, required }) => (
+const SelectField = ({ label, value, onChange, options, placeholder, required, disabled = false }) => (
   <div>
     <label className="block text-sm font-medium text-gray-700 mb-1.5">
       {label} {required && <span className="text-red-500">*</span>}
@@ -126,7 +126,12 @@ const SelectField = ({ label, value, onChange, options, placeholder, required })
     <select
       value={value || ''}
       onChange={(e) => onChange(e.target.value || null)}
-      className="w-full px-4 py-2.5 rounded-xl border-2 border-gray-200 focus:border-purple-500 focus:outline-none transition-all appearance-none bg-white"
+      disabled={disabled}
+      className={`w-full px-4 py-2.5 rounded-xl border-2 transition-all appearance-none bg-white ${
+        disabled
+          ? 'border-gray-200 text-gray-400 bg-gray-100 cursor-not-allowed'
+          : 'border-gray-200 focus:border-purple-500 focus:outline-none'
+      }`}
       style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%236b7280'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center', backgroundSize: '20px' }}
     >
       <option value="">{placeholder || 'Выберите...'}</option>
@@ -363,15 +368,24 @@ const BreedAutocomplete = ({ species, value, onChange }) => {
 };
 
 // ===== КОМПОНЕНТ ВАКЦИНАЦИЙ =====
-const VaccinationsField = ({ vaccinations = [], onAdd, onRemove }) => {
+const VaccinationsField = ({ vaccinations = [], vaccineOptions = [], onAdd, onRemove }) => {
   const [showAdd, setShowAdd] = useState(false);
   const [newVaccine, setNewVaccine] = useState({
     vaccine_code: '',
     date_administered: '',
     next_due_date: '',
-    manufacturer: '',
-    batch_number: '',
   });
+
+  const calculateNextDueDate = (dateValue, vaccineCode) => {
+    if (!dateValue || !vaccineCode) return '';
+    const vaccine = vaccineOptions.find((item) => item.code === vaccineCode);
+    if (!vaccine?.booster_interval_months) return '';
+    const baseDate = new Date(dateValue);
+    if (Number.isNaN(baseDate.getTime())) return '';
+    const nextDate = new Date(baseDate);
+    nextDate.setMonth(nextDate.getMonth() + Number(vaccine.booster_interval_months));
+    return nextDate.toISOString().slice(0, 10);
+  };
 
   const addVaccination = async () => {
     if (!newVaccine.vaccine_code || !newVaccine.date_administered) return;
@@ -380,8 +394,6 @@ const VaccinationsField = ({ vaccinations = [], onAdd, onRemove }) => {
       vaccine_code: '',
       date_administered: '',
       next_due_date: '',
-      manufacturer: '',
-      batch_number: '',
     });
     setShowAdd(false);
   };
@@ -405,12 +417,19 @@ const VaccinationsField = ({ vaccinations = [], onAdd, onRemove }) => {
           animate={{ opacity: 1, height: 'auto' }}
           className="p-3 bg-purple-50 rounded-xl space-y-2"
         >
-          <input
-            type="text"
+          <SearchableSelect
+            label="Вакцина"
             value={newVaccine.vaccine_code}
-            onChange={(e) => setNewVaccine({ ...newVaccine, vaccine_code: e.target.value })}
-            placeholder="Код вакцины (например: rabies)"
-            className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm"
+            onChange={(value) => {
+              const vaccine_code = value || '';
+              const next_due_date = calculateNextDueDate(newVaccine.date_administered, vaccine_code);
+              setNewVaccine({ ...newVaccine, vaccine_code, next_due_date });
+            }}
+            options={vaccineOptions.map((item) => ({
+              id: item.code,
+              name: item.name_ru || item.name_en || item.code,
+            }))}
+            placeholder="Выберите вакцину..."
           />
           <div className="grid grid-cols-2 gap-2">
             <div className="space-y-1">
@@ -418,7 +437,11 @@ const VaccinationsField = ({ vaccinations = [], onAdd, onRemove }) => {
               <input
                 type="date"
                 value={newVaccine.date_administered}
-                onChange={(e) => setNewVaccine({ ...newVaccine, date_administered: e.target.value })}
+                onChange={(e) => {
+                  const date_administered = e.target.value;
+                  const next_due_date = calculateNextDueDate(date_administered, newVaccine.vaccine_code);
+                  setNewVaccine({ ...newVaccine, date_administered, next_due_date });
+                }}
                 className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm"
               />
             </div>
@@ -431,22 +454,6 @@ const VaccinationsField = ({ vaccinations = [], onAdd, onRemove }) => {
                 className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm"
               />
             </div>
-          </div>
-          <div className="grid grid-cols-2 gap-2">
-            <input
-              type="text"
-              value={newVaccine.manufacturer}
-              onChange={(e) => setNewVaccine({ ...newVaccine, manufacturer: e.target.value })}
-              placeholder="Производитель"
-              className="px-3 py-2 rounded-lg border border-gray-200 text-sm"
-            />
-            <input
-              type="text"
-              value={newVaccine.batch_number}
-              onChange={(e) => setNewVaccine({ ...newVaccine, batch_number: e.target.value })}
-              placeholder="Номер партии"
-              className="px-3 py-2 rounded-lg border border-gray-200 text-sm"
-            />
           </div>
           <button
             type="button"
@@ -464,7 +471,9 @@ const VaccinationsField = ({ vaccinations = [], onAdd, onRemove }) => {
           {vaccinations.map((vac) => (
             <div key={vac.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
               <div>
-                <div className="font-medium text-sm">{vac.vaccine_code}</div>
+                <div className="font-medium text-sm">
+                  {vac.vaccine_detail?.name_ru || vac.vaccine_detail?.name_en || 'Неизвестная вакцина'}
+                </div>
                 <div className="text-xs text-gray-500">
                   Дата: {new Date(vac.date_administered).toLocaleDateString('ru-RU')}
                   {vac.next_due_date && (
@@ -494,7 +503,15 @@ const VaccinationsField = ({ vaccinations = [], onAdd, onRemove }) => {
 };
 
 // ===== КОМПОНЕНТ ПРЕПАРАТОВ =====
-const MedicationsField = ({ medications = [], onAdd, onRemove }) => {
+const MedicationsField = ({
+  medications = [],
+  medicationOptions = [],
+  medicationCategoryOptions = [],
+  medicationCategory,
+  onCategoryChange,
+  onAdd,
+  onRemove
+}) => {
   const [showAdd, setShowAdd] = useState(false);
   const [newMed, setNewMed] = useState({
     medication_code: '',
@@ -515,7 +532,7 @@ const MedicationsField = ({ medications = [], onAdd, onRemove }) => {
   ];
 
   const addMedication = async () => {
-    if (!newMed.medication_name || !newMed.start_date || !newMed.frequency) return;
+    if (!newMed.medication_code || !newMed.start_date || !newMed.frequency) return;
     await onAdd(newMed);
     setNewMed({
       medication_code: '',
@@ -547,19 +564,32 @@ const MedicationsField = ({ medications = [], onAdd, onRemove }) => {
           animate={{ opacity: 1, height: 'auto' }}
           className="p-3 bg-purple-50 rounded-xl space-y-2"
         >
-          <input
-            type="text"
-            value={newMed.medication_code}
-            onChange={(e) => setNewMed({ ...newMed, medication_code: e.target.value })}
-            placeholder="Код препарата (необязательно)"
-            className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm"
+          <SelectField
+            label="Категория"
+            value={medicationCategory}
+            onChange={onCategoryChange}
+            options={medicationCategoryOptions}
+            placeholder="Все категории"
           />
-          <input
-            type="text"
-            value={newMed.medication_name}
-            onChange={(e) => setNewMed({ ...newMed, medication_name: e.target.value })}
-            placeholder="Название препарата"
-            className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm"
+          <SearchableSelect
+            label="Препарат"
+            value={newMed.medication_code}
+            onChange={(value) => {
+              const medication_code = value || '';
+              const selected = medicationOptions.find((item) => item.code === medication_code);
+              setNewMed({
+                ...newMed,
+                medication_code,
+                medication_name: selected?.name_trade || selected?.name_active || '',
+              });
+            }}
+            options={medicationOptions.map((item) => ({
+              id: item.code,
+              name: item.name_active
+                ? `${item.name_trade} (${item.name_active})`
+                : (item.name_trade || item.name_active || item.code),
+            }))}
+            placeholder="Выберите препарат..."
           />
           <div className="grid grid-cols-2 gap-2">
             <input
@@ -603,7 +633,7 @@ const MedicationsField = ({ medications = [], onAdd, onRemove }) => {
           <button
             type="button"
             onClick={addMedication}
-            disabled={!newMed.medication_name || !newMed.start_date || !newMed.frequency}
+            disabled={!newMed.medication_code || !newMed.start_date || !newMed.frequency}
             className="w-full px-4 py-2 bg-purple-600 text-white rounded-lg text-sm disabled:opacity-50"
           >
             Добавить препарат
@@ -616,7 +646,9 @@ const MedicationsField = ({ medications = [], onAdd, onRemove }) => {
           {medications.map((med) => (
             <div key={med.id} className="p-3 bg-gray-50 rounded-xl flex items-start justify-between">
               <div>
-                <div className="font-medium text-sm">{med.medication_name}</div>
+                <div className="font-medium text-sm">
+                  {med.medication_detail?.name_trade || med.medication_name}
+                </div>
                 {med.dosage && <div className="text-xs text-gray-600">Дозировка: {med.dosage}</div>}
                 <div className="text-xs text-gray-500">
                   Начало: {new Date(med.start_date).toLocaleDateString('ru-RU')}
@@ -677,6 +709,10 @@ export default function PetProfileEditor({ pet, onClose, onSave, isLoading }) {
   const [errors, setErrors] = useState({});
   const [healthConditionOptions, setHealthConditionOptions] = useState([]);
   const [allergyOptions, setAllergyOptions] = useState([]);
+  const [vaccineOptions, setVaccineOptions] = useState([]);
+  const [medicationOptions, setMedicationOptions] = useState([]);
+  const [medicationCategoryOptions, setMedicationCategoryOptions] = useState([]);
+  const [medicationCategory, setMedicationCategory] = useState('');
   const [petHealthConditions, setPetHealthConditions] = useState([]);
   const [petAllergies, setPetAllergies] = useState([]);
   const [petVaccinations, setPetVaccinations] = useState([]);
@@ -728,10 +764,21 @@ export default function PetProfileEditor({ pet, onClose, onSave, isLoading }) {
 
     const fetchHealthData = async () => {
       try {
-        const [conditionsResponse, allergiesResponse, petConditions, petAllergiesResponse, vaccinationsResponse, medicationsResponse] =
+        const [
+          conditionsResponse,
+          allergiesResponse,
+          vaccinesResponse,
+          medicationCategoriesResponse,
+          petConditions,
+          petAllergiesResponse,
+          vaccinationsResponse,
+          petMedicationsResponse
+        ] =
           await Promise.all([
             getHealthConditions({ species: pet.species }),
             getAllergies({ animal_type: pet.species }),
+            getVaccines({ species: pet.species }),
+            getMedicationCategories(),
             getPetHealthConditions(pet.id),
             getPetAllergies(pet.id),
             getPetVaccinations(pet.id),
@@ -743,6 +790,13 @@ export default function PetProfileEditor({ pet, onClose, onSave, isLoading }) {
 
         setHealthConditionOptions(conditions);
         setAllergyOptions(allergies);
+        setVaccineOptions(vaccinesResponse.results || vaccinesResponse.data || vaccinesResponse || []);
+        setMedicationCategoryOptions(
+          medicationCategoriesResponse.categories
+            || medicationCategoriesResponse.data?.categories
+            || medicationCategoriesResponse.data
+            || []
+        );
 
         const healthRecords = petConditions.results || petConditions.data || petConditions || [];
         const allergyRecords = petAllergiesResponse.results || petAllergiesResponse.data || petAllergiesResponse || [];
@@ -750,7 +804,7 @@ export default function PetProfileEditor({ pet, onClose, onSave, isLoading }) {
         setPetHealthConditions(healthRecords);
         setPetAllergies(allergyRecords);
         setPetVaccinations(vaccinationsResponse.results || vaccinationsResponse.data || vaccinationsResponse || []);
-        setPetMedications(medicationsResponse.results || medicationsResponse.data || medicationsResponse || []);
+        setPetMedications(petMedicationsResponse.results || petMedicationsResponse.data || petMedicationsResponse || []);
 
         setFormData(prev => ({
           ...prev,
@@ -764,6 +818,24 @@ export default function PetProfileEditor({ pet, onClose, onSave, isLoading }) {
 
     fetchHealthData();
   }, [pet?.id, pet?.species]);
+
+  useEffect(() => {
+    if (!pet?.species) return;
+
+    const fetchMedicationOptions = async () => {
+      try {
+        const response = await getMedications({
+          species: pet.species,
+          category: medicationCategory || undefined,
+        });
+        setMedicationOptions(response.results || response.data || response || []);
+      } catch (error) {
+        console.error('Ошибка загрузки справочника препаратов:', error);
+      }
+    };
+
+    fetchMedicationOptions();
+  }, [pet?.species, medicationCategory]);
 
   const handleChange = useCallback((field, value) => {
     if (field === 'weight') {
@@ -779,6 +851,12 @@ export default function PetProfileEditor({ pet, onClose, onSave, isLoading }) {
         }
         return nextState;
       });
+    } else if (field === 'walk_frequency') {
+      setFormData(prev => ({
+        ...prev,
+        walk_frequency: value,
+        walk_duration: value === 'none' ? null : prev.walk_duration,
+      }));
     } else {
       setFormData(prev => ({ ...prev, [field]: value }));
     }
@@ -1081,27 +1159,36 @@ export default function PetProfileEditor({ pet, onClose, onSave, isLoading }) {
 
             <VaccinationsField
               vaccinations={petVaccinations}
+              vaccineOptions={vaccineOptions}
               onAdd={async (payload) => {
                 const response = await addPetVaccination(pet.id, payload);
                 const created = response.data || response;
                 setPetVaccinations(prev => [created, ...prev]);
+                setHasChanges(true);
               }}
               onRemove={async (recordId) => {
                 await deletePetVaccination(pet.id, recordId);
                 setPetVaccinations(prev => prev.filter(item => item.id !== recordId));
+                setHasChanges(true);
               }}
             />
 
             <MedicationsField
               medications={petMedications}
+              medicationOptions={medicationOptions}
+              medicationCategoryOptions={medicationCategoryOptions}
+              medicationCategory={medicationCategory}
+              onCategoryChange={(value) => setMedicationCategory(value || '')}
               onAdd={async (payload) => {
                 const response = await addPetMedication(pet.id, payload);
                 const created = response.data || response;
                 setPetMedications(prev => [created, ...prev]);
+                setHasChanges(true);
               }}
               onRemove={async (recordId) => {
                 await deletePetMedication(pet.id, recordId);
                 setPetMedications(prev => prev.filter(item => item.id !== recordId));
+                setHasChanges(true);
               }}
             />
           </div>
@@ -1246,6 +1333,7 @@ export default function PetProfileEditor({ pet, onClose, onSave, isLoading }) {
                 value={formData.walk_duration}
                 onChange={(v) => handleChange('walk_duration', v)}
                 options={WALK_DURATION_OPTIONS}
+                disabled={formData.walk_frequency === 'none'}
               />
             </div>
           </div>

@@ -377,6 +377,26 @@ export const getAllergies = async (params = {}) => {
   return await api.get(`/v1/nutrition/allergies/${queryString ? '?' + queryString : ''}`)
 }
 
+export const getVaccines = async (params = {}) => {
+  const queryParams = new URLSearchParams()
+  if (params.species) queryParams.append('species', params.species)
+  const queryString = queryParams.toString()
+  return await api.get(`/pets/vaccines/${queryString ? '?' + queryString : ''}`)
+}
+
+export const getMedications = async (params = {}) => {
+  const queryParams = new URLSearchParams()
+  if (params.species) queryParams.append('species', params.species)
+  if (params.category) queryParams.append('category', params.category)
+  if (params.search) queryParams.append('search', params.search)
+  const queryString = queryParams.toString()
+  return await api.get(`/pets/medications/${queryString ? '?' + queryString : ''}`)
+}
+
+export const getMedicationCategories = async () => {
+  return await api.get('/pets/medications/categories/')
+}
+
 // ===== ПРИВЯЗКА К ПИТОМЦУ (M2M) =====
 
 export const getPetHealthConditions = async (petId) => {
