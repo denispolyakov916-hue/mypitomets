@@ -42,6 +42,8 @@ from .views_pet_records import (
     PetVaccinationViewSet,
     PetMedicationViewSet,
 )
+from .views_vaccines import VaccineViewSet
+from .views_medications import MedicationViewSet, MedicationCategoryView
 from .views_breeds import (
     BreedListView, BreedDetailView,
     PetBreedComparisonView, BreedHealthRisksView
@@ -111,6 +113,35 @@ urlpatterns = [
         '<uuid:pet_id>/vaccinations/<str:pk>/',
         PetVaccinationViewSet.as_view({'get': 'retrieve', 'put': 'update', 'patch': 'partial_update', 'delete': 'destroy'}),
         name='pet-vaccinations-detail'
+    ),
+
+    # Справочник вакцин
+    path(
+        'vaccines/',
+        VaccineViewSet.as_view({'get': 'list'}),
+        name='vaccine-list'
+    ),
+    path(
+        'vaccines/<str:code>/',
+        VaccineViewSet.as_view({'get': 'retrieve'}),
+        name='vaccine-detail'
+    ),
+
+    # Справочник медикаментов
+    path(
+        'medications/',
+        MedicationViewSet.as_view({'get': 'list'}),
+        name='medication-list'
+    ),
+    path(
+        'medications/categories/',
+        MedicationCategoryView.as_view(),
+        name='medication-categories'
+    ),
+    path(
+        'medications/<str:code>/',
+        MedicationViewSet.as_view({'get': 'retrieve'}),
+        name='medication-detail'
     ),
 
     # Препараты

@@ -9,6 +9,7 @@ from django.db import models
 from django.conf import settings
 from django.utils import timezone
 from django.core.validators import MinValueValidator, MaxValueValidator
+from django.contrib.postgres.fields import ArrayField
 from core.utils import generate_uuid7
 from core.validators import validate_string_list
 
@@ -740,6 +741,108 @@ class Pet(models.Model):
 # ДОПОЛНИТЕЛЬНЫЕ ТАБЛИЦЫ PetID (M2M/History) ПО ТЗ
 # ============================================================================
 
+class Vaccine(models.Model):
+    """Справочник вакцин для собак и кошек."""
+
+    SPECIES_CHOICES = [
+        ('dog', 'Собака'),
+        ('cat', 'Кошка'),
+        ('both', 'Оба'),
+    ]
+
+    VACCINE_TYPE_CHOICES = [
+        ('live', 'Live (живые)'),
+        ('inactivated', 'Inactivated (инактивированные)'),
+        ('recombinant', 'Recombinant (рекомбинантные)'),
+    ]
+
+    code = models.CharField(max_length=50, primary_key=True, verbose_name='Код вакцины')
+    name_ru = models.CharField(max_length=200, verbose_name='Название (рус)')
+    name_en = models.CharField(max_length=200, blank=True, verbose_name='Название (англ)')
+    species = models.CharField(max_length=10, choices=SPECIES_CHOICES, verbose_name='Вид')
+    vaccine_type = models.CharField(max_length=20, choices=VACCINE_TYPE_CHOICES, verbose_name='Тип вакцины')
+    protects_against = models.TextField(verbose_name='От каких заболеваний')
+    first_vaccination_age_weeks = models.PositiveIntegerField(verbose_name='Возраст первой вакцинации (недели)')
+    booster_interval_months = models.PositiveIntegerField(verbose_name='Интервал ревакцинации (месяцы)')
+    is_mandatory = models.BooleanField(default=False, verbose_name='Обязательная')
+    contraindications = models.TextField(blank=True, verbose_name='Противопоказания')
+    side_effects = models.TextField(blank=True, verbose_name='Побочные эффекты')
+    notes = models.TextField(blank=True, verbose_name='Примечания')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'vaccines'
+        ordering = ['species', 'name_ru']
+
+    def __str__(self):
+        return f"{self.name_ru} ({self.code})"
+
+
+class Medication(models.Model):
+    """Справочник медикаментов для собак и кошек."""
+
+    SPECIES_CHOICES = [
+        ('dog', 'Собака'),
+        ('cat', 'Кошка'),
+        ('both', 'Оба'),
+    ]
+
+    CATEGORY_CHOICES = [
+        ('antiparasitic', 'Антипаразитарные'),
+        ('antihistamine', 'Антигистаминные'),
+        ('antibiotic', 'Антибиотики'),
+        ('nsaid', 'НПВС'),
+        ('analgesic', 'Обезболивающие'),
+        ('cardiac', 'Сердечные'),
+        ('gastrointestinal', 'ЖКТ'),
+        ('dermatological', 'Дерматологические'),
+        ('ophthalmic', 'Офтальмологические'),
+        ('hormonal', 'Гормональные'),
+        ('immunosuppressant', 'Иммунодепрессанты'),
+        ('supplement', 'Добавки'),
+        ('other', 'Другое'),
+    ]
+
+    FORM_CHOICES = [
+        ('tablets', 'Таблетки'),
+        ('drops', 'Капли'),
+        ('injection', 'Инъекции'),
+        ('ointment', 'Мазь'),
+        ('suspension', 'Суспензия'),
+        ('spray', 'Спрей'),
+        ('other', 'Другое'),
+    ]
+
+    code = models.CharField(max_length=50, primary_key=True, verbose_name='Код препарата')
+    name_trade = models.CharField(max_length=200, verbose_name='Торговое название')
+    name_active = models.CharField(max_length=200, verbose_name='Действующее вещество')
+    category = models.CharField(max_length=30, choices=CATEGORY_CHOICES, verbose_name='Категория')
+    form = models.CharField(max_length=20, choices=FORM_CHOICES, verbose_name='Форма выпуска')
+    species = models.CharField(max_length=10, choices=SPECIES_CHOICES, verbose_name='Вид')
+    indications = models.TextField(verbose_name='Показания')
+    contraindications = models.TextField(blank=True, verbose_name='Противопоказания')
+    side_effects = models.TextField(blank=True, verbose_name='Побочные эффекты')
+    dosage_info = models.JSONField(blank=True, null=True, verbose_name='Информация о дозировке')
+    typical_frequency = ArrayField(
+        models.CharField(max_length=50),
+        default=list,
+        blank=True,
+        verbose_name='Типичная периодичность'
+    )
+    typical_duration_days = models.PositiveIntegerField(blank=True, null=True, verbose_name='Типичная длительность (дни)')
+    interactions = models.TextField(blank=True, verbose_name='Взаимодействия')
+    storage_conditions = models.TextField(blank=True, verbose_name='Условия хранения')
+    notes = models.TextField(blank=True, verbose_name='Примечания')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'medications'
+        ordering = ['species', 'name_trade']
+
+    def __str__(self):
+        return f"{self.name_trade} ({self.code})"
+
+
 class PetVaccination(models.Model):
     """История вакцинаций питомца."""
 
@@ -755,7 +858,14 @@ class PetVaccination(models.Model):
         related_name='vaccinations',
         verbose_name='Питомец'
     )
-    vaccine_code = models.CharField(max_length=50, verbose_name='Код вакцины')
+    vaccine_code = models.ForeignKey(
+        Vaccine,
+        to_field='code',
+        db_column='vaccine_code',
+        on_delete=models.PROTECT,
+        related_name='pet_vaccinations',
+        verbose_name='Код вакцины'
+    )
     date_administered = models.DateField(verbose_name='Дата вакцинации')
     next_due_date = models.DateField(null=True, blank=True, verbose_name='Следующая вакцинация')
     manufacturer = models.CharField(max_length=200, blank=True, verbose_name='Производитель')
@@ -769,7 +879,7 @@ class PetVaccination(models.Model):
         ordering = ['-date_administered']
 
     def __str__(self):
-        return f"{self.pet.name}: {self.vaccine_code} ({self.date_administered})"
+        return f"{self.pet.name}: {self.vaccine_code.name_ru} ({self.date_administered})"
 
 
 class PetMedication(models.Model):
@@ -796,7 +906,14 @@ class PetMedication(models.Model):
         related_name='medications',
         verbose_name='Питомец'
     )
-    medication_code = models.CharField(max_length=50, verbose_name='Код препарата')
+    medication_code = models.ForeignKey(
+        Medication,
+        to_field='code',
+        db_column='medication_code',
+        on_delete=models.PROTECT,
+        related_name='pet_medications',
+        verbose_name='Код препарата'
+    )
     medication_name = models.CharField(max_length=200, verbose_name='Название препарата')
     dosage = models.CharField(max_length=100, blank=True, verbose_name='Дозировка')
     frequency = models.CharField(max_length=30, choices=FREQUENCY_CHOICES, verbose_name='Периодичность')
@@ -813,7 +930,7 @@ class PetMedication(models.Model):
         ordering = ['-start_date']
 
     def __str__(self):
-        return f"{self.pet.name}: {self.medication_name}"
+        return f"{self.pet.name}: {self.medication_code.name_trade}"
 
 
 class PetActivity(models.Model):
