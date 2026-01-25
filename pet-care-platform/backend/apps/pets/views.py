@@ -137,7 +137,12 @@ class PetListCreateView(BaseListCreateView):
             pet = pet_service.create_pet(data, request.user)
 
             # АВТОЗАПОЛНЕНИЕ из породы
-            autofilled = pet_autofill.autofill_from_breed(pet)
+            # Если activity_level не передан пользователем, принудительно
+            # пересчитываем его, чтобы не оставлять дефолт 'moderate'.
+            force_update = []
+            if not request.data.get('activity_level'):
+                force_update.append('activity_level')
+            autofilled = pet_autofill.autofill_from_breed(pet, force_update=force_update)
             if autofilled:
                 logger.info(f"Autofilled fields for pet {pet.id}: {autofilled}")
 
