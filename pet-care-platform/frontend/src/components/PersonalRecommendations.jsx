@@ -26,7 +26,17 @@ const formatPrice = (price) => {
 /**
  * Компонент PersonalRecommendations
  */
-function PersonalRecommendations() {
+function PersonalRecommendations({
+  type = 'all',
+  productsLimit = 8,
+  coursesLimit = 4,
+  maxItems = null,
+  title = 'Рекомендуем для ваших питомцев',
+  description = 'Персональные подборки на основе предпочтений ваших питомцев',
+  showCta = true,
+  ctaLabel = 'Посмотреть все товары',
+  ctaHref = '/shop'
+}) {
   const { isAuthenticated } = useAuthStore()
   const [recommendations, setRecommendations] = useState([])
   const [isLoading, setIsLoading] = useState(true)
@@ -41,7 +51,21 @@ function PersonalRecommendations() {
 
     try {
       // Используем кэширование с TTL 5 минут для персональных рекомендаций
-      const response = await apiCache.get('personal-recommendations', getPersonalRecommendations, 300000)
+      const cacheKey = `personal-recommendations:${type}:${productsLimit}:${coursesLimit}`
+      const requestOptions = {}
+      if (type === 'products') {
+        requestOptions.products_limit = productsLimit
+      } else if (type === 'courses') {
+        requestOptions.courses_limit = coursesLimit
+      } else {
+        requestOptions.products_limit = productsLimit
+        requestOptions.courses_limit = coursesLimit
+      }
+      const response = await apiCache.get(
+        cacheKey,
+        () => getPersonalRecommendations(requestOptions),
+        300000
+      )
       // API возвращает объект с products и courses, объединяем их в один массив с метками типа
       const products = (response.products || []).map(item => ({ ...item, itemType: 'product' }))
       const courses = (response.courses || []).map(item => ({
@@ -50,7 +74,18 @@ function PersonalRecommendations() {
         recommendation_reason: item.reason,
         pet_name: item.pet_name
       }))
-      setRecommendations([...products, ...courses])
+      let merged = []
+      if (type === 'products') {
+        merged = products
+      } else if (type === 'courses') {
+        merged = courses
+      } else {
+        merged = [...products, ...courses]
+      }
+      if (maxItems && merged.length > maxItems) {
+        merged = merged.slice(0, maxItems)
+      }
+      setRecommendations(merged)
     } catch (err) {
       console.error('Error loading personal recommendations:', err)
       setError(err.message || 'Не удалось загрузить рекомендации')
@@ -58,7 +93,7 @@ function PersonalRecommendations() {
     } finally {
       setIsLoading(false)
     }
-  }, [])
+  }, [type, productsLimit, coursesLimit, maxItems])
 
   /**
    * Загрузка персональных рекомендаций
@@ -99,8 +134,10 @@ function PersonalRecommendations() {
           <span className="text-primary-600 text-lg">⭐</span>
         </div>
         <div>
-          <h2 className="text-xl font-bold text-gray-900">Рекомендуем для ваших питомцев</h2>
-          <p className="text-sm text-gray-600">Персональные подборки на основе предпочтений ваших питомцев</p>
+          <h2 className="text-xl font-bold text-gray-900">{title}</h2>
+          {description && (
+            <p className="text-sm text-gray-600">{description}</p>
+          )}
         </div>
       </div>
 
@@ -208,14 +245,16 @@ function PersonalRecommendations() {
         })}
       </div>
 
-      <div className="mt-6 text-center">
-        <Link to="/shop" className="btn-primary inline-flex items-center gap-2">
-          <span>Посмотреть все товары</span>
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-          </svg>
-        </Link>
-      </div>
+      {showCta && (
+        <div className="mt-6 text-center">
+          <Link to={ctaHref} className="btn-primary inline-flex items-center gap-2">
+            <span>{ctaLabel}</span>
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+          </Link>
+        </div>
+      )}
     </div>
   )
 }

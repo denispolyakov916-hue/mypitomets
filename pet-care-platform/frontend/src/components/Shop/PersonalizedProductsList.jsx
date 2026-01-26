@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { api } from '../../api/axios';
+import api from '../../api/client';
 import { Link } from 'react-router-dom';
 import './PersonalizedProductsList.css';
 
@@ -13,27 +13,34 @@ import './PersonalizedProductsList.css';
  * - Аллергии (исключение ингредиентов)
  * - Проблемы здоровья
  */
-const PersonalizedProductsList = ({ petId, category = null, limit = 12 }) => {
+const PersonalizedProductsList = ({ petId, petData = null, category = null, limit = 12 }) => {
   const [products, setProducts] = useState([]);
-  const [pet, setPet] = useState(null);
+  const [pet, setPet] = useState(petData);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
+    if (petData) {
+      setPet(petData);
+    }
     loadPersonalizedProducts();
-  }, [petId, category]);
+  }, [petId, category, petData]);
 
   const loadPersonalizedProducts = async () => {
     try {
       setLoading(true);
-      
-      // Загружаем питомца
-      const petResponse = await api.get(`/pets/${petId}/`);
-      setPet(petResponse.data);
-      
+
+      // Загружаем питомца (если не передан из родителя)
+      let resolvedPet = petData || pet;
+      if (!resolvedPet && petId) {
+        const petResponse = await api.get(`/pets/${petId}/`);
+        resolvedPet = petResponse;
+        setPet(petResponse);
+      }
+
       // Загружаем товары с учетом питомца
       const params = {
-        animal: petResponse.data.species,
+        animal: resolvedPet?.species,
         pet_id: petId
       };
       
@@ -42,10 +49,29 @@ const PersonalizedProductsList = ({ petId, category = null, limit = 12 }) => {
       }
       
       const productsResponse = await api.get('/shop/products/', { params });
-      setProducts(productsResponse.data.results || productsResponse.data);
+      const productsData = Array.isArray(productsResponse)
+        ? productsResponse
+        : Array.isArray(productsResponse?.results)
+          ? productsResponse.results
+          : [];
+
+      if (productsData.length > 0 || !resolvedPet?.species) {
+        setProducts(productsData);
+      } else {
+        // Фолбэк: убираем pet_id, оставляем только вид животного
+        const fallbackResponse = await api.get('/shop/products/', {
+          params: { animal: resolvedPet.species, ...(category ? { category } : {}) }
+        });
+        const fallbackData = Array.isArray(fallbackResponse)
+          ? fallbackResponse
+          : Array.isArray(fallbackResponse?.results)
+            ? fallbackResponse.results
+            : [];
+        setProducts(fallbackData);
+      }
       setError(null);
     } catch (err) {
-      setError('Ошибка загрузки товаров');
+      setError(err?.message || 'Ошибка загрузки товаров');
       console.error(err);
     } finally {
       setLoading(false);
@@ -73,7 +99,11 @@ const PersonalizedProductsList = ({ petId, category = null, limit = 12 }) => {
     <div className="personalized-products">
       <div className="products-header">
         <h3>
-          {pet?.breed ? `Рекомендовано для породы ${pet.breed}` : `Товары для ${pet?.name}`}
+          {pet?.breed
+            ? `Рекомендовано для породы ${pet.breed}`
+            : pet?.name
+              ? `Товары для ${pet.name}`
+              : 'Товары для вашего питомца'}
         </h3>
         {pet?.breed && (
           <div className="personalization-badge">
@@ -152,7 +182,7 @@ const PersonalizedProductsList = ({ petId, category = null, limit = 12 }) => {
       {products.length > limit && (
         <div className="show-more-section">
           <Link to={`/shop?pet_id=${petId}`} className="show-more-btn">
-            Показать все товары для {pet?.name}
+            Показать все товары для {pet?.name || 'вашего питомца'}
           </Link>
         </div>
       )}

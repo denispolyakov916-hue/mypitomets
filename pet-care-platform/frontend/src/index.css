@@ -14,8 +14,8 @@
 
 /* CSS переменные из внешнего проекта */
 :root {
-  --purple-primary: #8B5CF6;
-  --purple-dark: #7C3AED;
+  --purple-primary: #14b8a6;
+  --purple-dark: #0f766e;
   --orange-primary: #F97316;
   --orange-dark: #EA580C;
   --background: #FFFFFF;
@@ -23,7 +23,7 @@
   --text-secondary: #6B7280;
 
   /* UI Component Variables */
-  --primary: #8B5CF6;
+  --primary: #14b8a6;
   --primary-foreground: #FFFFFF;
   --secondary: #F3F4F6;
   --secondary-foreground: #1F2937;
@@ -35,11 +35,11 @@
   --card-foreground: #1F2937;
   --foreground: #1F2937;
   --border: #E5E7EB;
-  --ring: #8B5CF6;
+  --ring: #14b8a6;
   --destructive: #EF4444;
 
   /* Legacy colors for backward compatibility */
-  --color-primary: #8B5CF6;
+  --color-primary: #14b8a6;
   --color-secondary: #22c55e;
   --color-accent: #F97316;
   --color-background: #f8fafc;
