@@ -1922,7 +1922,7 @@ export default function PetProfileEditor({ pet, onClose, onSave, isLoading }) {
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.95 }}
-        className="bg-white rounded-3xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden"
+        className="bg-white rounded-3xl shadow-2xl w-full max-w-4xl h-[calc(100vh-2rem)] flex flex-col overflow-hidden"
         role="dialog"
         aria-modal="true"
         aria-labelledby="pet-profile-editor-title"
