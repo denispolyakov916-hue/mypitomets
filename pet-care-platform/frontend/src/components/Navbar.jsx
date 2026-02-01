@@ -201,6 +201,9 @@ function Navbar() {
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               className="p-2 text-slate-900 flex-shrink-0"
+              aria-label={mobileMenuOpen ? 'Закрыть меню' : 'Открыть меню'}
+              aria-expanded={mobileMenuOpen}
+              aria-controls="mobile-menu"
             >
               {mobileMenuOpen ? <XIcon /> : <MenuIcon />}
             </button>
@@ -210,7 +213,7 @@ function Navbar() {
 
         {/* Mobile Menu */}
         {mobileMenuOpen && (
-          <div className="lg:hidden py-4 border-t border-[#CFFAFE] bg-[#ECFEFF]">
+          <div id="mobile-menu" className="lg:hidden py-4 border-t border-[#CFFAFE] bg-[#ECFEFF]">
             <nav className="flex flex-col gap-3">
               <button
                 onClick={() => {

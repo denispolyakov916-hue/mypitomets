@@ -703,6 +703,8 @@ const calculateBcs = (weightValue, idealWeightValue) => {
 
 // ===== ОСНОВНОЙ КОМПОНЕНТ =====
 export default function PetProfileEditor({ pet, onClose, onSave, isLoading }) {
+  const modalRef = useRef(null);
+  const previousActiveElement = useRef(null);
   const [formData, setFormData] = useState({});
   const [activeSection, setActiveSection] = useState('basic');
   const [hasChanges, setHasChanges] = useState(false);
@@ -717,6 +719,31 @@ export default function PetProfileEditor({ pet, onClose, onSave, isLoading }) {
   const [petAllergies, setPetAllergies] = useState([]);
   const [petVaccinations, setPetVaccinations] = useState([]);
   const [petMedications, setPetMedications] = useState([]);
+
+  useEffect(() => {
+    previousActiveElement.current = document.activeElement;
+    document.body.style.overflow = 'hidden';
+
+    const focusFirst = () => {
+      if (!modalRef.current) return;
+      const focusable = modalRef.current.querySelector(
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+      );
+      if (focusable) {
+        focusable.focus();
+      } else {
+        modalRef.current.focus();
+      }
+    };
+
+    const timeout = setTimeout(focusFirst, 10);
+
+    return () => {
+      clearTimeout(timeout);
+      document.body.style.overflow = '';
+      previousActiveElement.current?.focus?.();
+    };
+  }, []);
 
   // Инициализация данных формы
   useEffect(() => {
@@ -758,6 +785,32 @@ export default function PetProfileEditor({ pet, onClose, onSave, isLoading }) {
       });
     }
   }, [pet]);
+
+  const handleKeyDown = (event) => {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      onClose();
+      return;
+    }
+    if (event.key !== 'Tab' || !modalRef.current) return;
+
+    const focusableElements = modalRef.current.querySelectorAll(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    );
+
+    if (focusableElements.length === 0) return;
+
+    const firstElement = focusableElements[0];
+    const lastElement = focusableElements[focusableElements.length - 1];
+
+    if (event.shiftKey && document.activeElement === firstElement) {
+      event.preventDefault();
+      lastElement.focus();
+    } else if (!event.shiftKey && document.activeElement === lastElement) {
+      event.preventDefault();
+      firstElement.focus();
+    }
+  };
 
   useEffect(() => {
     if (!pet?.id) return;
@@ -1446,22 +1499,28 @@ export default function PetProfileEditor({ pet, onClose, onSave, isLoading }) {
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
       <motion.div
+        ref={modalRef}
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.95 }}
         className="bg-white rounded-3xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="pet-profile-editor-title"
+        tabIndex={-1}
+        onKeyDown={handleKeyDown}
       >
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-100">
           <div className="flex-1">
-            <h2 className="text-2xl font-bold text-gray-800">
+            <h2 id="pet-profile-editor-title" className="text-2xl font-bold text-gray-800">
               Редактирование: {pet?.name}
             </h2>
             <p className="text-sm text-gray-500 mt-1">
               Расширенный профиль для персонализированных рекомендаций
             </p>
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-xl transition-colors">
+          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-xl transition-colors" aria-label="Закрыть">
             <X className="w-6 h-6 text-gray-400" />
           </button>
         </div>

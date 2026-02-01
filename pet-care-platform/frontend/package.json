@@ -16,6 +16,8 @@
     "@dnd-kit/core": "^6.0.8",
     "@dnd-kit/sortable": "^7.0.2",
     "@dnd-kit/utilities": "^3.2.2",
+    "@react-three/drei": "^9.122.0",
+    "@react-three/fiber": "^8.18.0",
     "@tiptap/extension-image": "^3.14.0",
     "@tiptap/extension-link": "^3.14.0",
     "@tiptap/pm": "^3.14.0",
@@ -33,6 +35,7 @@
     "react-player": "^3.4.0",
     "react-router-dom": "^6.20.0",
     "react-toastify": "^10.0.4",
+    "three": "^0.166.1",
     "zustand": "^4.4.7"
   },
   "devDependencies": {

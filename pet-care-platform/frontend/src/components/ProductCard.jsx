@@ -209,6 +209,7 @@ const CartButton = memo(function CartButton({
           onClick={() => onQuantityChange(-1)}
           className="w-8 h-full flex items-center justify-center text-primary-700 hover:bg-gray-200 transition-colors"
           tabIndex={showCounter ? 0 : -1}
+          aria-label="Уменьшить количество"
         >
           <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
             <path d="M4 12a1.5 1.5 0 0 1 1.5-1.5h13a1.5 1.5 0 0 1 0 3h-13A1.5 1.5 0 0 1 4 12" />
@@ -224,6 +225,7 @@ const CartButton = memo(function CartButton({
           disabled={cartQuantity >= (product.stock_count || 999)}
           className="w-8 h-full flex items-center justify-center text-primary-700 hover:bg-gray-200 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           tabIndex={showCounter ? 0 : -1}
+          aria-label="Увеличить количество"
         >
           <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
             <path d="M12 4a1.5 1.5 0 0 1 1.5 1.5v5h5a1.5 1.5 0 0 1 0 3h-5v5a1.5 1.5 0 0 1-3 0v-5h-5a1.5 1.5 0 0 1 0-3h5v-5A1.5 1.5 0 0 1 12 4" />

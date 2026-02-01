@@ -215,63 +215,77 @@ const toggleMode = () => {
 
               {/* Серверная ошибка */}
               {error && (
-                <div className="auth-error">
+                <div className="auth-error" role="alert">
                   {error}
                 </div>
               )}
 
               {/* Поле Email */}
               <div className="auth-input-box">
+                <label htmlFor="auth-email" className="sr-only">Email</label>
                 <input
                   type="email"
                   name="email"
+                  id="auth-email"
                   value={isRegisterMode ? registerData.email : loginData.email}
                   onChange={isRegisterMode ? handleRegisterChange : handleLoginChange}
                   placeholder="Email"
                   required
                   disabled={isLoading}
                   autoComplete="email"
+                  aria-invalid={Boolean(validationErrors.email)}
+                  aria-describedby={validationErrors.email ? 'auth-email-error' : undefined}
                 />
                 <i className='bx bxs-envelope'></i>
                 {validationErrors.email && (
-                  <div className="auth-field-error">{validationErrors.email}</div>
+                  <div className="auth-field-error" id="auth-email-error" role="alert">{validationErrors.email}</div>
                 )}
               </div>
 
               {/* Поле пароля */}
               <div className="auth-input-box">
+                <label htmlFor="auth-password" className="sr-only">Пароль</label>
                 <input
                   type="password"
                   name="password"
+                  id="auth-password"
                   value={isRegisterMode ? registerData.password : loginData.password}
                   onChange={isRegisterMode ? handleRegisterChange : handleLoginChange}
                   placeholder="Пароль"
                   required
                   disabled={isLoading}
                   autoComplete={isRegisterMode ? "new-password" : "current-password"}
+                  aria-invalid={Boolean(validationErrors.password)}
+                  aria-describedby={validationErrors.password ? 'auth-password-error' : undefined}
                 />
                 <i className='bx bxs-lock-alt'></i>
                 {validationErrors.password && (
-                  <div className="auth-field-error">{validationErrors.password}</div>
+                  <div className="auth-field-error" id="auth-password-error" role="alert">{validationErrors.password}</div>
                 )}
               </div>
 
               {/* Поле подтверждения пароля (только для регистрации) */}
               {isRegisterMode && (
                 <div className="auth-input-box">
+                  <label htmlFor="auth-password-confirm" className="sr-only">Подтверждение пароля</label>
                   <input
                     type="password"
                     name="passwordConfirm"
+                    id="auth-password-confirm"
                     value={registerData.passwordConfirm}
                     onChange={handleRegisterChange}
                     placeholder="Подтвердите пароль"
                     required
                     disabled={isLoading}
                     autoComplete="new-password"
+                    aria-invalid={Boolean(validationErrors.passwordConfirm)}
+                    aria-describedby={validationErrors.passwordConfirm ? 'auth-password-confirm-error' : undefined}
                   />
                   <i className='bx bxs-lock-alt'></i>
                   {validationErrors.passwordConfirm && (
-                    <div className="auth-field-error">{validationErrors.passwordConfirm}</div>
+                    <div className="auth-field-error" id="auth-password-confirm-error" role="alert">
+                      {validationErrors.passwordConfirm}
+                    </div>
                   )}
                 </div>
               )}
@@ -332,7 +346,7 @@ const toggleMode = () => {
               <h1>Подтвердите email</h1>
 
               {error && (
-                <div className="auth-error">
+                <div className="auth-error" role="alert">
                   {error}
                 </div>
               )}
@@ -342,9 +356,11 @@ const toggleMode = () => {
               </div>
 
               <div className="auth-input-box">
+                <label htmlFor="auth-activation-code" className="sr-only">Код активации</label>
                 <input
                   type="text"
                   name="activationCode"
+                  id="auth-activation-code"
                   value={activationCode}
                   onChange={(e) => {
                     const value = e.target.value.replace(/\D/g, '').slice(0, 6)
@@ -355,10 +371,14 @@ const toggleMode = () => {
                   maxLength={6}
                   disabled={isLoading}
                   className="auth-activation-input"
+                  aria-invalid={Boolean(validationErrors.activationCode)}
+                  aria-describedby={validationErrors.activationCode ? 'auth-activation-code-error' : undefined}
                 />
                 <i className='bx bxs-key'></i>
                 {validationErrors.activationCode && (
-                  <div className="auth-field-error">{validationErrors.activationCode}</div>
+                  <div className="auth-field-error" id="auth-activation-code-error" role="alert">
+                    {validationErrors.activationCode}
+                  </div>
                 )}
               </div>
 

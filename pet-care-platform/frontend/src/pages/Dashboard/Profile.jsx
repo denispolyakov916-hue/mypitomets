@@ -23,6 +23,7 @@ import { Button } from '../../components/ui/Button'
 import { Badge } from '../../components/ui/Badge'
 import RemindersWidget from '../../components/RemindersWidget'
 import FeedingPlanPreview from '../../components/Shop/FeedingPlanPreview'
+import Assistant3D from '../../components/Assistant3D'
 
 /**
  * Форматирование даты в русскую локаль
@@ -287,6 +288,7 @@ function Profile() {
   
   return (
     <div className="page-container animate-fadeIn">
+      <Assistant3D />
       {/* Заголовок */}
       <div className="flex flex-col sm:flex-row justify-between items-start gap-4 mb-8">
         <div>

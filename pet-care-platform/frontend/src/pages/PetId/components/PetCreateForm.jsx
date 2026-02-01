@@ -599,6 +599,8 @@ const WeightInput = ({ value, onChange, error, required, selectedBreed, ageMonth
 
 const PetCreateForm = ({ onClose }) => {
   const navigate = useNavigate();
+  const modalRef = useRef(null);
+  const previousActiveElement = useRef(null);
   const [formData, setFormData] = useState(initialFormState);
   const [errors, setErrors] = useState({});
   const [breeds, setBreeds] = useState([]);
@@ -635,6 +637,31 @@ const PetCreateForm = ({ onClose }) => {
     
     loadPopularBreeds();
   }, [formData.species]);
+
+  useEffect(() => {
+    previousActiveElement.current = document.activeElement;
+    document.body.style.overflow = 'hidden';
+
+    const focusFirst = () => {
+      if (!modalRef.current) return;
+      const focusable = modalRef.current.querySelector(
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+      );
+      if (focusable) {
+        focusable.focus();
+      } else {
+        modalRef.current.focus();
+      }
+    };
+
+    const timeout = setTimeout(focusFirst, 10);
+
+    return () => {
+      clearTimeout(timeout);
+      document.body.style.overflow = '';
+      previousActiveElement.current?.focus?.();
+    };
+  }, []);
   
   // Поиск пород по запросу
   const searchBreeds = useCallback(async (query) => {
@@ -668,6 +695,32 @@ const PetCreateForm = ({ onClose }) => {
     });
     setErrors(prev => ({ ...prev, ...clearedErrors }));
   }, []);
+
+  const handleKeyDown = (event) => {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      onClose();
+      return;
+    }
+    if (event.key !== 'Tab' || !modalRef.current) return;
+
+    const focusableElements = modalRef.current.querySelectorAll(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    );
+
+    if (focusableElements.length === 0) return;
+
+    const firstElement = focusableElements[0];
+    const lastElement = focusableElements[focusableElements.length - 1];
+
+    if (event.shiftKey && document.activeElement === firstElement) {
+      event.preventDefault();
+      lastElement.focus();
+    } else if (!event.shiftKey && document.activeElement === lastElement) {
+      event.preventDefault();
+      firstElement.focus();
+    }
+  };
   
   // Валидация
   const validateForm = useCallback(() => {
@@ -794,17 +847,24 @@ const PetCreateForm = ({ onClose }) => {
       className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
     >
       <motion.div
+        ref={modalRef}
         initial={{ scale: 0.95, y: 20 }}
         animate={{ scale: 1, y: 0 }}
         exit={{ scale: 0.95, y: 20 }}
         className="bg-white rounded-3xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="pet-create-title"
+        tabIndex={-1}
+        onKeyDown={handleKeyDown}
       >
         {/* Хедер */}
         <div className="sticky top-0 bg-white border-b border-gray-100 px-6 py-4 flex justify-between items-center">
-          <h2 className="text-xl font-bold text-gray-800">Добавить питомца</h2>
+          <h2 id="pet-create-title" className="text-xl font-bold text-gray-800">Добавить питомца</h2>
           <button
             onClick={onClose}
             className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+            aria-label="Закрыть"
           >
             <X className="w-5 h-5 text-gray-500" />
           </button>
