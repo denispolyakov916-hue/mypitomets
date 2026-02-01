@@ -2,6 +2,7 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { Environment, useAnimations, useGLTF } from '@react-three/drei'
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react'
 import * as THREE from 'three'
+import { usePrefersReducedMotion } from '../hooks/useMediaQuery'
 
 const MODEL_URL = '/models/assistant.glb?v=9'
 const LOOK_LIMIT = 0.35
@@ -15,7 +16,7 @@ const pickWaveAction = (names) => {
   )
 }
 
-const AssistantModel = forwardRef(function AssistantModel(props, ref) {
+const AssistantModel = forwardRef(function AssistantModel({ prefersReducedMotion }, ref) {
   const group = useRef(null)
   const pulseStartRef = useRef(0)
   const waveTimeoutRef = useRef(null)
@@ -51,13 +52,18 @@ const AssistantModel = forwardRef(function AssistantModel(props, ref) {
 
   useEffect(() => {
     if (!activeAction) return undefined
+    if (prefersReducedMotion) {
+      Object.values(actions).forEach((action) => action?.stop())
+      return undefined
+    }
     const action = actions[activeAction]
     if (!action) return undefined
     action.reset().fadeIn(0.2).play()
     return () => action.fadeOut(0.2)
-  }, [actions, activeAction])
+  }, [actions, activeAction, prefersReducedMotion])
 
   useFrame((state) => {
+    if (prefersReducedMotion) return
     if (!group.current) return
     const { clock } = state
     const targetX = -mouse.y * LOOK_LIMIT
@@ -82,6 +88,7 @@ const AssistantModel = forwardRef(function AssistantModel(props, ref) {
   })
 
   const triggerWave = useCallback(() => {
+    if (prefersReducedMotion) return
     pulseStartRef.current = clock.getElapsedTime()
     const idleActionName = activeAction || names[0]
     const waveActionName = pickWaveAction(names) || names[1]
@@ -100,7 +107,7 @@ const AssistantModel = forwardRef(function AssistantModel(props, ref) {
         actions[idleActionName].reset().fadeIn(0.2).play()
       }, durationMs)
     }
-  }, [actions, activeAction, clock, names])
+  }, [actions, activeAction, clock, names, prefersReducedMotion])
 
   useImperativeHandle(ref, () => ({
     triggerWave,
@@ -111,6 +118,7 @@ const AssistantModel = forwardRef(function AssistantModel(props, ref) {
 
 export default function Assistant3D() {
   const modelRef = useRef(null)
+  const prefersReducedMotion = usePrefersReducedMotion()
 
   const handleKeyDown = (event) => {
     if (event.key === 'Enter' || event.key === ' ') {
@@ -153,7 +161,7 @@ export default function Assistant3D() {
         <directionalLight position={[2, 2, 2]} intensity={0.8} castShadow />
         <pointLight position={[-2, 1.5, 2]} intensity={0.5} />
         <Environment preset="sunset" />
-        <AssistantModel ref={modelRef} />
+        <AssistantModel ref={modelRef} prefersReducedMotion={prefersReducedMotion} />
       </Canvas>
     </div>
   )

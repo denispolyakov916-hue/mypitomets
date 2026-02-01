@@ -11,6 +11,7 @@
 import React, { useEffect, useState, useRef } from 'react'
 import ReactDOM from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
+import { MotionConfig } from 'framer-motion'
 import App from './App'
 import ErrorBoundary from './components/ErrorBoundary'
 import ScrollToTop from './components/ScrollToTop'
@@ -105,16 +106,20 @@ ReactDOM.createRoot(document.getElementById('root')).render(
     <React.StrictMode>
       <ErrorBoundary>
         <BrowserRouter>
-          <ScrollToTop />
-          <AppWrapper />
+          <MotionConfig reducedMotion="user">
+            <ScrollToTop />
+            <AppWrapper />
+          </MotionConfig>
         </BrowserRouter>
       </ErrorBoundary>
     </React.StrictMode>
   ) : (
     <ErrorBoundary>
       <BrowserRouter>
-        <ScrollToTop />
-        <AppWrapper />
+        <MotionConfig reducedMotion="user">
+          <ScrollToTop />
+          <AppWrapper />
+        </MotionConfig>
       </BrowserRouter>
     </ErrorBoundary>
   )

@@ -212,8 +212,10 @@ const ButtonSelect = ({ label, options, value, onChange, error, required }) => (
 const BreedSelect = ({ species, value, breedId, isMixed, onChange, error, required, breeds, popularBreeds, onSearch }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isOpen, setIsOpen] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(-1);
   const dropdownRef = useRef(null);
   const searchTimeoutRef = useRef(null);
+  const listboxIdRef = useRef(`breed-select-listbox-${Math.random().toString(36).slice(2)}`);
   
   const mixedBreed = species === 'dog' ? MIXED_BREED_DOG : MIXED_BREED_CAT;
   
@@ -255,6 +257,43 @@ const BreedSelect = ({ species, value, breedId, isMixed, onChange, error, requir
     });
     setSearchQuery('');
     setIsOpen(false);
+  };
+
+  const dropdownOptions = useMemo(() => {
+    if (!isOpen || value) return [];
+    if (searchQuery && searchQuery.length >= 2) {
+      const options = [...breeds];
+      const shouldShowMixed =
+        searchQuery.toLowerCase().includes('двор') ||
+        searchQuery.toLowerCase().includes('метис') ||
+        searchQuery.toLowerCase().includes('беспор');
+      if (shouldShowMixed) options.push(mixedBreed);
+      return options;
+    }
+    return [...popularBreeds, mixedBreed];
+  }, [isOpen, value, searchQuery, breeds, popularBreeds, mixedBreed]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      setActiveIndex(-1);
+      return;
+    }
+    if (dropdownOptions.length === 0) {
+      setActiveIndex(-1);
+      return;
+    }
+    setActiveIndex(0);
+  }, [isOpen, dropdownOptions]);
+
+  const moveActiveIndex = (delta) => {
+    if (dropdownOptions.length === 0) return;
+    setActiveIndex((prev) => {
+      const base = prev < 0 ? 0 : prev;
+      const next = base + delta;
+      if (next < 0) return dropdownOptions.length - 1;
+      if (next >= dropdownOptions.length) return 0;
+      return next;
+    });
   };
   
   if (!species) {
@@ -308,23 +347,75 @@ const BreedSelect = ({ species, value, breedId, isMixed, onChange, error, requir
                   : 'border-gray-200 focus:border-purple-500'
                 }
                 focus:outline-none focus:ring-4 focus:ring-purple-200`}
+              role="combobox"
+              aria-expanded={isOpen}
+              aria-controls={listboxIdRef.current}
+              aria-activedescendant={
+                activeIndex >= 0 ? `${listboxIdRef.current}-opt-${activeIndex}` : undefined
+              }
+              onKeyDown={(e) => {
+                if (e.key === 'ArrowDown') {
+                  e.preventDefault();
+                  if (!isOpen) setIsOpen(true);
+                  moveActiveIndex(1);
+                  return;
+                }
+                if (e.key === 'ArrowUp') {
+                  e.preventDefault();
+                  if (!isOpen) setIsOpen(true);
+                  moveActiveIndex(-1);
+                  return;
+                }
+                if (e.key === 'Home') {
+                  e.preventDefault();
+                  if (dropdownOptions.length > 0) setActiveIndex(0);
+                  return;
+                }
+                if (e.key === 'End') {
+                  e.preventDefault();
+                  if (dropdownOptions.length > 0) {
+                    setActiveIndex(dropdownOptions.length - 1);
+                  }
+                  return;
+                }
+                if (e.key === 'Enter' && isOpen && activeIndex >= 0) {
+                  e.preventDefault();
+                  handleSelectBreed(dropdownOptions[activeIndex]);
+                  return;
+                }
+                if (e.key === 'Escape' && isOpen) {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setIsOpen(false);
+                }
+              }}
             />
           </div>
         )}
         
         {/* Выпадающий список */}
         {isOpen && !value && (
-          <div className="absolute z-10 w-full mt-2 bg-white rounded-xl shadow-lg border border-gray-200 max-h-64 overflow-y-auto">
+          <div
+            className="absolute z-10 w-full mt-2 bg-white rounded-xl shadow-lg border border-gray-200 max-h-64 overflow-y-auto"
+            id={listboxIdRef.current}
+            role="listbox"
+          >
             {searchQuery && searchQuery.length >= 2 ? (
               // Режим поиска - показываем результаты с сервера
               <>
                 {breeds.length > 0 ? (
-                  breeds.map((breed) => (
+                  breeds.map((breed, index) => (
                     <button
                       key={breed.id}
                       type="button"
+                      id={`${listboxIdRef.current}-opt-${index}`}
+                      role="option"
+                      aria-selected={activeIndex === index}
+                      tabIndex={-1}
                       onClick={() => handleSelectBreed(breed)}
-                      className="w-full px-4 py-3 text-left hover:bg-purple-50 transition-colors"
+                      className={`w-full px-4 py-3 text-left transition-colors ${
+                        activeIndex === index ? 'bg-purple-100 text-purple-700' : 'hover:bg-purple-50'
+                      }`}
                     >
                       {breed.name}
                     </button>
@@ -340,8 +431,14 @@ const BreedSelect = ({ species, value, breedId, isMixed, onChange, error, requir
                   searchQuery.toLowerCase().includes('беспор')) && (
                   <button
                     type="button"
+                    id={`${listboxIdRef.current}-opt-${breeds.length}`}
+                    role="option"
+                    aria-selected={activeIndex === breeds.length}
+                    tabIndex={-1}
                     onClick={() => handleSelectBreed(mixedBreed)}
-                    className="w-full px-4 py-3 text-left hover:bg-purple-50 transition-colors border-t border-gray-100"
+                    className={`w-full px-4 py-3 text-left transition-colors border-t border-gray-100 ${
+                      activeIndex === breeds.length ? 'bg-purple-100 text-purple-700' : 'hover:bg-purple-50'
+                    }`}
                   >
                     {mixedBreed.name}
                   </button>
@@ -355,12 +452,18 @@ const BreedSelect = ({ species, value, breedId, isMixed, onChange, error, requir
                     <div className="px-4 py-2 text-xs text-gray-500 uppercase font-semibold bg-gray-50">
                       Популярные
                     </div>
-                    {popularBreeds.map((breed) => (
+                    {popularBreeds.map((breed, index) => (
                       <button
                         key={breed.id}
                         type="button"
+                        id={`${listboxIdRef.current}-opt-${index}`}
+                        role="option"
+                        aria-selected={activeIndex === index}
+                        tabIndex={-1}
                         onClick={() => handleSelectBreed(breed)}
-                        className="w-full px-4 py-3 text-left hover:bg-purple-50 transition-colors"
+                        className={`w-full px-4 py-3 text-left transition-colors ${
+                          activeIndex === index ? 'bg-purple-100 text-purple-700' : 'hover:bg-purple-50'
+                        }`}
                       >
                         {breed.name}
                       </button>
@@ -370,8 +473,16 @@ const BreedSelect = ({ species, value, breedId, isMixed, onChange, error, requir
                 {/* Всегда показываем вариант метиса */}
                 <button
                   type="button"
+                  id={`${listboxIdRef.current}-opt-${popularBreeds.length}`}
+                  role="option"
+                  aria-selected={activeIndex === popularBreeds.length}
+                  tabIndex={-1}
                   onClick={() => handleSelectBreed(mixedBreed)}
-                  className="w-full px-4 py-3 text-left hover:bg-purple-50 transition-colors border-t border-gray-100 text-gray-600"
+                  className={`w-full px-4 py-3 text-left transition-colors border-t border-gray-100 ${
+                    activeIndex === popularBreeds.length
+                      ? 'bg-purple-100 text-purple-700'
+                      : 'hover:bg-purple-50 text-gray-600'
+                  }`}
                 >
                   {mixedBreed.name}
                 </button>

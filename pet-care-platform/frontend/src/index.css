@@ -361,6 +361,17 @@ button {
   box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.35);
 }
 
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 .auth-input-box input::placeholder {
   color: rgba(139, 92, 246, 0.6);
   font-weight: 400;

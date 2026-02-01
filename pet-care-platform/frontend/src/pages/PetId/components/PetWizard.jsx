@@ -499,8 +499,10 @@ const Step1Species = ({ formData, onChange, errors }) => {
 const Step2Info = ({ formData, onChange, errors, breeds, loadingBreeds, onBreedSelect }) => {
   const [breedSearch, setBreedSearch] = useState(formData.breed || '');
   const [showBreedDropdown, setShowBreedDropdown] = useState(false);
+  const [activeBreedIndex, setActiveBreedIndex] = useState(-1);
   const dropdownRef = useRef(null);
   const inputRef = useRef(null);
+  const listboxIdRef = useRef(`wizard-breed-listbox-${Math.random().toString(36).slice(2)}`);
 
   // Используем API породы или fallback
   const fallbackBreeds = formData.species === 'dog' ? FALLBACK_DOG_BREEDS : FALLBACK_CAT_BREEDS;
@@ -515,6 +517,7 @@ const Step2Info = ({ formData, onChange, errors, breeds, loadingBreeds, onBreedS
       b.name.toLowerCase().includes(search)
     );
   }, [availableBreeds, breedSearch]);
+  const visibleBreeds = useMemo(() => filteredBreeds.slice(0, 20), [filteredBreeds]);
 
   // Обработчик выбора породы
   const handleBreedSelect = useCallback((breed) => {
@@ -580,6 +583,32 @@ const Step2Info = ({ formData, onChange, errors, breeds, loadingBreeds, onBreedS
       setBreedSearch(formData.breed);
     }
   }, [formData.breed]);
+
+  useEffect(() => {
+    if (!showBreedDropdown) {
+      setActiveBreedIndex(-1);
+      return;
+    }
+    if (visibleBreeds.length === 0) {
+      setActiveBreedIndex(-1);
+      return;
+    }
+    const selectedIndex = formData.breed
+      ? visibleBreeds.findIndex((breed) => breed.name === formData.breed)
+      : -1;
+    setActiveBreedIndex(selectedIndex >= 0 ? selectedIndex : 0);
+  }, [showBreedDropdown, visibleBreeds, formData.breed]);
+
+  const moveActiveIndex = (delta) => {
+    if (visibleBreeds.length === 0) return;
+    setActiveBreedIndex((prev) => {
+      const base = prev < 0 ? 0 : prev;
+      const next = base + delta;
+      if (next < 0) return visibleBreeds.length - 1;
+      if (next >= visibleBreeds.length) return 0;
+      return next;
+    });
+  };
 
   // Расчёт возраста для отображения
   const calculateAge = useCallback((birthDate) => {
@@ -653,6 +682,48 @@ const Step2Info = ({ formData, onChange, errors, breeds, loadingBreeds, onBreedS
                   : 'border-gray-200 focus:border-purple-500'
               }
             `}
+            role="combobox"
+            aria-expanded={showBreedDropdown}
+            aria-controls={listboxIdRef.current}
+            aria-activedescendant={
+              activeBreedIndex >= 0 ? `${listboxIdRef.current}-opt-${activeBreedIndex}` : undefined
+            }
+            onKeyDown={(e) => {
+              if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                if (!showBreedDropdown) setShowBreedDropdown(true);
+                moveActiveIndex(1);
+                return;
+              }
+              if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                if (!showBreedDropdown) setShowBreedDropdown(true);
+                moveActiveIndex(-1);
+                return;
+              }
+              if (e.key === 'Home') {
+                e.preventDefault();
+              if (visibleBreeds.length > 0) setActiveBreedIndex(0);
+                return;
+              }
+              if (e.key === 'End') {
+                e.preventDefault();
+              if (visibleBreeds.length > 0) {
+                setActiveBreedIndex(visibleBreeds.length - 1);
+                }
+                return;
+              }
+              if (e.key === 'Enter' && showBreedDropdown && activeBreedIndex >= 0) {
+                e.preventDefault();
+              handleBreedSelect(visibleBreeds[activeBreedIndex]);
+                return;
+              }
+              if (e.key === 'Escape' && showBreedDropdown) {
+                e.preventDefault();
+                e.stopPropagation();
+                setShowBreedDropdown(false);
+              }
+            }}
           />
           {formData.breed ? (
             <button
@@ -680,16 +751,26 @@ const Step2Info = ({ formData, onChange, errors, breeds, loadingBreeds, onBreedS
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
               className="absolute z-50 w-full mt-1 bg-white rounded-xl border border-gray-200 shadow-xl max-h-60 overflow-y-auto"
+              id={listboxIdRef.current}
+              role="listbox"
             >
-              {filteredBreeds.length > 0 ? (
-                filteredBreeds.slice(0, 20).map(breed => (
+              {visibleBreeds.length > 0 ? (
+                visibleBreeds.map((breed, index) => (
                   <button
                     key={breed.id}
                     type="button"
                     onClick={() => handleBreedSelect(breed)}
+                    id={`${listboxIdRef.current}-opt-${index}`}
+                    role="option"
+                    aria-selected={activeBreedIndex === index}
+                    tabIndex={-1}
                     className={`
                       w-full px-4 py-2.5 text-left transition-colors flex items-center justify-between
-                      ${formData.breed === breed.name ? 'bg-purple-50' : 'hover:bg-gray-50'}
+                      ${activeBreedIndex === index
+                        ? 'bg-purple-100 text-purple-700'
+                        : formData.breed === breed.name
+                          ? 'bg-purple-50'
+                          : 'hover:bg-gray-50'}
                     `}
                   >
                     <span className="font-medium text-gray-700">{breed.name}</span>

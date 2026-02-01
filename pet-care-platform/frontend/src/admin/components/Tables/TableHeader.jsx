@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 
 const TableHeader = ({
   title,
@@ -14,6 +14,8 @@ const TableHeader = ({
   onShowSettings
 }) => {
   const [showActionsDropdown, setShowActionsDropdown] = useState(false);
+  const [activeActionIndex, setActiveActionIndex] = useState(-1);
+  const actionsMenuRef = useRef(null);
 
   // Закрытие dropdown при клике вне
   useEffect(() => {
@@ -26,6 +28,33 @@ const TableHeader = ({
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [showActionsDropdown]);
+
+  useEffect(() => {
+    if (!showActionsDropdown) {
+      setActiveActionIndex(-1);
+      return;
+    }
+    setActiveActionIndex(0);
+  }, [showActionsDropdown]);
+
+  useEffect(() => {
+    if (!showActionsDropdown || activeActionIndex < 0 || !actionsMenuRef.current) return;
+    const button = actionsMenuRef.current.querySelector(
+      `[data-action-index="${activeActionIndex}"]`
+    );
+    button?.focus?.();
+  }, [showActionsDropdown, activeActionIndex]);
+
+  const moveActiveIndex = (delta) => {
+    const total = 3;
+    setActiveActionIndex((prev) => {
+      const base = prev < 0 ? 0 : prev;
+      const next = base + delta;
+      if (next < 0) return total - 1;
+      if (next >= total) return 0;
+      return next;
+    });
+  };
 
   return (
     <div className="px-6 py-4 border-b border-gray-200">
@@ -101,6 +130,45 @@ const TableHeader = ({
               onClick={() => setShowActionsDropdown(!showActionsDropdown)}
               className="inline-flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
               title="Дополнительные действия с данными"
+              aria-haspopup="menu"
+              aria-expanded={showActionsDropdown}
+              aria-controls="table-actions-menu"
+              onKeyDown={(e) => {
+                if (e.key === 'ArrowDown') {
+                  e.preventDefault();
+                  if (!showActionsDropdown) setShowActionsDropdown(true);
+                  moveActiveIndex(1);
+                  return;
+                }
+                if (e.key === 'ArrowUp') {
+                  e.preventDefault();
+                  if (!showActionsDropdown) setShowActionsDropdown(true);
+                  moveActiveIndex(-1);
+                  return;
+                }
+                if (e.key === 'Home') {
+                  e.preventDefault();
+                  setActiveActionIndex(0);
+                  return;
+                }
+                if (e.key === 'End') {
+                  e.preventDefault();
+                  setActiveActionIndex(2);
+                  return;
+                }
+                if (e.key === 'Enter' && showActionsDropdown && activeActionIndex >= 0) {
+                  e.preventDefault();
+                  const button = actionsMenuRef.current?.querySelector(
+                    `[data-action-index="${activeActionIndex}"]`
+                  );
+                  button?.click?.();
+                  return;
+                }
+                if (e.key === 'Escape' && showActionsDropdown) {
+                  e.preventDefault();
+                  setShowActionsDropdown(false);
+                }
+              }}
             >
               <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
@@ -110,7 +178,12 @@ const TableHeader = ({
 
             {/* Dropdown меню */}
             {showActionsDropdown && (
-              <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-10 border border-gray-200">
+              <div
+                ref={actionsMenuRef}
+                id="table-actions-menu"
+                role="menu"
+                className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-10 border border-gray-200"
+              >
                 <div className="py-1">
                   <button
                     onClick={() => {
@@ -118,6 +191,8 @@ const TableHeader = ({
                       onResetFilters?.();
                       setShowActionsDropdown(false);
                     }}
+                    data-action-index={0}
+                    role="menuitem"
                     className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900"
                   >
                     <svg className="w-4 h-4 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -132,6 +207,8 @@ const TableHeader = ({
                       onExport?.('csv');
                       setShowActionsDropdown(false);
                     }}
+                    data-action-index={1}
+                    role="menuitem"
                     className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900"
                   >
                     <svg className="w-4 h-4 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -146,6 +223,8 @@ const TableHeader = ({
                       onShowSettings?.();
                       setShowActionsDropdown(false);
                     }}
+                    data-action-index={2}
+                    role="menuitem"
                     className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900"
                   >
                     <svg className="w-4 h-4 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">

@@ -146,7 +146,11 @@ const SelectField = ({ label, value, onChange, options, placeholder, required, d
 const SearchableSelect = ({ label, value, onChange, options, placeholder, multiple = false, renderOption }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState('');
+  const [activeIndex, setActiveIndex] = useState(-1);
   const containerRef = useRef(null);
+  const listboxRef = useRef(null);
+  const searchInputRef = useRef(null);
+  const listboxIdRef = useRef(`searchable-listbox-${Math.random().toString(36).slice(2)}`);
 
   const filteredOptions = useMemo(() => {
     if (!search) return options;
@@ -186,13 +190,255 @@ const SearchableSelect = ({ label, value, onChange, options, placeholder, multip
     return opt?.name || opt?.label || id;
   };
 
+  const prevFilteredOptionsLengthRef = useRef(filteredOptions.length);
+  const prevSelectedIdRef = useRef(selectedItems[0]);
+  const isInitialMountRef = useRef(true);
+  
+  useEffect(() => {
+    if (!isOpen) {
+      setActiveIndex(-1);
+      prevFilteredOptionsLengthRef.current = filteredOptions.length;
+      prevSelectedIdRef.current = selectedItems[0];
+      isInitialMountRef.current = true;
+      return;
+    }
+    if (filteredOptions.length === 0) {
+      setActiveIndex(-1);
+      prevFilteredOptionsLengthRef.current = 0;
+      return;
+    }
+    
+    const selectedId = selectedItems[0];
+    const selectedIndex = filteredOptions.findIndex(
+      (opt) => (opt.id || opt.value) === selectedId
+    );
+    
+    // Only reset activeIndex if:
+    // 1. Dropdown just opened (isInitialMountRef.current is true)
+    // 2. Filtered options length changed (user typed in search, results changed)
+    // 3. Selected item changed (user selected a different item)
+    const filteredOptionsLengthChanged = prevFilteredOptionsLengthRef.current !== filteredOptions.length;
+    const selectedItemChanged = prevSelectedIdRef.current !== selectedId;
+    const shouldReset = isInitialMountRef.current || filteredOptionsLengthChanged || selectedItemChanged;
+    
+    setActiveIndex((prev) => {
+      // If user is navigating (prev >= 0) and nothing significant changed, keep current position
+      if (prev >= 0 && !shouldReset) {
+        return prev; // Keep current navigation position
+      }
+      // Otherwise, set to selected item or 0
+      return selectedIndex >= 0 ? selectedIndex : 0;
+    });
+    
+    prevFilteredOptionsLengthRef.current = filteredOptions.length;
+    prevSelectedIdRef.current = selectedId;
+    isInitialMountRef.current = false;
+  }, [isOpen, filteredOptions, selectedItems]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const timeout = setTimeout(() => {
+      searchInputRef.current?.focus();
+    }, 0);
+    return () => clearTimeout(timeout);
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (activeIndex >= 0 && listboxRef.current) {
+      const activeElement = listboxRef.current.querySelector(
+        `#${listboxIdRef.current}-opt-${activeIndex}`
+      );
+      if (activeElement) {
+        activeElement.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      }
+    }
+  }, [activeIndex]);
+
+  const moveActiveIndex = (delta) => {
+    if (filteredOptions.length === 0) return;
+    setActiveIndex((prev) => {
+      const base = prev < 0 ? 0 : prev;
+      const next = base + delta;
+      if (next < 0) return filteredOptions.length - 1;
+      if (next >= filteredOptions.length) return 0;
+      return next;
+    });
+  };
+
+  const handleSearchKeyDown = (e) => {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      e.stopPropagation();
+      if (!isOpen) setIsOpen(true);
+      moveActiveIndex(1);
+      return;
+    }
+    if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      e.stopPropagation();
+      if (!isOpen) setIsOpen(true);
+      moveActiveIndex(-1);
+      return;
+    }
+    if (e.key === 'Home') {
+      e.preventDefault();
+      e.stopPropagation();
+      if (filteredOptions.length > 0) setActiveIndex(0);
+      return;
+    }
+    if (e.key === 'End') {
+      e.preventDefault();
+      e.stopPropagation();
+      if (filteredOptions.length > 0) setActiveIndex(filteredOptions.length - 1);
+      return;
+    }
+    if (e.key === 'Enter') {
+      if (isOpen && activeIndex >= 0) {
+        e.preventDefault();
+        e.stopPropagation();
+        toggleItem(filteredOptions[activeIndex]);
+      }
+      return;
+    }
+    if (e.key === 'Escape' && isOpen) {
+      e.preventDefault();
+      e.stopPropagation();
+      setIsOpen(false);
+    }
+  };
+
+  const handleListKeyDown = (e) => {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      e.stopPropagation();
+      if (!isOpen) setIsOpen(true);
+      moveActiveIndex(1);
+      return;
+    }
+    if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      e.stopPropagation();
+      if (!isOpen) setIsOpen(true);
+      moveActiveIndex(-1);
+      return;
+    }
+    if (e.key === 'Home') {
+      e.preventDefault();
+      e.stopPropagation();
+      if (filteredOptions.length > 0) setActiveIndex(0);
+      return;
+    }
+    if (e.key === 'End') {
+      e.preventDefault();
+      e.stopPropagation();
+      if (filteredOptions.length > 0) setActiveIndex(filteredOptions.length - 1);
+      return;
+    }
+    if (e.key === 'Enter' && isOpen && activeIndex >= 0) {
+      e.preventDefault();
+      e.stopPropagation();
+      toggleItem(filteredOptions[activeIndex]);
+      return;
+    }
+    if (e.key === 'Escape' && isOpen) {
+      e.preventDefault();
+      e.stopPropagation();
+      setIsOpen(false);
+    }
+  };
+
   return (
-    <div ref={containerRef} className="relative">
+    <div
+      ref={containerRef}
+      className="relative"
+      onKeyDownCapture={(e) => {
+        // If focus is on the search input, let it handle the event - don't intercept
+        if (e.target === searchInputRef.current || e.target.tagName === 'INPUT') {
+          return;
+        }
+        if (!isOpen) {
+          if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+            setIsOpen(true);
+            setTimeout(() => {
+              searchInputRef.current?.focus();
+              if (e.key === 'ArrowDown') moveActiveIndex(1);
+              if (e.key === 'ArrowUp') moveActiveIndex(-1);
+            }, 0);
+            e.preventDefault();
+            e.stopPropagation();
+          }
+          return;
+        }
+        const handledKeys = ['ArrowDown', 'ArrowUp', 'Home', 'End', 'Enter', 'Escape'];
+        if (handledKeys.includes(e.key)) {
+          handleListKeyDown(e);
+        }
+      }}
+    >
       <label className="block text-sm font-medium text-gray-700 mb-1.5">{label}</label>
       
       <div 
-        className="w-full min-h-[46px] px-4 py-2 rounded-xl border-2 border-gray-200 focus-within:border-purple-500 bg-white cursor-pointer flex flex-wrap gap-1.5 items-center"
-        onClick={() => setIsOpen(true)}
+        className="w-full min-h-[46px] px-4 py-2 rounded-xl border-2 border-gray-200 focus-within:border-purple-500 focus:border-purple-500 bg-white cursor-pointer flex flex-wrap gap-1.5 items-center"
+        onClick={() => {
+          setIsOpen(true);
+          setTimeout(() => searchInputRef.current?.focus(), 0);
+        }}
+        onFocus={(e) => {
+          setIsOpen(true);
+          if (e.target === e.currentTarget) {
+            setTimeout(() => searchInputRef.current?.focus(), 0);
+          }
+        }}
+        onKeyDown={(e) => {
+          if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            e.stopPropagation();
+            if (!isOpen) {
+              setIsOpen(true);
+            }
+            moveActiveIndex(1);
+            return;
+          }
+          if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            e.stopPropagation();
+            if (!isOpen) {
+              setIsOpen(true);
+            }
+            moveActiveIndex(-1);
+            return;
+          }
+          if (e.key === 'Enter' || e.key === ' ') {
+            if (!isOpen) {
+              e.preventDefault();
+              e.stopPropagation();
+              setIsOpen(true);
+              return;
+            }
+            if (activeIndex >= 0) {
+              e.preventDefault();
+              e.stopPropagation();
+              toggleItem(filteredOptions[activeIndex]);
+              return;
+            }
+          }
+          if (e.key === 'Escape') {
+            if (isOpen) {
+              e.preventDefault();
+              e.stopPropagation();
+            }
+            setIsOpen(false);
+          }
+        }}
+        tabIndex={0}
+        role="combobox"
+        aria-expanded={isOpen}
+        aria-haspopup="listbox"
+        aria-controls={listboxIdRef.current}
+        aria-activedescendant={
+          activeIndex >= 0 ? `${listboxIdRef.current}-opt-${activeIndex}` : undefined
+        }
+        aria-label={label}
       >
         {selectedItems.length > 0 ? (
           selectedItems.map(id => (
@@ -228,26 +474,55 @@ const SearchableSelect = ({ label, value, onChange, options, placeholder, multip
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                 <input
+                  ref={searchInputRef}
                   type="text"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder="Поиск..."
                   className="w-full pl-9 pr-4 py-2 rounded-lg border border-gray-200 focus:border-purple-500 focus:outline-none text-sm"
                   autoFocus
+                  role="combobox"
+                  aria-expanded={isOpen}
+                  aria-controls={listboxIdRef.current}
+                  aria-activedescendant={
+                    activeIndex >= 0 ? `${listboxIdRef.current}-opt-${activeIndex}` : undefined
+                  }
+                  onKeyDown={handleSearchKeyDown}
                 />
               </div>
             </div>
-            <div className="max-h-48 overflow-y-auto p-1">
+            <div
+              ref={listboxRef}
+              id={listboxIdRef.current}
+              role="listbox"
+              tabIndex={0}
+              className="max-h-48 overflow-y-auto p-1"
+              onMouseDown={(e) => {
+                e.preventDefault();
+                listboxRef.current?.focus();
+              }}
+              onKeyDown={handleListKeyDown}
+            >
               {filteredOptions.length > 0 ? (
-                filteredOptions.map(opt => {
+                filteredOptions.map((opt, index) => {
                   const isSelected = selectedItems.includes(opt.id || opt.value);
                   return (
                     <button
                       key={opt.id || opt.value}
                       type="button"
+                      id={`${listboxIdRef.current}-opt-${index}`}
+                      role="option"
+                      aria-selected={activeIndex === index}
+                      tabIndex={-1}
                       onClick={() => toggleItem(opt)}
+                      onMouseEnter={() => setActiveIndex(index)}
+                      onKeyDown={handleListKeyDown}
                       className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
-                        isSelected ? 'bg-purple-100 text-purple-700' : 'hover:bg-gray-100'
+                        activeIndex === index
+                          ? 'bg-purple-100 text-purple-700'
+                          : isSelected
+                            ? 'bg-purple-50 text-purple-700'
+                            : 'hover:bg-gray-100'
                       }`}
                     >
                       {renderOption ? renderOption(opt) : (opt.name || opt.label)}
@@ -276,7 +551,9 @@ const BreedAutocomplete = ({ species, value, onChange }) => {
   const [search, setSearch] = useState(value || '');
   const [breeds, setBreeds] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(-1);
   const containerRef = useRef(null);
+  const listboxIdRef = useRef(`breed-listbox-${Math.random().toString(36).slice(2)}`);
 
   useEffect(() => {
     if (value?.name) {
@@ -314,10 +591,36 @@ const BreedAutocomplete = ({ species, value, onChange }) => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  useEffect(() => {
+    if (!isOpen) {
+      setActiveIndex(-1);
+      return;
+    }
+    if (breeds.length === 0) {
+      setActiveIndex(-1);
+      return;
+    }
+    const selectedIndex = value?.id
+      ? breeds.findIndex((breed) => breed.id === value.id)
+      : -1;
+    setActiveIndex(selectedIndex >= 0 ? selectedIndex : 0);
+  }, [isOpen, breeds, value]);
+
   const handleSelect = (breed) => {
     setSearch(breed.name);
     onChange({ id: breed.id, name: breed.name });
     setIsOpen(false);
+  };
+
+  const moveActiveIndex = (delta) => {
+    if (breeds.length === 0) return;
+    setActiveIndex((prev) => {
+      const base = prev < 0 ? 0 : prev;
+      const next = base + delta;
+      if (next < 0) return breeds.length - 1;
+      if (next >= breeds.length) return 0;
+      return next;
+    });
   };
 
   return (
@@ -331,6 +634,46 @@ const BreedAutocomplete = ({ species, value, onChange }) => {
           onFocus={() => setIsOpen(true)}
           placeholder="Начните вводить породу..."
           className="w-full px-4 py-2.5 rounded-xl border-2 border-gray-200 focus:border-purple-500 focus:outline-none transition-all"
+          role="combobox"
+          aria-expanded={isOpen}
+          aria-controls={listboxIdRef.current}
+          aria-activedescendant={
+            activeIndex >= 0 ? `${listboxIdRef.current}-opt-${activeIndex}` : undefined
+          }
+          onKeyDown={(e) => {
+            if (e.key === 'ArrowDown') {
+              e.preventDefault();
+              if (!isOpen) setIsOpen(true);
+              moveActiveIndex(1);
+              return;
+            }
+            if (e.key === 'ArrowUp') {
+              e.preventDefault();
+              if (!isOpen) setIsOpen(true);
+              moveActiveIndex(-1);
+              return;
+            }
+            if (e.key === 'Home') {
+              e.preventDefault();
+              if (breeds.length > 0) setActiveIndex(0);
+              return;
+            }
+            if (e.key === 'End') {
+              e.preventDefault();
+              if (breeds.length > 0) setActiveIndex(breeds.length - 1);
+              return;
+            }
+            if (e.key === 'Enter' && isOpen && activeIndex >= 0) {
+              e.preventDefault();
+              handleSelect(breeds[activeIndex]);
+              return;
+            }
+            if (e.key === 'Escape' && isOpen) {
+              e.preventDefault();
+              e.stopPropagation();
+              setIsOpen(false);
+            }
+          }}
         />
         {loading && (
           <div className="absolute right-3 top-1/2 -translate-y-1/2">
@@ -346,13 +689,35 @@ const BreedAutocomplete = ({ species, value, onChange }) => {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
             className="absolute z-50 w-full mt-1 bg-white rounded-xl shadow-lg border border-gray-200 max-h-48 overflow-y-auto"
+            id={listboxIdRef.current}
+            role="listbox"
+            onKeyDown={(e) => {
+              if (e.key === 'Escape' && isOpen) {
+                e.preventDefault();
+                e.stopPropagation();
+                setIsOpen(false);
+              }
+            }}
           >
-            {breeds.map(breed => (
+            {breeds.map((breed, index) => (
               <button
                 key={breed.id}
                 type="button"
                 onClick={() => handleSelect(breed)}
-                className="w-full text-left px-4 py-2 hover:bg-purple-50 text-sm transition-colors"
+                id={`${listboxIdRef.current}-opt-${index}`}
+                role="option"
+                aria-selected={activeIndex === index}
+                tabIndex={-1}
+                onKeyDown={(e) => {
+                  if (e.key === 'Escape' && isOpen) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setIsOpen(false);
+                  }
+                }}
+                className={`w-full text-left px-4 py-2 text-sm transition-colors ${
+                  activeIndex === index ? 'bg-purple-100 text-purple-700' : 'hover:bg-purple-50'
+                }`}
               >
                 {breed.name}
                 {breed.name_en && (
@@ -704,10 +1069,12 @@ const calculateBcs = (weightValue, idealWeightValue) => {
 // ===== ОСНОВНОЙ КОМПОНЕНТ =====
 export default function PetProfileEditor({ pet, onClose, onSave, isLoading }) {
   const modalRef = useRef(null);
+  const exitConfirmRef = useRef(null);
   const previousActiveElement = useRef(null);
   const [formData, setFormData] = useState({});
   const [activeSection, setActiveSection] = useState('basic');
   const [hasChanges, setHasChanges] = useState(false);
+  const [showExitConfirm, setShowExitConfirm] = useState(false);
   const [errors, setErrors] = useState({});
   const [healthConditionOptions, setHealthConditionOptions] = useState([]);
   const [allergyOptions, setAllergyOptions] = useState([]);
@@ -744,6 +1111,18 @@ export default function PetProfileEditor({ pet, onClose, onSave, isLoading }) {
       previousActiveElement.current?.focus?.();
     };
   }, []);
+
+  useEffect(() => {
+    if (!showExitConfirm || !exitConfirmRef.current) return;
+    const focusable = exitConfirmRef.current.querySelectorAll(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    );
+    if (focusable.length > 0) {
+      focusable[0].focus();
+    } else {
+      exitConfirmRef.current.focus();
+    }
+  }, [showExitConfirm]);
 
   // Инициализация данных формы
   useEffect(() => {
@@ -787,9 +1166,36 @@ export default function PetProfileEditor({ pet, onClose, onSave, isLoading }) {
   }, [pet]);
 
   const handleKeyDown = (event) => {
+    if (event.defaultPrevented) return;
+    if (showExitConfirm && exitConfirmRef.current) {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        setShowExitConfirm(false);
+        return;
+      }
+      if (event.key === 'Tab') {
+        const focusable = exitConfirmRef.current.querySelectorAll(
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+        );
+        if (focusable.length === 0) return;
+        const firstElement = focusable[0];
+        const lastElement = focusable[focusable.length - 1];
+        if (event.shiftKey && document.activeElement === firstElement) {
+          event.preventDefault();
+          lastElement.focus();
+          return;
+        }
+        if (!event.shiftKey && document.activeElement === lastElement) {
+          event.preventDefault();
+          firstElement.focus();
+          return;
+        }
+      }
+      return;
+    }
     if (event.key === 'Escape') {
       event.preventDefault();
-      onClose();
+      requestClose();
       return;
     }
     if (event.key !== 'Tab' || !modalRef.current) return;
@@ -811,6 +1217,19 @@ export default function PetProfileEditor({ pet, onClose, onSave, isLoading }) {
       firstElement.focus();
     }
   };
+
+  const requestClose = useCallback(() => {
+    if (hasChanges) {
+      setShowExitConfirm(true);
+      return;
+    }
+    onClose();
+  }, [hasChanges, onClose]);
+
+  const confirmClose = useCallback(() => {
+    setShowExitConfirm(false);
+    onClose();
+  }, [onClose]);
 
   useEffect(() => {
     if (!pet?.id) return;
@@ -1520,7 +1939,7 @@ export default function PetProfileEditor({ pet, onClose, onSave, isLoading }) {
               Расширенный профиль для персонализированных рекомендаций
             </p>
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-xl transition-colors" aria-label="Закрыть">
+          <button onClick={requestClose} className="p-2 hover:bg-gray-100 rounded-xl transition-colors" aria-label="Закрыть">
             <X className="w-6 h-6 text-gray-400" />
           </button>
         </div>
@@ -1611,7 +2030,7 @@ export default function PetProfileEditor({ pet, onClose, onSave, isLoading }) {
                 <div className="flex gap-3">
                   <button
                     type="button"
-                    onClick={onClose}
+                    onClick={requestClose}
                     className="px-6 py-2.5 rounded-xl border-2 border-gray-200 text-gray-600 font-medium hover:bg-gray-100 transition-all"
                   >
                     Отмена
@@ -1633,6 +2052,52 @@ export default function PetProfileEditor({ pet, onClose, onSave, isLoading }) {
             </div>
           </form>
         </div>
+        <AnimatePresence>
+          {showExitConfirm && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+            >
+              <motion.div
+                ref={exitConfirmRef}
+                initial={{ opacity: 0, scale: 0.96 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.96 }}
+                className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl"
+                tabIndex={-1}
+                role="alertdialog"
+                aria-modal="true"
+                aria-labelledby="pet-profile-exit-title"
+                aria-describedby="pet-profile-exit-description"
+              >
+                <h3 id="pet-profile-exit-title" className="text-lg font-semibold text-gray-800">
+                  Выйти без сохранения?
+                </h3>
+                <p id="pet-profile-exit-description" className="mt-2 text-sm text-gray-600">
+                  Вы действительно хотите выйти без сохранения?
+                </p>
+                <div className="mt-5 flex justify-end gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setShowExitConfirm(false)}
+                    className="px-4 py-2 rounded-xl border-2 border-gray-200 text-gray-600 font-medium hover:bg-gray-100 transition-all"
+                  >
+                    Остаться
+                  </button>
+                  <button
+                    type="button"
+                    onClick={confirmClose}
+                    className="px-4 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-orange-500 text-white font-medium hover:shadow-lg transition-all"
+                  >
+                    Да, выйти
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </motion.div>
     </div>
   );
