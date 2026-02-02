@@ -74,6 +74,12 @@ class FeedingPlan:
     plan_type: str  # dry, wet, multi
     variant: str  # basic, advanced
     period_days: int
+    calorie_distribution: Dict[str, float] = field(default_factory=dict)
+    transition_plan: Optional[Dict[str, Any]] = None
+    has_gi_issues: bool = False
+    species: Optional[str] = None
+    age_months: Optional[int] = None
+    macro_targets: Optional[Dict[str, Dict[str, float]]] = None
     
     # Компоненты рациона
     components: List[FoodComponent] = field(default_factory=list)
@@ -101,6 +107,7 @@ class FoodSearchFilters:
     size_category: Optional[str] = None
     age_months: Optional[int] = None
     daily_calories: Optional[float] = None
+    breed_id: Optional[int] = None
     
     # Здоровье и аллергии (из PetID)
     allergy_codes: List[str] = field(default_factory=list)
@@ -121,6 +128,13 @@ class FoodSearchFilters:
     
     # Период
     period_days: int = 30
+
+    # Внутренние вычисления/сигналы
+    breed_recommendations: Dict[int, Any] = field(default_factory=dict)
+    calorie_distribution: Dict[str, float] = field(default_factory=dict)
+    has_gi_issues: bool = False
+    macro_targets: Optional[Dict[str, Dict[str, float]]] = None
+    warnings: List[str] = field(default_factory=list)
 
 
 class FoodRecommendationService:
@@ -212,6 +226,161 @@ class FoodRecommendationService:
     
     def __init__(self):
         self.calorie_calculator = None
+
+    def _get_age_category(self, species: str, age_months: Optional[int]) -> str:
+        """Возрастная категория для строгого гейтинга."""
+        if age_months is None:
+            return 'adult'
+        if species == 'cat':
+            if age_months < 12:
+                return 'kitten'
+            if age_months >= 84:
+                return 'senior'
+            return 'adult'
+        # dog
+        if age_months < 12:
+            return 'puppy'
+        if age_months >= 84:
+            return 'senior'
+        return 'adult'
+
+    def _is_age_compatible(self, product, species: str, age_months: Optional[int]) -> bool:
+        """Жёсткое исключение несовместимых возрастных кормов."""
+        if age_months is None:
+            return True
+
+        # Мин/макс возраст в месяцах
+        if product.min_age_months is not None and age_months < product.min_age_months:
+            return False
+        if product.max_age_months is not None and age_months > product.max_age_months:
+            return False
+
+        # Возрастная группа товара
+        product_age_group = product.age_group or 'all'
+        if product_age_group == 'all':
+            return True
+
+        pet_age_group = self._get_age_category(species, age_months)
+
+        # Запрещаем пересечения puppy/kitten
+        if species == 'dog' and product_age_group == 'kitten':
+            return False
+        if species == 'cat' and product_age_group == 'puppy':
+            return False
+
+        return product_age_group == pet_age_group
+
+    def _apply_age_filters(self, queryset, species: str, age_months: Optional[int]):
+        """Фильтры по возрасту на уровне БД + строгий age_group."""
+        if age_months is None:
+            return queryset
+
+        # min/max возраст
+        queryset = queryset.filter(
+            Q(min_age_months__isnull=True) | Q(min_age_months__lte=age_months)
+        ).filter(
+            Q(max_age_months__isnull=True) | Q(max_age_months__gte=age_months)
+        )
+
+        # age_group: жёсткое соответствие
+        pet_age_group = self._get_age_category(species, age_months)
+        allowed_groups = ['all', pet_age_group]
+        return queryset.filter(Q(age_group__in=allowed_groups) | Q(age_group__isnull=True))
+
+    def _has_gi_issues(self, filters: FoodSearchFilters) -> bool:
+        """Проверка ЖКТ проблем по кодам заболеваний."""
+        gi_markers = {'digestive', 'gastro', 'gastrointestinal', 'ibd', 'pancreatitis'}
+        for code in filters.health_condition_codes:
+            if any(marker in code.lower() for marker in gi_markers):
+                return True
+        return False
+
+    def _get_breed_recommendations(self, breed_id: Optional[int]) -> Dict[int, Any]:
+        """Карта рекомендаций товаров по породе."""
+        if not breed_id:
+            return {}
+        try:
+            from apps.shop.models import ProductBreedRecommendation
+            recs = ProductBreedRecommendation.objects.filter(
+                breed_id=breed_id,
+                suitability__in=['ideal', 'recommended', 'suitable']
+            ).select_related('product')
+            return {r.product_id: r for r in recs}
+        except Exception as exc:
+            logger.warning(f"Error loading breed recommendations: {exc}")
+            return {}
+
+    def _get_calorie_distribution(self, pet, filters: FoodSearchFilters) -> Dict[str, float]:
+        """
+        Адаптивное распределение калорий по компонентам.
+        Правила: species × age × activity × GI/health.
+        """
+        # Базовое распределение по типу питания
+        if filters.food_type == 'dry':
+            distribution = {'dry_food': 0.95, 'treats': 0.05}
+        elif filters.food_type == 'wet':
+            distribution = {'wet_food': 0.95, 'treats': 0.05}
+        else:
+            distribution = {'dry_food': 0.60, 'wet_food': 0.30, 'treats': 0.10}
+
+        species = filters.species
+        age_months = filters.age_months
+        age_group = self._get_age_category(species, age_months)
+        activity = getattr(pet, 'activity_level', 'moderate') or 'moderate'
+
+        # Видовые корректировки
+        if species == 'cat' and filters.food_type == 'multi':
+            distribution['wet_food'] += 0.10
+            distribution['dry_food'] -= 0.10
+
+        # Возрастные корректировки
+        if age_group in ['puppy', 'kitten']:
+            distribution['treats'] = min(distribution.get('treats', 0.10), 0.05)
+        if age_group == 'senior':
+            distribution['treats'] = min(distribution.get('treats', 0.10), 0.05)
+            if 'wet_food' in distribution:
+                distribution['wet_food'] += 0.05
+                distribution['dry_food'] = max(0.0, distribution['dry_food'] - 0.05)
+
+        # Активность (больше энергии днём = больше сухого)
+        if activity in ['high', 'very_high'] and 'dry_food' in distribution:
+            distribution['dry_food'] += 0.05
+            if 'wet_food' in distribution:
+                distribution['wet_food'] = max(0.0, distribution['wet_food'] - 0.05)
+
+        # ЖКТ проблемы: минимум лакомств, мягкие корма
+        if filters.has_gi_issues:
+            if 'treats' in distribution:
+                distribution['treats'] = min(distribution['treats'], 0.03)
+            if 'wet_food' in distribution:
+                distribution['wet_food'] += 0.05
+                if 'dry_food' in distribution:
+                    distribution['dry_food'] = max(0.0, distribution['dry_food'] - 0.05)
+
+        # Нормализация
+        total = sum(distribution.values())
+        if total <= 0:
+            return distribution
+        return {k: round(v / total, 3) for k, v in distribution.items()}
+
+    def _get_transition_plan(self, current_type: Optional[str], target_type: str) -> Optional[Dict[str, Any]]:
+        """План перехода на новый тип кормления."""
+        if not current_type or current_type == target_type:
+            return None
+
+        # 7-дневный переход
+        schedule = [
+            {'days': '1-2', 'current': 75, 'new': 25},
+            {'days': '3-4', 'current': 50, 'new': 50},
+            {'days': '5-6', 'current': 25, 'new': 75},
+            {'days': '7+', 'current': 0, 'new': 100},
+        ]
+        return {
+            'from': current_type,
+            'to': target_type,
+            'schedule': schedule,
+            'note': 'Переходите постепенно, наблюдайте за пищеварением'
+        }
     
     def _get_calorie_calculator(self):
         """Ленивая загрузка калькулятора."""
@@ -251,6 +420,11 @@ class FoodRecommendationService:
             )
         
         filters.daily_calories = calorie_result.mer
+        filters.breed_id = pet.breed_id if getattr(pet, 'breed_id', None) else None
+        filters.breed_recommendations = self._get_breed_recommendations(filters.breed_id)
+        filters.has_gi_issues = self._has_gi_issues(filters)
+        filters.calorie_distribution = self._get_calorie_distribution(pet, filters)
+        filters.macro_targets = calorie_result.macro_targets
         
         # Создаём план
         plan = FeedingPlan(
@@ -260,6 +434,11 @@ class FoodRecommendationService:
             plan_type=filters.food_type,
             variant=filters.variant,
             period_days=filters.period_days,
+            calorie_distribution=filters.calorie_distribution,
+            has_gi_issues=filters.has_gi_issues,
+            species=pet.species,
+            age_months=pet.age_months,
+            macro_targets=filters.macro_targets,
         )
         
         # Подбираем компоненты
@@ -284,13 +463,24 @@ class FoodRecommendationService:
         
         # Формируем план питания
         plan.regular_day = self._build_daily_plan(plan, calorie_result)
+        # План перехода между типами питания
+        plan.transition_plan = self._get_transition_plan(
+            getattr(pet, 'diet_type', None),
+            filters.food_type
+        )
+        if filters.warnings:
+            plan.warnings.extend(filters.warnings)
         
         # План для активного дня (если есть активности)
         if hasattr(pet, 'pet_activities') and pet.pet_activities.exists():
             plan.active_day = self._build_active_day_plan(pet, plan, calorie_result)
         
         # Добавляем рекомендации
-        plan.recommendations = calorie_result.recommendations
+        plan.recommendations = list(calorie_result.recommendations or [])
+        if plan.has_gi_issues:
+            plan.recommendations.append("При ЖКТ проблемах рекомендуются лечебные диеты и дробное кормление")
+        if plan.transition_plan:
+            plan.recommendations.append("Рекомендуется плавный переход на новый тип питания")
         
         return plan
     
@@ -348,20 +538,17 @@ class FoodRecommendationService:
         from django.db.models import Avg
         
         # Базовый queryset (используем новые поля + legacy для совместимости)
-        queryset = Product.objects.filter(
-            Q(product_group='food') | Q(category='food'),
+        base_queryset = Product.objects.filter(
+            Q(product_group='food') | Q(new_category__product_group='food') | Q(category='food'),
             Q(subcategory__in=['dry', 'holistic', 'hypoallergenic', 'diet']) | Q(subcategory__isnull=True),
             Q(animal_type__in=[filters.species, 'all']) | Q(animal=filters.species),
-            Q(is_available=True) | Q(in_stock=True)
+            Q(is_available=True) | Q(in_stock=True),
+            kcal_per_100g__isnull=False
         )
+        queryset = base_queryset
         
         # Фильтрация по возрасту - КРИТИЧНО для правильного подбора
-        if filters.age_months is not None:
-            queryset = queryset.filter(
-                Q(min_age_months__isnull=True) | Q(min_age_months__lte=filters.age_months)
-            ).filter(
-                Q(max_age_months__isnull=True) | Q(max_age_months__gte=filters.age_months)
-            )
+        queryset = self._apply_age_filters(queryset, filters.species, filters.age_months)
         
         # Фильтрация по размеру для собак
         if filters.species == 'dog' and filters.size_category:
@@ -370,6 +557,20 @@ class FoodRecommendationService:
                 Q(target_size=filters.size_category) |
                 Q(target_size__isnull=True)
             )
+
+        # ЖКТ-режим: подбираем специализированные корма
+        if filters.has_gi_issues:
+            gi_queryset = queryset.filter(
+                Q(compatibility_group='therapeutic_digestive') |
+                Q(health_conditions__overlap=['digestive', 'gastro', 'gastrointestinal']) |
+                Q(subcategory__in=['diet', 'hypoallergenic'])
+            )
+            if gi_queryset.exists():
+                queryset = gi_queryset
+            else:
+                filters.warnings.append(
+                    "Не найдены специализированные ЖКТ-корма, использован общий подбор"
+                )
         
         # Фильтрация по цене
         if filters.min_price:
@@ -383,6 +584,13 @@ class FoodRecommendationService:
         
         # Получаем товары и оцениваем
         products = list(queryset.order_by('price')[:100])  # Берём больше для лучшей выборки
+        breed_rec_ids = list(filters.breed_recommendations.keys()) if filters.breed_recommendations else []
+        if breed_rec_ids:
+            breed_products = list(queryset.filter(id__in=breed_rec_ids))
+            product_ids = {p.id for p in products}
+            for bp in breed_products:
+                if bp.id not in product_ids:
+                    products.append(bp)
         scored = []
         
         for product in products:
@@ -390,11 +598,11 @@ class FoodRecommendationService:
             
             if score > 0:
                 kcal_per_100g = self._get_product_kcal(product, 'dry')
+                if not kcal_per_100g:
+                    continue
                 
                 # Получаем % калорий для сухого корма по типу питания
-                calorie_percent = self.CALORIE_DISTRIBUTION.get(
-                    filters.food_type, self.CALORIE_DISTRIBUTION['dry']
-                ).get('dry_food', 0.90)
+                calorie_percent = (filters.calorie_distribution or {}).get('dry_food', 0.90)
                 
                 # Калории для этого компонента
                 component_kcal = (filters.daily_calories or 0) * calorie_percent
@@ -435,10 +643,14 @@ class FoodRecommendationService:
                     # Сколько дней хватит одной упаковки
                     single_package_days = int(component.weight_grams / daily_grams)
                     
-                    # ФИЛЬТР: ПОЛНОСТЬЮ ИСКЛЮЧАЕМ товары, где 1 упаковка > 150% от периода
+                    # Если 1 упаковка значительно больше периода — снижаем score, но не исключаем
                     max_acceptable_days = int(filters.period_days * 1.5)
                     if single_package_days > max_acceptable_days:
-                        continue  # Пропускаем - упаковка слишком большая
+                        component.warnings.append(
+                            f"Упаковка рассчитана на ~{single_package_days} дн., больше выбранного периода"
+                        )
+                        score = max(1, score - 10)
+                        component.match_score = score
                     
                     # Бонус за оптимальный размер (±30% от периода)
                     if filters.period_days * 0.7 <= single_package_days <= filters.period_days * 1.3:
@@ -479,20 +691,17 @@ class FoodRecommendationService:
         from django.db.models import Avg
         
         # Используем новые поля + legacy для совместимости
-        queryset = Product.objects.filter(
-            Q(product_group='food') | Q(category='food'),
+        base_queryset = Product.objects.filter(
+            Q(product_group='food') | Q(new_category__product_group='food') | Q(category='food'),
             Q(subcategory__in=['wet', 'canned', 'pouch', 'pate']) | Q(subcategory__isnull=True),
             Q(animal_type__in=[filters.species, 'all']) | Q(animal=filters.species),
-            Q(is_available=True) | Q(in_stock=True)
+            Q(is_available=True) | Q(in_stock=True),
+            kcal_per_100g__isnull=False
         )
+        queryset = base_queryset
         
         # Фильтрация по возрасту
-        if filters.age_months is not None:
-            queryset = queryset.filter(
-                Q(min_age_months__isnull=True) | Q(min_age_months__lte=filters.age_months)
-            ).filter(
-                Q(max_age_months__isnull=True) | Q(max_age_months__gte=filters.age_months)
-            )
+        queryset = self._apply_age_filters(queryset, filters.species, filters.age_months)
         
         # Фильтрация по размеру для собак
         if filters.species == 'dog' and filters.size_category:
@@ -501,6 +710,20 @@ class FoodRecommendationService:
                 Q(target_size=filters.size_category) |
                 Q(target_size__isnull=True)
             )
+
+        # ЖКТ-режим: подбираем специализированные корма
+        if filters.has_gi_issues:
+            gi_queryset = queryset.filter(
+                Q(compatibility_group='therapeutic_digestive') |
+                Q(health_conditions__overlap=['digestive', 'gastro', 'gastrointestinal']) |
+                Q(subcategory__in=['diet', 'hypoallergenic'])
+            )
+            if gi_queryset.exists():
+                queryset = gi_queryset
+            else:
+                filters.warnings.append(
+                    "Не найдены специализированные ЖКТ-корма, использован общий подбор"
+                )
         
         if filters.min_price:
             queryset = queryset.filter(price__gte=filters.min_price)
@@ -512,6 +735,13 @@ class FoodRecommendationService:
         filters.avg_price = avg_price
         
         products = list(queryset.order_by('price')[:100])
+        breed_rec_ids = list(filters.breed_recommendations.keys()) if filters.breed_recommendations else []
+        if breed_rec_ids:
+            breed_products = list(queryset.filter(id__in=breed_rec_ids))
+            product_ids = {p.id for p in products}
+            for bp in breed_products:
+                if bp.id not in product_ids:
+                    products.append(bp)
         scored = []
         
         for product in products:
@@ -520,12 +750,12 @@ class FoodRecommendationService:
             if score > 0:
                 # ВАЖНО: влажный корм ~80-120 ккал/100г (из-за 75-82% влаги)
                 kcal_per_100g = self._get_product_kcal(product, 'wet')
+                if not kcal_per_100g:
+                    continue
                 
                 # Получаем % калорий для влажного корма по типу питания
                 # wet: 90%, multi: 30%
-                calorie_percent = self.CALORIE_DISTRIBUTION.get(
-                    filters.food_type, self.CALORIE_DISTRIBUTION['wet']
-                ).get('wet_food', 0.90)
+                calorie_percent = (filters.calorie_distribution or {}).get('wet_food', 0.90)
                 
                 # Калории для этого компонента
                 component_kcal = (filters.daily_calories or 0) * calorie_percent
@@ -565,10 +795,14 @@ class FoodRecommendationService:
                     # Сколько дней хватит одной упаковки
                     single_package_days = int(component.weight_grams / daily_grams)
                     
-                    # ФИЛЬТР: ПОЛНОСТЬЮ ИСКЛЮЧАЕМ товары, где 1 упаковка > 150% от периода
+                    # Если 1 упаковка значительно больше периода — снижаем score, но не исключаем
                     max_acceptable_days = int(filters.period_days * 1.5)
                     if single_package_days > max_acceptable_days:
-                        continue  # Пропускаем - упаковка слишком большая
+                        component.warnings.append(
+                            f"Упаковка рассчитана на ~{single_package_days} дн., больше выбранного периода"
+                        )
+                        score = max(1, score - 10)
+                        component.match_score = score
                     
                     # Бонус за оптимальный размер (±30% от периода)
                     if filters.period_days * 0.7 <= single_package_days <= filters.period_days * 1.3:
@@ -602,20 +836,20 @@ class FoodRecommendationService:
     
     def _select_multi_food(self, filters: FoodSearchFilters) -> List[FoodComponent]:
         """
-        Подбор мультипитания (60% сухой + 30% влажный).
+        Подбор мультипитания (адаптивное распределение сухой/влажный/лакомства).
         
-        ВАЖНО: Распределение калорий уже учтено в CALORIE_DISTRIBUTION
+        ВАЖНО: Распределение калорий уже учтено в filters.calorie_distribution
         через filters.food_type = 'multi'
         """
         components = []
         
-        # Сухой корм (60% калорий - уже учтено в _select_dry_food через CALORIE_DISTRIBUTION)
+        # Сухой корм (процент калорий учтён в _select_dry_food через filters.calorie_distribution)
         dry_components = self._select_dry_food(filters)
         for c in dry_components:
             c.product_type = 'dry_food_multi'
         components.extend(dry_components)
         
-        # Влажный корм (30% калорий - уже учтено в _select_wet_food через CALORIE_DISTRIBUTION)
+        # Влажный корм (процент калорий учтён в _select_wet_food через filters.calorie_distribution)
         wet_components = self._select_wet_food(filters)
         for c in wet_components:
             c.product_type = 'wet_food_multi'
@@ -639,18 +873,15 @@ class FoodRecommendationService:
         
         # Используем новые поля + legacy для совместимости
         queryset = Product.objects.filter(
-            Q(product_group='treats') | Q(category='treats'),
+            Q(product_group='treats') | Q(new_category__product_group='treats') | Q(category='treats'),
             Q(animal_type__in=[filters.species, 'all']) | Q(animal=filters.species),
-            Q(is_available=True) | Q(in_stock=True)
+            Q(is_available=True) | Q(in_stock=True),
+            kcal_per_100g__isnull=False
         )
         
         # Фильтр по возрасту
         age_months = filters.age_months or 24
-        queryset = queryset.filter(
-            Q(min_age_months__isnull=True) | Q(min_age_months__lte=age_months)
-        ).filter(
-            Q(max_age_months__isnull=True) | Q(max_age_months__gte=age_months)
-        )
+        queryset = self._apply_age_filters(queryset, filters.species, age_months)
         
         # Фильтр по размеру
         size = filters.size_category
@@ -665,9 +896,9 @@ class FoodRecommendationService:
             return []
         
         # СТРОГО 10% от калорий для лакомств
-        treat_calorie_percent = self.CALORIE_DISTRIBUTION.get(
-            filters.food_type, {'treats': 0.10}
-        ).get('treats', 0.10)
+        treat_calorie_percent = (filters.calorie_distribution or {}).get('treats', 0.10)
+        if treat_calorie_percent <= 0:
+            return []
         
         treat_kcal = (filters.daily_calories or 0) * treat_calorie_percent
         
@@ -685,6 +916,8 @@ class FoodRecommendationService:
             
             # Калорийность лакомства (обычно 300-400 ккал/100г)
             kcal_per_100g = self._get_product_kcal(product, 'treat')
+            if not kcal_per_100g:
+                return []
             
             # Расчёт граммов: (ккал / ккал_на_100г) * 100, округляем до 10г
             if treat_kcal and kcal_per_100g:
@@ -1054,13 +1287,53 @@ class FoodRecommendationService:
         product_name = (product.name or '').lower()
         product_desc = (product.description or '').lower()
         full_text = f"{product_name} {product_desc}"
+
+        # 0. Жёсткий возрастной гейтинг
+        if not self._is_age_compatible(product, filters.species, filters.age_months):
+            return (0, [], ["Не подходит по возрасту"], [])
+
+        # 0.1 Жёсткий гейтинг по размеру для собак
+        if filters.species == 'dog' and filters.size_category:
+            size_keywords = {
+                'toy': ['toy', 'mini', 'x-small', 'мини', 'карликов', 'toy'],
+                'small': ['small', 'mini', 'мал', 'мелких', 'мини'],
+                'medium': ['medium', 'средн'],
+                'large': ['large', 'крупн', 'крупных'],
+                'giant': ['giant', 'гигант', 'xxl', 'очень крупн'],
+            }
+            # Определяем размер из target_size или названия
+            product_size = product.target_size or 'all'
+            detected_size = None
+            if getattr(product, 'size_group', None) and product.size_group != 'all':
+                size_group_map = {
+                    'mini': 'toy',
+                    'small': 'small',
+                    'medium': 'medium',
+                    'large': 'large',
+                    'giant': 'giant',
+                }
+                detected_size = size_group_map.get(product.size_group)
+            if product_size and product_size != 'all':
+                detected_size = product_size
+            else:
+                for size, keywords in size_keywords.items():
+                    if any(kw in full_text for kw in keywords):
+                        detected_size = size
+                        break
+            # Если явно указан другой размер — исключаем
+            if detected_size and detected_size != filters.size_category:
+                return (0, [], [f"Размер корма не подходит: {detected_size}"], [])
         
         # 1. КРИТИЧНО: Проверка аллергий - исключаем полностью
-        for allergy_code in filters.allergy_codes:
-            ingredients_to_check = self.ALLERGY_INGREDIENTS.get(allergy_code, [])
-            for ingredient in ingredients_to_check:
-                if ingredient.lower() in full_text:
-                    return (0, [], [f"Содержит аллерген: {ingredient}"], [])
+        if filters.allergy_codes:
+            allergens_list = [a.lower() for a in (product.allergens or [])]
+            for allergy_code in filters.allergy_codes:
+                ingredients_to_check = self.ALLERGY_INGREDIENTS.get(allergy_code, [])
+                for ingredient in ingredients_to_check:
+                    if ingredient.lower() in allergens_list:
+                        return (0, [], [f"Содержит аллерген: {ingredient}"], [])
+                    if not allergens_list and ingredient.lower() in full_text:
+                        return (0, [], [f"Содержит аллерген: {ingredient}"], [])
         
         # 2. Проверка исключённых ингредиентов
         for excluded in filters.excluded_ingredients:
@@ -1084,10 +1357,37 @@ class FoodRecommendationService:
         
         # 4. Гипоаллергенные корма если есть аллергии
         if filters.allergy_codes:
-            if 'hypoallergenic' in full_text or product.subcategory == 'hypoallergenic':
+            if product.is_hypoallergenic or 'hypoallergenic' in full_text or product.subcategory == 'hypoallergenic':
                 score += 20
                 reasons.append("Гипоаллергенный")
                 badges.append("Гипоаллергенный")
+
+        # 4.1 Учет породных рекомендаций
+        breed_rec = filters.breed_recommendations.get(product.id) if filters.breed_recommendations else None
+        if breed_rec:
+            score += min(25, max(10, int(getattr(breed_rec, 'score', 70) / 4)))
+            reasons.append("Рекомендуется для вашей породы")
+            badges.append("Для породы")
+
+        # 4.2 БЖУ: соответствие целевым диапазонам питомца (мягкий скоринг)
+        if filters.macro_targets:
+            macro_targets = filters.macro_targets
+            macros = {
+                'protein': product.nutrition_protein,
+                'fat': product.nutrition_fat,
+                'fiber': product.nutrition_fiber,
+            }
+            for macro, value in macros.items():
+                if value is None:
+                    continue
+                target = macro_targets.get(macro)
+                if not target:
+                    continue
+                if target['min'] <= float(value) <= target['max']:
+                    score += 5
+                else:
+                    score -= 5
+                    warnings.append(f"{macro} вне целевого диапазона")
         
         # 5. Соответствие возрасту
         if filters.age_months is not None:
@@ -1167,6 +1467,9 @@ class FoodRecommendationService:
         """
         Получить калорийность продукта (ккал/100г).
         """
+        if getattr(product, 'kcal_per_100g', None):
+            return float(product.kcal_per_100g)
+
         params = product.params or {}
         
         # Пробуем извлечь из params
@@ -1177,9 +1480,8 @@ class FoodRecommendationService:
                 except (ValueError, TypeError):
                     pass
         
-        # Fallback на значение по умолчанию
-        subcategory = product.subcategory or food_type
-        return self.DEFAULT_KCAL.get(subcategory, self.DEFAULT_KCAL.get(food_type, 350))
+        # Нет достоверной калорийности
+        return None
     
     def _calculate_costs(self, plan: FeedingPlan, period_days: int):
         """
@@ -1207,8 +1509,38 @@ class FoodRecommendationService:
         meals_per_day = calorie_result.meals_per_day
         
         # Округление порции до 10г
-        def round_to_10(grams):
-            return round(grams / 10) * 10 if grams else 0
+        def round_portion(grams):
+            if not grams:
+                return 0
+            step = 5 if plan.species == 'cat' else 10
+            return round(grams / step) * step
+
+        def get_nutrition_for_meal(component: Optional[FoodComponent], grams: float) -> Optional[Dict[str, Any]]:
+            if not component or not grams:
+                return None
+            protein = component.nutrition_protein
+            fat = component.nutrition_fat
+            fiber = component.nutrition_fiber
+            moisture = component.nutrition_moisture
+            ash = component.nutrition_ash
+
+            if protein is None and fat is None:
+                return None
+
+            known = sum(v for v in [protein, fat, fiber, moisture, ash] if v is not None)
+            carbs_percent = max(0.0, 100.0 - known) if known else None
+
+            def grams_from_percent(pct):
+                return round((grams * pct) / 100, 1) if pct is not None else None
+
+            return {
+                'protein_percent': protein,
+                'fat_percent': fat,
+                'carbs_percent': carbs_percent,
+                'protein_grams': grams_from_percent(protein),
+                'fat_grams': grams_from_percent(fat),
+                'carbs_grams': grams_from_percent(carbs_percent) if carbs_percent is not None else None,
+            }
         
         daily = {
             'total_kcal': round(plan.daily_calories),
@@ -1217,7 +1549,11 @@ class FoodRecommendationService:
             'treats': None,
             'supplements': [],
             'feeding_tips': [],
+            'calorie_distribution': plan.calorie_distribution or {},
         }
+
+        if plan.transition_plan:
+            daily['transition_plan'] = plan.transition_plan
         
         if plan.plan_type == 'multi':
             # === МУЛЬТИПИТАНИЕ ===
@@ -1232,8 +1568,8 @@ class FoodRecommendationService:
                 
                 if meals_per_day >= 3:
                     # Утро - 60%, Обед - 40% от сухого
-                    morning_grams = round_to_10(dry_grams * 0.6)
-                    lunch_grams = round_to_10(dry_grams * 0.4)
+                    morning_grams = round_portion(dry_grams * 0.6)
+                    lunch_grams = round_portion(dry_grams * 0.4)
                     
                     daily['meals'].append({
                         'time': '08:00',
@@ -1241,8 +1577,9 @@ class FoodRecommendationService:
                         'type': 'dry',
                         'product': dry_component.product_name,
                         'grams': morning_grams,
-                        'kcal': round(morning_grams * (dry_component.kcal_per_100g or 360) / 100),
-                        'note': 'Сухой корм для энергии на первую половину дня'
+                        'kcal': round(morning_grams * (dry_component.kcal_per_100g or 0) / 100),
+                        'note': 'Сухой корм для энергии на первую половину дня',
+                        'nutrition': get_nutrition_for_meal(dry_component, morning_grams),
                     })
                     daily['meals'].append({
                         'time': '13:00',
@@ -1250,8 +1587,9 @@ class FoodRecommendationService:
                         'type': 'dry',
                         'product': dry_component.product_name,
                         'grams': lunch_grams,
-                        'kcal': round(lunch_grams * (dry_component.kcal_per_100g or 360) / 100),
-                        'note': 'Перекус в середине дня'
+                        'kcal': round(lunch_grams * (dry_component.kcal_per_100g or 0) / 100),
+                        'note': 'Перекус в середине дня',
+                        'nutrition': get_nutrition_for_meal(dry_component, lunch_grams),
                     })
                 else:
                     # Только утро
@@ -1260,14 +1598,15 @@ class FoodRecommendationService:
                         'label': 'Завтрак',
                         'type': 'dry',
                         'product': dry_component.product_name,
-                        'grams': round_to_10(dry_grams),
+                        'grams': round_portion(dry_grams),
                         'kcal': round(dry_kcal),
-                        'note': 'Основной приём сухого корма'
+                        'note': 'Основной приём сухого корма',
+                        'nutrition': get_nutrition_for_meal(dry_component, round_portion(dry_grams)),
                     })
             
             # Вечер - влажный корм
             if wet_component:
-                wet_grams = round_to_10(wet_component.daily_grams or 0)
+                wet_grams = round_portion(wet_component.daily_grams or 0)
                 wet_kcal = wet_component.daily_kcal or 0
                 
                 daily['meals'].append({
@@ -1277,7 +1616,8 @@ class FoodRecommendationService:
                     'product': wet_component.product_name,
                     'grams': wet_grams,
                     'kcal': round(wet_kcal),
-                    'note': 'Влажный корм вечером улучшает гидратацию'
+                    'note': 'Влажный корм вечером улучшает гидратацию',
+                    'nutrition': get_nutrition_for_meal(wet_component, wet_grams),
                 })
             
             # Лакомства
@@ -1287,7 +1627,16 @@ class FoodRecommendationService:
                     'daily_grams': treat_component.daily_grams,
                     'daily_kcal': round(treat_component.daily_kcal or 0),
                     'pieces_per_day': treat_component.pieces_per_day,
-                    'note': 'Используйте для поощрения и дрессировки, распределите в течение дня'
+                    'note': 'Используйте для поощрения и дрессировки, распределите в течение дня',
+                    'nutrition': get_nutrition_for_meal(treat_component, treat_component.daily_grams or 0),
+                }
+            elif plan.calorie_distribution.get('treats', 0) > 0:
+                daily['treats'] = {
+                    'product': None,
+                    'daily_grams': None,
+                    'daily_kcal': round(plan.daily_calories * plan.calorie_distribution.get('treats', 0)),
+                    'pieces_per_day': None,
+                    'note': 'Лакомства допустимы, но конкретный продукт не подобран',
                 }
             
             daily['feeding_tips'].extend([
@@ -1304,14 +1653,18 @@ class FoodRecommendationService:
             if component:
                 total_grams = component.daily_grams or 0
                 total_kcal = component.daily_kcal or 0
-                kcal_per_100g = component.kcal_per_100g or 95
+                kcal_per_100g = component.kcal_per_100g or 0
                 
                 # Распределяем равномерно
-                grams_per_meal = round_to_10(total_grams / meals_per_day)
+                grams_per_meal = round_portion(total_grams / meals_per_day)
                 kcal_per_meal = round(grams_per_meal * kcal_per_100g / 100)
                 
-                times = ['08:00', '13:00', '18:00', '22:00'][:meals_per_day]
-                labels = ['Завтрак', 'Обед', 'Ужин', 'Поздний перекус'][:meals_per_day]
+                if plan.species == 'cat':
+                    times = ['08:00', '14:00', '22:00', '02:00'][:meals_per_day]
+                    labels = ['Утро', 'День', 'Вечер', 'Ночь'][:meals_per_day]
+                else:
+                    times = ['08:00', '13:00', '18:00', '22:00'][:meals_per_day]
+                    labels = ['Завтрак', 'Обед', 'Ужин', 'Поздний перекус'][:meals_per_day]
                 
                 for i, (time, label) in enumerate(zip(times, labels)):
                     daily['meals'].append({
@@ -1321,6 +1674,7 @@ class FoodRecommendationService:
                         'product': component.product_name,
                         'grams': grams_per_meal,
                         'kcal': kcal_per_meal,
+                        'nutrition': get_nutrition_for_meal(component, grams_per_meal),
                     })
             
             # Лакомства
@@ -1330,7 +1684,16 @@ class FoodRecommendationService:
                     'daily_grams': treat_component.daily_grams,
                     'daily_kcal': round(treat_component.daily_kcal or 0),
                     'pieces_per_day': treat_component.pieces_per_day,
-                    'note': 'Используйте для поощрения между кормлениями'
+                    'note': 'Используйте для поощрения между кормлениями',
+                    'nutrition': get_nutrition_for_meal(treat_component, treat_component.daily_grams or 0),
+                }
+            elif plan.calorie_distribution.get('treats', 0) > 0:
+                daily['treats'] = {
+                    'product': None,
+                    'daily_grams': None,
+                    'daily_kcal': round(plan.daily_calories * plan.calorie_distribution.get('treats', 0)),
+                    'pieces_per_day': None,
+                    'note': 'Лакомства допустимы, но конкретный продукт не подобран',
                 }
             
             daily['feeding_tips'].append('Влажный корм скоропортящийся - убирайте остатки через 30 минут')
@@ -1343,13 +1706,17 @@ class FoodRecommendationService:
             if component:
                 total_grams = component.daily_grams or 0
                 total_kcal = component.daily_kcal or 0
-                kcal_per_100g = component.kcal_per_100g or 360
+                kcal_per_100g = component.kcal_per_100g or 0
                 
-                grams_per_meal = round_to_10(total_grams / meals_per_day)
+                grams_per_meal = round_portion(total_grams / meals_per_day)
                 kcal_per_meal = round(grams_per_meal * kcal_per_100g / 100)
                 
-                times = ['08:00', '13:00', '18:00', '22:00'][:meals_per_day]
-                labels = ['Завтрак', 'Обед', 'Ужин', 'Поздний перекус'][:meals_per_day]
+                if plan.species == 'cat':
+                    times = ['08:00', '14:00', '22:00', '02:00'][:meals_per_day]
+                    labels = ['Утро', 'День', 'Вечер', 'Ночь'][:meals_per_day]
+                else:
+                    times = ['08:00', '13:00', '18:00', '22:00'][:meals_per_day]
+                    labels = ['Завтрак', 'Обед', 'Ужин', 'Поздний перекус'][:meals_per_day]
                 
                 for i, (time, label) in enumerate(zip(times, labels)):
                     daily['meals'].append({
@@ -1359,6 +1726,7 @@ class FoodRecommendationService:
                         'product': component.product_name,
                         'grams': grams_per_meal,
                         'kcal': kcal_per_meal,
+                        'nutrition': get_nutrition_for_meal(component, grams_per_meal),
                     })
             
             # Лакомства
@@ -1368,7 +1736,16 @@ class FoodRecommendationService:
                     'daily_grams': treat_component.daily_grams,
                     'daily_kcal': round(treat_component.daily_kcal or 0),
                     'pieces_per_day': treat_component.pieces_per_day,
-                    'note': 'Используйте для поощрения между кормлениями'
+                    'note': 'Используйте для поощрения между кормлениями',
+                    'nutrition': get_nutrition_for_meal(treat_component, treat_component.daily_grams or 0),
+                }
+            elif plan.calorie_distribution.get('treats', 0) > 0:
+                daily['treats'] = {
+                    'product': None,
+                    'daily_grams': None,
+                    'daily_kcal': round(plan.daily_calories * plan.calorie_distribution.get('treats', 0)),
+                    'pieces_per_day': None,
+                    'note': 'Лакомства допустимы, но конкретный продукт не подобран',
                 }
             
             daily['feeding_tips'].append('Всегда обеспечьте доступ к свежей воде')
@@ -1384,6 +1761,12 @@ class FoodRecommendationService:
         
         if plan.supplements:
             daily['feeding_tips'].append('Добавки лучше давать с едой для лучшего усвоения')
+
+        if plan.has_gi_issues:
+            daily['feeding_tips'].extend([
+                'При проблемах с ЖКТ важен плавный режим кормления и стабильный состав',
+                'Не меняйте корм резко, избегайте смешивания несовместимых диет',
+            ])
         
         return daily
     
@@ -1449,9 +1832,10 @@ class FoodRecommendationService:
         # Используем новые поля + legacy для совместимости
         if product_type == 'treat':
             queryset = Product.objects.filter(
-                Q(product_group='treats') | Q(category='treats'),
+                Q(product_group='treats') | Q(new_category__product_group='treats') | Q(category='treats'),
                 Q(animal_type__in=[filters.species, 'all']) | Q(animal=filters.species),
-                Q(is_available=True) | Q(in_stock=True)
+                Q(is_available=True) | Q(in_stock=True),
+                kcal_per_100g__isnull=False
             ).exclude(id=component.product_id)
         elif product_type == 'supplement':
             queryset = Product.objects.filter(
@@ -1461,20 +1845,21 @@ class FoodRecommendationService:
             ).exclude(id=component.product_id)
         else:
             queryset = Product.objects.filter(
-                Q(product_group='food') | Q(category='food'),
+                Q(product_group='food') | Q(new_category__product_group='food') | Q(category='food'),
                 Q(subcategory__in=subcat) | Q(subcategory__isnull=True),
                 Q(animal_type__in=[filters.species, 'all']) | Q(animal=filters.species),
-                Q(is_available=True) | Q(in_stock=True)
+                Q(is_available=True) | Q(in_stock=True),
+                kcal_per_100g__isnull=False
             ).exclude(id=component.product_id)
+        
+        queryset = self._apply_age_filters(queryset, filters.species, filters.age_months)
         
         products = list(queryset[:30])
         alternatives = []
         
         # Определяем % калорий для этого типа компонента
         calorie_key = 'dry_food' if 'dry' in product_type else ('wet_food' if 'wet' in product_type else 'treats')
-        calorie_percent = self.CALORIE_DISTRIBUTION.get(
-            filters.food_type, {'dry_food': 0.90, 'treats': 0.10}
-        ).get(calorie_key, 0.90)
+        calorie_percent = (filters.calorie_distribution or {}).get(calorie_key, 0.90)
         
         # Калории для этого компонента
         component_kcal = (filters.daily_calories or 0) * calorie_percent
@@ -1484,6 +1869,8 @@ class FoodRecommendationService:
             
             if score > 0:
                 kcal_per_100g = self._get_product_kcal(product, product_type.split('_')[0])
+                if not kcal_per_100g and product_type != 'supplement':
+                    continue
                 
                 # Граммы с учётом распределения калорий, округление до 10г
                 if component_kcal and kcal_per_100g:
@@ -1499,10 +1886,12 @@ class FoodRecommendationService:
                     # Сколько дней хватит одной упаковки
                     single_package_days = int(weight_grams / daily_grams)
                     
-                    # ФИЛЬТР: ПОЛНОСТЬЮ ИСКЛЮЧАЕМ товары, где 1 упаковка > 150% от периода
                     max_acceptable_days = int(filters.period_days * 1.5)
                     if single_package_days > max_acceptable_days:
-                        continue  # Пропускаем - упаковка слишком большая
+                        warnings.append(
+                            f"Упаковка рассчитана на ~{single_package_days} дн., больше выбранного периода"
+                        )
+                        score = max(1, score - 10)
                     
                     # Нужно граммов на период
                     total_grams_needed = daily_grams * filters.period_days
@@ -1607,6 +1996,10 @@ class FoodRecommendationService:
             'plan_type': plan.plan_type,
             'variant': plan.variant,
             'period_days': plan.period_days,
+            'calorie_distribution': plan.calorie_distribution,
+            'transition_plan': plan.transition_plan,
+            'has_gi_issues': plan.has_gi_issues,
+            'macro_targets': plan.macro_targets,
             'components': [
                 {
                     'product_id': c.product_id,

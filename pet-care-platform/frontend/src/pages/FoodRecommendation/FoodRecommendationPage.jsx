@@ -6,7 +6,7 @@
  */
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   ArrowLeft, UtensilsCrossed, Loader2, AlertCircle, RefreshCw,
@@ -335,6 +335,23 @@ const VariantToggle = ({ value, onChange, disabled }) => (
 );
 
 // ============================================================================
+// Утилиты для определения типа корма
+// ============================================================================
+const normalizeFoodType = (type) => {
+  if (!type) return null;
+  if (type.startsWith('supplement_')) return 'supplement';
+  return type.replace('_multi', '');
+};
+
+const isComponentTypeCompatible = (componentType, item) => {
+  if (!item) return true;
+  const slotType = normalizeFoodType(componentType);
+  const itemType = normalizeFoodType(item.product_type);
+  if (slotType && itemType && slotType !== itemType) return false;
+  return true;
+};
+
+// ============================================================================
 // КОМПОНЕНТ: Компактная карточка компонента рациона
 // ============================================================================
 const RationComponentCard = ({ 
@@ -343,7 +360,8 @@ const RationComponentCard = ({
   currentIndex = 0,
   onChangeIndex,
   isLoading,
-  componentType
+  componentType,
+  onProductClick
 }) => {
   const navigate = useNavigate();
   
@@ -371,14 +389,20 @@ const RationComponentCard = ({
   // Безопасное определение типа компонента
   const baseType = componentType?.startsWith('supplement_') 
     ? 'supplement' 
-    : (component?.product_type || 'dry_food');
+    : (componentType || component?.product_type || 'dry_food');
   
   const totalItems = alternatives?.length || 0;
   const canNavigate = totalItems > 1;
   
   // Переход на страницу товара
   const handleProductClick = () => {
-    if (component.shop_url) {
+    if (onProductClick) {
+      onProductClick(component);
+      return;
+    }
+    if (component?.product_id) {
+      navigate(`/shop/products/${component.product_id}`);
+    } else if (component?.shop_url) {
       navigate(component.shop_url);
     }
   };
@@ -639,84 +663,97 @@ const FeedingPlanBlock = ({ plan, isLoading }) => {
           </p>
           <div className="space-y-2">
             {(() => {
-              // Формируем расписание из компонентов
-              const dryFood = plan.components.find(c => c.product_type?.includes('dry'));
-              const wetFood = plan.components.find(c => c.product_type?.includes('wet'));
-              
               const schedule = [];
-              
-              // Утро - сухой корм (если есть)
-              if (dryFood) {
-                const portion = wetFood 
-                  ? Math.round(dryFood.daily_grams * 0.5)  // Если мульти - половина утром
-                  : Math.round(dryFood.daily_grams * 0.5); // Или половина дневной нормы
-                schedule.push({
-                  time: '08:00',
-                  label: 'Завтрак',
-                  product: dryFood.product_name?.split(' ').slice(0, 3).join(' ') || 'Сухой корм',
-                  type: 'dry',
-                  grams: portion,
-                  kcal: Math.round(portion * (dryFood.kcal_per_100g || 350) / 100)
+
+              if (meals.length > 0) {
+                meals.forEach((meal) => {
+                  const grams = meal.grams || 0;
+                  const kcal = meal.kcal ?? Math.round(grams * (meal.kcal_per_100g || 0) / 100);
+                  schedule.push({
+                    time: meal.time || '',
+                    label: meal.label || '',
+                    product: meal.product || '',
+                    type: meal.type || 'dry',
+                    grams,
+                    kcal,
+                  });
                 });
-              }
-              
-              // Обед - влажный корм (если есть)
-              if (wetFood) {
-                const portion = Math.round(wetFood.daily_grams * 0.5);
-                schedule.push({
-                  time: '13:00',
-                  label: 'Обед',
-                  product: wetFood.product_name?.split(' ').slice(0, 3).join(' ') || 'Влажный корм',
-                  type: 'wet',
-                  grams: portion,
-                  kcal: Math.round(portion * (wetFood.kcal_per_100g || 95) / 100)
-                });
-              }
-              
-              // Ужин
-              if (dryFood && wetFood) {
-                // Мультипитание: вечером сухой
-                const portion = Math.round(dryFood.daily_grams * 0.5);
-                schedule.push({
-                  time: '18:00',
-                  label: 'Ужин',
-                  product: dryFood.product_name?.split(' ').slice(0, 3).join(' ') || 'Сухой корм',
-                  type: 'dry',
-                  grams: portion,
-                  kcal: Math.round(portion * (dryFood.kcal_per_100g || 350) / 100)
-                });
-                // + влажный
-                const wetPortion = Math.round(wetFood.daily_grams * 0.5);
-                schedule.push({
-                  time: '18:00',
-                  label: '+',
-                  product: wetFood.product_name?.split(' ').slice(0, 3).join(' ') || 'Влажный корм',
-                  type: 'wet',
-                  grams: wetPortion,
-                  kcal: Math.round(wetPortion * (wetFood.kcal_per_100g || 95) / 100)
-                });
-              } else if (dryFood) {
-                // Только сухой
-                const portion = Math.round(dryFood.daily_grams * 0.5);
-                schedule.push({
-                  time: '18:00',
-                  label: 'Ужин',
-                  product: dryFood.product_name?.split(' ').slice(0, 3).join(' ') || 'Сухой корм',
-                  type: 'dry',
-                  grams: portion,
-                  kcal: Math.round(portion * (dryFood.kcal_per_100g || 350) / 100)
-                });
-              } else if (wetFood) {
-                // Только влажный
-                const portion = Math.round(wetFood.daily_grams * 0.5);
-                schedule.push({
-                  time: '18:00',
-                  label: 'Ужин',
-                  product: wetFood.product_name?.split(' ').slice(0, 3).join(' ') || 'Влажный корм',
-                  type: 'wet',
-                  grams: portion,
-                  kcal: Math.round(portion * (wetFood.kcal_per_100g || 95) / 100)
-                });
+              } else {
+                // Фоллбек: формируем расписание из компонентов
+                const dryFood = plan.components.find(c => c.product_type?.includes('dry'));
+                const wetFood = plan.components.find(c => c.product_type?.includes('wet'));
+                
+                // Утро - сухой корм (если есть)
+                if (dryFood) {
+                  const portion = Math.round(dryFood.daily_grams * 0.5);
+                  schedule.push({
+                    time: '08:00',
+                    label: 'Завтрак',
+                    product: dryFood.product_name || 'Сухой корм',
+                    type: 'dry',
+                    grams: portion,
+                    kcal: Math.round(portion * (dryFood.kcal_per_100g || 350) / 100)
+                  });
+                }
+                
+                // Обед - влажный корм (если есть)
+                if (wetFood) {
+                  const portion = Math.round(wetFood.daily_grams * 0.5);
+                  schedule.push({
+                    time: '13:00',
+                    label: 'Обед',
+                    product: wetFood.product_name || 'Влажный корм',
+                    type: 'wet',
+                    grams: portion,
+                    kcal: Math.round(portion * (wetFood.kcal_per_100g || 95) / 100)
+                  });
+                }
+                
+                // Ужин
+                if (dryFood && wetFood) {
+                  // Мультипитание: вечером сухой
+                  const portion = Math.round(dryFood.daily_grams * 0.5);
+                  schedule.push({
+                    time: '18:00',
+                    label: 'Ужин',
+                    product: dryFood.product_name || 'Сухой корм',
+                    type: 'dry',
+                    grams: portion,
+                    kcal: Math.round(portion * (dryFood.kcal_per_100g || 350) / 100)
+                  });
+                  // + влажный
+                  const wetPortion = Math.round(wetFood.daily_grams * 0.5);
+                  schedule.push({
+                    time: '18:00',
+                    label: '+',
+                    product: wetFood.product_name || 'Влажный корм',
+                    type: 'wet',
+                    grams: wetPortion,
+                    kcal: Math.round(wetPortion * (wetFood.kcal_per_100g || 95) / 100)
+                  });
+                } else if (dryFood) {
+                  // Только сухой
+                  const portion = Math.round(dryFood.daily_grams * 0.5);
+                  schedule.push({
+                    time: '18:00',
+                    label: 'Ужин',
+                    product: dryFood.product_name || 'Сухой корм',
+                    type: 'dry',
+                    grams: portion,
+                    kcal: Math.round(portion * (dryFood.kcal_per_100g || 350) / 100)
+                  });
+                } else if (wetFood) {
+                  // Только влажный
+                  const portion = Math.round(wetFood.daily_grams * 0.5);
+                  schedule.push({
+                    time: '18:00',
+                    label: 'Ужин',
+                    product: wetFood.product_name || 'Влажный корм',
+                    type: 'wet',
+                    grams: portion,
+                    kcal: Math.round(portion * (wetFood.kcal_per_100g || 95) / 100)
+                  });
+                }
               }
               
               return schedule.map((meal, i) => (
@@ -883,6 +920,7 @@ const FeedingPlanBlock = ({ plan, isLoading }) => {
 export default function FoodRecommendationPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const location = useLocation();
   
   // Состояние
   const [pets, setPets] = useState([]);
@@ -902,6 +940,8 @@ export default function FoodRecommendationPage() {
   // Компоненты рациона с альтернативами
   // { type: 'dry_food', alternatives: [...], currentIndex: 0 }
   const [componentStates, setComponentStates] = useState({});
+  const [restoreState, setRestoreState] = useState(null);
+  const restoreAppliedRef = useRef(false);
   
   // Загрузка питомцев
   useEffect(() => {
@@ -913,15 +953,34 @@ export default function FoodRecommendationPage() {
         const completedPets = petsList.filter(p => (p.weight_kg || p.weight));
         setPets(completedPets);
         
+        // Если есть сохранённое состояние конструктора
+        let parsedDietState = null;
+        const dietStateKey = searchParams.get('diet_state');
+        if (dietStateKey) {
+          const stored = sessionStorage.getItem(`diet_state:${dietStateKey}`);
+          if (stored) {
+            try {
+              parsedDietState = JSON.parse(stored);
+              setRestoreState(parsedDietState);
+              if (parsedDietState?.feedingType) setFeedingType(parsedDietState.feedingType);
+              if (parsedDietState?.planVariant) setPlanVariant(parsedDietState.planVariant);
+              if (parsedDietState?.period) setPeriod(parsedDietState.period);
+            } catch (e) {
+              console.warn('Не удалось восстановить состояние конструктора', e);
+            }
+          }
+        }
+
         // Если указан pet_id в URL
         const petIdFromUrl = searchParams.get('pet_id');
-        if (petIdFromUrl) {
-          const pet = completedPets.find(p => p.id === petIdFromUrl);
+        const petIdToSelect = parsedDietState?.selectedPetId || petIdFromUrl;
+        if (petIdToSelect) {
+          const pet = completedPets.find(p => p.id === petIdToSelect);
           if (pet) {
             setSelectedPet(pet);
           } else {
             try {
-              const petResponse = await getPet(petIdFromUrl);
+              const petResponse = await getPet(petIdToSelect);
               const petData = petResponse.data || petResponse;
               if (petData.weight_kg || petData.weight) {
                 setSelectedPet(petData);
@@ -1043,7 +1102,8 @@ export default function FoodRecommendationPage() {
           const expectedType = apiType;
           const altType = alt.product_type?.replace('_multi', '') || '';
           const expType = expectedType.replace('_multi', '');
-          return altType.startsWith(expType) || altType === expType;
+          const typeMatches = altType.startsWith(expType) || altType === expType;
+          return typeMatches && isComponentTypeCompatible(componentType, alt);
         });
         
         if (filteredAlternatives.length > 0) {
@@ -1073,6 +1133,39 @@ export default function FoodRecommendationPage() {
     };
     loadAll();
   }, [feedingPlan]); // Только при смене плана
+
+  // Восстановление выбранных альтернатив после возврата из карточки товара
+  useEffect(() => {
+    if (!restoreState || restoreAppliedRef.current) return;
+    if (!componentStates || Object.keys(componentStates).length === 0) return;
+
+    let updated = false;
+    let pending = false;
+    const next = { ...componentStates };
+    const selections = restoreState.componentSelections || {};
+
+    Object.entries(selections).forEach(([type, productId]) => {
+      const state = componentStates[type];
+      if (!state) return;
+      const idx = state.alternatives.findIndex(a => a.product_id === productId);
+      if (idx >= 0) {
+        if (idx !== state.currentIndex) {
+          next[type] = { ...state, currentIndex: idx };
+          updated = true;
+        }
+      } else {
+        pending = true;
+      }
+    });
+
+    if (updated) {
+      setComponentStates(next);
+    }
+
+    if (!pending) {
+      restoreAppliedRef.current = true;
+    }
+  }, [componentStates, restoreState]);
   
   // Смена индекса компонента (пролистывание) - циклическая
   const handleChangeComponentIndex = useCallback((componentType, newIndex) => {
@@ -1122,14 +1215,63 @@ export default function FoodRecommendationPage() {
       setError('Не удалось добавить товары в корзину');
     }
   };
+
+  const saveDietState = useCallback(() => {
+    const token = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const componentSelections = {};
+    Object.entries(componentStates).forEach(([type, state]) => {
+      const current = state.alternatives[state.currentIndex];
+      if (current?.product_id) {
+        componentSelections[type] = current.product_id;
+      }
+    });
+
+    const payload = {
+      selectedPetId: selectedPet?.id || null,
+      feedingType,
+      planVariant,
+      period,
+      componentSelections,
+    };
+
+    sessionStorage.setItem(`diet_state:${token}`, JSON.stringify(payload));
+    return token;
+  }, [componentStates, selectedPet, feedingType, planVariant, period]);
+
+  const buildReturnTo = useCallback(() => {
+    const params = new URLSearchParams(location.search);
+    params.delete('diet_state');
+    const query = params.toString();
+    return `${location.pathname}${query ? `?${query}` : ''}`;
+  }, [location.pathname, location.search]);
+
+  const handleOpenProduct = useCallback((component) => {
+    if (!component?.product_id) return;
+    const token = saveDietState();
+    const returnBase = buildReturnTo();
+    const returnTo = `${returnBase}${returnBase.includes('?') ? '&' : '?'}diet_state=${token}`;
+    const productUrl = `/shop/products/${component.product_id}?return_to=${encodeURIComponent(returnTo)}`;
+    navigate(productUrl);
+  }, [saveDietState, buildReturnTo, navigate]);
   
   // Получение текущих компонентов для отображения
-  const currentComponents = Object.entries(componentStates).map(([type, state]) => ({
-    type,
-    component: state.alternatives[state.currentIndex],
-    alternatives: state.alternatives,
-    currentIndex: state.currentIndex,
-  }));
+  const currentComponents = Object.entries(componentStates).map(([type, state]) => {
+    const filteredAlternatives = state.alternatives.filter(alt => isComponentTypeCompatible(type, alt));
+    const displayAlternatives = filteredAlternatives.length > 0 ? filteredAlternatives : state.alternatives;
+    const displayIndexMap = displayAlternatives.map((item) => (
+      state.alternatives.findIndex(a => a.product_id === item.product_id)
+    ));
+    const displayIndex = displayIndexMap.indexOf(state.currentIndex);
+    const fallbackIndex = displayIndex >= 0 ? displayIndex : 0;
+
+    return {
+      type,
+      component: displayAlternatives[fallbackIndex],
+      alternatives: displayAlternatives,
+      currentIndex: fallbackIndex,
+      displayIndexMap,
+    };
+  });
   
   // Загрузка
   if (isLoading) {
@@ -1287,15 +1429,16 @@ export default function FoodRecommendationPage() {
               {/* Компоненты */}
               {!isPlanLoading && currentComponents.length > 0 && (
                 <div className="space-y-4">
-                  {currentComponents.map(({ type, component, alternatives, currentIndex }) => (
+                  {currentComponents.map(({ type, component, alternatives, currentIndex, displayIndexMap }) => (
                     <RationComponentCard
                       key={type}
                       component={component}
                       alternatives={alternatives}
                       currentIndex={currentIndex}
-                      onChangeIndex={(idx) => handleChangeComponentIndex(type, idx)}
+                      onChangeIndex={(idx) => handleChangeComponentIndex(type, displayIndexMap[idx] ?? idx)}
                       isLoading={isPlanLoading}
                       componentType={type}
+                      onProductClick={handleOpenProduct}
                     />
                   ))}
                 </div>

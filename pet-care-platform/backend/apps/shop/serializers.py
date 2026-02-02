@@ -29,7 +29,10 @@ from decimal import Decimal
 from .models import AnalyticMetric, ChartConfig, ChartSession, AnalyticsLog
 
 # Новые модели по database_tz.md
-from .models import Category, Brand, Product, ProductSKU, ProductBreedRecommendation
+from .models import (
+    Category, Brand, Product, ProductSKU, ProductBreedRecommendation,
+    FoodDetails, Wishlist, Promotion, PromotionUsage, PriceHistory, ProductRelation
+)
 
 
 # =============================================================================
@@ -48,7 +51,7 @@ class CategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = Category
         fields = [
-            'id', 'external_id', 'name', 'slug', 'description',
+            'id', 'kotmatros_category_id', 'name', 'slug', 'code', 'description',
             'parent', 'parent_name', 'depth', 'path',
             'animal_type', 'product_group', 'product_count',
             'icon', 'image_url', 'is_active', 'show_in_menu',
@@ -72,7 +75,7 @@ class CategoryListSerializer(serializers.ModelSerializer):
     class Meta:
         model = Category
         fields = [
-            'id', 'external_id', 'name', 'slug',
+            'id', 'kotmatros_category_id', 'name', 'slug', 'code',
             'animal_type', 'product_group', 'product_count',
             'icon', 'depth'
         ]
@@ -88,7 +91,7 @@ class CategoryTreeSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Category
-        fields = ['id', 'name', 'slug', 'animal_type', 'product_group', 
+        fields = ['id', 'name', 'slug', 'code', 'animal_type', 'product_group', 
                   'product_count', 'icon', 'children']
     
     def get_children(self, obj):
@@ -102,7 +105,7 @@ class BrandSerializer(serializers.ModelSerializer):
     class Meta:
         model = Brand
         fields = [
-            'id', 'external_id', 'name', 'slug', 'description',
+            'id', 'kotmatros_brand_id', 'name', 'slug', 'description',
             'logo_url', 'website_url', 'brand_class', 'country',
             'priority', 'product_count', 'is_active'
         ]
@@ -148,7 +151,7 @@ class ProductCatalogSerializer(serializers.ModelSerializer):
     class Meta:
         model = Product
         fields = [
-            'id', 'external_id', 'name', 'slug', 'short_description',
+            'id', 'kotmatros_product_id', 'name', 'slug', 'short_description',
             'price', 'compare_price', 'discount_percent',
             'image_url', 'rating', 'rating_count',
             'is_available', 'sku_count',
@@ -180,7 +183,7 @@ class ProductDetailSerializer(serializers.ModelSerializer):
         model = Product
         fields = [
             # Основное
-            'id', 'external_id', 'name', 'slug', 
+            'id', 'kotmatros_product_id', 'name', 'slug', 
             'short_description', 'description',
             # Цены
             'price', 'compare_price', 'discount_percent',
@@ -1114,3 +1117,100 @@ class ChartExportSerializer(serializers.Serializer):
         max_value=100,
         help_text="Качество (для JPG)"
     )
+
+
+# =============================================================================
+# СЕРИАЛИЗАТОРЫ ДЛЯ НОВЫХ МОДЕЛЕЙ (V2)
+# =============================================================================
+
+class FoodDetailsSerializer(serializers.ModelSerializer):
+    """Сериализатор для деталей корма."""
+    
+    class Meta:
+        model = FoodDetails
+        fields = [
+            'product_type', 'target_size', 'activity_level',
+            'grain_free', 'is_hypoallergenic', 'is_veterinary',
+            'special_diet', 'compatibility_group', 'kibble_size',
+            'shelf_life_months', 'storage', 'meat_percent',
+            'energy_kcal_per_100g', 'protein_g_per_100g', 'fat_g_per_100g',
+            'carbs_g_per_100g', 'fiber_g_per_100g', 'ash_g_per_100g',
+            'moisture_percent', 'ingredients', 'allergens',
+            'health_conditions', 'age_min_months', 'age_max_months'
+        ]
+
+
+class WishlistSerializer(serializers.ModelSerializer):
+    """Сериализатор для избранного."""
+    
+    product = ProductCatalogSerializer(read_only=True)
+    
+    class Meta:
+        model = Wishlist
+        fields = ['id', 'product', 'created_at']
+        read_only_fields = ['id', 'created_at']
+
+
+class WishlistAddSerializer(serializers.Serializer):
+    """Сериализатор для добавления в избранное."""
+    
+    product_id = serializers.IntegerField(required=True)
+    
+    def validate_product_id(self, value):
+        if not Product.objects.filter(id=value, status=1).exists():
+            raise serializers.ValidationError("Товар не найден")
+        return value
+
+
+class PromotionSerializer(serializers.ModelSerializer):
+    """Сериализатор для промокодов."""
+    
+    is_valid = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = Promotion
+        fields = [
+            'id', 'code', 'name', 'description',
+            'discount_type', 'discount_value',
+            'min_order_amount', 'max_discount_amount',
+            'applies_to', 'starts_at', 'ends_at',
+            'is_active', 'is_valid'
+        ]
+    
+    def get_is_valid(self, obj):
+        return obj.is_valid()
+
+
+class PromotionApplySerializer(serializers.Serializer):
+    """Сериализатор для применения промокода."""
+    
+    code = serializers.CharField(max_length=50, required=True)
+    
+    def validate_code(self, value):
+        try:
+            promotion = Promotion.objects.get(code__iexact=value.strip())
+        except Promotion.DoesNotExist:
+            raise serializers.ValidationError("Промокод не найден")
+        
+        if not promotion.is_valid():
+            raise serializers.ValidationError("Промокод недействителен или истёк")
+        
+        return value
+
+
+class ProductRelationSerializer(serializers.ModelSerializer):
+    """Сериализатор для связей между товарами."""
+    
+    related_product = ProductCatalogSerializer(read_only=True)
+    
+    class Meta:
+        model = ProductRelation
+        fields = ['id', 'relation_type', 'related_product', 'score', 'sort_order']
+
+
+class PriceHistorySerializer(serializers.ModelSerializer):
+    """Сериализатор для истории цен."""
+    
+    class Meta:
+        model = PriceHistory
+        fields = ['id', 'price_regular', 'price_discount', 'recorded_at']

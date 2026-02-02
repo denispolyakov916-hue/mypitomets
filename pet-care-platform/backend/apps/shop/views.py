@@ -145,12 +145,34 @@ class ProductListView(APIView):
         # Фильтр по новой категории (с иерархией)
         category_id = request.query_params.get('category_id')
         category_slug = request.query_params.get('category_slug')
+        
+        # region agent log
+        import json
+        debug_log_path = r'd:\pet_develop\Pet_dev\pet-care-platform\.cursor\debug.log'
+        try:
+            with open(debug_log_path, 'a', encoding='utf-8') as f:
+                f.write(json.dumps({'location':'views.py:category_filter','message':'Category filter params','data':{'category_slug':category_slug,'category_id':category_id,'products_before':products.count()},'timestamp':__import__('time').time()*1000,'sessionId':'debug-session','hypothesisId':'C-backend'},ensure_ascii=False)+'\n')
+        except: pass
+        # endregion
+        
         if category_slug:
             from .models import Category
             try:
                 cat = Category.objects.get(slug=category_slug, is_active=True)
+                # region agent log
+                try:
+                    with open(debug_log_path, 'a', encoding='utf-8') as f:
+                        f.write(json.dumps({'location':'views.py:category_filter:found','message':'Category found','data':{'cat_id':cat.id,'cat_name':cat.name,'cat_slug':cat.slug},'timestamp':__import__('time').time()*1000,'sessionId':'debug-session','hypothesisId':'C-backend'},ensure_ascii=False)+'\n')
+                except: pass
+                # endregion
                 products = products.in_new_category(cat)
             except Category.DoesNotExist:
+                # region agent log
+                try:
+                    with open(debug_log_path, 'a', encoding='utf-8') as f:
+                        f.write(json.dumps({'location':'views.py:category_filter:notfound','message':'Category NOT found','data':{'category_slug':category_slug},'timestamp':__import__('time').time()*1000,'sessionId':'debug-session','hypothesisId':'C-backend'},ensure_ascii=False)+'\n')
+                except: pass
+                # endregion
                 pass
         elif category_id:
             try:
@@ -172,6 +194,11 @@ class ProductListView(APIView):
                 products = products.by_brand(int(brand_id))
             except ValueError:
                 pass
+        
+        # Фильтр по классу бренда
+        brand_class = request.query_params.get('brand_class')
+        if brand_class and brand_class in ['economy', 'premium', 'super_premium', 'holistic']:
+            products = products.filter(brand__brand_class=brand_class)
         
         # Фильтр по возрастной группе
         age_group = request.query_params.get('age_group')
@@ -399,9 +426,9 @@ class ProductListView(APIView):
         # Загружаем данные из БД для этих категорий
         external_ids = [c['external_id'] for c in main_cat_list]
         db_categories = {
-            c.external_id: c 
+            c.kotmatros_category_id: c 
             for c in ShopCategory.objects.filter(
-                external_id__in=external_ids,
+                kotmatros_category_id__in=external_ids,
                 is_active=True
             ).prefetch_related('children')
         }
@@ -425,7 +452,7 @@ class ProductListView(APIView):
             
             hierarchical_categories.append({
                 'id': db_cat.id,
-                'external_id': db_cat.external_id,
+                'external_id': db_cat.kotmatros_category_id,
                 'name': cat_info['name'],  # Используем короткое название
                 'slug': db_cat.slug,
                 'icon': cat_info['icon'],
@@ -2791,7 +2818,7 @@ class ProductListViewV2(APIView):
                 # Включаем товары из подкатегорий
                 products = products.filter(
                     Q(new_category=cat) | 
-                    Q(new_category__path__contains=[cat.external_id])
+                    Q(new_category__path__contains=[cat.kotmatros_category_id])
                 )
             except Category.DoesNotExist:
                 pass
@@ -2800,7 +2827,7 @@ class ProductListViewV2(APIView):
                 cat = Category.objects.get(id=category_id, is_active=True)
                 products = products.filter(
                     Q(new_category=cat) | 
-                    Q(new_category__path__contains=[cat.external_id])
+                    Q(new_category__path__contains=[cat.kotmatros_category_id])
                 )
             except Category.DoesNotExist:
                 pass

@@ -21,6 +21,7 @@ import { useProducts } from '../../hooks/useProducts'
 import ProductCard from '../../components/ProductCard'
 import { ProductGridSkeleton } from '../../components/ProductCardSkeleton'
 import Modal from '../../components/ui/Modal'
+import ShopFilters from '../../components/Shop/ShopFilters'
 
 /**
  * Компонент боковой панели фильтров (мемоизированный)
@@ -522,30 +523,14 @@ const MobileFiltersModal = memo(function MobileFiltersModal({
       centered={false}
       className="rounded-2xl overflow-hidden"
     >
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <p className="text-sm text-gray-600">
-            Настройте подборку под вашего питомца
-          </p>
-          <button
-            onClick={onReset}
-            disabled={isLoading}
-            className="text-sm text-primary-600 hover:text-primary-700 disabled:opacity-50"
-          >
-            Сбросить
-          </button>
-        </div>
-
-        <FilterSidebar
-          filters={filters}
-          availableFilters={availableFilters}
-          onFilterChange={(name, value) => onFilterChange(name, value)}
-          onReset={onReset}
-          isLoading={isLoading}
-          disableInternalScroll={true}
-          hideHeader={true}
-        />
-      </div>
+      <ShopFilters
+        filters={filters}
+        availableFilters={availableFilters}
+        onChange={onFilterChange}
+        onReset={onReset}
+        isLoading={isLoading}
+        className="border-0 shadow-none"
+      />
     </Modal>
   )
 })
@@ -582,8 +567,36 @@ const ActiveFilterChips = memo(function ActiveFilterChips({ filters, availableFi
     chips.push({ key: 'category', label: legacyLabel ? `Категория: ${legacyLabel}` : 'Категория' })
   }
 
-  // Бренд
-  if (filters.vendor) chips.push({ key: 'vendor', label: `Бренд: ${filters.vendor}` })
+  // Бренд (brand_id or legacy vendor)
+  if (filters.brand_id) {
+    const brandLabel = availableFilters.brands?.find(b => String(b.id) === String(filters.brand_id))?.name
+    chips.push({ key: 'brand_id', label: brandLabel ? `Бренд: ${brandLabel}` : 'Бренд' })
+  } else if (filters.vendor) {
+    chips.push({ key: 'vendor', label: `Бренд: ${filters.vendor}` })
+  }
+
+  // Brand class
+  const brandClassLabels = {
+    holistic: 'Холистик',
+    super_premium: 'Супер-премиум',
+    premium: 'Премиум',
+    economy: 'Эконом',
+  }
+  if (filters.brand_class && brandClassLabels[filters.brand_class]) {
+    chips.push({ key: 'brand_class', label: `Класс: ${brandClassLabels[filters.brand_class]}` })
+  }
+
+  // Age group
+  const ageLabels = { puppy: 'Щенок', kitten: 'Котёнок', adult: 'Взрослый', senior: 'Пожилой' }
+  if (filters.age_group && ageLabels[filters.age_group]) {
+    chips.push({ key: 'age_group', label: `Возраст: ${ageLabels[filters.age_group]}` })
+  }
+
+  // Size group
+  const sizeLabels = { mini: 'Мини', small: 'Малый', medium: 'Средний', large: 'Крупный', giant: 'Гигант' }
+  if (filters.size_group && sizeLabels[filters.size_group]) {
+    chips.push({ key: 'size_group', label: `Размер: ${sizeLabels[filters.size_group]}` })
+  }
 
   // Цена
   if (filters.min_price || filters.max_price) {
@@ -592,9 +605,14 @@ const ActiveFilterChips = memo(function ActiveFilterChips({ filters, availableFi
     chips.push({ key: 'price', label: `Цена: ${from} ${to}` })
   }
 
+  // Boolean filters
+  if (filters.is_grain_free === 'true') chips.push({ key: 'is_grain_free', label: '🌾 Беззерновой' })
+  if (filters.is_hypoallergenic === 'true') chips.push({ key: 'is_hypoallergenic', label: '🛡️ Гипоаллергенный' })
+  if (filters.is_veterinary === 'true') chips.push({ key: 'is_veterinary', label: '⚕️ Ветеринарный' })
+
   // Наличие / скидки
   if (filters.in_stock === 'true') chips.push({ key: 'in_stock', label: 'В наличии' })
-  if (filters.has_discount === 'true') chips.push({ key: 'has_discount', label: 'Со скидкой' })
+  if (filters.has_discount === 'true') chips.push({ key: 'has_discount', label: '🔥 Со скидкой' })
 
   if (chips.length === 0) return null
 
@@ -734,8 +752,18 @@ function Shop() {
     animal: searchParams.get('animal') || '',
     pet_id: searchParams.get('pet_id') || '',
     category: searchParams.get('category') || '',
-    category_slug: searchParams.get('category_slug') || '',  // Новый фильтр для иерархических категорий
+    category_slug: searchParams.get('category_slug') || '',
     subcategory: searchParams.get('subcategory') || '',
+    product_group: searchParams.get('product_group') || '',
+    // New filters
+    age_group: searchParams.get('age_group') || '',
+    size_group: searchParams.get('size_group') || '',
+    brand_class: searchParams.get('brand_class') || '',
+    brand_id: searchParams.get('brand_id') || '',
+    is_grain_free: searchParams.get('is_grain_free') || '',
+    is_hypoallergenic: searchParams.get('is_hypoallergenic') || '',
+    is_veterinary: searchParams.get('is_veterinary') || '',
+    // Legacy filters
     vendor: searchParams.get('vendor') || '',
     min_price: searchParams.get('min_price') || '',
     max_price: searchParams.get('max_price') || '',
@@ -765,6 +793,9 @@ function Shop() {
    * Обновление фильтра с debouncing
    */
   const handleFilterChange = useCallback((name, value) => {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/4f373f70-f463-4309-8a8e-4162185b5f36',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Shop.jsx:handleFilterChange',message:'Filter change called',data:{name,value,currentParams:Object.fromEntries(searchParams)},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'C'})}).catch(()=>{});
+    // #endregion
     const newParams = new URLSearchParams(searchParams)
     
     if (value) {
@@ -793,6 +824,9 @@ function Shop() {
       newParams.delete('pet_id')
     }
     
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/4f373f70-f463-4309-8a8e-4162185b5f36',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Shop.jsx:handleFilterChange:after',message:'URL params updated',data:{newParamsStr:newParams.toString()},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'D'})}).catch(()=>{});
+    // #endregion
     setSearchParams(newParams)
   }, [searchParams, setSearchParams])
   
@@ -1015,10 +1049,10 @@ function Shop() {
       <div className="flex gap-6">
         {/* Боковая панель с фильтрами - внутри контейнера */}
         <aside className="w-72 flex-shrink-0 hidden lg:block sticky top-24 self-start">
-          <FilterSidebar
+          <ShopFilters
             filters={filters}
             availableFilters={availableFilters}
-            onFilterChange={handleFilterChange}
+            onChange={handleFilterChange}
             onReset={handleReset}
             isLoading={isLoading}
           />

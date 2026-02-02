@@ -89,10 +89,10 @@ class ProductAdmin(ExportCsvMixin, admin.ModelAdmin):
         'animal', 'category', 'subcategory', 'vendor', 'in_stock',
         'created_at', 'updated_at'
     )
-    search_fields = ('name', 'slug', 'vendor', 'external_id', 'vendor_code', 'barcode')
+    search_fields = ('name', 'slug', 'vendor', 'kotmatros_product_id', 'vendor_code', 'barcode')
     ordering = ('-order_count', 'name')
     readonly_fields = (
-        'external_id', 'created_at', 'updated_at', 'rating_display',
+        'kotmatros_product_id', 'created_at', 'updated_at', 'rating_display',
         'reviews_count_display', 'main_image', 'sku_count'
     )
     list_editable = ('is_available', 'stock_count')
@@ -108,7 +108,7 @@ class ProductAdmin(ExportCsvMixin, admin.ModelAdmin):
 
     fieldsets = (
         ('Основная информация', {
-            'fields': ('external_id', 'name', 'slug', 'short_description', 'description')
+            'fields': ('kotmatros_product_id', 'name', 'slug', 'short_description', 'description')
         }),
         ('Цены', {
             'fields': ('price', 'compare_price', 'discount_percent')
@@ -650,11 +650,11 @@ class ProductSKUInline(admin.TabularInline):
 class CategoryAdmin(admin.ModelAdmin):
     """Админ для категорий товаров."""
     list_display = (
-        'name', 'external_id', 'animal_type', 'product_group',
+        'name', 'code', 'kotmatros_category_id', 'animal_type', 'product_group',
         'parent', 'depth', 'product_count', 'is_active', 'show_in_menu', 'sort_order'
     )
     list_filter = ('animal_type', 'product_group', 'depth', 'is_active', 'show_in_menu')
-    search_fields = ('name', 'slug', 'external_id')
+    search_fields = ('name', 'slug', 'code', 'kotmatros_category_id')
     ordering = ('sort_order', 'name')
     list_editable = ('is_active', 'show_in_menu', 'sort_order')
     readonly_fields = ('depth', 'path', 'product_count')
@@ -663,7 +663,7 @@ class CategoryAdmin(admin.ModelAdmin):
     
     fieldsets = (
         ('Основное', {
-            'fields': ('name', 'slug', 'external_id', 'description')
+            'fields': ('name', 'slug', 'code', 'kotmatros_category_id', 'description')
         }),
         ('Иерархия', {
             'fields': ('parent', 'depth', 'path')
@@ -685,11 +685,11 @@ class CategoryAdmin(admin.ModelAdmin):
 class BrandAdmin(admin.ModelAdmin):
     """Админ для брендов."""
     list_display = (
-        'name', 'external_id', 'brand_class', 'country',
+        'name', 'kotmatros_brand_id', 'brand_class', 'country',
         'priority', 'product_count', 'is_active'
     )
     list_filter = ('brand_class', 'is_active', 'country')
-    search_fields = ('name', 'slug', 'external_id')
+    search_fields = ('name', 'slug', 'kotmatros_brand_id')
     ordering = ('-priority', 'name')
     list_editable = ('priority', 'is_active')
     readonly_fields = ('product_count',)
@@ -698,7 +698,7 @@ class BrandAdmin(admin.ModelAdmin):
     
     fieldsets = (
         ('Основное', {
-            'fields': ('name', 'slug', 'external_id', 'description')
+            'fields': ('name', 'slug', 'kotmatros_brand_id', 'description')
         }),
         ('Классификация', {
             'fields': ('brand_class', 'country', 'priority')
@@ -720,14 +720,14 @@ class ProductSKUAdmin(admin.ModelAdmin):
         'weight_display', 'flavor_display', 'size_code', 'is_default'
     )
     list_filter = ('available', 'is_default', 'status')
-    search_fields = ('sku', 'name', 'product__name', 'external_id')
+    search_fields = ('sku', 'name', 'product__name', 'kotmatros_variant_id')
     ordering = ('product', 'sort_order')
     raw_id_fields = ('product',)
     list_per_page = 50
     
     fieldsets = (
         ('Товар', {
-            'fields': ('product', 'sku', 'name', 'external_id')
+            'fields': ('product', 'sku', 'name', 'kotmatros_variant_id')
         }),
         ('Цены', {
             'fields': ('price', 'compare_price')

@@ -138,9 +138,11 @@ class ProductQuerySet(models.QuerySet):
                 return self
         
         # Фильтруем по категории и её подкатегориям (через path)
+        # Используем kotmatros_category_id или pk для поиска в path
+        cat_id_for_path = category.kotmatros_category_id or category.pk
         return self.filter(
             Q(new_category=category) | 
-            Q(new_category__path__contains=[category.external_id])
+            Q(new_category__path__contains=[cat_id_for_path])
         )
     
     def by_product_group(self, product_group):

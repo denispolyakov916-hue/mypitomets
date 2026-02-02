@@ -56,17 +56,27 @@ class Category(models.Model):
     ]
     
     # Идентификаторы
-    external_id = models.IntegerField(
+    kotmatros_category_id = models.BigIntegerField(
         unique=True, 
         null=True, 
         blank=True,
-        verbose_name='ID из API',
+        db_column='external_id',  # Сохраняем имя колонки для обратной совместимости
+        verbose_name='ID в Kotmatros',
         help_text='ID категории из внешнего API Kotmatros'
     )
     
     # Основные поля
     name = models.CharField(max_length=255, verbose_name='Название')
     slug = models.SlugField(max_length=255, unique=True, verbose_name='URL-имя')
+    code = models.CharField(
+        max_length=100,
+        unique=True,
+        null=True,
+        blank=True,
+        db_index=True,
+        verbose_name='Технический код',
+        help_text='Код для фильтрации: food.dry, care.shampoos, walk.collars'
+    )
     description = models.TextField(blank=True, verbose_name='Описание')
     
     # Иерархия
@@ -136,7 +146,7 @@ class Category(models.Model):
             models.Index(fields=['parent']),
             models.Index(fields=['animal_type', 'product_group']),
             models.Index(fields=['depth', 'is_active', 'sort_order']),
-            models.Index(fields=['external_id']),
+            models.Index(fields=['kotmatros_category_id'], name='idx_cat_kotmatros'),
         ]
     
     def __str__(self):
@@ -146,29 +156,30 @@ class Category(models.Model):
         """Автоматически обновляет path и depth при сохранении."""
         if self.parent:
             self.depth = self.parent.depth + 1
-            self.path = self.parent.path + [self.external_id or self.pk]
+            self.path = self.parent.path + [self.kotmatros_category_id or self.pk]
         else:
             self.depth = 0
-            self.path = [self.external_id or self.pk]
+            self.path = [self.kotmatros_category_id or self.pk]
         super().save(*args, **kwargs)
     
     def get_ancestors(self):
         """Получить всех предков категории."""
         if not self.parent:
             return Category.objects.none()
-        return Category.objects.filter(external_id__in=self.path[:-1])
+        return Category.objects.filter(kotmatros_category_id__in=self.path[:-1])
     
     def get_descendants(self):
         """Получить всех потомков категории."""
-        return Category.objects.filter(path__contains=[self.external_id or self.pk])
+        return Category.objects.filter(path__contains=[self.kotmatros_category_id or self.pk])
     
     def to_dict(self):
         """Сериализация для API."""
         return {
             'id': self.id,
-            'external_id': self.external_id,
+            'kotmatros_category_id': self.kotmatros_category_id,
             'name': self.name,
             'slug': self.slug,
+            'code': self.code,
             'parent_id': self.parent_id,
             'depth': self.depth,
             'path': self.path,
@@ -194,11 +205,12 @@ class Brand(models.Model):
     ]
     
     # Идентификаторы
-    external_id = models.IntegerField(
+    kotmatros_brand_id = models.BigIntegerField(
         unique=True,
         null=True,
         blank=True,
-        verbose_name='ID из API'
+        db_column='external_id',  # Сохраняем имя колонки для обратной совместимости
+        verbose_name='ID в Kotmatros'
     )
     
     # Основные поля
@@ -239,7 +251,7 @@ class Brand(models.Model):
         ordering = ['-priority', 'name']
         indexes = [
             models.Index(fields=['brand_class', '-priority']),
-            models.Index(fields=['external_id']),
+            models.Index(fields=['kotmatros_brand_id'], name='idx_brand_kotmatros'),
         ]
     
     def __str__(self):
@@ -249,7 +261,7 @@ class Brand(models.Model):
         """Сериализация для API."""
         return {
             'id': self.id,
-            'external_id': self.external_id,
+            'kotmatros_brand_id': self.kotmatros_brand_id,
             'name': self.name,
             'slug': self.slug,
             'logo_url': self.logo_url,
@@ -385,8 +397,15 @@ class Product(models.Model):
     # ИДЕНТИФИКАТОРЫ
     # ==========================================================================
     
-    # ID из внешнего каталога
-    external_id = models.CharField(max_length=50, unique=True, default='', verbose_name='Внешний ID')
+    # ID из внешнего каталога Kotmatros
+    kotmatros_product_id = models.BigIntegerField(
+        unique=True,
+        null=True,
+        blank=True,
+        db_column='external_id',  # Сохраняем имя колонки для обратной совместимости
+        verbose_name='ID в Kotmatros',
+        help_text='ID товара из внешнего API Kotmatros'
+    )
     group_id = models.CharField(max_length=50, blank=True, null=True, verbose_name='ID группы')
     
     # ==========================================================================
@@ -876,7 +895,7 @@ class Product(models.Model):
         """Сериализация для API (legacy + новые поля)."""
         return {
             'id': self.id,
-            'external_id': self.external_id,
+            'kotmatros_product_id': self.kotmatros_product_id,
             'name': self.name,
             'slug': self.slug,
             'short_description': self.short_description,
@@ -926,7 +945,7 @@ class Product(models.Model):
         """
         return {
             'id': self.id,
-            'external_id': self.external_id,
+            'kotmatros_product_id': self.kotmatros_product_id,
             'name': self.name,
             'slug': self.slug,
             'short_description': self.short_description,
@@ -1152,12 +1171,14 @@ class ProductSKU(models.Model):
     )
     
     # Идентификаторы
-    external_id = models.IntegerField(
+    kotmatros_variant_id = models.BigIntegerField(
+        unique=True,
         null=True, 
         blank=True,
-        verbose_name='ID SKU из API'
+        db_column='external_id',  # Сохраняем имя колонки для обратной совместимости
+        verbose_name='ID SKU в Kotmatros'
     )
-    sku = models.CharField(max_length=100, verbose_name='Артикул')
+    sku = models.CharField(max_length=100, blank=True, verbose_name='Артикул')
     name = models.CharField(
         max_length=255, 
         blank=True,
@@ -1318,7 +1339,7 @@ class ProductSKU(models.Model):
             models.Index(fields=['flavor'], name='idx_skus_flavor'),
             models.Index(fields=['size_code'], name='idx_skus_size'),
             models.Index(fields=['color'], name='idx_skus_color'),
-            models.Index(fields=['external_id'], name='idx_skus_external'),
+            models.Index(fields=['kotmatros_variant_id'], name='idx_skus_kotmatros'),
         ]
     
     def __str__(self):
@@ -1601,6 +1622,520 @@ class ProductBreedRecommendation(models.Model):
             cls.objects.bulk_create(recommendations, ignore_conflicts=True)
         
         return recommendations
+
+
+# =============================================================================
+# ДЕТАЛИ КОРМА (для подбора питания)
+# =============================================================================
+
+class FoodDetails(models.Model):
+    """
+    Детальная информация о корме для подбора питания.
+    
+    Связь 1:1 с Product для товаров категорий food/treats/supplements.
+    Содержит нутриенты, ингредиенты, аллергены и другие данные для
+    алгоритма подбора корма.
+    """
+    
+    FOOD_TYPE_CHOICES = [
+        ('food', 'Корм'),
+        ('treat', 'Лакомство'),
+        ('supplement', 'Витамины/добавки'),
+    ]
+    
+    SIZE_CHOICES = [
+        ('toy', 'Той'),
+        ('small', 'Маленький'),
+        ('medium', 'Средний'),
+        ('large', 'Крупный'),
+        ('giant', 'Гигантский'),
+        ('all', 'Все размеры'),
+    ]
+    
+    ACTIVITY_CHOICES = [
+        ('low', 'Низкая'),
+        ('normal', 'Нормальная'),
+        ('high', 'Высокая'),
+    ]
+    
+    KIBBLE_SIZE_CHOICES = [
+        ('small', 'Мелкая'),
+        ('medium', 'Средняя'),
+        ('large', 'Крупная'),
+    ]
+    
+    COMPATIBILITY_CHOICES = [
+        ('regular', 'Обычный'),
+        ('hypoallergenic', 'Гипоаллергенный'),
+        ('therapeutic_renal', 'Лечебный: почки'),
+        ('therapeutic_diabetic', 'Лечебный: диабет'),
+        ('therapeutic_digestive', 'Лечебный: ЖКТ'),
+        ('therapeutic_weight', 'Лечебный: вес'),
+        ('therapeutic_urinary', 'Лечебный: МКБ'),
+    ]
+    
+    SPECIAL_DIET_CHOICES = [
+        ('sterilized', 'Для стерилизованных'),
+        ('hypoallergenic', 'Гипоаллергенный'),
+        ('sensitive_digestion', 'Чувствительное пищеварение'),
+        ('weight_control', 'Контроль веса'),
+        ('grain_free', 'Беззерновой'),
+        ('urinary', 'Здоровье мочевыводящих путей'),
+        ('kidney_support', 'Поддержка почек'),
+        ('joint_support', 'Поддержка суставов'),
+        ('gastrointestinal', 'ЖКТ'),
+        ('skin_coat', 'Кожа и шерсть'),
+    ]
+    
+    # Связь с товаром (1:1)
+    product = models.OneToOneField(
+        Product,
+        on_delete=models.CASCADE,
+        primary_key=True,
+        related_name='food_details',
+        verbose_name='Товар'
+    )
+    
+    # Тип корма
+    product_type = models.CharField(
+        max_length=20,
+        choices=FOOD_TYPE_CHOICES,
+        default='food',
+        verbose_name='Тип продукта'
+    )
+    
+    # Целевая аудитория
+    target_size = models.CharField(
+        max_length=10,
+        choices=SIZE_CHOICES,
+        blank=True,
+        null=True,
+        verbose_name='Целевой размер'
+    )
+    activity_level = models.CharField(
+        max_length=10,
+        choices=ACTIVITY_CHOICES,
+        blank=True,
+        null=True,
+        verbose_name='Уровень активности'
+    )
+    
+    # Особенности
+    grain_free = models.BooleanField(default=False, verbose_name='Беззерновой')
+    is_hypoallergenic = models.BooleanField(default=False, verbose_name='Гипоаллергенный')
+    is_veterinary = models.BooleanField(default=False, verbose_name='Ветеринарная диета')
+    
+    # Специальные назначения (массив)
+    special_diet = ArrayField(
+        models.CharField(max_length=30),
+        default=list,
+        blank=True,
+        verbose_name='Специальные назначения'
+    )
+    
+    # Совместимость
+    compatibility_group = models.CharField(
+        max_length=30,
+        choices=COMPATIBILITY_CHOICES,
+        default='regular',
+        verbose_name='Группа совместимости'
+    )
+    
+    # Физические характеристики
+    kibble_size = models.CharField(
+        max_length=10,
+        choices=KIBBLE_SIZE_CHOICES,
+        blank=True,
+        null=True,
+        verbose_name='Размер гранулы'
+    )
+    shelf_life_months = models.IntegerField(null=True, blank=True, verbose_name='Срок годности (мес)')
+    storage = models.TextField(blank=True, verbose_name='Условия хранения')
+    
+    # Нутриенты (на 100г)
+    meat_percent = models.DecimalField(
+        max_digits=5, decimal_places=2, null=True, blank=True,
+        verbose_name='Процент мяса'
+    )
+    energy_kcal_per_100g = models.DecimalField(
+        max_digits=6, decimal_places=2, null=True, blank=True,
+        verbose_name='Калорийность (ккал/100г)'
+    )
+    protein_g_per_100g = models.DecimalField(
+        max_digits=6, decimal_places=2, null=True, blank=True,
+        verbose_name='Белок (г/100г)'
+    )
+    fat_g_per_100g = models.DecimalField(
+        max_digits=6, decimal_places=2, null=True, blank=True,
+        verbose_name='Жир (г/100г)'
+    )
+    carbs_g_per_100g = models.DecimalField(
+        max_digits=6, decimal_places=2, null=True, blank=True,
+        verbose_name='Углеводы (г/100г)'
+    )
+    fiber_g_per_100g = models.DecimalField(
+        max_digits=6, decimal_places=2, null=True, blank=True,
+        verbose_name='Клетчатка (г/100г)'
+    )
+    ash_g_per_100g = models.DecimalField(
+        max_digits=6, decimal_places=2, null=True, blank=True,
+        verbose_name='Зола (г/100г)'
+    )
+    moisture_percent = models.DecimalField(
+        max_digits=5, decimal_places=2, null=True, blank=True,
+        verbose_name='Влажность (%)'
+    )
+    
+    # Состав (массивы для фильтрации)
+    ingredients = ArrayField(
+        models.CharField(max_length=100),
+        default=list,
+        blank=True,
+        verbose_name='Ингредиенты'
+    )
+    allergens = ArrayField(
+        models.CharField(max_length=50),
+        default=list,
+        blank=True,
+        verbose_name='Аллергены'
+    )
+    health_conditions = ArrayField(
+        models.CharField(max_length=50),
+        default=list,
+        blank=True,
+        verbose_name='Показания по здоровью'
+    )
+    
+    # Возрастные ограничения
+    age_min_months = models.IntegerField(null=True, blank=True, verbose_name='Мин. возраст (мес)')
+    age_max_months = models.IntegerField(null=True, blank=True, verbose_name='Макс. возраст (мес)')
+    
+    class Meta:
+        db_table = 'shop_food_details'
+        verbose_name = 'Детали корма'
+        verbose_name_plural = 'Детали кормов'
+    
+    def __str__(self):
+        return f"FoodDetails: {self.product.name}"
+    
+    def to_dict(self):
+        return {
+            'product_type': self.product_type,
+            'target_size': self.target_size,
+            'activity_level': self.activity_level,
+            'grain_free': self.grain_free,
+            'is_hypoallergenic': self.is_hypoallergenic,
+            'is_veterinary': self.is_veterinary,
+            'special_diet': self.special_diet,
+            'compatibility_group': self.compatibility_group,
+            'kibble_size': self.kibble_size,
+            'energy_kcal_per_100g': float(self.energy_kcal_per_100g) if self.energy_kcal_per_100g else None,
+            'protein_g_per_100g': float(self.protein_g_per_100g) if self.protein_g_per_100g else None,
+            'fat_g_per_100g': float(self.fat_g_per_100g) if self.fat_g_per_100g else None,
+            'fiber_g_per_100g': float(self.fiber_g_per_100g) if self.fiber_g_per_100g else None,
+            'ingredients': self.ingredients,
+            'allergens': self.allergens,
+            'health_conditions': self.health_conditions,
+        }
+
+
+# =============================================================================
+# ИЗБРАННОЕ
+# =============================================================================
+
+class Wishlist(models.Model):
+    """
+    Избранные товары пользователя.
+    """
+    
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='wishlists',
+        verbose_name='Пользователь'
+    )
+    product = models.ForeignKey(
+        Product,
+        on_delete=models.CASCADE,
+        related_name='wishlisted_by',
+        verbose_name='Товар'
+    )
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='Добавлено')
+    
+    class Meta:
+        db_table = 'shop_wishlists'
+        verbose_name = 'Избранное'
+        verbose_name_plural = 'Избранное'
+        unique_together = ['user', 'product']
+        ordering = ['-created_at']
+    
+    def __str__(self):
+        return f"{self.user.email} - {self.product.name}"
+
+
+# =============================================================================
+# ПРОМО-АКЦИИ И СКИДКИ
+# =============================================================================
+
+class Promotion(models.Model):
+    """
+    Промокоды и акции.
+    """
+    
+    DISCOUNT_TYPE_CHOICES = [
+        ('percent', 'Процент'),
+        ('fixed', 'Фиксированная сумма'),
+        ('free_shipping', 'Бесплатная доставка'),
+    ]
+    
+    TARGET_CHOICES = [
+        ('all', 'Вся корзина'),
+        ('category', 'Категория'),
+        ('brand', 'Бренд'),
+        ('product', 'Конкретный товар'),
+    ]
+    
+    code = models.CharField(
+        max_length=50,
+        unique=True,
+        verbose_name='Промокод'
+    )
+    name = models.CharField(max_length=255, verbose_name='Название акции')
+    description = models.TextField(blank=True, verbose_name='Описание для пользователя')
+    
+    # Тип и размер скидки
+    discount_type = models.CharField(
+        max_length=20,
+        choices=DISCOUNT_TYPE_CHOICES,
+        default='percent',
+        verbose_name='Тип скидки'
+    )
+    discount_value = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        verbose_name='Размер скидки'
+    )
+    
+    # Ограничения
+    min_order_amount = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        verbose_name='Минимальная сумма заказа'
+    )
+    max_discount_amount = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        verbose_name='Максимальная сумма скидки'
+    )
+    max_uses = models.IntegerField(
+        null=True,
+        blank=True,
+        verbose_name='Максимум использований'
+    )
+    max_uses_per_user = models.IntegerField(
+        default=1,
+        verbose_name='Максимум на пользователя'
+    )
+    uses_count = models.IntegerField(
+        default=0,
+        verbose_name='Использовано раз'
+    )
+    
+    # К чему применяется
+    applies_to = models.CharField(
+        max_length=20,
+        choices=TARGET_CHOICES,
+        default='all',
+        verbose_name='Применяется к'
+    )
+    target_ids = ArrayField(
+        models.BigIntegerField(),
+        default=list,
+        blank=True,
+        verbose_name='ID целей',
+        help_text='ID категорий/брендов/товаров'
+    )
+    
+    # Период действия
+    starts_at = models.DateTimeField(null=True, blank=True, verbose_name='Начало')
+    ends_at = models.DateTimeField(null=True, blank=True, verbose_name='Окончание')
+    
+    is_active = models.BooleanField(default=True, verbose_name='Активен')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='Создан')
+    
+    class Meta:
+        db_table = 'shop_promotions'
+        verbose_name = 'Промокод'
+        verbose_name_plural = 'Промокоды'
+        ordering = ['-created_at']
+    
+    def __str__(self):
+        return f"{self.code} - {self.name}"
+    
+    def is_valid(self):
+        """Проверка валидности промокода."""
+        if not self.is_active:
+            return False
+        
+        now = timezone.now()
+        if self.starts_at and now < self.starts_at:
+            return False
+        if self.ends_at and now > self.ends_at:
+            return False
+        if self.max_uses and self.uses_count >= self.max_uses:
+            return False
+        
+        return True
+    
+    def can_use_by_user(self, user):
+        """Проверка, может ли пользователь использовать промокод."""
+        if not self.is_valid():
+            return False
+        
+        user_uses = self.usages.filter(user=user).count()
+        return user_uses < self.max_uses_per_user
+
+
+class PromotionUsage(models.Model):
+    """
+    История использования промокодов.
+    """
+    
+    promotion = models.ForeignKey(
+        Promotion,
+        on_delete=models.CASCADE,
+        related_name='usages',
+        verbose_name='Промокод'
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='promotion_usages',
+        verbose_name='Пользователь'
+    )
+    order = models.ForeignKey(
+        'Order',
+        on_delete=models.CASCADE,
+        related_name='promotion_usages',
+        verbose_name='Заказ'
+    )
+    discount_amount = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        verbose_name='Сумма скидки'
+    )
+    used_at = models.DateTimeField(auto_now_add=True, verbose_name='Использован')
+    
+    class Meta:
+        db_table = 'shop_promotion_usages'
+        verbose_name = 'Использование промокода'
+        verbose_name_plural = 'Использования промокодов'
+    
+    def __str__(self):
+        return f"{self.promotion.code} - Order {self.order_id}"
+
+
+# =============================================================================
+# ИСТОРИЯ ЦЕН
+# =============================================================================
+
+class PriceHistory(models.Model):
+    """
+    История изменения цен для аналитики и отображения динамики.
+    """
+    
+    variant = models.ForeignKey(
+        ProductSKU,
+        on_delete=models.CASCADE,
+        related_name='price_history',
+        verbose_name='Вариант товара'
+    )
+    price_regular = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        verbose_name='Базовая цена'
+    )
+    price_discount = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        verbose_name='Цена со скидкой'
+    )
+    recorded_at = models.DateTimeField(auto_now_add=True, verbose_name='Записано')
+    
+    class Meta:
+        db_table = 'shop_price_history'
+        verbose_name = 'История цены'
+        verbose_name_plural = 'История цен'
+        ordering = ['-recorded_at']
+        indexes = [
+            models.Index(fields=['variant', '-recorded_at']),
+        ]
+    
+    def __str__(self):
+        return f"{self.variant} - {self.price_regular} @ {self.recorded_at}"
+
+
+# =============================================================================
+# СВЯЗИ МЕЖДУ ТОВАРАМИ
+# =============================================================================
+
+class ProductRelation(models.Model):
+    """
+    Связи между товарами для рекомендаций.
+    """
+    
+    RELATION_TYPE_CHOICES = [
+        ('similar', 'Похожие товары'),
+        ('complementary', 'Сопутствующие'),
+        ('upsell', 'Более дорогая альтернатива'),
+        ('cross_sell', 'Перекрёстные продажи'),
+    ]
+    
+    product = models.ForeignKey(
+        Product,
+        on_delete=models.CASCADE,
+        related_name='related_from',
+        verbose_name='Товар'
+    )
+    related_product = models.ForeignKey(
+        Product,
+        on_delete=models.CASCADE,
+        related_name='related_to',
+        verbose_name='Связанный товар'
+    )
+    relation_type = models.CharField(
+        max_length=20,
+        choices=RELATION_TYPE_CHOICES,
+        verbose_name='Тип связи'
+    )
+    score = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        default=0,
+        verbose_name='Вес связи'
+    )
+    is_auto = models.BooleanField(
+        default=False,
+        verbose_name='Автоматическая',
+        help_text='Сгенерирована алгоритмом или вручную'
+    )
+    sort_order = models.IntegerField(default=0, verbose_name='Порядок')
+    
+    class Meta:
+        db_table = 'shop_product_relations'
+        verbose_name = 'Связь товаров'
+        verbose_name_plural = 'Связи товаров'
+        unique_together = ['product', 'related_product', 'relation_type']
+        ordering = ['-score', 'sort_order']
+    
+    def __str__(self):
+        return f"{self.product.name} -> {self.related_product.name} ({self.relation_type})"
 
 
 class Cart(models.Model):

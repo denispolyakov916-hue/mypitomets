@@ -46,6 +46,10 @@ class CalorieResult:
     multi_dry_grams: Optional[float] = None
     multi_wet_grams: Optional[float] = None
     multi_treat_kcal: Optional[float] = None
+    treat_kcal_per_day: Optional[float] = None
+    
+    # Целевые диапазоны БЖУ (в %)
+    macro_targets: Optional[Dict[str, Dict[str, float]]] = None
     
     # Метаданные расчёта
     calculation_method: str = 'standard'
@@ -71,6 +75,8 @@ class CalorieResult:
                 'wet_grams': round(self.multi_wet_grams, 0) if self.multi_wet_grams else None,
                 'treat_kcal': round(self.multi_treat_kcal, 0) if self.multi_treat_kcal else None,
             },
+            'treat_kcal_per_day': round(self.treat_kcal_per_day, 0) if self.treat_kcal_per_day else None,
+            'macro_targets': self.macro_targets,
             'calculation_method': self.calculation_method,
             'data_completeness': self.data_completeness,
         }
@@ -364,27 +370,155 @@ class CalorieCalculatorService:
         # 11. Рекомендации по кормлению
         result.meals_per_day = self._get_meals_per_day(pet)
         result.calories_per_meal = result.mer / result.meals_per_day
+
+        # 11.1 Целевые диапазоны БЖУ
+        result.macro_targets = self._get_macro_targets(pet)
         
         # 12. Перевод в граммы корма
         dry_kcal = self.FOOD_CALORIE_DENSITY['dry']
         wet_kcal = self.FOOD_CALORIE_DENSITY['wet']
+        treat_ratio = self._get_treat_ratio(pet)
+        result.treat_kcal_per_day = result.mer * treat_ratio
+        main_calories = result.mer * (1 - treat_ratio)
         
         # Только сухой корм
-        result.dry_food_grams = (result.mer / dry_kcal) * 100
+        result.dry_food_grams = (main_calories / dry_kcal) * 100
         
         # Только влажный корм
-        result.wet_food_grams = (result.mer / wet_kcal) * 100
+        result.wet_food_grams = (main_calories / wet_kcal) * 100
         
-        # Мультипитание (60/30/10)
-        result.multi_dry_grams = (result.mer * 0.60 / dry_kcal) * 100
-        result.multi_wet_grams = (result.mer * 0.30 / wet_kcal) * 100
-        result.multi_treat_kcal = result.mer * 0.10
+        # Мультипитание (адаптивное распределение)
+        multi_ratio = self._get_multi_distribution(pet)
+        result.multi_dry_grams = (result.mer * multi_ratio['dry'] / dry_kcal) * 100
+        result.multi_wet_grams = (result.mer * multi_ratio['wet'] / wet_kcal) * 100
+        result.multi_treat_kcal = result.mer * multi_ratio['treats']
         
         # 13. Оценка полноты данных и рекомендации
         result.data_completeness = self._calculate_data_completeness(pet)
         result.recommendations = self._generate_recommendations(pet, result)
         
         return result
+
+    def _get_treat_ratio(self, pet) -> float:
+        """Базовая доля лакомств для dry/wet планов."""
+        ratio = 0.05
+        age_months = pet.age_months or 24
+        if age_months < 12 or age_months >= 84:
+            ratio = min(ratio, 0.05)
+        if getattr(pet, 'activity_level', None) in ['high', 'very_high']:
+            ratio = max(ratio, 0.05)
+        try:
+            from .nutrition_models import PetHealthCondition
+            has_gi = PetHealthCondition.objects.filter(
+                pet=pet,
+                is_active=True,
+                condition__category='gastrointestinal'
+            ).exists()
+        except Exception:
+            has_gi = False
+        if has_gi:
+            ratio = min(ratio, 0.03)
+        return ratio
+
+    def _get_macro_targets(self, pet) -> Dict[str, Dict[str, float]]:
+        """
+        Целевые диапазоны БЖУ (в процентах) по виду/возрасту/здоровью.
+        """
+        age_months = pet.age_months or 24
+        species = pet.species or 'dog'
+
+        # Базовые диапазоны
+        if species == 'cat':
+            if age_months < 12:
+                protein = (35, 45)
+                fat = (18, 25)
+                fiber = (1, 4)
+            elif age_months >= 84:
+                protein = (30, 40)
+                fat = (12, 20)
+                fiber = (2, 6)
+            else:
+                protein = (30, 40)
+                fat = (15, 22)
+                fiber = (2, 6)
+        else:
+            if age_months < 12:
+                protein = (26, 34)
+                fat = (14, 20)
+                fiber = (2, 6)
+            elif age_months >= 84:
+                protein = (22, 30)
+                fat = (8, 14)
+                fiber = (3, 8)
+            else:
+                protein = (22, 30)
+                fat = (10, 18)
+                fiber = (2, 8)
+
+        # Корректировки по ЖКТ и весу
+        try:
+            from .nutrition_models import PetHealthCondition
+            has_gi = PetHealthCondition.objects.filter(
+                pet=pet,
+                is_active=True,
+                condition__category='gastrointestinal'
+            ).exists()
+        except Exception:
+            has_gi = False
+
+        bcs = getattr(pet, 'body_condition_score', None)
+        if has_gi:
+            fat = (fat[0], min(fat[1], 12 if species == 'dog' else 15))
+            fiber = (max(fiber[0], 3), fiber[1])
+        if bcs and int(bcs) >= 7:
+            fat = (fat[0], min(fat[1], 12))
+            fiber = (max(fiber[0], 4), fiber[1])
+
+        return {
+            'protein': {'min': protein[0], 'max': protein[1]},
+            'fat': {'min': fat[0], 'max': fat[1]},
+            'fiber': {'min': fiber[0], 'max': fiber[1]},
+        }
+
+    def _get_multi_distribution(self, pet) -> Dict[str, float]:
+        """
+        Адаптивное распределение калорий для мультипитания.
+        """
+        distribution = dict(self.MULTI_FEEDING_RATIO)
+        distribution['treats'] = self._get_treat_ratio(pet)
+        age_months = pet.age_months or 24
+        species = pet.species or 'dog'
+        activity = pet.activity_level or 'moderate'
+
+        # Видовые корректировки
+        if species == 'cat':
+            distribution['wet'] += 0.10
+            distribution['dry'] = max(0.0, distribution['dry'] - 0.10)
+
+        # Активность (больше энергии днём)
+        if activity in ['high', 'very_high']:
+            distribution['dry'] += 0.05
+            distribution['wet'] = max(0.0, distribution['wet'] - 0.05)
+
+        # ЖКТ проблемы: настраиваем долю влажного корма
+        try:
+            from .nutrition_models import PetHealthCondition
+            has_gi = PetHealthCondition.objects.filter(
+                pet=pet,
+                is_active=True,
+                condition__category='gastrointestinal'
+            ).exists()
+        except Exception:
+            has_gi = False
+
+        if has_gi:
+            distribution['wet'] += 0.05
+            distribution['dry'] = max(0.0, distribution['dry'] - 0.05)
+
+        total = sum(distribution.values())
+        if total <= 0:
+            return distribution
+        return {k: round(v / total, 3) for k, v in distribution.items()}
     
     def _get_k_age(self, pet) -> Tuple[float, str]:
         """
@@ -834,9 +968,11 @@ class CalorieCalculatorService:
         elif food_type == 'wet':
             plan_type = 'wet_only'
             daily_grams = result.wet_food_grams
+            daily_treat_kcal = result.treat_kcal_per_day
         else:
             plan_type = 'dry_only'
             daily_grams = result.dry_food_grams
+            daily_treat_kcal = result.treat_kcal_per_day
         
         # Формируем план
         plan = {
@@ -885,6 +1021,8 @@ class CalorieCalculatorService:
                         'type': food_type,
                         'grams': round(grams_per_meal, 0),
                     })
+                if daily_treat_kcal:
+                    day_plan['treats_kcal_limit'] = round(daily_treat_kcal, 0)
             
             plan['days'].append(day_plan)
         
@@ -900,6 +1038,8 @@ class CalorieCalculatorService:
             plan['total_needed'] = {
                 f'{food_type}_grams': round(total_grams, 0),
             }
+            if daily_treat_kcal:
+                plan['total_needed']['treats_kcal'] = round(daily_treat_kcal * days, 0)
         
         return plan
     

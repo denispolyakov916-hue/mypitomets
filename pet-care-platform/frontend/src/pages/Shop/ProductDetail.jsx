@@ -10,7 +10,7 @@
  */
 
 import { useState, useEffect, useMemo } from 'react'
-import { useParams, useNavigate, Link } from 'react-router-dom'
+import { useParams, useNavigate, Link, useLocation } from 'react-router-dom'
 import { getProduct, getProductV2, addToCart, getFrequentlyBoughtTogether, getProductBreedRecommendations } from '../../api/shop'
 import { useAuthStore } from '../../store/authStore'
 import { useCartStore } from '../../store/cartStore'
@@ -49,6 +49,7 @@ const getImageUrl = (image) => {
 function ProductDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const location = useLocation()
   const { isAuthenticated } = useAuthStore()
   const { refreshCart, loadCart, getItemInCart, updateQuantity } = useCartStore()
   const { success, error: showError } = useToastStore()
@@ -65,6 +66,13 @@ function ProductDetail() {
   const [selectedSkuOptions, setSelectedSkuOptions] = useState({})
   const [breedRecommendations, setBreedRecommendations] = useState([])
   const [selectedImageIndex, setSelectedImageIndex] = useState(0)
+
+  const returnTo = useMemo(() => {
+    const params = new URLSearchParams(location.search)
+    const raw = params.get('return_to')
+    if (!raw) return null
+    return raw.startsWith('/') ? raw : null
+  }, [location.search])
   
   // Вычисляем текущую цену с учётом выбранного SKU
   const currentPrice = useMemo(() => {
@@ -330,6 +338,17 @@ function ProductDetail() {
     <div className="page-container animate-fadeIn">
       {/* Навигация */}
       <div className="mb-6">
+        {returnTo && (
+          <button
+            onClick={() => navigate(returnTo)}
+            className="inline-flex items-center gap-2 text-primary-600 hover:text-primary-700 mb-2"
+          >
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+            Вернуться к рациону
+          </button>
+        )}
         <Link 
           to="/shop" 
           className="inline-flex items-center gap-2 text-gray-600 hover:text-primary-600"

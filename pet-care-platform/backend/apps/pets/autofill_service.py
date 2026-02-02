@@ -258,7 +258,9 @@ class PetAutofillService:
         Определить идеальный вес питомца.
         
         Логика:
-        1. Если есть порода — средний вес из диапазона породы
+        1. Если есть порода — рассчитываем из диапазона породы
+           - для щенков/котят (<12 мес): ожидаемый вес по возрасту
+           - для взрослых: среднее по диапазону
         2. Если дворняга — текущий вес (если BCS = 5) или расчёт
         """
         if breed_data:
@@ -271,7 +273,15 @@ class PetAutofillService:
             else:
                 weight_min = breed_data.get('weight_min')
                 weight_max = breed_data.get('weight_max')
+
             if weight_min and weight_max:
+                age_months = pet.age_months
+                if age_months is not None and age_months < 12:
+                    # Ожидаемый вес по возрасту (формула роста из views_breeds.calculate_weight_for_age)
+                    growth_factor = (age_months / 12) ** 0.75
+                    expected_min = weight_min * growth_factor
+                    expected_max = weight_max * growth_factor
+                    return round((expected_min + expected_max) / 2, 1)
                 return round((weight_min + weight_max) / 2, 1)
         
         # Для дворняг: если BCS идеальный (5) — текущий вес = идеальный

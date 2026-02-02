@@ -207,6 +207,8 @@ class PetFoodAlternativesView(APIView):
         # Устанавливаем период и тип питания
         filters.period_days = period_days
         filters.food_type = food_type
+        filters.has_gi_issues = food_recommendation_service._has_gi_issues(filters)
+        filters.calorie_distribution = food_recommendation_service._get_calorie_distribution(pet, filters)
         
         # Рассчитываем калории
         calorie_result = calorie_calculator.calculate_daily_calories(pet)
