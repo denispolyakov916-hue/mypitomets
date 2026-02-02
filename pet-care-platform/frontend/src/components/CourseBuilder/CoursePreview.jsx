@@ -306,7 +306,7 @@ function CoursePreview({ course, isOpen, onClose }) {
                                 {block.content?.url ? (
                                   <img
                                     src={block.content.url}
-                                    alt={block.content.alt || ''}
+                                    alt={block.content.alt || 'Изображение курса'}
                                     className="max-w-full h-auto rounded-lg mx-auto"
                                   />
                                 ) : (

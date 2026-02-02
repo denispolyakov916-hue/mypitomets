@@ -190,7 +190,7 @@ function GalleryBlock({ content, settings, onChange, mode = 'edit' }) {
                   {image.url ? (
                     <img
                       src={image.url}
-                      alt={image.alt || ''}
+                      alt={image.alt || image.caption || 'Изображение галереи'}
                       className="w-full h-full object-cover hover:scale-105 transition-transform"
                     />
                   ) : (
@@ -213,7 +213,7 @@ function GalleryBlock({ content, settings, onChange, mode = 'edit' }) {
                   {image.url ? (
                     <img
                       src={image.url}
-                      alt={image.alt || ''}
+                      alt={image.alt || image.caption || 'Изображение галереи'}
                       className="w-full h-full object-cover"
                     />
                   ) : (
