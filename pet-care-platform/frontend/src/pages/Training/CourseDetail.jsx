@@ -117,7 +117,7 @@ function CourseDetail() {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const { isAuthenticated } = useAuthStore()
-  const { addCourse, error: cartError } = useCartStore()
+  const { addCourse, error: cartError, getItemInCart } = useCartStore()
   const { success, error: showError } = useToastStore()
   const { pets } = usePets()
   
@@ -197,8 +197,8 @@ function CourseDetail() {
       
       if (result) {
         success(
-          `Курс "${course.title}" добавлен в корзину. Перейдите в корзину для оформления заказа.`,
-          6000
+          'Курс добавлен в корзину',
+          3000
         )
       } else {
         showError(cartError || 'Не удалось добавить курс в корзину')
@@ -236,8 +236,8 @@ function CourseDetail() {
       
       if (result) {
         success(
-          `Курс "${course.title}" добавлен в корзину. Вы можете оформить заказ и начать обучение.`,
-          6000
+          'Курс добавлен в корзину',
+          3000
         )
       } else {
         showError(cartError || 'Не удалось добавить курс в корзину')
@@ -324,6 +324,10 @@ function CourseDetail() {
   }
   
   const petInfo = petTypeInfo[course.pet_type] || petTypeInfo.all
+  
+  // Проверка наличия курса в корзине
+  const cartItem = course ? getItemInCart(course.id) : null
+  const isInCart = !!cartItem
   
   return (
     <div className="page-container animate-fadeIn">
@@ -683,21 +687,32 @@ function CourseDetail() {
                 {/* Основная кнопка покупки/записи */}
                 {course.price > 0 ? (
                   <button
-                    onClick={handleAddToCart}
+                    onClick={isInCart ? () => navigate('/cart') : handleAddToCart}
                     disabled={isAddingToCart || isTryingFree}
-                    className="w-full py-3 px-4 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 bg-primary-600 hover:bg-primary-700 text-white"
+                    className={`w-full h-12 rounded-2xl relative flex flex-col items-center justify-center text-white transition-all duration-300 ease-in-out disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98] overflow-hidden ${
+                      isInCart
+                        ? 'bg-green-500 hover:bg-green-600'
+                        : 'bg-primary-600 hover:bg-primary-700'
+                    }`}
                   >
                     {isAddingToCart ? (
-                      <>
-                        <ButtonLoader />
-                        Добавление...
-                      </>
+                      <ButtonLoader />
                     ) : (
                       <>
-                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
-                        </svg>
-                        В корзину
+                        {/* Текст "В корзину" / "Добавить" */}
+                        <div className={`absolute inset-0 flex flex-col items-center justify-center transition-all duration-300 ease-in-out ${
+                          isInCart ? 'opacity-0 scale-95' : 'opacity-100 scale-100'
+                        }`}>
+                          <span className="text-sm font-medium leading-tight">В корзину</span>
+                          <span className="text-[10px] opacity-80 leading-tight">Добавить</span>
+                        </div>
+                        {/* Текст "В корзине" / "Перейти" */}
+                        <div className={`absolute inset-0 flex flex-col items-center justify-center transition-all duration-300 ease-in-out ${
+                          isInCart ? 'opacity-100 scale-100' : 'opacity-0 scale-95'
+                        }`}>
+                          <span className="text-xs font-medium leading-tight">В корзине</span>
+                          <span className="text-[10px] opacity-80 leading-tight">Перейти</span>
+                        </div>
                       </>
                     )}
                   </button>

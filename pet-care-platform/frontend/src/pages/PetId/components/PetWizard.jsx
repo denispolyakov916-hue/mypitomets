@@ -1614,34 +1614,54 @@ export default function PetWizard({ onClose, onSubmit, isLoading, editingDraft =
     
     switch (step) {
       case 1:
-        if (!formData.species) newErrors.species = 'Выберите вид животного';
-        if (!formData.name.trim()) newErrors.name = 'Введите кличку питомца';
-        else if (formData.name.trim().length < 2) newErrors.name = 'Минимум 2 символа';
-        else if (formData.name.trim().length > 50) newErrors.name = 'Максимум 50 символов';
+        if (!formData.species) newErrors.species = 'Выберите вид животного (собака или кошка)';
+        if (!formData.name.trim()) {
+          newErrors.name = 'Введите кличку питомца. Поле обязательно для заполнения';
+        } else if (formData.name.trim().length < 2) {
+          newErrors.name = 'Кличка должна содержать минимум 2 символа';
+        } else if (formData.name.trim().length > 50) {
+          newErrors.name = 'Кличка не должна превышать 50 символов';
+        }
         break;
       case 2:
         if (!formData.breed || formData.breed.trim().length < 2) {
-          newErrors.breed = 'Выберите или введите породу';
+          newErrors.breed = 'Выберите породу из списка или введите название породы (минимум 2 символа)';
         }
-        if (!formData.gender) newErrors.gender = 'Выберите пол';
-        if (!formData.date_of_birth) newErrors.date_of_birth = 'Укажите дату рождения';
+        if (!formData.gender) newErrors.gender = 'Выберите пол питомца из списка';
+        if (!formData.date_of_birth) {
+          newErrors.date_of_birth = 'Укажите дату рождения питомца. Это необходимо для точных рекомендаций';
+        }
         if (!formData.weight) {
-          newErrors.weight = 'Введите вес';
+          newErrors.weight = 'Введите вес питомца в килограммах (например: 5.5)';
         } else {
           const weight = parseFloat(formData.weight);
-          if (isNaN(weight) || weight < 0.3) newErrors.weight = 'Минимальный вес 0.3 кг';
-          else if (formData.species === 'cat' && weight > 20) newErrors.weight = 'Максимум 20 кг для кошки';
-          else if (formData.species === 'dog' && weight > 100) newErrors.weight = 'Максимум 100 кг';
+          if (isNaN(weight) || weight < 0.3) {
+            newErrors.weight = 'Вес не может быть меньше 0.3 кг. Проверьте правильность ввода';
+          } else if (formData.species === 'cat' && weight > 20) {
+            newErrors.weight = 'Вес кошки не может превышать 20 кг. Проверьте правильность ввода';
+          } else if (formData.species === 'dog' && weight > 100) {
+            newErrors.weight = 'Вес собаки не может превышать 100 кг. Проверьте правильность ввода';
+          }
         }
         break;
       case 3:
-        if (formData.health_issues.length === 0) newErrors.health_issues = 'Укажите состояние здоровья';
-        if (formData.excluded_ingredients.length === 0) newErrors.excluded_ingredients = 'Укажите информацию об аллергиях';
-        if (formData.species === 'dog' && !formData.activity_level) newErrors.activity_level = 'Выберите уровень активности';
-        if (formData.species === 'cat' && !formData.housing_type) newErrors.housing_type = 'Выберите тип жилья';
+        if (formData.health_issues.length === 0) {
+          newErrors.health_issues = 'Укажите состояние здоровья питомца. Если проблем нет, выберите "Здоров"';
+        }
+        if (formData.excluded_ingredients.length === 0) {
+          newErrors.excluded_ingredients = 'Укажите информацию об аллергиях. Если аллергий нет, выберите "Нет аллергий"';
+        }
+        if (formData.species === 'dog' && !formData.activity_level) {
+          newErrors.activity_level = 'Выберите уровень активности собаки для персонализации рекомендаций';
+        }
+        if (formData.species === 'cat' && !formData.housing_type) {
+          newErrors.housing_type = 'Выберите тип жилья кошки (квартира или дом)';
+        }
         break;
       case 4:
-        if (formData.behavioral_problems.length === 0) newErrors.behavioral_problems = 'Укажите информацию о поведении';
+        if (formData.behavioral_problems.length === 0) {
+          newErrors.behavioral_problems = 'Укажите информацию о поведении. Если проблем нет, выберите "Нет проблем"';
+        }
         break;
     }
     

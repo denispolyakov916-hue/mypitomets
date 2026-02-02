@@ -838,41 +838,50 @@ const PetCreateForm = ({ onClose }) => {
     const newErrors = {};
     
     if (!formData.name?.trim()) {
-      newErrors.name = 'Введите имя питомца';
+      newErrors.name = 'Введите кличку питомца. Поле обязательно для заполнения';
+    } else if (formData.name.trim().length < 2) {
+      newErrors.name = 'Кличка должна содержать минимум 2 символа';
+    } else if (formData.name.trim().length > 50) {
+      newErrors.name = 'Кличка не должна превышать 50 символов';
     }
     
     if (!formData.species) {
-      newErrors.species = 'Выберите тип питомца';
+      newErrors.species = 'Выберите вид животного (собака или кошка)';
     }
     
     if (!formData.sex) {
-      newErrors.sex = 'Укажите пол';
+      newErrors.sex = 'Выберите пол питомца из списка';
     }
     
     if (!formData.breed) {
-      newErrors.breed = 'Выберите породу';
+      newErrors.breed = 'Выберите породу из списка или введите название';
     }
     
     if (formData.ageType === 'exact') {
       if (!formData.dateOfBirth) {
-        newErrors.age = 'Укажите дату рождения';
+        newErrors.age = 'Укажите дату рождения питомца. Это необходимо для точных рекомендаций';
       }
     } else {
       if (formData.ageYears === '' && formData.ageMonths === '') {
-        newErrors.age = 'Укажите возраст';
+        newErrors.age = 'Укажите возраст питомца (годы и/или месяцы)';
       }
     }
     
     if (!formData.weightKg || parseFloat(formData.weightKg) <= 0) {
-      newErrors.weight = 'Укажите вес';
+      newErrors.weight = 'Введите вес питомца в килограммах (например: 5.5)';
     } else {
       const weight = parseFloat(formData.weightKg);
-      if (formData.species === 'cat' && weight > 20) newErrors.weight = 'Максимум 20 кг для кошки';
-      if (formData.species === 'dog' && weight > 100) newErrors.weight = 'Максимум 100 кг для собаки';
+      if (weight < 0.3) {
+        newErrors.weight = 'Вес не может быть меньше 0.3 кг. Проверьте правильность ввода';
+      } else if (formData.species === 'cat' && weight > 20) {
+        newErrors.weight = 'Вес кошки не может превышать 20 кг. Проверьте правильность ввода';
+      } else if (formData.species === 'dog' && weight > 100) {
+        newErrors.weight = 'Вес собаки не может превышать 100 кг. Проверьте правильность ввода';
+      }
     }
     
     if (formData.isNeutered === null) {
-      newErrors.neutered = 'Укажите, кастрирован ли питомец';
+      newErrors.neutered = 'Укажите, кастрирован/стерилизован ли питомец. Это важно для рекомендаций по питанию';
     }
     
     setErrors(newErrors);

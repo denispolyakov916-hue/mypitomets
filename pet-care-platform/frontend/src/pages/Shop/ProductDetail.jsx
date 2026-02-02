@@ -872,7 +872,7 @@ function ProductDetail() {
                 )}
                 {product.category_details.nutrition.fat_percent != null && (
                   <div className="bg-white rounded-lg p-3 text-center shadow-sm">
-                    <div className="text-2xl font-bold text-orange-500">
+                    <div className="text-2xl font-bold text-orange-700">
                       {product.category_details.nutrition.fat_percent}%
                     </div>
                     <div className="text-xs text-gray-500 mt-1">Жир</div>

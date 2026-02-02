@@ -812,7 +812,7 @@ const FeedingPlanBlock = ({ plan, isLoading }) => {
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
       <h3 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
-        <UtensilsCrossed className="w-5 h-5 text-orange-500" />
+        <UtensilsCrossed className="w-5 h-5 text-orange-600" />
         План питания
       </h3>
       

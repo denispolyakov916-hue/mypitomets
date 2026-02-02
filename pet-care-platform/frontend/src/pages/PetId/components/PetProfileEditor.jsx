@@ -13,7 +13,7 @@ import {
   Heart, Utensils, Brain, Home, User, Activity, Scale, Info, Stethoscope, ChevronDown
 } from 'lucide-react';
 import {
-  ACTIVITY_LEVEL_OPTIONS, SIZE_OPTIONS,
+  ACTIVITY_LEVEL_OPTIONS, SIZE_OPTIONS, COAT_TYPE_OPTIONS,
   DIET_TYPE_OPTIONS, FEEDING_FREQUENCY_OPTIONS, HOUSING_TYPE_OPTIONS,
   SOCIAL_LEVEL_OPTIONS, TEMPERAMENT_OPTIONS, BEHAVIORAL_PROBLEMS_OPTIONS, getBreeds,
   getHealthConditions, getAllergies, getVaccines, getMedications, getMedicationCategories,
@@ -32,7 +32,7 @@ const SECTIONS = [
     id: 'basic', 
     label: 'Основное', 
     icon: User,
-    fields: ['name', 'breed', 'date_of_birth', 'gender', 'is_neutered']
+    fields: ['name', 'breed', 'date_of_birth', 'gender', 'coat_type', 'is_neutered']
   },
   { 
     id: 'health', 
@@ -1137,6 +1137,7 @@ export default function PetProfileEditor({ pet, onClose, onSave, isLoading }) {
         weight: pet.weight_kg || '',
         ideal_weight_kg: pet.ideal_weight_kg || null,
         size: pet.size_category || pet.calculated_size_category || '',
+        coat_type: pet.coat_type || '',
         body_type: pet.body_type || '',
         activity_level: pet.activity_level || 'moderate',
         health_conditions: [],
@@ -1340,17 +1341,23 @@ export default function PetProfileEditor({ pet, onClose, onSave, isLoading }) {
 
   const validateForm = () => {
     const newErrors = {};
-    if (!formData.name?.trim()) newErrors.name = 'Обязательное поле';
+    if (!formData.name?.trim()) {
+      newErrors.name = 'Введите кличку питомца. Поле обязательно для заполнения';
+    } else if (formData.name.trim().length < 2) {
+      newErrors.name = 'Кличка должна содержать минимум 2 символа';
+    } else if (formData.name.trim().length > 50) {
+      newErrors.name = 'Кличка не должна превышать 50 символов';
+    }
     if (formData.weight !== '' && formData.weight !== null && formData.weight !== undefined) {
       const weightValue = parseFloat(formData.weight);
       if (Number.isNaN(weightValue) || weightValue <= 0) {
-        newErrors.weight = 'Введите корректный вес';
+        newErrors.weight = 'Введите корректное значение веса в килограммах (например: 5.5)';
       } else if (weightValue < 0.3) {
-        newErrors.weight = 'Минимальный вес 0.3 кг';
+        newErrors.weight = 'Вес не может быть меньше 0.3 кг. Проверьте правильность ввода';
       } else if (formData.species === 'cat' && weightValue > 20) {
-        newErrors.weight = 'Максимум 20 кг для кошки';
+        newErrors.weight = 'Вес кошки не может превышать 20 кг. Проверьте правильность ввода';
       } else if (formData.species === 'dog' && weightValue > 100) {
-        newErrors.weight = 'Максимум 100 кг для собаки';
+        newErrors.weight = 'Вес собаки не может превышать 100 кг. Проверьте правильность ввода';
       }
     }
     setErrors(newErrors);
@@ -1534,17 +1541,20 @@ export default function PetProfileEditor({ pet, onClose, onSave, isLoading }) {
         return (
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">
+              <label htmlFor="pet-name-input" className="block text-sm font-medium text-gray-700 mb-1.5">
                 Кличка <span className="text-red-500">*</span>
               </label>
               <input
+                id="pet-name-input"
                 type="text"
                 value={formData.name || ''}
                 onChange={(e) => handleChange('name', e.target.value)}
                 placeholder="Как зовут питомца?"
-                className={`w-full px-4 py-2.5 rounded-xl border-2 ${errors.name ? 'border-red-500' : 'border-gray-200'} focus:border-purple-500 focus:outline-none transition-all`}
+                aria-invalid={errors.name ? 'true' : 'false'}
+                aria-describedby={errors.name ? 'pet-name-error' : undefined}
+                className={`w-full px-4 py-2.5 rounded-xl border-2 ${errors.name ? 'border-red-500' : 'border-gray-200'} focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20 transition-all`}
               />
-              {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name}</p>}
+              {errors.name && <p id="pet-name-error" className="text-red-500 text-xs mt-1" role="alert">{errors.name}</p>}
             </div>
             
             <div className="grid grid-cols-2 gap-4">
@@ -1554,13 +1564,14 @@ export default function PetProfileEditor({ pet, onClose, onSave, isLoading }) {
                 onChange={(v) => handleChange('breed', v)}
               />
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Дата рождения</label>
+                <label htmlFor="pet-date-of-birth-input" className="block text-sm font-medium text-gray-700 mb-1.5">Дата рождения</label>
                 <input
+                  id="pet-date-of-birth-input"
                   type="date"
                   value={formData.date_of_birth || ''}
                   onChange={(e) => handleChange('date_of_birth', e.target.value)}
                   max={new Date().toISOString().split('T')[0]}
-                  className="w-full px-4 py-2.5 rounded-xl border-2 border-gray-200 focus:border-purple-500 focus:outline-none transition-all"
+                  className="w-full px-4 py-2.5 rounded-xl border-2 border-gray-200 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20 transition-all"
                 />
               </div>
             </div>
@@ -1576,6 +1587,16 @@ export default function PetProfileEditor({ pet, onClose, onSave, isLoading }) {
                   { value: 'unknown', label: 'Не указан' }
                 ]}
               />
+              <SelectField
+                label="Тип шерсти"
+                value={formData.coat_type}
+                onChange={(v) => handleChange('coat_type', v)}
+                options={COAT_TYPE_OPTIONS}
+                placeholder="Выберите тип шерсти"
+              />
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4">
               <SelectField
                 label="Уровень активности"
                 value={formData.activity_level}
@@ -1696,42 +1717,58 @@ export default function PetProfileEditor({ pet, onClose, onSave, isLoading }) {
               />
 
               {formData.current_food?.source === 'catalog' && (
-                <input
-                  type="text"
-                  value={formData.current_food?.food_id || ''}
+                <>
+                  <label htmlFor="current-food-id-input" className="block text-sm font-medium text-gray-700 mb-1.5">ID корма из каталога</label>
+                  <input
+                    id="current-food-id-input"
+                    type="text"
+                    value={formData.current_food?.food_id || ''}
                     onChange={(e) => handleChange('current_food', { ...(formData.current_food || {}), food_id: e.target.value })}
-                  placeholder="ID корма из каталога"
-                  className="w-full px-4 py-2.5 rounded-xl border-2 border-gray-200 focus:border-purple-500 focus:outline-none transition-all"
-                />
+                    placeholder="ID корма из каталога"
+                    className="w-full px-4 py-2.5 rounded-xl border-2 border-gray-200 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20 transition-all"
+                  />
+                </>
               )}
 
               {formData.current_food?.source === 'other' && (
                 <div className="grid grid-cols-2 gap-2">
-                  <input
-                    type="text"
-                    value={formData.current_food?.brand_name || ''}
-                    onChange={(e) => handleChange('current_food', { ...(formData.current_food || {}), brand_name: e.target.value })}
-                    placeholder="Бренд"
-                    className="w-full px-4 py-2.5 rounded-xl border-2 border-gray-200 focus:border-purple-500 focus:outline-none transition-all"
-                  />
-                  <input
-                    type="text"
-                    value={formData.current_food?.product_name || ''}
-                    onChange={(e) => handleChange('current_food', { ...(formData.current_food || {}), product_name: e.target.value })}
-                    placeholder="Название продукта"
-                    className="w-full px-4 py-2.5 rounded-xl border-2 border-gray-200 focus:border-purple-500 focus:outline-none transition-all"
-                  />
+                  <div>
+                    <label htmlFor="current-food-brand-input" className="block text-sm font-medium text-gray-700 mb-1.5">Бренд</label>
+                    <input
+                      id="current-food-brand-input"
+                      type="text"
+                      value={formData.current_food?.brand_name || ''}
+                      onChange={(e) => handleChange('current_food', { ...(formData.current_food || {}), brand_name: e.target.value })}
+                      placeholder="Бренд"
+                      className="w-full px-4 py-2.5 rounded-xl border-2 border-gray-200 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20 transition-all"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="current-food-product-input" className="block text-sm font-medium text-gray-700 mb-1.5">Название продукта</label>
+                    <input
+                      id="current-food-product-input"
+                      type="text"
+                      value={formData.current_food?.product_name || ''}
+                      onChange={(e) => handleChange('current_food', { ...(formData.current_food || {}), product_name: e.target.value })}
+                      placeholder="Название продукта"
+                      className="w-full px-4 py-2.5 rounded-xl border-2 border-gray-200 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20 transition-all"
+                    />
+                  </div>
                 </div>
               )}
 
-              <input
-                type="number"
-                min="1"
-                value={formData.current_food?.daily_amount_grams || ''}
-                onChange={(e) => handleChange('current_food', { ...(formData.current_food || {}), daily_amount_grams: e.target.value })}
-                placeholder="Суточная порция (граммы)"
-                className="w-full px-4 py-2.5 rounded-xl border-2 border-gray-200 focus:border-purple-500 focus:outline-none transition-all"
-              />
+              <div>
+                <label htmlFor="current-food-amount-input" className="block text-sm font-medium text-gray-700 mb-1.5">Суточная порция (граммы)</label>
+                <input
+                  id="current-food-amount-input"
+                  type="number"
+                  min="1"
+                  value={formData.current_food?.daily_amount_grams || ''}
+                  onChange={(e) => handleChange('current_food', { ...(formData.current_food || {}), daily_amount_grams: e.target.value })}
+                  placeholder="Суточная порция (граммы)"
+                  className="w-full px-4 py-2.5 rounded-xl border-2 border-gray-200 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20 transition-all"
+                />
+              </div>
             </div>
           </div>
         );
@@ -1827,22 +1864,24 @@ export default function PetProfileEditor({ pet, onClose, onSave, isLoading }) {
             </div>
             
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">
+              <label htmlFor="last-vet-visit-input" className="block text-sm font-medium text-gray-700 mb-1.5">
                 Дата последнего осмотра
               </label>
               <input
+                id="last-vet-visit-input"
                 type="date"
                 value={formData.last_vet_visit || ''}
                 onChange={(e) => handleChange('last_vet_visit', e.target.value)}
                 max={new Date().toISOString().split('T')[0]}
-                className="w-full px-4 py-2.5 rounded-xl border-2 border-gray-200 focus:border-purple-500 focus:outline-none transition-all"
+                className="w-full px-4 py-2.5 rounded-xl border-2 border-gray-200 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20 transition-all"
               />
             </div>
             
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Вес (кг)</label>
+                <label htmlFor="vet-weight-input" className="block text-sm font-medium text-gray-700 mb-1.5">Вес (кг)</label>
                 <input
+                  id="vet-weight-input"
                   type="number"
                   step="0.1"
                   min="0.3"
@@ -1850,9 +1889,11 @@ export default function PetProfileEditor({ pet, onClose, onSave, isLoading }) {
                   value={formData.weight || ''}
                   onChange={(e) => handleChange('weight', e.target.value)}
                   placeholder="Вес при осмотре"
-                  className="w-full px-4 py-2.5 rounded-xl border-2 border-gray-200 focus:border-purple-500 focus:outline-none transition-all"
+                  aria-invalid={errors.weight ? 'true' : 'false'}
+                  aria-describedby={errors.weight ? 'vet-weight-error' : undefined}
+                  className={`w-full px-4 py-2.5 rounded-xl border-2 ${errors.weight ? 'border-red-500' : 'border-gray-200'} focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20 transition-all`}
                 />
-                {errors.weight && <p className="mt-2 text-sm text-red-500">{errors.weight}</p>}
+                {errors.weight && <p id="vet-weight-error" className="mt-2 text-sm text-red-500" role="alert">{errors.weight}</p>}
               </div>
               <SelectField
                 label="Оценка упитанности (BCS)"
@@ -1865,46 +1906,50 @@ export default function PetProfileEditor({ pet, onClose, onSave, isLoading }) {
             
             <div className="grid grid-cols-3 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">ЧСС (уд/мин)</label>
+                <label htmlFor="heart-rate-input" className="block text-sm font-medium text-gray-700 mb-1.5">ЧСС (уд/мин)</label>
                 <input
+                  id="heart-rate-input"
                   type="number"
                   value={formData.heart_rate || ''}
                   onChange={(e) => handleChange('heart_rate', e.target.value)}
                   placeholder="60-180"
-                  className="w-full px-4 py-2.5 rounded-xl border-2 border-gray-200 focus:border-purple-500 focus:outline-none transition-all"
+                  className="w-full px-4 py-2.5 rounded-xl border-2 border-gray-200 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20 transition-all"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">ЧДД (дых/мин)</label>
+                <label htmlFor="respiratory-rate-input" className="block text-sm font-medium text-gray-700 mb-1.5">ЧДД (дых/мин)</label>
                 <input
+                  id="respiratory-rate-input"
                   type="number"
                   value={formData.respiratory_rate || ''}
                   onChange={(e) => handleChange('respiratory_rate', e.target.value)}
                   placeholder="15-30"
-                  className="w-full px-4 py-2.5 rounded-xl border-2 border-gray-200 focus:border-purple-500 focus:outline-none transition-all"
+                  className="w-full px-4 py-2.5 rounded-xl border-2 border-gray-200 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20 transition-all"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Температура (°C)</label>
+                <label htmlFor="temperature-input" className="block text-sm font-medium text-gray-700 mb-1.5">Температура (°C)</label>
                 <input
+                  id="temperature-input"
                   type="number"
                   step="0.1"
                   value={formData.temperature || ''}
                   onChange={(e) => handleChange('temperature', e.target.value)}
                   placeholder="37.5-39.0"
-                  className="w-full px-4 py-2.5 rounded-xl border-2 border-gray-200 focus:border-purple-500 focus:outline-none transition-all"
+                  className="w-full px-4 py-2.5 rounded-xl border-2 border-gray-200 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20 transition-all"
                 />
               </div>
             </div>
             
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Заметки ветеринара</label>
+              <label htmlFor="vet-notes-input" className="block text-sm font-medium text-gray-700 mb-1.5">Заметки ветеринара</label>
               <textarea
+                id="vet-notes-input"
                 value={formData.vet_notes || ''}
                 onChange={(e) => handleChange('vet_notes', e.target.value)}
                 placeholder="Дополнительные наблюдения и рекомендации врача..."
                 rows={4}
-                className="w-full px-4 py-2.5 rounded-xl border-2 border-gray-200 focus:border-purple-500 focus:outline-none transition-all resize-none"
+                className="w-full px-4 py-2.5 rounded-xl border-2 border-gray-200 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20 transition-all resize-none"
               />
             </div>
           </div>
@@ -2022,7 +2067,7 @@ export default function PetProfileEditor({ pet, onClose, onSave, isLoading }) {
                 <div className="flex items-center gap-2 text-sm text-gray-500">
                   {hasChanges && (
                     <>
-                      <AlertTriangle className="w-4 h-4 text-orange-500" />
+                      <AlertTriangle className="w-4 h-4 text-orange-600" />
                       <span>Есть несохранённые изменения</span>
                     </>
                   )}

@@ -85,16 +85,16 @@ function Navbar() {
   
   
   return (
-    <header className="fixed top-0 left-0 right-0 bg-[#ECFEFF] text-slate-900 shadow-sm z-50 border-b border-[#CFFAFE]">
+    <header className="fixed top-0 left-0 right-0 bg-gradient-to-r from-purple-600 via-purple-500 to-purple-600 backdrop-blur-xl shadow-lg z-50 border-b border-purple-400/30">
       <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-20">
           {/* Логотип и бренд */}
           <div className="flex items-center">
             <Link to="/" className="flex items-center gap-2">
-              <div className="bg-white p-2 rounded-xl shadow-sm border border-[#CFFAFE]">
+              <div className="bg-gradient-to-br from-purple-500 to-orange-500 p-2 rounded-xl shadow-lg">
                 <span className="text-2xl">🐾</span>
               </div>
-              <span className="text-2xl text-slate-900 font-bold">
+              <span className="text-2xl bg-gradient-to-r from-white to-orange-200 bg-clip-text text-transparent font-bold">
                 Питомец+
               </span>
             </Link>
@@ -105,12 +105,12 @@ function Navbar() {
             <button
               onClick={() => navigate('/')}
               className={`relative transition-all duration-300 whitespace-nowrap ${
-                location.pathname === '/' ? 'text-slate-900 font-semibold' : 'text-slate-700 hover:text-slate-900'
+                location.pathname === '/' ? 'text-white font-semibold' : 'text-white/80 hover:text-white'
               }`}
-            >
+              >
               Главная
               {location.pathname === '/' && (
-                <span className="absolute -bottom-1 left-0 w-full h-0.5 bg-primary-500 rounded-full"></span>
+                <span className="absolute -bottom-1 left-0 w-full h-0.5 bg-orange-400 rounded-full shadow-lg shadow-orange-400/50"></span>
               )}
             </button>
 
@@ -121,13 +121,13 @@ function Navbar() {
                 onClick={() => navigate(`/${service.id}`)}
                 className={`relative transition-all duration-300 whitespace-nowrap ${
                   location.pathname === `/${service.id}` || location.pathname.startsWith(`/${service.id}/`)
-                    ? 'text-slate-900 font-semibold'
-                    : 'text-slate-700 hover:text-slate-900'
+                    ? 'text-white font-semibold'
+                    : 'text-white/80 hover:text-white'
                 }`}
               >
                 {service.label}
                 {(location.pathname === `/${service.id}` || location.pathname.startsWith(`/${service.id}/`)) && (
-                  <span className="absolute -bottom-1 left-0 w-full h-0.5 bg-primary-500 rounded-full"></span>
+                  <span className="absolute -bottom-1 left-0 w-full h-0.5 bg-orange-400 rounded-full shadow-lg shadow-orange-400/50"></span>
                 )}
               </button>
             ))}
@@ -138,23 +138,23 @@ function Navbar() {
                 <button
                   onClick={() => navigate('/orders')}
                   className={`relative transition-all duration-300 whitespace-nowrap ${
-                    location.pathname === '/orders' || location.pathname.startsWith('/orders/') ? 'text-slate-900 font-semibold' : 'text-slate-700 hover:text-slate-900'
+                    location.pathname === '/orders' || location.pathname.startsWith('/orders/') ? 'text-white font-semibold' : 'text-white/80 hover:text-white'
                   }`}
                 >
                   Заказы
                   {(location.pathname === '/orders' || location.pathname.startsWith('/orders/')) && (
-                    <span className="absolute -bottom-1 left-0 w-full h-0.5 bg-primary-500 rounded-full"></span>
+                    <span className="absolute -bottom-1 left-0 w-full h-0.5 bg-orange-400 rounded-full shadow-lg shadow-orange-400/50"></span>
                   )}
                 </button>
                 <button
                   onClick={() => navigate('/profile')}
                   className={`relative transition-all duration-300 whitespace-nowrap ${
-                    location.pathname === '/profile' || location.pathname.startsWith('/profile/') ? 'text-slate-900 font-semibold' : 'text-slate-700 hover:text-slate-900'
+                    location.pathname === '/profile' || location.pathname.startsWith('/profile/') ? 'text-white font-semibold' : 'text-white/80 hover:text-white'
                   }`}
                 >
                   Профиль
                   {(location.pathname === '/profile' || location.pathname.startsWith('/profile/')) && (
-                    <span className="absolute -bottom-1 left-0 w-full h-0.5 bg-primary-500 rounded-full"></span>
+                    <span className="absolute -bottom-1 left-0 w-full h-0.5 bg-orange-400 rounded-full shadow-lg shadow-orange-400/50"></span>
                   )}
                 </button>
               </>
@@ -169,23 +169,23 @@ function Navbar() {
             {isAuthenticated ? (
               <button
                 onClick={handleLogout}
-                className="text-slate-700 hover:text-slate-900 transition-all duration-300 relative group"
+                className="text-white/80 hover:text-white transition-all duration-300 relative group"
               >
                 Выйти
-                <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-primary-500 group-hover:w-full transition-all duration-300"></span>
+                <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-orange-400 group-hover:w-full transition-all duration-300"></span>
               </button>
             ) : (
               <div className="flex items-center gap-4">
                 <button
                   onClick={() => navigate('/login')}
-                  className="text-slate-700 hover:text-slate-900 transition-all duration-300 relative group"
+                  className="text-white/80 hover:text-white transition-all duration-300 relative group focus:outline-none focus:ring-2 focus:ring-orange-400 focus:ring-offset-2 focus:ring-offset-purple-600 rounded"
                 >
                   Вход
-                  <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-primary-500 group-hover:w-full transition-all duration-300"></span>
+                  <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-orange-400 group-hover:w-full transition-all duration-300"></span>
                 </button>
                 <button
                   onClick={() => navigate('/register')}
-                  className="bg-primary-600 text-white px-6 py-2.5 rounded-full hover:bg-primary-700 transition-all duration-300 font-semibold"
+                  className="bg-orange-500 text-white px-6 py-2.5 rounded-full hover:bg-orange-600 transition-all duration-300 font-semibold shadow-lg focus:outline-none focus:ring-2 focus:ring-orange-400 focus:ring-offset-2 focus:ring-offset-purple-600"
                 >
                   Регистрация
                 </button>
@@ -200,7 +200,7 @@ function Navbar() {
 
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="p-2 text-slate-900 flex-shrink-0"
+              className="p-2 text-white flex-shrink-0 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:ring-offset-2 focus:ring-offset-purple-600 rounded"
               aria-label={mobileMenuOpen ? 'Закрыть меню' : 'Открыть меню'}
               aria-expanded={mobileMenuOpen}
               aria-controls="mobile-menu"
@@ -213,7 +213,7 @@ function Navbar() {
 
         {/* Mobile Menu */}
         {mobileMenuOpen && (
-          <div id="mobile-menu" className="lg:hidden py-4 border-t border-[#CFFAFE] bg-[#ECFEFF]">
+          <div id="mobile-menu" className="lg:hidden py-4 border-t border-purple-400/30 bg-gradient-to-b from-purple-600 to-purple-500">
             <nav className="flex flex-col gap-3">
               <button
                 onClick={() => {
@@ -221,7 +221,7 @@ function Navbar() {
                   setMobileMenuOpen(false)
                 }}
                 className={`text-left px-4 py-2 rounded-lg transition-all duration-300 ${
-                  location.pathname === '/' ? 'bg-primary-50 text-primary-700 font-semibold' : 'text-slate-700 hover:bg-primary-50'
+                  location.pathname === '/' ? 'bg-white/20 text-white font-semibold' : 'text-white/90 hover:bg-white/10'
                 }`}
               >
                 Главная
@@ -237,8 +237,8 @@ function Navbar() {
                   }}
                   className={`text-left px-4 py-2 rounded-lg transition-all duration-300 ${
                     location.pathname === `/${service.id}` || location.pathname.startsWith(`/${service.id}/`)
-                      ? 'bg-primary-50 text-primary-700 font-semibold'
-                      : 'text-slate-700 hover:bg-primary-50'
+                      ? 'bg-white/20 text-white font-semibold'
+                      : 'text-white/90 hover:bg-white/10'
                   }`}
                 >
                   {service.label}
@@ -254,7 +254,7 @@ function Navbar() {
                       setMobileMenuOpen(false)
                     }}
                     className={`text-left px-4 py-2 rounded-lg transition-all duration-300 ${
-                    location.pathname === '/orders' || location.pathname.startsWith('/orders/') ? 'bg-primary-50 text-primary-700 font-semibold' : 'text-slate-700 hover:bg-primary-50'
+                    location.pathname === '/orders' || location.pathname.startsWith('/orders/') ? 'bg-white/20 text-white font-semibold' : 'text-white/90 hover:bg-white/10'
                     }`}
                   >
                     Заказы
@@ -265,7 +265,7 @@ function Navbar() {
                       setMobileMenuOpen(false)
                     }}
                     className={`text-left px-4 py-2 rounded-lg transition-all duration-300 ${
-                    location.pathname === '/profile' || location.pathname.startsWith('/profile/') ? 'bg-primary-50 text-primary-700 font-semibold' : 'text-slate-700 hover:bg-primary-50'
+                    location.pathname === '/profile' || location.pathname.startsWith('/profile/') ? 'bg-white/20 text-white font-semibold' : 'text-white/90 hover:bg-white/10'
                     }`}
                   >
                     Профиль
@@ -278,7 +278,7 @@ function Navbar() {
                   isAuthenticated ? handleLogout() : navigate('/login')
                   setMobileMenuOpen(false)
                 }}
-              className="text-slate-700 hover:bg-primary-50 hover:text-slate-900 text-left px-4 py-2 rounded-lg transition-all duration-300"
+              className="text-white/90 hover:bg-white/10 hover:text-white text-left px-4 py-2 rounded-lg transition-all duration-300"
               >
                 {isAuthenticated ? 'Выйти' : 'Вход'}
               </button>
@@ -288,7 +288,7 @@ function Navbar() {
                     navigate('/register')
                     setMobileMenuOpen(false)
                   }}
-                className="bg-primary-600 text-white px-6 py-2.5 rounded-full hover:bg-primary-700 transition-all duration-300 mt-2 font-semibold"
+                className="bg-orange-500 text-white px-6 py-2.5 rounded-full hover:bg-orange-600 transition-all duration-300 mt-2 font-semibold shadow-lg"
                 >
                   Регистрация
                 </button>

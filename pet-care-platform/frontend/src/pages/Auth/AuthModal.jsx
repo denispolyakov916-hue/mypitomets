@@ -84,13 +84,15 @@ const toggleMode = () => {
     const errors = {}
 
     if (!loginData.email.trim()) {
-      errors.email = 'Введите email'
+      errors.email = 'Введите адрес электронной почты'
     } else if (!/\S+@\S+\.\S+/.test(loginData.email)) {
-      errors.email = 'Неверный формат email'
+      errors.email = 'Введите корректный адрес электронной почты (например: example@mail.com)'
     }
 
     if (!loginData.password) {
-      errors.password = 'Введите пароль'
+      errors.password = 'Введите пароль для входа в систему'
+    } else if (loginData.password.length < 1) {
+      errors.password = 'Пароль не может быть пустым'
     }
 
     setValidationErrors(errors)
@@ -104,21 +106,23 @@ const toggleMode = () => {
     const errors = {}
 
     if (!registerData.email.trim()) {
-      errors.email = 'Введите email'
+      errors.email = 'Введите адрес электронной почты'
     } else if (!/\S+@\S+\.\S+/.test(registerData.email)) {
-      errors.email = 'Неверный формат email'
+      errors.email = 'Введите корректный адрес электронной почты (например: example@mail.com)'
     }
 
     if (!registerData.password) {
-      errors.password = 'Введите пароль'
+      errors.password = 'Введите пароль для защиты вашего аккаунта'
     } else if (registerData.password.length < 6) {
-      errors.password = 'Пароль должен быть не менее 6 символов'
+      errors.password = 'Пароль должен содержать минимум 6 символов. Используйте буквы, цифры и специальные символы для безопасности'
+    } else if (registerData.password.length > 128) {
+      errors.password = 'Пароль не должен превышать 128 символов'
     }
 
     if (!registerData.passwordConfirm) {
-      errors.passwordConfirm = 'Подтвердите пароль'
+      errors.passwordConfirm = 'Повторите ввод пароля для подтверждения'
     } else if (registerData.password !== registerData.passwordConfirm) {
-      errors.passwordConfirm = 'Пароли не совпадают'
+      errors.passwordConfirm = 'Пароли не совпадают. Убедитесь, что ввели одинаковый пароль в обоих полях'
     }
 
     setValidationErrors(errors)

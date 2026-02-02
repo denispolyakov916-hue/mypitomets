@@ -392,8 +392,7 @@ function Home() {
               </h1>
               
               <p className="text-lg sm:text-xl text-purple-200 mb-8 leading-relaxed max-w-xl">
-                <strong className="text-white">70% проблем со здоровьем</strong> возникают из-за неправильного питания
-                и отсутствия мониторинга. Питомец+ помогает предотвратить их до появления первых симптомов.
+                Мы создаём нечто большее, чем сервис. Питомец+ — это персональный цифровой помощник, который станет вашим надёжным проводником в вопросах здоровья, питания и комфорта вашего друга.
               </p>
               
               {/* Key benefits */}
@@ -466,81 +465,22 @@ function Home() {
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.8, delay: 0.3 }}
             >
-              {/* Dashboard mockup */}
+              {/* Placeholder for future animation - reserved space */}
               <div className="relative">
-                <motion.div
-                  className="absolute -top-10 -left-10 w-32 h-32 bg-gradient-to-br from-emerald-400 to-teal-500 rounded-3xl flex items-center justify-center text-5xl shadow-2xl"
-                  animate={{ y: [0, -10, 0] }}
-                  transition={{ duration: 3, repeat: Infinity }}
-                >
-                  🐕
-                </motion.div>
-                
-                <div className="bg-white/10 backdrop-blur-md rounded-3xl p-6 border border-white/20">
-                  {/* Mini dashboard */}
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-xl">
-                          🐱
-                        </div>
-                        <div>
-                          <p className="font-bold">Мурка</p>
-                          <p className="text-sm text-purple-200">Британская, 3 года</p>
-                        </div>
-                      </div>
-                      <div className="px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 text-sm font-medium">
-                        Здорова
-                      </div>
-                    </div>
-                    
-                    {/* Stats cards */}
-                    <div className="grid grid-cols-2 gap-3">
-                      {[
-                        { label: 'Вес', value: '4.2 кг', trend: '+0.1', icon: '⚖️' },
-                        { label: 'Калории', value: '250/280', trend: 'норма', icon: '🔥' },
-                        { label: 'Активность', value: '85%', trend: '+5%', icon: '🏃' },
-                        { label: 'Сон', value: '14ч', trend: 'норма', icon: '😴' }
-                      ].map((stat, i) => (
-                        <motion.div
-                          key={i}
-                          className="bg-white/10 rounded-xl p-3"
-                          initial={{ opacity: 0, scale: 0.8 }}
-                          animate={{ opacity: 1, scale: 1 }}
-                          transition={{ delay: 0.8 + i * 0.1 }}
-                        >
-                          <div className="flex items-center gap-2 mb-1">
-                            <span>{stat.icon}</span>
-                            <span className="text-xs text-purple-200">{stat.label}</span>
-                          </div>
-                          <p className="font-bold">{stat.value}</p>
-                          <p className="text-xs text-emerald-300">{stat.trend}</p>
-                        </motion.div>
-                      ))}
-                    </div>
-                    
-                    {/* Chart placeholder */}
-                    <div className="h-24 bg-white/5 rounded-xl flex items-end justify-around px-4 pb-2">
-                      {[40, 65, 45, 80, 55, 70, 90].map((h, i) => (
-                        <motion.div
-                          key={i}
-                          className="w-6 bg-gradient-to-t from-purple-500 to-purple-300 rounded-t"
-                          initial={{ height: 0 }}
-                          animate={{ height: `${h}%` }}
-                          transition={{ delay: 1 + i * 0.1, duration: 0.5 }}
-                        />
-                      ))}
-                    </div>
-                  </div>
+                <div className="bg-white/10 backdrop-blur-md rounded-3xl p-6 border border-white/20 overflow-hidden" style={{ minHeight: '426px' }}>
+                  {/* Image placeholder - cropped to object level */}
+                  <img 
+                    src="/purple-monster.png" 
+                    alt="Pet character"
+                    className="w-full h-full object-cover rounded-2xl"
+                    style={{ 
+                      width: '100%', 
+                      height: '426px',
+                      objectFit: 'cover',
+                      objectPosition: 'center'
+                    }}
+                  />
                 </div>
-                
-                <motion.div
-                  className="absolute -bottom-5 -right-5 w-24 h-24 bg-gradient-to-br from-rose-400 to-pink-500 rounded-2xl flex items-center justify-center text-4xl shadow-2xl"
-                  animate={{ y: [0, 10, 0] }}
-                  transition={{ duration: 4, repeat: Infinity, delay: 1 }}
-                >
-                  ❤️
-                </motion.div>
               </div>
             </motion.div>
           </div>
@@ -560,86 +500,6 @@ function Home() {
             />
           </div>
         </motion.div>
-      </section>
-
-      {/* ========== PROBLEM SECTION ========== */}
-      <section className="py-20 bg-gradient-to-b from-gray-900 to-gray-800 text-white relative overflow-hidden">
-        <div className="absolute inset-0 opacity-5">
-          <div className="absolute inset-0" style={{
-            backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)',
-            backgroundSize: '40px 40px'
-          }} />
-        </div>
-        
-        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-          <motion.div
-            className="text-center max-w-3xl mx-auto mb-16"
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-          >
-            <span className="inline-block px-4 py-1 rounded-full bg-rose-500/20 text-rose-400 text-sm font-medium mb-4">
-              Проблема
-            </span>
-            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold mb-6">
-              Почему <span className="text-rose-400">здоровье питомцев</span> под угрозой?
-            </h2>
-            <p className="text-lg text-gray-400 leading-relaxed">
-              Большинство владельцев узнают о проблемах слишком поздно. К этому моменту лечение 
-              становится сложным, дорогим, а иногда — невозможным.
-            </p>
-          </motion.div>
-          
-          {/* Problem cards */}
-          <div className="grid md:grid-cols-3 gap-6">
-            {[
-              {
-                icon: '🍽️',
-                title: 'Неправильное питание',
-                stat: '70%',
-                desc: 'проблем со здоровьем возникают из-за несбалансированного рациона, перекармливания или неподходящего корма.'
-              },
-              {
-                icon: '👁️',
-                title: 'Отсутствие мониторинга',
-                stat: '85%',
-                desc: 'владельцев не отслеживают изменения веса и поведения питомца, упуская ранние признаки болезней.'
-              },
-              {
-                icon: '⏰',
-                title: 'Поздняя диагностика',
-                stat: '60%',
-                desc: 'заболеваний выявляются на стадии, когда полное выздоровление уже невозможно.'
-              }
-            ].map((problem, i) => (
-              <motion.div
-                key={i}
-                className="bg-white/5 backdrop-blur-sm rounded-2xl p-6 border border-white/10 hover:border-rose-500/50 transition-colors"
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.1 }}
-                viewport={{ once: true }}
-              >
-                <div className="text-4xl mb-4">{problem.icon}</div>
-                <div className="text-4xl font-black text-rose-400 mb-2">{problem.stat}</div>
-                <h3 className="text-xl font-bold mb-3">{problem.title}</h3>
-                <p className="text-gray-400">{problem.desc}</p>
-              </motion.div>
-            ))}
-          </div>
-          
-          {/* Solution bridge */}
-          <motion.div
-            className="mt-16 text-center"
-            initial={{ opacity: 0 }}
-            whileInView={{ opacity: 1 }}
-            viewport={{ once: true }}
-          >
-            <div className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-gradient-to-r from-emerald-500/20 to-teal-500/20 border border-emerald-500/30">
-              <span className="text-emerald-400 font-medium">💡 Но это можно изменить</span>
-            </div>
-          </motion.div>
-        </div>
       </section>
 
       {/* ========== 5 DOMAINS SECTION ========== */}
@@ -720,44 +580,6 @@ function Home() {
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {platformFeatures.map((feature, index) => (
               <FeatureCard key={index} feature={feature} index={index} />
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ========== STATISTICS SECTION ========== */}
-      <section className="py-20 bg-gradient-to-r from-purple-600 via-purple-700 to-indigo-700 text-white relative overflow-hidden">
-        {/* Background pattern */}
-        <div className="absolute inset-0 opacity-10">
-          {[...Array(6)].map((_, i) => (
-            <motion.div
-              key={i}
-              className="absolute w-64 h-64 border border-white rounded-full"
-              style={{
-                left: `${(i % 3) * 40}%`,
-                top: `${Math.floor(i / 3) * 50}%`,
-              }}
-              animate={{ scale: [1, 1.2, 1], opacity: [0.3, 0.6, 0.3] }}
-              transition={{ duration: 5, repeat: Infinity, delay: i * 0.5 }}
-            />
-          ))}
-        </div>
-        
-        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-8">
-            {statistics.map((stat, i) => (
-              <motion.div
-                key={i}
-                className="text-center"
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.1 }}
-                viewport={{ once: true }}
-              >
-                <div className="text-5xl mb-3">{stat.icon}</div>
-                <div className="text-5xl font-black mb-2">{stat.value}</div>
-                <p className="text-purple-200">{stat.label}</p>
-              </motion.div>
             ))}
           </div>
         </div>

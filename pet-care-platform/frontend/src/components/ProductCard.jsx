@@ -393,7 +393,7 @@ const ProductCard = memo(function ProductCard({ product, onAddToCart, isLoading 
           
           {/* Остаток */}
           {product.stock_count > 0 && product.stock_count <= 5 && isAvailable && (
-            <span className="ml-auto text-xs text-orange-500 font-medium">
+            <span className="ml-auto text-xs text-orange-700 font-medium">
               Осталось {product.stock_count}
             </span>
           )}
