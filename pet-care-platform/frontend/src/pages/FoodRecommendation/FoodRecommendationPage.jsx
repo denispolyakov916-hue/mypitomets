@@ -924,6 +924,90 @@ const FeedingPlanBlock = ({ plan, isLoading, selectedComponents }) => {
   const treats = regularDay.treats;
   const supplements = regularDay.supplements || [];
   const tips = regularDay.feeding_tips || [];
+  const caloriesForUi = (() => {
+    if (!componentsForUi || componentsForUi.length === 0) return null;
+    let totalKcal = 0;
+    componentsForUi.forEach((c) => {
+      if (c?.daily_kcal != null) {
+        totalKcal += Number(c.daily_kcal) || 0;
+        return;
+      }
+      if (c?.daily_grams && c?.kcal_per_100g) {
+        totalKcal += (Number(c.daily_grams) * Number(c.kcal_per_100g)) / 100;
+      }
+    });
+    if (totalKcal <= 0) return null;
+    const target = Number(plan.daily_calories) || 0;
+    const rawScale = target > 0 ? target / totalKcal : 1;
+    const scale = Math.min(1.2, Math.max(0.85, rawScale));
+    const adjustedKcal = totalKcal * scale;
+    const percent = target > 0 ? Math.round((adjustedKcal / target) * 100) : null;
+    return { total: Math.round(adjustedKcal), percent, scale };
+  })();
+  const dailyNutritionForUi = (() => {
+    if (!componentsForUi || componentsForUi.length === 0) return null;
+
+    const scale = caloriesForUi?.scale || 1;
+    let totalGrams = 0;
+    let totalProteinG = 0;
+    let totalFatG = 0;
+    let totalFiberG = 0;
+    let totalMoisture = 0;
+
+    componentsForUi.forEach((c) => {
+      if (!c?.daily_grams || !c?.nutrition) return;
+      const grams = (Number(c.daily_grams) || 0) * scale;
+      if (grams <= 0) return;
+      const proteinPct = Number(c.nutrition.protein) || 0;
+      const fatPct = Number(c.nutrition.fat) || 0;
+      const fiberPct = Number(c.nutrition.fiber) || 0;
+      const moisturePct = Number(c.nutrition.moisture) || (c.product_type?.includes('wet') ? 75 : 10);
+
+      totalGrams += grams;
+      totalProteinG += (grams * proteinPct) / 100;
+      totalFatG += (grams * fatPct) / 100;
+      totalFiberG += (grams * fiberPct) / 100;
+      totalMoisture += grams * moisturePct;
+    });
+
+    if (totalGrams <= 0) return null;
+
+    const avgMoisture = totalMoisture / totalGrams;
+    const dmFactor = avgMoisture < 100 ? 100 / (100 - avgMoisture) : 1;
+    const proteinDm = (totalProteinG / totalGrams) * 100 * dmFactor;
+    const fatDm = (totalFatG / totalGrams) * 100 * dmFactor;
+    const fiberDm = (totalFiberG / totalGrams) * 100 * dmFactor;
+
+    const getCoverage = (macroKey, actual) => {
+      const targets = plan.macro_targets?.[macroKey];
+      if (!targets) return null;
+      const min = Number(targets.min);
+      const max = Number(targets.max);
+      if (!Number.isFinite(min) || !Number.isFinite(max) || min <= 0 || max <= 0) return null;
+      const mid = (min + max) / 2;
+      const percent = mid > 0 ? Math.round((actual / mid) * 100) : 100;
+      let color = 'green';
+      if (actual < min * 0.85 || actual > max * 1.15) color = 'red';
+      else if (actual < min || actual > max) color = 'yellow';
+      return { percent, color };
+    };
+
+    return {
+      protein: {
+        grams: Number(totalProteinG.toFixed(1)),
+        coverage: getCoverage('protein', proteinDm),
+      },
+      fat: {
+        grams: Number(totalFatG.toFixed(1)),
+        coverage: getCoverage('fat', fatDm),
+      },
+      fiber: {
+        grams: Number(totalFiberG.toFixed(1)),
+        coverage: getCoverage('fiber', fiberDm),
+      },
+      note: `БЖУ на сухое вещество (DM ${Math.round(100 - avgMoisture)}%)`,
+    };
+  })();
   
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
@@ -936,25 +1020,66 @@ const FeedingPlanBlock = ({ plan, isLoading, selectedComponents }) => {
       <div className="bg-gradient-to-r from-orange-50 to-amber-50 rounded-xl p-4 mb-4">
         <p className="text-xs text-gray-500 mb-1">Дневная норма</p>
         <p className="text-2xl font-bold text-gray-800">
-          {regularDay.total_kcal || Math.round(plan.daily_calories)} <span className="text-sm font-normal">ккал</span>
+          {(caloriesForUi?.total ?? regularDay.total_kcal ?? Math.round(plan.daily_calories))}{" "}
+          <span className="text-sm font-normal">ккал</span>
         </p>
+        {caloriesForUi?.percent && (
+          <p className="text-xs text-gray-500 mt-1">
+            {caloriesForUi.percent}% от нормы
+          </p>
+        )}
         <p className="text-xs text-gray-500 mt-1">
           {regularDay.meals_count || 2} кормления в день
         </p>
         
-        {/* БЖУ за день (расчёт из компонентов) */}
+        {/* БЖУ за день */}
         {componentsForUi?.length > 0 && (
           <div className="mt-3 pt-3 border-t border-orange-200/50">
             <p className="text-xs text-gray-500 mb-1">Питательные вещества (в день)</p>
             <div className="grid grid-cols-4 gap-2 text-xs">
               {(() => {
-                // Суммируем БЖУ из всех компонентов с учётом порции
+                const dailyNutrition = dailyNutritionForUi || regularDay?.daily_nutrition;
+                const covClass = (cov) => {
+                  if (!cov) return 'text-gray-400';
+                  if (cov.color === 'green') return 'text-green-700';
+                  if (cov.color === 'yellow') return 'text-amber-700';
+                  return 'text-red-700';
+                };
+
+                if (dailyNutrition?.protein) {
+                  return (
+                    <>
+                      <div className="bg-white/60 rounded p-1.5 text-center">
+                        <p className="font-semibold text-orange-700">{dailyNutrition.protein.grams}г</p>
+                        <p className="text-[10px] text-gray-500">Белок</p>
+                        {dailyNutrition.protein.coverage && (
+                          <p className={`text-[10px] font-medium ${covClass(dailyNutrition.protein.coverage)}`}>
+                            {dailyNutrition.protein.coverage.percent}% от нормы
+                          </p>
+                        )}
+                      </div>
+                      <div className="bg-white/60 rounded p-1.5 text-center">
+                        <p className="font-semibold text-orange-700">{dailyNutrition.fat.grams}г</p>
+                        <p className="text-[10px] text-gray-500">Жир</p>
+                        {dailyNutrition.fat.coverage && (
+                          <p className={`text-[10px] font-medium ${covClass(dailyNutrition.fat.coverage)}`}>
+                            {dailyNutrition.fat.coverage.percent}% от нормы
+                          </p>
+                        )}
+                      </div>
+                      <div className="bg-white/60 rounded p-1.5 text-center">
+                        <p className="font-semibold text-orange-700">—</p>
+                        <p className="text-[10px] text-gray-500">Другие показатели</p>
+                      </div>
+                    </>
+                  );
+                }
+
+                // Fallback: старая логика as-fed
                 const totals = { protein: 0, fat: 0, fiber: 0, calcium: 0 };
-                let totalFoodGrams = 0;
                 componentsForUi.forEach(c => {
                   if (c.nutrition && c.daily_grams) {
                     const ratio = c.daily_grams / 100;
-                    totalFoodGrams += c.daily_grams;
                     totals.protein += (c.nutrition.protein || 0) * ratio;
                     totals.fat += (c.nutrition.fat || 0) * ratio;
                     totals.fiber += (c.nutrition.fiber || 0) * ratio;
@@ -962,83 +1087,27 @@ const FeedingPlanBlock = ({ plan, isLoading, selectedComponents }) => {
                   }
                 });
 
-                // Средние % по рациону (as-fed): сравниваем с macro_targets (PetID)
-                const avg = {
-                  protein: totalFoodGrams ? (totals.protein / totalFoodGrams) * 100 : null,
-                  fat: totalFoodGrams ? (totals.fat / totalFoodGrams) * 100 : null,
-                  fiber: totalFoodGrams ? (totals.fiber / totalFoodGrams) * 100 : null,
-                };
-
-                const getCoverage = (macroKey) => {
-                  const targets = plan.macro_targets?.[macroKey];
-                  const value = avg[macroKey];
-                  if (!targets || value == null) return null;
-                  const min = Number(targets.min);
-                  const max = Number(targets.max);
-                  if (!Number.isFinite(min) || !Number.isFinite(max) || min <= 0 || max <= 0) return null;
-
-                  let pct = 100;
-                  let status = 'green';
-                  if (value < min) {
-                    pct = Math.max(0, Math.min(100, (value / min) * 100));
-                    status = (min - value) / min <= 0.10 ? 'yellow' : 'red';
-                  } else if (value > max) {
-                    pct = Math.max(0, Math.min(100, (max / value) * 100));
-                    status = (value - max) / max <= 0.10 ? 'yellow' : 'red';
-                  }
-                  return { pct: Math.round(pct), status };
-                };
-
-                const covProtein = getCoverage('protein');
-                const covFat = getCoverage('fat');
-                const covFiber = getCoverage('fiber');
-
-                const covClass = (cov) => {
-                  if (!cov) return 'text-gray-400';
-                  if (cov.status === 'green') return 'text-green-700';
-                  if (cov.status === 'yellow') return 'text-amber-700';
-                  return 'text-red-700';
-                };
                 return (
                   <>
                     <div className="bg-white/60 rounded p-1.5 text-center">
                       <p className="font-semibold text-orange-700">{totals.protein.toFixed(1)}г</p>
                       <p className="text-[10px] text-gray-500">Белок</p>
-                      {covProtein && (
-                        <p className={`text-[10px] font-medium ${covClass(covProtein)}`}>
-                          {covProtein.pct}% от нормы
-                        </p>
-                      )}
                     </div>
                     <div className="bg-white/60 rounded p-1.5 text-center">
                       <p className="font-semibold text-orange-700">{totals.fat.toFixed(1)}г</p>
                       <p className="text-[10px] text-gray-500">Жир</p>
-                      {covFat && (
-                        <p className={`text-[10px] font-medium ${covClass(covFat)}`}>
-                          {covFat.pct}% от нормы
-                        </p>
-                      )}
                     </div>
                     <div className="bg-white/60 rounded p-1.5 text-center">
-                      <p className="font-semibold text-orange-700">{totals.fiber.toFixed(1)}г</p>
-                      <p className="text-[10px] text-gray-500">Клетч.</p>
-                      {covFiber && (
-                        <p className={`text-[10px] font-medium ${covClass(covFiber)}`}>
-                          {covFiber.pct}% от нормы
-                        </p>
-                      )}
-                    </div>
-                    <div className="bg-white/60 rounded p-1.5 text-center">
-                      <p className="font-semibold text-orange-700">{(totals.calcium * 1000).toFixed(0)}мг</p>
-                      <p className="text-[10px] text-gray-500">Кальций</p>
+                      <p className="font-semibold text-orange-700">—</p>
+                      <p className="text-[10px] text-gray-500">Другие показатели</p>
                     </div>
                   </>
                 );
               })()}
             </div>
-            {plan.macro_targets && (
+            {dailyNutritionForUi?.note && (
               <p className="mt-2 text-[10px] text-gray-500">
-                % от нормы рассчитан по средним Б/Ж/Клетч. в рационе и целевым диапазонам PetID.
+                {dailyNutritionForUi.note}
               </p>
             )}
           </div>

@@ -2867,7 +2867,11 @@ class FoodRecommendationService:
         total_grams = 0.0
         
         for comp in plan.components:
-            if comp.product_type in ['dry_food', 'wet_food']:
+            if comp.product_type in ['dry_food', 'wet_food', 'dry_food_multi', 'wet_food_multi'] or (
+                isinstance(comp.product_type, str) and (
+                    comp.product_type.startswith('dry_food') or comp.product_type.startswith('wet_food')
+                )
+            ):
                 grams = comp.daily_grams or 0
                 total_grams += grams
                 
