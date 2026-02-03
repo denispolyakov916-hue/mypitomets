@@ -92,7 +92,7 @@ function ReviewItem({ review }) {
 function ReviewList({ reviews = [], isLoading = false }) {
   if (isLoading) {
     return (
-      <div className="text-center py-8">
+      <div className="text-center py-4">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600 mx-auto"></div>
         <p className="text-sm text-gray-500 mt-2">Загрузка отзывов...</p>
       </div>
@@ -101,7 +101,7 @@ function ReviewList({ reviews = [], isLoading = false }) {
   
   if (reviews.length === 0) {
     return (
-      <div className="text-center py-8">
+      <div className="text-center py-4">
         <p className="text-gray-500">Пока нет отзывов. Будьте первым!</p>
       </div>
     )

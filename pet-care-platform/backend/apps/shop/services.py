@@ -30,6 +30,8 @@ from decimal import Decimal
 from datetime import timedelta
 from collections import defaultdict
 
+logger = logging.getLogger('apps.shop')
+
 from django.db import transaction
 from django.db.models import Count, Q, Avg
 from django.utils import timezone
@@ -182,19 +184,11 @@ class CartService(BaseService):
             )
         
         # Проверка наличия
-        if not product.in_stock:
+        if not product.is_available:
             return ServiceResult(
                 success=False,
                 message='Товар отсутствует в наличии',
                 error_code='OUT_OF_STOCK'
-            )
-        
-        # Проверка доступного количества
-        if product.stock_count < quantity:
-            return ServiceResult(
-                success=False,
-                message=f'Недостаточно товара на складе. Доступно: {product.stock_count}',
-                error_code='INSUFFICIENT_STOCK'
             )
         
         cart = cls.get_or_create_cart(user)
@@ -202,13 +196,6 @@ class CartService(BaseService):
         
         if existing_item:
             new_quantity = existing_item.quantity + quantity
-            
-            if new_quantity > product.stock_count:
-                return ServiceResult(
-                    success=False,
-                    message=f'Превышено доступное количество. В корзине: {existing_item.quantity}, доступно: {product.stock_count}',
-                    error_code='EXCEEDS_STOCK'
-                )
             
             existing_item.quantity = new_quantity
             existing_item.save()
@@ -365,14 +352,6 @@ class CartService(BaseService):
                 message='Товар удалён из корзины'
             )
         
-        # Проверка наличия
-        if new_quantity > product.stock_count:
-            return ServiceResult(
-                success=False,
-                message=f'Недостаточно товара. Доступно: {product.stock_count}',
-                error_code='INSUFFICIENT_STOCK'
-            )
-        
         item.quantity = new_quantity
         item.save()
         
@@ -458,15 +437,8 @@ class CartService(BaseService):
         
         for item in items:
             if item.product:
-                if not item.product.in_stock:
+                if not item.product.is_available:
                     errors.append(f'Товар "{item.product.name}" отсутствует в наличии')
-                    continue
-                
-                if item.quantity > item.product.stock_count:
-                    errors.append(
-                        f'Товара "{item.product.name}" недостаточно. '
-                        f'В корзине: {item.quantity}, доступно: {item.product.stock_count}'
-                    )
                     continue
                 
                 valid_items.append(item)
@@ -561,10 +533,9 @@ class ReservationService:
                     # Блокировка строки товара для предотвращения race condition
                     product = Product.objects.select_for_update().get(id=item.product.id)
                     
-                    if product.stock_count < item.quantity:
+                    if not product.is_available:
                         raise ValueError(
-                            f"Товар {product.name} недоступен. "
-                            f"Запрошено: {item.quantity} шт., доступно: {product.stock_count} шт."
+                            f"Товар {product.name} недоступен."
                         )
 
                     reservation = Reservation.objects.create(
@@ -574,10 +545,6 @@ class ReservationService:
                         quantity=item.quantity,
                         expires_at=expires_at
                     )
-
-                    product.stock_count -= item.quantity
-                    product.in_stock = product.stock_count > 0
-                    product.save()
 
                     reservations.append(reservation)
 
@@ -598,38 +565,23 @@ class ReservationService:
     @staticmethod
     def cancel_reservations(reservations):
         """Отменить резервирования и вернуть товары на склад."""
-        from apps.shop.models import Product
-        
         with transaction.atomic():
             for reservation in reservations:
                 if reservation.reservation_type == 'product':
-                    try:
-                        product = Product.objects.select_for_update().get(id=reservation.object_id)
-                        product.stock_count += reservation.quantity
-                        product.in_stock = product.stock_count > 0
-                        product.save()
-                    except Product.DoesNotExist:
-                        pass
-
+                    pass
                 reservation.delete()
 
     @staticmethod
     def cleanup_expired_reservations():
         """Очистить истёкшие резервирования (запускается по cron)."""
-        from apps.shop.models import Reservation, Product
+        from apps.shop.models import Reservation
         
         expired = Reservation.objects.filter(expires_at__lt=timezone.now())
 
         with transaction.atomic():
             for reservation in expired:
                 if reservation.reservation_type == 'product':
-                    try:
-                        product = Product.objects.select_for_update().get(id=reservation.object_id)
-                        product.stock_count += reservation.quantity
-                        product.in_stock = product.stock_count > 0
-                        product.save()
-                    except Product.DoesNotExist:
-                        pass
+                    pass
 
             expired.delete()
 
@@ -665,10 +617,8 @@ def process_expired_orders():
             with transaction.atomic():
                 for order_item in order.items.filter(product__isnull=False):
                     product = order_item.product
-                    product.stock_count += order_item.quantity
-                    if product.stock_count > 0 and not product.in_stock:
-                        product.in_stock = True
-                    product.save()
+                    product.is_available = True
+                    product.save(update_fields=['is_available'])
                     stats['products_returned'] += 1
                     logger.info(f"Товар возвращен на склад: {product.name}, количество: {order_item.quantity}")
                 
@@ -957,9 +907,8 @@ class OrderService(BaseService):
         try:
             for item in order.items.filter(product__isnull=False):
                 product = item.product
-                product.stock_count += item.quantity
-                product.in_stock = True
-                product.save()
+                product.is_available = True
+                product.save(update_fields=['is_available'])
                 cls.log_info(f"Товар возвращён: {product.name}, количество: {item.quantity}")
             
             order.status = 'cancelled'
@@ -1036,23 +985,7 @@ class OrderService(BaseService):
 # =============================================================================
 
 # Правила связывания категорий товаров
-CATEGORY_LINKS = {
-    'food': ['care', 'toys'],
-    'pharmacy': ['care', 'food'],
-    'ammunition': ['toys', 'care'],
-    'care': ['food', 'toys'],
-    'toys': ['food', 'care'],
-    'transport': ['ammunition', 'care'],
-}
-
-SUBCATEGORY_LINKS = {
-    'dry': ['wet', 'canned', 'treats'],
-    'wet': ['dry', 'treats'],
-    'treats': ['toys', 'dry'],
-    'vitamins': ['dry', 'wet'],
-    'collars': ['leashes', 'harnesses'],
-    'leashes': ['collars', 'harnesses'],
-}
+# Legacy-матрицы удалены, используем иерархию Category
 
 
 class RecommendationEngine:
@@ -1078,6 +1011,55 @@ class RecommendationEngine:
     }
     
     CACHE_TTL = 300  # 5 минут
+    RULES_CACHE = None
+    RULES_CACHE_PATH = None
+
+    FOOD_TYPE_CODES = [
+        'food.dry',
+        'food.wet',
+        'food.semi_moist',
+        'food.canned',
+        'food.pouches',
+        'food.pate',
+        'food.holistic',
+        'food.diet',
+        'food.hypoallergenic',
+    ]
+
+    @classmethod
+    def _load_recommendation_rules(cls):
+        if cls.RULES_CACHE is not None:
+            return cls.RULES_CACHE
+
+        try:
+            from django.conf import settings
+            from pathlib import Path
+            rules_path = Path(settings.BASE_DIR).parent / 'docs' / '04 Магазин' / 'recommendations_rules.md'
+            cls.RULES_CACHE_PATH = str(rules_path)
+            if not rules_path.exists():
+                cls.RULES_CACHE = {}
+                return cls.RULES_CACHE
+
+            rules = {}
+            for line in rules_path.read_text(encoding='utf-8').splitlines():
+                line = line.strip()
+                if not line.startswith('- `'):
+                    continue
+                if '→' not in line:
+                    continue
+                try:
+                    left, right = line.split('→', 1)
+                    source_code = left.split('`')[1].strip()
+                    target_codes = [segment.split('`')[1].strip() for segment in right.split(',') if '`' in segment]
+                    if source_code and target_codes:
+                        rules[source_code] = target_codes
+                except Exception:
+                    continue
+            cls.RULES_CACHE = rules
+            return rules
+        except Exception:
+            cls.RULES_CACHE = {}
+            return cls.RULES_CACHE
     
     @classmethod
     def get_frequently_bought_together(
@@ -1089,95 +1071,134 @@ class RecommendationEngine:
         """Получить товары, которые часто покупают вместе."""
         from apps.shop.models import Product, OrderItem
         
-        # Проверяем кэш
-        cache_key = f'fbt_{product_id}_{limit}'
-        cached = cache.get(cache_key)
-        if cached:
-            return cached
-        
         try:
-            source_product = Product.objects.get(id=product_id)
-        except Product.DoesNotExist:
-            return RecommendationResult()
-        
-        result = RecommendationResult(source_product_id=product_id)
-        seen_ids: Set[int] = {product_id}
-        recommendations: List[RecommendationItem] = []
-        
-        # 1. Анализ истории заказов
-        orders_with_product = OrderItem.objects.filter(
-            product_id=product_id,
-            order__status__in=['processing', 'shipped', 'delivered']
-        ).values_list('order_id', flat=True).distinct()
-        
-        result.total_analyzed_orders = len(orders_with_product)
-        
-        if orders_with_product:
-            related_items = OrderItem.objects.filter(
-                order_id__in=orders_with_product,
-                product__isnull=False,
-                product__in_stock=True
-            ).exclude(
-                product_id=product_id
-            ).values('product_id').annotate(
-                frequency=Count('product_id')
-            ).order_by('-frequency')[:limit * 2]
+            # Проверяем кэш
+            cache_key = f'fbt_{product_id}_{limit}'
+            cached = cache.get(cache_key)
+            if cached:
+                return cached
             
-            product_ids = [item['product_id'] for item in related_items]
-            products = Product.objects.catalog().filter(id__in=product_ids)
-            products_dict = {p.id: p for p in products}
+            try:
+                source_product = Product.objects.get(id=product_id)
+            except Product.DoesNotExist:
+                return RecommendationResult()
             
-            for item in related_items:
-                pid = item['product_id']
-                if pid in products_dict and pid not in seen_ids:
-                    product = products_dict[pid]
-                    frequency = item['frequency']
-                    
-                    score = min(1.0, frequency / max(1, result.total_analyzed_orders)) * cls.WEIGHTS['frequently_bought']
-                    
-                    recommendations.append(RecommendationItem(
-                        product_id=pid,
-                        product_data=product.to_dict(),
-                        score=score,
-                        reason=f'Покупают вместе ({frequency} раз)',
-                        reason_type='frequently_bought'
-                    ))
-                    seen_ids.add(pid)
-                    
-                    if len(recommendations) >= limit:
-                        break
+            result = RecommendationResult(source_product_id=product_id)
+            seen_ids: Set[int] = {product_id}
+            recommendations: List[RecommendationItem] = []
+            
+            # 1. Анализ истории заказов
+            orders_with_product = OrderItem.objects.filter(
+                product_id=product_id,
+                order__status__in=['processing', 'shipped', 'delivered']
+            ).values_list('order_id', flat=True).distinct()
+            
+            result.total_analyzed_orders = len(orders_with_product)
         
-        # 2. Добавляем по категориям
-        if len(recommendations) < limit:
-            category_recs = cls._get_category_based_recommendations(
-                source_product, 
-                limit - len(recommendations),
-                seen_ids
-            )
-            recommendations.extend(category_recs)
-            seen_ids.update(r.product_id for r in category_recs)
-        
-        # 3. Популярные товары как fallback
-        if len(recommendations) < limit:
-            # Используем новое поле animal_type с fallback на legacy
-            animal_type = source_product.animal_type or source_product.animal
-            popular_recs = cls._get_popular_recommendations(
-                animal_type,
-                limit - len(recommendations),
-                seen_ids
-            )
-            recommendations.extend(popular_recs)
-        
-        # 4. Персонализация
-        if user and user.is_authenticated:
-            recommendations = cls._apply_personalization(recommendations, user)
-        
-        recommendations.sort(key=lambda x: x.score, reverse=True)
-        result.items = recommendations[:limit]
-        
-        cache.set(cache_key, result, cls.CACHE_TTL)
-        
-        return result
+            if orders_with_product:
+                related_items = OrderItem.objects.filter(
+                    order_id__in=orders_with_product,
+                    product__isnull=False,
+                    product__is_available=True
+                ).exclude(
+                    product_id=product_id
+                ).values('product_id').annotate(
+                    frequency=Count('product_id')
+                ).order_by('-frequency')[:limit * 2]
+                
+                product_ids = [item['product_id'] for item in related_items]
+                products = Product.objects.catalog().filter(id__in=product_ids)
+                products_dict = {p.id: p for p in products}
+                
+                for item in related_items:
+                    pid = item['product_id']
+                    if pid in products_dict and pid not in seen_ids:
+                        product = products_dict[pid]
+                        frequency = item['frequency']
+                        
+                        score = min(1.0, frequency / max(1, result.total_analyzed_orders)) * cls.WEIGHTS['frequently_bought']
+                        
+                        recommendations.append(RecommendationItem(
+                            product_id=pid,
+                            product_data=product.to_dict(),
+                            score=score,
+                            reason=f'Покупают вместе ({frequency} раз)',
+                            reason_type='frequently_bought'
+                        ))
+                        seen_ids.add(pid)
+                        
+                        if len(recommendations) >= limit:
+                            break
+            
+            # 2. Добавляем по категориям (логичные связи)
+            if len(recommendations) < limit:
+                category_recs = cls._get_category_based_recommendations(
+                    source_product, 
+                    limit - len(recommendations),
+                    seen_ids
+                )
+                recommendations.extend(category_recs)
+                seen_ids.update(r.product_id for r in category_recs)
+            
+            # 3. Популярные товары как fallback
+            if len(recommendations) < limit:
+                # Используем новое поле animal_type с fallback на legacy
+                animal_type = source_product.animal_type
+                popular_recs = cls._get_popular_recommendations(
+                    animal_type,
+                    limit - len(recommendations),
+                    seen_ids
+                )
+                recommendations.extend(popular_recs)
+            
+            # 4. Персонализация
+            if user and user.is_authenticated:
+                recommendations = cls._apply_personalization(recommendations, user)
+            
+            recommendations.sort(key=lambda x: x.score, reverse=True)
+
+            # Ограничение: для кормов показываем максимум 2 других корма
+            from apps.shop.management.commands.populate_category_codes import CATEGORY_CODE_MAPPING
+
+            def _normalize(code):
+                if not code:
+                    return None
+                if code.endswith('.dog') or code.endswith('.cat'):
+                    return code.rsplit('.', 1)[0]
+                return code
+
+            def _get_category_code(rec):
+                cat = (rec.product_data or {}).get('category') or {}
+                code = cat.get('code')
+                return _normalize(code)
+
+            source_code = None
+            if source_product.new_category:
+                source_code = _normalize(
+                    source_product.new_category.code
+                    or CATEGORY_CODE_MAPPING.get(source_product.new_category.kotmatros_category_id)
+                )
+
+            filtered = []
+            food_count = 0
+            for rec in recommendations:
+                if source_code and source_code.startswith('food.'):
+                    rec_code = _get_category_code(rec)
+                    if rec_code and rec_code in cls.FOOD_TYPE_CODES:
+                        if food_count >= 2:
+                            continue
+                        food_count += 1
+                filtered.append(rec)
+                if len(filtered) >= limit:
+                    break
+
+            result.items = filtered
+            
+            cache.set(cache_key, result, cls.CACHE_TTL)
+            
+            return result
+        except Exception as exc:
+            raise
     
     @classmethod
     def _get_category_based_recommendations(
@@ -1186,49 +1207,149 @@ class RecommendationEngine:
         limit: int,
         exclude_ids: Set[int]
     ) -> List[RecommendationItem]:
-        """Рекомендации на основе связей категорий."""
-        from apps.shop.models import Product
-        
+        """Рекомендации на основе логических связей категорий."""
+        from apps.shop.models import Product, Category
+        from apps.shop.management.commands.populate_category_codes import CATEGORY_CODE_MAPPING
+
         recommendations = []
-        
-        linked_categories = CATEGORY_LINKS.get(source_product.category, [])
-        linked_subcategories = SUBCATEGORY_LINKS.get(source_product.subcategory, [])
-        
-        if not linked_categories and not linked_subcategories:
-            return recommendations
-        
-        q_filter = Q()
-        
-        if linked_categories:
-            q_filter |= Q(category__in=linked_categories)
-        
-        if linked_subcategories:
-            q_filter |= Q(subcategory__in=linked_subcategories)
-        
-        # Используем новые поля + legacy для совместимости
-        animal_type = source_product.animal_type or source_product.animal
-        related_products = Product.objects.catalog().filter(
-            q_filter,
-            Q(animal_type__in=[animal_type, 'all']) | Q(animal=animal_type),
-            Q(is_available=True) | Q(in_stock=True)
-        ).exclude(
-            id__in=exclude_ids
-        ).order_by('-order_count', '-_avg_rating')[:limit]
-        
-        for product in related_products:
-            if product.category in linked_categories:
-                reason = f'Подходит к {source_product.category_name or source_product.category}'
+
+        def _code_for(cat):
+            return cat.code or CATEGORY_CODE_MAPPING.get(cat.kotmatros_category_id)
+
+        def _normalize(code):
+            if not code:
+                return None
+            if code.endswith('.dog') or code.endswith('.cat'):
+                return code.rsplit('.', 1)[0]
+            return code
+
+        def _add_products(qs, reason, max_count=None):
+            nonlocal recommendations
+            added = 0
+            for product in qs:
+                if product.id in exclude_ids or product.id == source_product.id:
+                    continue
+                recommendations.append(RecommendationItem(
+                    product_id=product.id,
+                    product_data=product.to_dict(),
+                    score=cls.WEIGHTS['category_link'],
+                    reason=reason,
+                    reason_type='category_link'
+                ))
+                exclude_ids.add(product.id)
+                added += 1
+                if max_count and added >= max_count:
+                    break
+                if len(recommendations) >= limit:
+                    break
+
+        def _apply_age_size_filters(qs):
+            source_age = source_product.age_group
+            if source_age and source_age != 'all':
+                if source_age in ['kitten', 'puppy']:
+                    qs = qs.filter(Q(age_group=source_age) | Q(age_group='all') | Q(age_group__isnull=True))
+                else:
+                    qs = qs.filter(Q(age_group__in=[source_age, 'all']) | Q(age_group__isnull=True))
+                    qs = qs.exclude(age_group__in=['kitten', 'puppy'])
+            if source_product.size_group and source_product.size_group != 'all':
+                qs = qs.filter(Q(size_group=source_product.size_group) | Q(size_group='all') | Q(size_group__isnull=True))
+            return qs
+
+        def _select_diverse_items(qs, max_items=2):
+            selected = []
+            if max_items <= 0:
+                return selected
+            cheapest = qs.order_by('price', 'id').first()
+            if cheapest:
+                selected.append(cheapest)
+            if max_items == 1:
+                return selected
+            expensive_qs = qs.order_by('-price', 'id')
+            if selected and selected[0].brand_id:
+                expensive = expensive_qs.exclude(brand_id=selected[0].brand_id).first() or expensive_qs.first()
             else:
-                reason = 'Часто покупают вместе'
-            
-            recommendations.append(RecommendationItem(
-                product_id=product.id,
-                product_data=product.to_dict(),
-                score=cls.WEIGHTS['category_link'],
-                reason=reason,
-                reason_type='category_link'
-            ))
-        
+                expensive = expensive_qs.first()
+            if expensive and (not selected or expensive.id != selected[0].id):
+                selected.append(expensive)
+            return selected
+
+        animal_type = source_product.animal_type
+        brand_id = source_product.brand_id
+        source_cat = source_product.new_category
+        source_code = _normalize(_code_for(source_cat)) if source_cat else None
+        source_root = source_code.split('.', 1)[0] if source_code else None
+
+        categories = list(Category.objects.filter(is_active=True).only('id', 'code', 'kotmatros_category_id', 'name'))
+        code_to_ids = {}
+        code_to_name = {}
+        for cat in categories:
+            code = _normalize(_code_for(cat))
+            if not code:
+                continue
+            code_to_ids.setdefault(code, []).append(cat.id)
+            if code not in code_to_name:
+                code_to_name[code] = cat.name
+
+        def _ids_for_prefixes(prefixes):
+            ids = []
+            for code, code_ids in code_to_ids.items():
+                if any(code == prefix or code.startswith(prefix + '.') for prefix in prefixes):
+                    ids.extend(code_ids)
+            return ids
+
+        # 1) Логичные доп. категории по файлу рекомендаций
+        rules_map = cls._load_recommendation_rules()
+        target_codes = rules_map.get(source_code, [])
+        if target_codes:
+            for target_code in target_codes:
+                if len(recommendations) >= limit:
+                    break
+                target_ids = _ids_for_prefixes([target_code])
+                if not target_ids:
+                    continue
+                base_qs = Product.objects.catalog().filter(
+                    new_category_id__in=target_ids,
+                    animal_type__in=[animal_type, 'all'],
+                    is_available=True
+                ).exclude(id__in=exclude_ids)
+                base_qs = _apply_age_size_filters(base_qs)
+
+                chosen = _select_diverse_items(base_qs, max_items=2)
+                if not chosen:
+                    continue
+                if len(chosen) == 2:
+                    b1 = chosen[0].brand_id
+                    b2 = chosen[1].brand_id
+                    if b1 and b2 and b1 == b2:
+                        alt = base_qs.exclude(brand_id=b1).order_by('-price', 'id').first()
+                        if alt and alt.id not in {p.id for p in chosen}:
+                            chosen[1] = alt
+                reason_name = code_to_name.get(target_code, target_code)
+                for product in chosen:
+                    recommendations.append(RecommendationItem(
+                        product_id=product.id,
+                        product_data=product.to_dict(),
+                        score=cls.WEIGHTS['category_link'],
+                        reason=f'Рекомендуем: {reason_name}',
+                        reason_type='category_link'
+                    ))
+                    exclude_ids.add(product.id)
+                    if len(recommendations) >= limit:
+                        break
+
+        # 3) Похожие категории (fallback)
+        if len(recommendations) < limit and source_cat:
+            if source_cat.parent_id:
+                related_cats = Category.objects.filter(Q(parent=source_cat.parent) | Q(id=source_cat.id))
+            else:
+                related_cats = Category.objects.filter(Q(parent=source_cat) | Q(id=source_cat.id))
+            related_products = Product.objects.catalog().filter(
+                Q(new_category__in=related_cats),
+                Q(animal_type__in=[animal_type, 'all']),
+                Q(is_available=True)
+            ).exclude(id__in=exclude_ids).order_by('-order_count', '-_avg_rating')[:limit]
+            _add_products(related_products, 'Похожие товары')
+
         return recommendations
     
     @classmethod
@@ -1244,8 +1365,8 @@ class RecommendationEngine:
         recommendations = []
         
         popular_products = Product.objects.catalog().filter(
-            animal=animal,
-            in_stock=True
+            animal_type__in=[animal, 'all'],
+            is_available=True
         ).exclude(
             id__in=exclude_ids
         ).order_by('-order_count', '-_avg_rating')[:limit]
@@ -1304,50 +1425,99 @@ class RecommendationEngine:
         limit: int = 6
     ) -> List[Dict[str, Any]]:
         """Получить рекомендации для корзины."""
-        cart_items = CartService.get_cart_items(user, 'products')
-        
+        cart_items = CartService.get_cart_items(user, 'all')
+
         if not cart_items:
             return []
-        
-        cart_product_ids = {item.product_id for item in cart_items if item.product}
-        
-        all_recommendations: Dict[int, RecommendationItem] = {}
-        
-        for item in cart_items:
-            if not item.product:
-                continue
-            
+
+        product_items = [item for item in cart_items if item.product]
+        course_items = [item for item in cart_items if item.course]
+
+        cart_product_ids = {item.product_id for item in product_items if item.product}
+        cart_course_ids = {item.course_id for item in course_items if item.course}
+
+        all_product_recs: Dict[int, RecommendationItem] = {}
+        course_recommendations: List[Dict[str, Any]] = []
+
+        # Product-based recommendations
+        for item in product_items:
             result = cls.get_frequently_bought_together(
                 item.product_id,
                 limit=4,
                 user=user
             )
-            
+
             for rec in result.items:
                 if rec.product_id in cart_product_ids:
                     continue
-                
-                if rec.product_id in all_recommendations:
-                    all_recommendations[rec.product_id].score += rec.score * 0.5
+                if rec.product_id in all_product_recs:
+                    all_product_recs[rec.product_id].score += rec.score * 0.5
                 else:
-                    all_recommendations[rec.product_id] = rec
-        
-        sorted_recs = sorted(
-            all_recommendations.values(),
+                    all_product_recs[rec.product_id] = rec
+
+        # Course-based cross-sell products
+        for item in course_items:
+            cross_sell = cls.get_cross_sell_for_courses(item.course_id, user=user, limit=3)
+            for product_data in cross_sell:
+                pid = product_data.get('id')
+                if not pid or pid in cart_product_ids or pid in all_product_recs:
+                    continue
+                all_product_recs[pid] = RecommendationItem(
+                    product_id=pid,
+                    product_data=product_data,
+                    score=cls.WEIGHTS['category_link'],
+                    reason=product_data.get('reason', 'К курсу'),
+                    reason_type=product_data.get('reason_type', 'course_cross_sell')
+                )
+
+        # Course recommendations
+        if course_items:
+            from apps.training.models import Course
+            pet_types = {item.course.pet_type for item in course_items if item.course}
+            categories = {item.course.category for item in course_items if item.course}
+            course_qs = Course.objects.filter(is_active=True).exclude(id__in=cart_course_ids)
+            if categories:
+                course_qs = course_qs.filter(category__in=categories)
+            if pet_types and pet_types != {'all'}:
+                course_qs = course_qs.filter(pet_type__in=list(pet_types) + ['all'])
+            course_qs = course_qs.order_by('-order_count')[:max(2, limit // 3)]
+            course_recommendations = [
+                {
+                    'type': 'course',
+                    'course': {
+                        **course.to_dict(),
+                        'reason': 'Похожие курсы',
+                        'reason_type': 'course_similar'
+                    },
+                    'reason': 'Похожие курсы',
+                    'reason_type': 'course_similar'
+                }
+                for course in course_qs
+            ]
+
+        # Merge and cap results
+        sorted_products = sorted(
+            all_product_recs.values(),
             key=lambda x: x.score,
             reverse=True
-        )[:limit]
-        
-        return [
-            {
+        )
+
+        max_courses = 2 if course_items else 0
+        max_products = max(1, limit - max_courses)
+
+        final_recs: List[Dict[str, Any]] = []
+        for rec in sorted_products[:max_products]:
+            final_recs.append({
+                'type': 'product',
                 'id': rec.product_id,
                 'score': round(rec.score, 2),
                 'reason': rec.reason,
                 'reason_type': rec.reason_type,
                 **rec.product_data
-            }
-            for rec in sorted_recs
-        ]
+            })
+
+        final_recs.extend(course_recommendations[:max_courses])
+        return final_recs[:limit]
     
     @classmethod
     def get_cross_sell_for_courses(
@@ -1381,13 +1551,13 @@ class RecommendationEngine:
         )
         
         products = Product.objects.catalog().filter(
-            category__in=product_categories,
-            in_stock=True
+            product_group__in=product_categories,
+            is_available=True
         )
         
         if course.pet_type != 'all':
             products = products.filter(
-                Q(animal=course.pet_type) | Q(animal='all')
+                Q(animal_type__in=[course.pet_type, 'all'])
             )
         
         products = products.order_by('-order_count', '-_avg_rating')[:limit]
@@ -1747,7 +1917,7 @@ class AnalyticsMetricsInitializer:
             'field_name': 'id',
             'default_aggregation': 'count',
             'available_aggregations': ['count'],
-            'filter_fields': [{'field': 'in_stock', 'value': True}],
+            'filter_fields': [{'field': 'is_available', 'value': True}],
             'units': 'шт.',
         },
         {

@@ -274,6 +274,12 @@ class Command(BaseCommand):
         batch_size = options['batch_size']
         save_json = options.get('save_json')
         
+        self.stdout.write(self.style.WARNING(
+            'Команда устарела для новой структуры магазина. '
+            'Используйте import_shop_data_v2.'
+        ))
+        return
+
         self.stdout.write(f'Загрузка каталога из {xml_file}...')
         
         # Парсим XML

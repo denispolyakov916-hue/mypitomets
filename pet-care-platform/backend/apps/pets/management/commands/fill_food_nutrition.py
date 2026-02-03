@@ -4,13 +4,12 @@ Fill missing kcal/BJU values for food products.
 Approximate values are used as placeholders when real data is missing.
 """
 from django.core.management.base import BaseCommand
-from django.db.models import Q
 
-from apps.shop.models import Product
+from apps.shop.models import Product, FoodDetails
 
 
 class Command(BaseCommand):
-    help = "Fill missing kcal_per_100g and nutrition fields for food products"
+    help = "Fill missing nutrition fields for food products (FoodDetails)"
 
     DEFAULTS = {
         "dry": {
@@ -76,16 +75,16 @@ class Command(BaseCommand):
     }
 
     def _guess_bucket(self, product: Product) -> str:
-        subcat = (product.subcategory or "").lower()
+        subcat = (product.new_category.code if product.new_category else "").lower()
         name = (product.name or "").lower()
 
-        if subcat in {"wet", "canned", "pouch", "pate"}:
+        if any(s in subcat for s in {"wet", "canned", "pouches", "pate"}):
             return "wet"
-        if subcat in {"diet"}:
+        if "diet" in subcat:
             return "diet"
-        if subcat in {"hypoallergenic"}:
+        if "hypoallergenic" in subcat:
             return "hypoallergenic"
-        if subcat in {"holistic"}:
+        if "holistic" in subcat:
             return "holistic"
 
         # Fallback by name keywords
@@ -101,69 +100,50 @@ class Command(BaseCommand):
         return "dry"
 
     def handle(self, *args, **options):
-        queryset = Product.objects.filter(
-            Q(product_group="food")
-            | Q(new_category__product_group="food")
-            | Q(category="food")
-        )
+        queryset = Product.objects.filter(product_group="food")
 
         to_update = []
         for product in queryset.iterator():
             bucket = self._guess_bucket(product)
             defaults = self.DEFAULTS[bucket]
+            details, _ = FoodDetails.objects.get_or_create(product=product)
 
             updated = False
-            if product.kcal_per_100g is None:
-                product.kcal_per_100g = defaults["kcal_per_100g"]
+            if details.energy_kcal_per_100g is None:
+                details.energy_kcal_per_100g = defaults["kcal_per_100g"]
                 updated = True
-            if product.nutrition_protein is None:
-                product.nutrition_protein = defaults["protein"]
+            if details.protein_g_per_100g is None:
+                details.protein_g_per_100g = defaults["protein"]
                 updated = True
-            if product.nutrition_fat is None:
-                product.nutrition_fat = defaults["fat"]
+            if details.fat_g_per_100g is None:
+                details.fat_g_per_100g = defaults["fat"]
                 updated = True
-            if product.nutrition_fiber is None:
-                product.nutrition_fiber = defaults["fiber"]
+            if details.fiber_g_per_100g is None:
+                details.fiber_g_per_100g = defaults["fiber"]
                 updated = True
-            if product.nutrition_moisture is None:
-                product.nutrition_moisture = defaults["moisture"]
+            if details.moisture_percent is None:
+                details.moisture_percent = defaults["moisture"]
                 updated = True
-            if product.nutrition_ash is None:
-                product.nutrition_ash = defaults["ash"]
-                updated = True
-            if product.nutrition_calcium is None:
-                product.nutrition_calcium = defaults["calcium"]
-                updated = True
-            if product.nutrition_phosphorus is None:
-                product.nutrition_phosphorus = defaults["phosphorus"]
-                updated = True
-            if product.nutrition_omega3 is None:
-                product.nutrition_omega3 = defaults["omega3"]
-                updated = True
-            if product.nutrition_omega6 is None:
-                product.nutrition_omega6 = defaults["omega6"]
+            if details.ash_g_per_100g is None:
+                details.ash_g_per_100g = defaults["ash"]
                 updated = True
 
             if updated:
-                to_update.append(product)
+                to_update.append(details)
 
         if not to_update:
             self.stdout.write(self.style.WARNING("No products needed updates."))
             return
 
-        Product.objects.bulk_update(
+        FoodDetails.objects.bulk_update(
             to_update,
             [
-                "kcal_per_100g",
-                "nutrition_protein",
-                "nutrition_fat",
-                "nutrition_fiber",
-                "nutrition_moisture",
-                "nutrition_ash",
-                "nutrition_calcium",
-                "nutrition_phosphorus",
-                "nutrition_omega3",
-                "nutrition_omega6",
+                "energy_kcal_per_100g",
+                "protein_g_per_100g",
+                "fat_g_per_100g",
+                "fiber_g_per_100g",
+                "moisture_percent",
+                "ash_g_per_100g",
             ],
             batch_size=500,
         )

@@ -745,7 +745,7 @@ function Cart() {
               title="Вам может понравиться"
               subtitle="Товары, которые часто покупают вместе с выбранными"
               recommendations={recommendations}
-              type="products"
+              type="mixed"
               onAddToCart={handleAddRecommendation}
               loading={recommendationsLoading}
               compact={true}

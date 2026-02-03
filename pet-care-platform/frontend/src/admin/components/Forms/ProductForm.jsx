@@ -169,7 +169,7 @@ const ProductForm = ({
       };
 
       if (isEditing) {
-        return await adminAPI.products.update(product.external_id, data);
+        return await adminAPI.products.update(product.id, data);
       } else {
         // Для создания нужно сгенерировать external_id
         // Пока оставим как заглушку
@@ -191,7 +191,7 @@ const ProductForm = ({
     }
 
     try {
-      await adminAPI.products.delete(product.external_id);
+      await adminAPI.products.delete(product.id);
       onSuccess?.();
       onClose();
     } catch (error) {

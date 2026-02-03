@@ -18,6 +18,7 @@ import { useCartStore } from '../../store/cartStore'
 import { useAuthStore } from '../../store/authStore'
 import { useToastStore } from '../../store/toastStore'
 import { useProducts } from '../../hooks/useProducts'
+import { usePets } from '../../hooks/usePets'
 import ProductCard from '../../components/ProductCard'
 import { ProductGridSkeleton } from '../../components/ProductCardSkeleton'
 import Modal from '../../components/ui/Modal'
@@ -77,8 +78,8 @@ const FilterSidebar = memo(function FilterSidebar({
   }
 
   // Проверка активных фильтров для кнопки сброса
-  const hasActiveFilters = filters.animal || filters.pet_id || filters.category || 
-    filters.category_slug || filters.subcategory || filters.vendor || filters.min_price || 
+  const hasActiveFilters = filters.animal || filters.pet_id || filters.category_slug || 
+    filters.min_price || 
     filters.max_price || filters.in_stock || filters.has_discount || filters.search ||
     filters.min_rating || filters.min_orders || filters.sort_by
   
@@ -327,28 +328,10 @@ const FilterSidebar = memo(function FilterSidebar({
             )
           })}
           
-          {/* Fallback на legacy категории */}
-          {(!availableFilters.hierarchical_categories || availableFilters.hierarchical_categories.length === 0) && 
-            availableFilters.categories?.map(opt => (
-              <label key={opt.value} className="flex items-center cursor-pointer hover:text-purple-600 transition-colors p-2">
-                <input
-                  type="radio"
-                  name="category"
-                  value={opt.value}
-                  checked={filters.category === opt.value}
-                  onChange={(e) => onFilterChange('category', e.target.value)}
-                  className="w-4 h-4 text-purple-600 focus:ring-purple-500"
-                />
-                <span className="ml-2 text-gray-700">{opt.label}</span>
-              </label>
-            ))
-          }
-          
           {/* Сброс категории */}
-          {(filters.category || filters.category_slug) && (
+          {filters.category_slug && (
             <button
               onClick={() => {
-                onFilterChange('category', '')
                 onFilterChange('category_slug', '')
               }}
               className="text-xs text-primary-500 hover:text-primary-700 mt-2 flex items-center gap-1"
@@ -361,27 +344,6 @@ const FilterSidebar = memo(function FilterSidebar({
           )}
         </div>
       </div>
-      
-      {/* Бренд */}
-      {availableFilters.vendors?.length > 0 && (
-        <div className="mb-5">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Бренд
-          </label>
-          <select
-            value={filters.vendor || ''}
-            onChange={(e) => onFilterChange('vendor', e.target.value)}
-            className="w-full px-3 py-2 border border-primary-200 rounded-lg text-sm focus:ring-primary-500 focus:border-primary-500 bg-white"
-          >
-            <option value="">Все бренды</option>
-            {availableFilters.vendors.map(v => (
-              <option key={v.vendor} value={v.vendor}>
-                {v.vendor} ({v.count})
-              </option>
-            ))}
-          </select>
-        </div>
-      )}
       
       {/* Цена */}
       <div className="mb-5">
@@ -492,6 +454,7 @@ const FilterSidebar = memo(function FilterSidebar({
           className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white"
         >
           <option value="">По умолчанию</option>
+          <option value="discount">Со скидкой 🔥</option>
           <option value="price_asc">Цена: по возрастанию</option>
           <option value="price_desc">Цена: по убыванию</option>
           <option value="rating">По рейтингу</option>
@@ -511,6 +474,7 @@ const MobileFiltersModal = memo(function MobileFiltersModal({
   filters,
   availableFilters,
   onFilterChange,
+  onPriceApply,
   onReset,
   isLoading,
 }) {
@@ -527,6 +491,7 @@ const MobileFiltersModal = memo(function MobileFiltersModal({
         filters={filters}
         availableFilters={availableFilters}
         onChange={onFilterChange}
+        onPriceApply={onPriceApply}
         onReset={onReset}
         isLoading={isLoading}
         className="border-0 shadow-none"
@@ -557,22 +522,17 @@ const ActiveFilterChips = memo(function ActiveFilterChips({ filters, availableFi
   }
 
   // Категория (slug)
-  if (filters.category_slug) {
+  if (filters.category_code || filters.category_slug) {
     const flat = (availableFilters.hierarchical_categories || [])
       .flatMap(c => [c, ...(c.children || [])])
-    const catLabel = flat.find(c => c.slug === filters.category_slug)?.name
-    chips.push({ key: 'category_slug', label: catLabel ? `Категория: ${catLabel}` : 'Категория' })
-  } else if (filters.category) {
-    const legacyLabel = availableFilters.categories?.find(c => c.value === filters.category)?.label
-    chips.push({ key: 'category', label: legacyLabel ? `Категория: ${legacyLabel}` : 'Категория' })
+    const catLabel = flat.find(c => c.code === filters.category_code || c.slug === filters.category_slug)?.name
+    chips.push({ key: 'category_code', label: catLabel ? `Категория: ${catLabel}` : 'Категория' })
   }
 
-  // Бренд (brand_id or legacy vendor)
+  // Бренд
   if (filters.brand_id) {
     const brandLabel = availableFilters.brands?.find(b => String(b.id) === String(filters.brand_id))?.name
     chips.push({ key: 'brand_id', label: brandLabel ? `Бренд: ${brandLabel}` : 'Бренд' })
-  } else if (filters.vendor) {
-    chips.push({ key: 'vendor', label: `Бренд: ${filters.vendor}` })
   }
 
   // Brand class
@@ -590,12 +550,6 @@ const ActiveFilterChips = memo(function ActiveFilterChips({ filters, availableFi
   const ageLabels = { puppy: 'Щенок', kitten: 'Котёнок', adult: 'Взрослый', senior: 'Пожилой' }
   if (filters.age_group && ageLabels[filters.age_group]) {
     chips.push({ key: 'age_group', label: `Возраст: ${ageLabels[filters.age_group]}` })
-  }
-
-  // Size group
-  const sizeLabels = { mini: 'Мини', small: 'Малый', medium: 'Средний', large: 'Крупный', giant: 'Гигант' }
-  if (filters.size_group && sizeLabels[filters.size_group]) {
-    chips.push({ key: 'size_group', label: `Размер: ${sizeLabels[filters.size_group]}` })
   }
 
   // Цена
@@ -743,6 +697,7 @@ function Shop() {
   const { success, error: showError } = useToastStore()
   const [isMobileFiltersOpen, setIsMobileFiltersOpen] = useState(false)
   const isFirstProductsLoadRef = useRef(true)
+  const { pets: userPets } = usePets()
   
   // Поисковая строка (локальное состояние для контролируемого ввода)
   const [searchQuery, setSearchQuery] = useState(searchParams.get('search') || '')
@@ -751,20 +706,17 @@ function Shop() {
   const filters = useMemo(() => ({
     animal: searchParams.get('animal') || '',
     pet_id: searchParams.get('pet_id') || '',
-    category: searchParams.get('category') || '',
+    category_code: searchParams.get('category_code') || '',
     category_slug: searchParams.get('category_slug') || '',
-    subcategory: searchParams.get('subcategory') || '',
     product_group: searchParams.get('product_group') || '',
     // New filters
     age_group: searchParams.get('age_group') || '',
-    size_group: searchParams.get('size_group') || '',
     brand_class: searchParams.get('brand_class') || '',
     brand_id: searchParams.get('brand_id') || '',
     is_grain_free: searchParams.get('is_grain_free') || '',
     is_hypoallergenic: searchParams.get('is_hypoallergenic') || '',
     is_veterinary: searchParams.get('is_veterinary') || '',
-    // Legacy filters
-    vendor: searchParams.get('vendor') || '',
+    // Other filters
     min_price: searchParams.get('min_price') || '',
     max_price: searchParams.get('max_price') || '',
     in_stock: searchParams.get('in_stock') || '',
@@ -788,14 +740,19 @@ function Shop() {
     fetchImmediate,
     isCached
   } = useProducts(filters)
+
+  const filtersWithPets = useMemo(() => {
+    const petsFromFilters = availableFilters?.user_pets || []
+    if (userPets.length > 0) {
+      return { ...availableFilters, user_pets: userPets }
+    }
+    return { ...availableFilters, user_pets: petsFromFilters }
+  }, [availableFilters, userPets])
   
   /**
    * Обновление фильтра с debouncing
    */
   const handleFilterChange = useCallback((name, value) => {
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/4f373f70-f463-4309-8a8e-4162185b5f36',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Shop.jsx:handleFilterChange',message:'Filter change called',data:{name,value,currentParams:Object.fromEntries(searchParams)},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'C'})}).catch(()=>{});
-    // #endregion
     const newParams = new URLSearchParams(searchParams)
     
     if (value) {
@@ -809,24 +766,46 @@ function Shop() {
       newParams.set('page', '1')
     }
     
-    // Сбрасываем подкатегорию при смене категории или животного
-    if (name === 'category' || name === 'animal') {
-      newParams.delete('subcategory')
-    }
-    
     // При выборе питомца сбрасываем фильтр по животному
     if (name === 'pet_id') {
       newParams.delete('animal')
+      newParams.delete('age_group')
     }
     
     // При выборе животного сбрасываем фильтр по питомцу
     if (name === 'animal') {
       newParams.delete('pet_id')
+      const ageGroup = newParams.get('age_group')
+      if (ageGroup) {
+        if (value === 'dog' && ageGroup.includes('kitten')) {
+          newParams.set('age_group', 'puppy')
+        }
+        if (value === 'cat' && ageGroup.includes('puppy')) {
+          newParams.set('age_group', 'kitten')
+        }
+      }
+    }
+
+    if (name === 'category_code') {
+      newParams.delete('category_slug')
     }
     
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/4f373f70-f463-4309-8a8e-4162185b5f36',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Shop.jsx:handleFilterChange:after',message:'URL params updated',data:{newParamsStr:newParams.toString()},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'D'})}).catch(()=>{});
-    // #endregion
+    setSearchParams(newParams)
+  }, [searchParams, setSearchParams])
+
+  const handlePriceApply = useCallback((min, max) => {
+    const newParams = new URLSearchParams(searchParams)
+    if (min) {
+      newParams.set('min_price', min)
+    } else {
+      newParams.delete('min_price')
+    }
+    if (max) {
+      newParams.set('max_price', max)
+    } else {
+      newParams.delete('max_price')
+    }
+    newParams.set('page', '1')
     setSearchParams(newParams)
   }, [searchParams, setSearchParams])
   
@@ -936,15 +915,13 @@ function Shop() {
       clear('max_price')
     } else {
       clear(chipKey)
+      if (chipKey === 'category_code') {
+        clear('category_slug')
+      }
     }
 
     // Любое изменение фильтров сбрасывает страницу
     newParams.set('page', '1')
-
-    // При смене категории сбрасываем подкатегорию
-    if (chipKey === 'category' || chipKey === 'category_slug') {
-      clear('subcategory')
-    }
 
     setSearchParams(newParams)
   }, [searchParams, setSearchParams])
@@ -1011,17 +988,6 @@ function Shop() {
                     </span>
                   )}
                 </div>
-                <select
-                  value={filters.sort_by || ''}
-                  onChange={(e) => handleFilterChange('sort_by', e.target.value)}
-                  className="w-full sm:w-auto px-3 py-2.5 border border-primary-200 rounded-xl text-sm bg-white/90 backdrop-blur-sm focus:ring-primary-500 focus:border-primary-500"
-                >
-                  <option value="">Сортировка: по умолчанию</option>
-                  <option value="price_asc">Цена: по возрастанию</option>
-                  <option value="price_desc">Цена: по убыванию</option>
-                  <option value="rating">По рейтингу</option>
-                  <option value="popularity">По популярности</option>
-                </select>
               </div>
             </div>
 
@@ -1029,7 +995,7 @@ function Shop() {
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <ActiveFilterChips
                 filters={filters}
-                availableFilters={availableFilters}
+                availableFilters={filtersWithPets}
                 onRemove={handleRemoveChip}
               />
               <div className="flex items-center gap-2">
@@ -1051,8 +1017,9 @@ function Shop() {
         <aside className="w-72 flex-shrink-0 hidden lg:block sticky top-24 self-start">
           <ShopFilters
             filters={filters}
-            availableFilters={availableFilters}
+            availableFilters={filtersWithPets}
             onChange={handleFilterChange}
+            onPriceApply={handlePriceApply}
             onReset={handleReset}
             isLoading={isLoading}
           />
@@ -1065,8 +1032,9 @@ function Shop() {
             isOpen={isMobileFiltersOpen}
             onClose={() => setIsMobileFiltersOpen(false)}
             filters={filters}
-            availableFilters={availableFilters}
+            availableFilters={filtersWithPets}
             onFilterChange={handleFilterChange}
+            onPriceApply={handlePriceApply}
             onReset={() => {
               handleReset()
               setIsMobileFiltersOpen(false)
@@ -1113,12 +1081,23 @@ function Shop() {
                 </div>
               )}
               
-              {/* Счётчик товаров (дублируем на очень маленьких экранах) */}
-              {!isLoading && (
-                <p className="text-primary-700 mb-4 font-medium sm:hidden">
-                  Найдено: {pagination?.total || products.length}
-                </p>
-              )}
+              {/* Панель над товарами */}
+              <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-4">
+                <div className="flex items-center gap-2">
+                  <select
+                    value={filters.sort_by || ''}
+                    onChange={(e) => handleFilterChange('sort_by', e.target.value)}
+                    className="w-full sm:w-auto px-3 py-2.5 border border-primary-200 rounded-xl text-sm bg-white/90 backdrop-blur-sm focus:ring-primary-500 focus:border-primary-500"
+                  >
+                    <option value="">По умолчанию</option>
+                    <option value="discount">Со скидкой 🔥</option>
+                    <option value="price_asc">Цена: по возрастанию</option>
+                    <option value="price_desc">Цена: по убыванию</option>
+                    <option value="rating">По рейтингу</option>
+                    <option value="popularity">По популярности</option>
+                  </select>
+                </div>
+              </div>
               
               {/* Сетка товаров (с skeleton при загрузке) */}
               <ProductGrid

@@ -9,7 +9,7 @@
  * - Кнопка добавления в корзину
  */
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { useParams, useNavigate, Link, useLocation } from 'react-router-dom'
 import { getProduct, getProductV2, addToCart, getFrequentlyBoughtTogether, getProductBreedRecommendations } from '../../api/shop'
 import { useAuthStore } from '../../store/authStore'
@@ -44,6 +44,15 @@ const getImageUrl = (image) => {
 }
 
 /**
+ * SVG-заглушка для отсутствующих изображений
+ */
+const getPlaceholderImage = (label = 'Нет фото') => {
+  const safeLabel = String(label || 'Нет фото').slice(0, 30)
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="600" height="600" viewBox="0 0 600 600"><rect width="600" height="600" fill="#f3f4f6"/><rect x="120" y="160" width="360" height="280" rx="24" fill="#e5e7eb"/><text x="300" y="325" text-anchor="middle" font-family="Arial, sans-serif" font-size="24" fill="#9ca3af">${safeLabel}</text></svg>`
+  return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`
+}
+
+/**
  * Компонент страницы ProductDetail
  */
 function ProductDetail() {
@@ -66,6 +75,90 @@ function ProductDetail() {
   const [selectedSkuOptions, setSelectedSkuOptions] = useState({})
   const [breedRecommendations, setBreedRecommendations] = useState([])
   const [selectedImageIndex, setSelectedImageIndex] = useState(0)
+  const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false)
+  const [activeDetailsTab, setActiveDetailsTab] = useState('characteristics')
+  const [isDescriptionTruncated, setIsDescriptionTruncated] = useState(false)
+  const descriptionRef = useRef(null)
+
+  const reviewsCount = useMemo(() => {
+    if (!product) return 0
+    return (product.reviews_count ?? product.rating_count ?? 0)
+  }, [product])
+
+  const detailsTabs = useMemo(() => {
+    const tabs = []
+    if (product?.food_details?.ingredients && product.food_details.ingredients.length > 0) {
+      tabs.push({ key: 'composition', label: 'Состав' })
+    }
+    tabs.push({ key: 'characteristics', label: 'Характеристики' })
+    return tabs
+  }, [product?.food_details?.ingredients])
+
+  useEffect(() => {
+    if (!detailsTabs.length) return
+    if (!detailsTabs.find(tab => tab.key === activeDetailsTab)) {
+      setActiveDetailsTab(detailsTabs[0].key)
+    }
+  }, [detailsTabs, activeDetailsTab])
+
+  useEffect(() => {
+    if (!descriptionRef.current) return
+    if (isDescriptionExpanded) {
+      setIsDescriptionTruncated(false)
+      return
+    }
+    const el = descriptionRef.current
+    const isOverflowing = el.scrollHeight > el.clientHeight + 1
+    setIsDescriptionTruncated(isOverflowing)
+  }, [product?.description, isDescriptionExpanded])
+
+  const characteristics = useMemo(() => {
+    if (!product) return []
+    const animalLabels = {
+      dog: 'Для собак',
+      cat: 'Для кошек',
+      all: 'Для всех',
+    }
+    const ageLabels = {
+      puppy: 'Для щенков',
+      kitten: 'Для котят',
+      adult: 'Для взрослых',
+      senior: 'Для пожилых',
+    }
+    const sizeLabels = {
+      mini: 'Миниатюрные',
+      small: 'Маленькие',
+      medium: 'Средние',
+      large: 'Крупные',
+      giant: 'Гигантские',
+    }
+    const groupLabels = {
+      food: 'Корма',
+      treats: 'Лакомства',
+      vet: 'Ветаптека',
+      vitamins: 'Витамины',
+      clothes: 'Одежда',
+      equipment: 'Амуниция',
+      grooming: 'Груминг',
+      housing: 'Содержание',
+      toys: 'Игрушки',
+      bowls: 'Миски',
+      toilet: 'Туалеты',
+      other: 'Прочее',
+    }
+
+    const list = []
+    if (product.brand?.name) list.push({ label: 'Бренд', value: product.brand.name })
+    if (product.category?.name) list.push({ label: 'Категория', value: product.category.name })
+    if (product.animal_type) list.push({ label: 'Для кого', value: animalLabels[product.animal_type] || product.animal_type })
+    if (product.product_group) list.push({ label: 'Группа товаров', value: groupLabels[product.product_group] || product.product_group })
+    if (product.age_group && product.age_group !== 'all') list.push({ label: 'Возраст', value: ageLabels[product.age_group] || product.age_group })
+    if (product.size_group && product.size_group !== 'all') list.push({ label: 'Размер', value: sizeLabels[product.size_group] || product.size_group })
+    if (product.country) list.push({ label: 'Страна', value: product.country })
+    if (selectedSku?.weight_kg) list.push({ label: 'Вес упаковки', value: selectedSku.weight_display || `${selectedSku.weight_kg} кг` })
+    if (product.sku_count && product.sku_count > 1) list.push({ label: 'Варианты', value: product.sku_count })
+    return list
+  }, [product, selectedSku])
 
   const returnTo = useMemo(() => {
     const params = new URLSearchParams(location.search)
@@ -87,8 +180,8 @@ function ProductDetail() {
     return {
       price: product?.price || 0,
       compare_price: product?.compare_price,
-      available: product?.is_available ?? product?.in_stock,
-      stock: product?.stock_count
+      available: product?.is_available,
+      stock: null
     }
   }, [product, selectedSku])
   
@@ -247,7 +340,7 @@ function ProductDetail() {
   const fetchRecommendations = async () => {
     setIsLoadingRecommendations(true)
     try {
-      const response = await getFrequentlyBoughtTogether(id)
+      const response = await getFrequentlyBoughtTogether(id, 8)
       setRecommendations(response.recommendations || [])
     } catch (err) {
       // Не показываем ошибку для рекомендаций, просто оставляем пустой список
@@ -300,15 +393,9 @@ function ProductDetail() {
     await updateQuantity(product.id, nextQuantity)
   }
 
-  const animalType = product?.animal_type || product?.animal
-  const categoryNameRaw = product?.category?.name || product?.category_name
-  const categorySlugRaw = product?.category?.slug || product?.category_slug
-  const subcategoryName = product?.subcategory?.name || product?.subcategory_name || product?.subcategory
-  const subcategorySlug = product?.subcategory?.slug || product?.subcategory_slug || product?.subcategory
-  
-  const shouldFallbackToFood = Boolean(subcategoryName) && (!categoryNameRaw || categoryNameRaw === subcategoryName)
-  const categoryName = shouldFallbackToFood ? 'Корм' : categoryNameRaw
-  const categorySlug = shouldFallbackToFood ? 'food' : categorySlugRaw
+  const animalType = product?.animal_type
+  const categoryName = product?.category?.name
+  const categorySlug = product?.category?.slug
   
   const buildShopLink = (params) => {
     const query = new URLSearchParams(params).toString()
@@ -386,26 +473,11 @@ function ProductDetail() {
               <Link
                 to={buildShopLink({
                   ...(animalType === 'dog' || animalType === 'cat' ? { animal: animalType } : {}),
-                  ...(categorySlug ? { category_slug: categorySlug } : { category: categoryName })
+                  ...(categorySlug ? { category_slug: categorySlug } : {})
                 })}
                 className="hover:text-primary-600"
               >
                 {categoryName}
-              </Link>
-              <span className="text-gray-300">/</span>
-            </>
-          )}
-          {subcategoryName && (
-            <>
-              <Link
-                to={buildShopLink({
-                  ...(animalType === 'dog' || animalType === 'cat' ? { animal: animalType } : {}),
-                  ...(categorySlug ? { category_slug: categorySlug } : (categoryName ? { category: categoryName } : {})),
-                  ...(subcategorySlug ? { subcategory: subcategorySlug } : {})
-                })}
-                className="hover:text-primary-600"
-              >
-                {subcategoryName}
               </Link>
               <span className="text-gray-300">/</span>
             </>
@@ -432,11 +504,7 @@ function ProductDetail() {
               }
               
               if (imageUrls.length === 0) {
-                return (
-                  <div className="w-full h-full flex items-center justify-center">
-                    <span className="text-8xl opacity-40">📦</span>
-                  </div>
-                )
+                imageUrls.push(getPlaceholderImage())
               }
               
               const currentImage = imageUrls[selectedImageIndex] || imageUrls[0]
@@ -506,6 +574,10 @@ function ProductDetail() {
               })
             }
             
+            if (imageUrls.length === 0) {
+              imageUrls.push(getPlaceholderImage())
+            }
+            
             if (imageUrls.length <= 1) return null
             
             return (
@@ -541,15 +613,15 @@ function ProductDetail() {
           <div className="space-y-2">
             <div className="flex flex-wrap items-center gap-2">
               <span className="px-3 py-1 bg-primary-100 text-primary-700 text-xs font-medium rounded-full">
-                {product.animal_type === 'dog' || product.animal === 'dog' 
-                  ? 'Для собак' 
-                  : product.animal_type === 'cat' || product.animal === 'cat'
+                {product.animal_type === 'dog'
+                  ? 'Для собак'
+                  : product.animal_type === 'cat'
                     ? 'Для кошек'
                     : 'Для всех'}
               </span>
-              {(product.category?.name || product.category_name) && (
+              {product.category?.name && (
                 <span className="px-3 py-1 bg-gray-100 text-gray-700 text-xs font-medium rounded-full">
-                  {product.category?.name || product.category_name}
+                  {product.category?.name}
                 </span>
               )}
               {product.brand?.brand_class === 'super_premium' && (
@@ -564,9 +636,9 @@ function ProductDetail() {
               )}
             </div>
 
-            {(product.brand?.name || product.vendor) && (
+            {product.brand?.name && (
               <p className="text-sm text-primary-700 font-semibold">
-                {product.brand?.name || product.vendor}
+                {product.brand?.name}
               </p>
             )}
 
@@ -574,24 +646,120 @@ function ProductDetail() {
               {product.name}
             </h1>
 
-            {(product.rating || product.rating_count !== undefined || product.reviews_count !== undefined) && (
-              <div className="mt-3">
-                <Rating
-                  rating={product.rating || 0}
-                  reviewsCount={product.rating_count || product.reviews_count}
-                  readonly={true}
-                  size="lg"
-                />
-              </div>
-            )}
+            <div className="mt-3">
+              <button
+                type="button"
+                onClick={() => {
+                  const section = document.getElementById('reviews')
+                  if (section) section.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                }}
+                className="text-left"
+              >
+                <div className="flex items-center gap-3">
+                  <Rating
+                    rating={product.rating || 0}
+                    reviewsCount={reviewsCount}
+                    readonly={true}
+                    size="lg"
+                  />
+                  <span className="text-sm text-primary-600 hover:text-primary-700">
+                    Отзывы ({reviewsCount})
+                  </span>
+                </div>
+              </button>
+            </div>
           </div>
 
           {/* Описание под названием */}
           {product.description && (
             <div className="text-gray-600 leading-relaxed">
-              <p className="whitespace-pre-line">
-                {product.description}
-              </p>
+              <div
+                ref={descriptionRef}
+                className={`relative ${
+                  isDescriptionExpanded ? '' : 'max-h-28 overflow-hidden'
+                }`}
+              >
+                <p className="whitespace-pre-line">
+                  {product.description}
+                </p>
+                {!isDescriptionExpanded && isDescriptionTruncated && (
+                  <div className="absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-white to-transparent" />
+                )}
+              </div>
+              {isDescriptionTruncated && (
+                <button
+                  type="button"
+                  onClick={() => setIsDescriptionExpanded(prev => !prev)}
+                  className="mt-2 text-sm text-primary-600 hover:text-primary-700"
+                >
+                  {isDescriptionExpanded ? 'Свернуть' : 'Прочитать полностью'}
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* Вариации товара */}
+          {product.skus && product.skus.length > 1 && skuAttributes.length > 0 && (
+            <div className="bg-white rounded-2xl border border-gray-100 p-4">
+              <h3 className="text-sm font-semibold text-gray-900 mb-3">Вариации товара</h3>
+              <div className="space-y-4">
+                {skuAttributes.map(attribute => (
+                  <div key={attribute.key}>
+                    <h4 className="text-xs font-medium text-gray-600 mb-2">
+                      {attribute.label}:
+                    </h4>
+                    <div className="flex flex-wrap gap-2">
+                      {attribute.options.map(option => {
+                        const isSelected = selectedSkuOptions[attribute.key] === option.value
+                        const isOptionAvailable = product.skus.some(sku =>
+                          sku.available && matchesSelection(sku, {
+                            ...selectedSkuOptions,
+                            [attribute.key]: option.value,
+                          })
+                        )
+                        const isDisabled = !isOptionAvailable
+
+                        return (
+                          <button
+                            key={`${attribute.key}-${option.value}`}
+                            onClick={() => handleSkuOptionSelect(attribute.key, option.value)}
+                            disabled={isDisabled}
+                            className={`px-3 py-1.5 rounded-lg border text-xs font-medium transition-all flex items-center gap-2 ${
+                              isSelected
+                                ? 'border-primary-500 bg-primary-50 text-primary-700'
+                                : 'border-gray-200 hover:border-primary-300 text-gray-700'
+                            } ${isDisabled ? 'opacity-40 cursor-not-allowed' : ''}`}
+                          >
+                            {attribute.type === 'color' && option.color && (
+                              <span
+                                className="w-3 h-3 rounded-full border border-gray-300"
+                                style={{ backgroundColor: option.color }}
+                              />
+                            )}
+                            <span>{option.label}</span>
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+                ))}
+
+                {selectedSku && (
+                  <div className="bg-gray-50 rounded-lg px-3 py-2 flex items-center justify-between">
+                    <span className="text-xs text-gray-600">
+                      Выбрано: <span className="font-medium text-gray-900">
+                        {skuAttributes
+                          .map(attribute => selectedSku[attribute.key])
+                          .filter(Boolean)
+                          .join(' / ')}
+                      </span>
+                    </span>
+                    <span className="text-sm font-bold text-primary-600">
+                      {formatPrice(selectedSku.price)}
+                    </span>
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
@@ -633,69 +801,6 @@ function ProductDetail() {
             </div>
           )}
           
-          {/* Выбор варианта (SKU) */}
-          {product.skus && product.skus.length > 1 && (
-            <div className="border-t border-gray-200 pt-4 space-y-4">
-              {skuAttributes.map(attribute => (
-                <div key={attribute.key}>
-                  <h3 className="text-sm font-medium text-gray-700 mb-2">
-                    {attribute.label}:
-                  </h3>
-                  <div className="flex flex-wrap gap-2">
-                    {attribute.options.map(option => {
-                      const isSelected = selectedSkuOptions[attribute.key] === option.value
-                      const isOptionAvailable = product.skus.some(sku =>
-                        sku.available && matchesSelection(sku, {
-                          ...selectedSkuOptions,
-                          [attribute.key]: option.value,
-                        })
-                      )
-                      const isDisabled = !isOptionAvailable
-
-                      return (
-                        <button
-                          key={`${attribute.key}-${option.value}`}
-                          onClick={() => handleSkuOptionSelect(attribute.key, option.value)}
-                          disabled={isDisabled}
-                          className={`px-4 py-2 rounded-lg border-2 transition-all flex items-center gap-2 ${
-                            isSelected
-                              ? 'border-primary-500 bg-primary-50'
-                              : 'border-gray-200 hover:border-primary-300'
-                          } ${isDisabled ? 'opacity-40 cursor-not-allowed' : ''}`}
-                        >
-                          {attribute.type === 'color' && option.color && (
-                            <span
-                              className="w-4 h-4 rounded-full border border-gray-300"
-                              style={{ backgroundColor: option.color }}
-                            />
-                          )}
-                          <span className="text-sm font-medium text-gray-900">
-                            {option.label}
-                          </span>
-                        </button>
-                      )
-                    })}
-                  </div>
-                </div>
-              ))}
-
-              {selectedSku && (
-                <div className="bg-primary-50 rounded-lg px-4 py-2 flex items-center justify-between">
-                  <span className="text-sm text-gray-600">
-                    Выбрано: <span className="font-medium text-gray-900">
-                      {skuAttributes
-                        .map(attribute => selectedSku[attribute.key])
-                        .filter(Boolean)
-                        .join(' / ')}
-                    </span>
-                  </span>
-                  <span className="text-lg font-bold text-primary-600">
-                    {formatPrice(selectedSku.price)}
-                  </span>
-                </div>
-              )}
-            </div>
-          )}
           
           {/* Цена + CTA */}
           <div className="lg:sticky lg:top-24">
@@ -743,7 +848,7 @@ function ProductDetail() {
                 </p>
               )}
 
-              {(currentPrice.available || product.is_available || product.in_stock || product.stock_count > 0) ? (
+              {(currentPrice.available || product.is_available) ? (
                 <div className="flex items-stretch gap-2 h-12">
                   <button
                     onClick={showQuantity ? () => navigate('/cart') : handleAddToCart}
@@ -794,7 +899,7 @@ function ProductDetail() {
                     
                     <button
                       onClick={() => handleQuantityAdjust(1)}
-                      disabled={cartQuantity >= (product.stock_count || 999)}
+                      disabled={currentPrice.stock ? cartQuantity >= currentPrice.stock : false}
                       className="w-10 h-full flex items-center justify-center text-primary-700 hover:bg-gray-200 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                       tabIndex={showQuantity ? 0 : -1}
                     >
@@ -813,224 +918,73 @@ function ProductDetail() {
                 </button>
               )}
 
-              <div className="grid grid-cols-2 gap-2 text-xs text-gray-600">
-                <div className="flex items-center gap-2 bg-gray-50 rounded-lg px-3 py-2">
-                  <span>🚚</span>
-                  Быстрая доставка
-                </div>
-                <div className="flex items-center gap-2 bg-gray-50 rounded-lg px-3 py-2">
-                  <span>↩️</span>
-                  Удобный возврат
-                </div>
-              </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Детали товара */}
-      <div className="mt-10 grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2 space-y-8">
-          {/* Состав (если есть) */}
-          {product.category_details?.ingredients && product.category_details.ingredients.length > 0 && (
-            <div className="bg-amber-50 rounded-2xl p-5 border border-amber-100">
-              <h2 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                <span className="text-xl">📋</span>
-                Состав
-              </h2>
-              <div className="flex flex-wrap gap-2">
-                {product.category_details.ingredients.slice(0, 12).map((ingredient, idx) => (
-                  <span 
-                    key={idx} 
-                    className={`px-2.5 py-1 rounded-full text-sm ${
-                      ingredient.percent 
-                        ? 'bg-amber-200 text-amber-800 font-medium' 
-                        : 'bg-amber-100 text-amber-700'
-                    }`}
-                  >
-                    {ingredient.name || ingredient}
-                    {ingredient.percent && <span className="ml-1 opacity-70">({ingredient.percent}%)</span>}
-                  </span>
-                ))}
-                {product.category_details.ingredients.length > 12 && (
-                  <span className="px-2.5 py-1 bg-gray-100 text-gray-500 rounded-full text-sm">
-                    +{product.category_details.ingredients.length - 12} ещё
-                  </span>
-                )}
-              </div>
-              
-              {product.category_details.composition_raw && (
-                <details className="mt-3">
-                  <summary className="text-sm text-amber-700 cursor-pointer hover:text-amber-800">
-                    Показать полный состав
-                  </summary>
-                  <p className="mt-2 text-sm text-gray-600 whitespace-pre-line bg-white rounded-lg p-3">
-                    {product.category_details.composition_raw}
-                  </p>
-                </details>
-              )}
-            </div>
-          )}
-
-          {/* Таблица нутриентов (для кормов) */}
-          {product.category_details?.nutrition && (
-            <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl p-5 border border-green-100">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                <span className="text-xl">🥗</span>
-                Пищевая ценность
-              </h2>
-              
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4">
-                {product.category_details.nutrition.protein_percent != null && (
-                  <div className="bg-white rounded-lg p-3 text-center shadow-sm">
-                    <div className="text-2xl font-bold text-primary-600">
-                      {product.category_details.nutrition.protein_percent}%
-                    </div>
-                    <div className="text-xs text-gray-500 mt-1">Белок</div>
-                  </div>
-                )}
-                {product.category_details.nutrition.fat_percent != null && (
-                  <div className="bg-white rounded-lg p-3 text-center shadow-sm">
-                    <div className="text-2xl font-bold text-orange-500">
-                      {product.category_details.nutrition.fat_percent}%
-                    </div>
-                    <div className="text-xs text-gray-500 mt-1">Жир</div>
-                  </div>
-                )}
-                {product.category_details.nutrition.fiber_percent != null && (
-                  <div className="bg-white rounded-lg p-3 text-center shadow-sm">
-                    <div className="text-2xl font-bold text-green-600">
-                      {product.category_details.nutrition.fiber_percent}%
-                    </div>
-                    <div className="text-xs text-gray-500 mt-1">Клетчатка</div>
-                  </div>
-                )}
-                {product.category_details.nutrition.ash_percent != null && (
-                  <div className="bg-white rounded-lg p-3 text-center shadow-sm">
-                    <div className="text-2xl font-bold text-gray-600">
-                      {product.category_details.nutrition.ash_percent}%
-                    </div>
-                    <div className="text-xs text-gray-500 mt-1">Зола</div>
-                  </div>
-                )}
-                {product.category_details.nutrition.moisture_percent != null && (
-                  <div className="bg-white rounded-lg p-3 text-center shadow-sm">
-                    <div className="text-2xl font-bold text-blue-500">
-                      {product.category_details.nutrition.moisture_percent}%
-                    </div>
-                    <div className="text-xs text-gray-500 mt-1">Влажность</div>
-                  </div>
-                )}
-                {product.category_details.nutrition.kcal_per_100g != null && (
-                  <div className="bg-white rounded-lg p-3 text-center shadow-sm">
-                    <div className="text-2xl font-bold text-red-500">
-                      {Math.round(product.category_details.nutrition.kcal_per_100g)}
-                    </div>
-                    <div className="text-xs text-gray-500 mt-1">ккал/100г</div>
-                  </div>
-                )}
-              </div>
-              
-              {(product.category_details.nutrition.calcium_percent != null || 
-                product.category_details.nutrition.phosphorus_percent != null) && (
-                <div className="border-t border-green-200 pt-4">
-                  <h3 className="text-sm font-medium text-gray-700 mb-3">Минералы</h3>
-                  <div className="grid grid-cols-2 gap-2">
-                    {product.category_details.nutrition.calcium_percent != null && (
-                      <div className="flex justify-between py-1.5 px-3 bg-white rounded-lg text-sm">
-                        <span className="text-gray-600">Кальций</span>
-                        <span className="font-medium">{product.category_details.nutrition.calcium_percent}%</span>
-                      </div>
-                    )}
-                    {product.category_details.nutrition.phosphorus_percent != null && (
-                      <div className="flex justify-between py-1.5 px-3 bg-white rounded-lg text-sm">
-                        <span className="text-gray-600">Фосфор</span>
-                        <span className="font-medium">{product.category_details.nutrition.phosphorus_percent}%</span>
-                      </div>
-                    )}
-                    {product.category_details.nutrition.omega3_percent != null && (
-                      <div className="flex justify-between py-1.5 px-3 bg-white rounded-lg text-sm">
-                        <span className="text-gray-600">Омега-3</span>
-                        <span className="font-medium">{product.category_details.nutrition.omega3_percent}%</span>
-                      </div>
-                    )}
-                    {product.category_details.nutrition.omega6_percent != null && (
-                      <div className="flex justify-between py-1.5 px-3 bg-white rounded-lg text-sm">
-                        <span className="text-gray-600">Омега-6</span>
-                        <span className="font-medium">{product.category_details.nutrition.omega6_percent}%</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-
-        <div className="space-y-8">
-          {/* Характеристики */}
-          <div className="bg-white rounded-2xl border border-gray-100 p-5">
-            <h2 className="text-lg font-semibold text-gray-900 mb-3">Характеристики</h2>
-            <div className="space-y-2">
-              {product.country && (
-                <div className="flex justify-between py-2 border-b border-gray-100">
-                  <span className="text-gray-600">Страна</span>
-                  <span className="text-gray-900 font-medium">{product.country}</span>
-                </div>
-              )}
-              {product.weight && (
-                <div className="flex justify-between py-2 border-b border-gray-100">
-                  <span className="text-gray-600">Вес</span>
-                  <span className="text-gray-900 font-medium">{product.weight} кг</span>
-                </div>
-              )}
-              {selectedSku?.weight_kg && (
-                <div className="flex justify-between py-2 border-b border-gray-100">
-                  <span className="text-gray-600">Вес упаковки</span>
-                  <span className="text-gray-900 font-medium">{selectedSku.weight_display || `${selectedSku.weight_kg} кг`}</span>
-                </div>
-              )}
-              {product.vendor_code && (
-                <div className="flex justify-between py-2 border-b border-gray-100">
-                  <span className="text-gray-600">Артикул</span>
-                  <span className="text-gray-900 font-medium">{product.vendor_code}</span>
-                </div>
-              )}
-              {selectedSku?.sku && (
-                <div className="flex justify-between py-2 border-b border-gray-100">
-                  <span className="text-gray-600">SKU</span>
-                  <span className="text-gray-900 font-medium">{selectedSku.sku}</span>
-                </div>
-              )}
-              {product.barcode && (
-                <div className="flex justify-between py-2 border-b border-gray-100">
-                  <span className="text-gray-600">Штрихкод</span>
-                  <span className="text-gray-900 font-medium">{product.barcode}</span>
-                </div>
-              )}
-            </div>
+      {/* Детали товара (вкладки) */}
+      <div className="mt-10">
+        <div className="bg-white rounded-2xl border border-gray-100 p-5">
+          <div className="flex flex-wrap gap-2 mb-4">
+            {detailsTabs.map(tab => (
+              <button
+                key={tab.key}
+                type="button"
+                onClick={() => setActiveDetailsTab(tab.key)}
+                className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                  activeDetailsTab === tab.key
+                    ? 'bg-primary-600 text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
           </div>
 
-          {/* Показания по здоровью */}
-          {product.health_conditions && product.health_conditions.length > 0 && (
-            <div className="bg-blue-50 rounded-2xl p-5 border border-blue-100">
-              <h3 className="text-sm font-medium text-blue-800 mb-2">Показания:</h3>
-              <div className="flex flex-wrap gap-2">
-                {product.health_conditions.map((condition, idx) => (
-                  <span key={idx} className="px-2 py-1 bg-blue-100 text-blue-700 text-sm rounded-full">
-                    {condition === 'urinary' ? 'Мочевыделительная система' :
-                     condition === 'obesity' ? 'Контроль веса' :
-                     condition === 'joint' ? 'Суставы' :
-                     condition === 'skin' ? 'Кожа и шерсть' :
-                     condition === 'digestive' ? 'Пищеварение' :
-                     condition === 'kidney' ? 'Почки' :
-                     condition === 'liver' ? 'Печень' :
-                     condition === 'cardiac' ? 'Сердце' :
-                     condition === 'dental' ? 'Зубы' :
-                     condition === 'diabetes' ? 'Диабет' : condition}
-                  </span>
-                ))}
-              </div>
+          {activeDetailsTab === 'composition' && (
+            <div className="flex flex-wrap gap-2">
+              {product.food_details?.ingredients?.slice(0, 24).map((ingredient, idx) => (
+                <span
+                  key={idx}
+                  className="px-2.5 py-1 rounded-full text-sm bg-amber-100 text-amber-700"
+                >
+                  {ingredient}
+                </span>
+              ))}
+            </div>
+          )}
+
+          {activeDetailsTab === 'characteristics' && (
+            <div className="space-y-2">
+              {characteristics.map((item, index) => (
+                <div key={item.label} className={`flex justify-between py-2 ${index < characteristics.length - 1 ? 'border-b border-gray-100' : ''}`}>
+                  <span className="text-gray-600">{item.label}</span>
+                  <span className="text-gray-900 font-medium">{item.value}</span>
+                </div>
+              ))}
+              {product.health_conditions && product.health_conditions.length > 0 && (
+                <div className="pt-3">
+                  <div className="text-sm font-medium text-gray-700 mb-2">Показания</div>
+                  <div className="flex flex-wrap gap-2">
+                    {product.health_conditions.map((condition, idx) => (
+                      <span key={idx} className="px-2 py-1 bg-blue-100 text-blue-700 text-sm rounded-full">
+                        {condition === 'urinary' ? 'Мочевыделительная система' :
+                         condition === 'obesity' ? 'Контроль веса' :
+                         condition === 'joint' ? 'Суставы' :
+                         condition === 'skin' ? 'Кожа и шерсть' :
+                         condition === 'digestive' ? 'Пищеварение' :
+                         condition === 'kidney' ? 'Почки' :
+                         condition === 'liver' ? 'Печень' :
+                         condition === 'cardiac' ? 'Сердце' :
+                         condition === 'dental' ? 'Зубы' :
+                         condition === 'diabetes' ? 'Диабет' : condition}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -1067,6 +1021,9 @@ function ProductDetail() {
             loading={isLoadingRecommendations}
             showReason={true}
             className="mt-2"
+            compact={true}
+            maxItems={8}
+            gridCols="grid-cols-2 sm:grid-cols-4"
           />
         </div>
       </div>

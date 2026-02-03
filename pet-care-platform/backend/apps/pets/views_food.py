@@ -471,20 +471,20 @@ class FoodStatisticsView(APIView):
         
         from apps.shop.models import Product
         
-        # Базовый queryset (используем новые поля + legacy для совместимости)
+        # Базовый queryset (новая структура)
         from django.db.models import Q
         queryset = Product.objects.filter(
-            Q(product_group='food') | Q(category='food'),
-            Q(animal_type__in=[species, 'all']) | Q(animal=species),
-            Q(is_available=True) | Q(in_stock=True)
+            product_group='food',
+            animal_type__in=[species, 'all'],
+            is_available=True
         )
         
         # Бренды
-        brands = list(queryset.values_list('vendor', flat=True).distinct())
+        brands = list(queryset.values_list('brand__name', flat=True).distinct())
         brands = sorted([b for b in brands if b])
         
         # Типы кормов
-        food_types = list(queryset.values_list('subcategory', flat=True).distinct())
+        food_types = list(queryset.values_list('new_category__code', flat=True).distinct())
         food_types = [ft for ft in food_types if ft]
         
         # Ценовой диапазон

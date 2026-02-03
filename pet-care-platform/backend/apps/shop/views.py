@@ -42,9 +42,7 @@ class ProductListView(APIView):
     Параметры:
         animal: dog | cat
         pet_id: ID питомца пользователя (для персональной подборки)
-        category: food | pharmacy | ammunition | care | transport | toys
-        subcategory: dry, wet, canned, pouch, pate, holistic, diet, hypoallergenic и др.
-        vendor: бренд
+        category_slug: slug категории (новая структура)
         min_price: минимальная цена
         max_price: максимальная цена
         in_stock: true | false
@@ -91,7 +89,7 @@ class ProductListView(APIView):
         # Генерируем ключи кэша
         filters_hash = self._get_cache_key(request)
         cache_key_products = f'{filters_hash}:page:{page}:per_page:{per_page}'
-        cache_key_filters = f'shop:filters:{request.query_params.get("animal", "")}:{request.query_params.get("category", "")}'
+        cache_key_filters = f'shop:filters:{filters_hash}'
         cache_key_user_pets = f'shop:user_pets:{request.user.id}' if request.user.is_authenticated else None
         
         # Пробуем получить товары из кэша
@@ -132,47 +130,37 @@ class ProductListView(APIView):
         
         # Применяем фильтры
         products = products.for_animal(animal)
-        
-        category = request.query_params.get('category')
-        subcategory = request.query_params.get('subcategory')
-        products = products.in_category(category, subcategory)
-        
-        vendor = request.query_params.get('vendor')
-        products = products.by_vendor(vendor)
+        products_for_filters = products
         
         # === НОВЫЕ ФИЛЬТРЫ (по database_tz.md) ===
         
         # Фильтр по новой категории (с иерархией)
         category_id = request.query_params.get('category_id')
         category_slug = request.query_params.get('category_slug')
+        category_code = request.query_params.get('category_code')
         
-        # region agent log
-        import json
-        debug_log_path = r'd:\pet_develop\Pet_dev\pet-care-platform\.cursor\debug.log'
-        try:
-            with open(debug_log_path, 'a', encoding='utf-8') as f:
-                f.write(json.dumps({'location':'views.py:category_filter','message':'Category filter params','data':{'category_slug':category_slug,'category_id':category_id,'products_before':products.count()},'timestamp':__import__('time').time()*1000,'sessionId':'debug-session','hypothesisId':'C-backend'},ensure_ascii=False)+'\n')
-        except: pass
-        # endregion
-        
-        if category_slug:
+        if category_code:
+            from .models import Category
+            from apps.shop.management.commands.populate_category_codes import CATEGORY_CODE_MAPPING
+            categories = Category.objects.filter(is_active=True).only(
+                'id', 'kotmatros_category_id', 'code'
+            )
+            def _code_for(cat):
+                return cat.code or CATEGORY_CODE_MAPPING.get(cat.kotmatros_category_id)
+            matched_ids = [
+                cat.id for cat in categories
+                if _code_for(cat) and (
+                    _code_for(cat) == category_code or _code_for(cat).startswith(f"{category_code}.")
+                )
+            ]
+            if matched_ids:
+                products = products.filter(new_category_id__in=matched_ids)
+        elif category_slug:
             from .models import Category
             try:
                 cat = Category.objects.get(slug=category_slug, is_active=True)
-                # region agent log
-                try:
-                    with open(debug_log_path, 'a', encoding='utf-8') as f:
-                        f.write(json.dumps({'location':'views.py:category_filter:found','message':'Category found','data':{'cat_id':cat.id,'cat_name':cat.name,'cat_slug':cat.slug},'timestamp':__import__('time').time()*1000,'sessionId':'debug-session','hypothesisId':'C-backend'},ensure_ascii=False)+'\n')
-                except: pass
-                # endregion
                 products = products.in_new_category(cat)
             except Category.DoesNotExist:
-                # region agent log
-                try:
-                    with open(debug_log_path, 'a', encoding='utf-8') as f:
-                        f.write(json.dumps({'location':'views.py:category_filter:notfound','message':'Category NOT found','data':{'category_slug':category_slug},'timestamp':__import__('time').time()*1000,'sessionId':'debug-session','hypothesisId':'C-backend'},ensure_ascii=False)+'\n')
-                except: pass
-                # endregion
                 pass
         elif category_id:
             try:
@@ -183,15 +171,18 @@ class ProductListView(APIView):
         # Фильтр по группе товаров
         product_group = request.query_params.get('product_group')
         products = products.by_product_group(product_group)
+        products_for_filters = products_for_filters.by_product_group(product_group)
         
         # Фильтр по бренду (новый)
         brand_id = request.query_params.get('brand_id')
         brand_slug = request.query_params.get('brand_slug')
         if brand_slug:
             products = products.by_brand(brand_slug)
+            products_for_filters = products_for_filters.by_brand(brand_slug)
         elif brand_id:
             try:
                 products = products.by_brand(int(brand_id))
+                products_for_filters = products_for_filters.by_brand(int(brand_id))
             except ValueError:
                 pass
         
@@ -199,30 +190,35 @@ class ProductListView(APIView):
         brand_class = request.query_params.get('brand_class')
         if brand_class and brand_class in ['economy', 'premium', 'super_premium', 'holistic']:
             products = products.filter(brand__brand_class=brand_class)
+            products_for_filters = products_for_filters.filter(brand__brand_class=brand_class)
         
         # Фильтр по возрастной группе
         age_group = request.query_params.get('age_group')
         products = products.by_age_group(age_group)
+        products_for_filters = products_for_filters.by_age_group(age_group)
         
         # Фильтр по размерной группе
         size_group = request.query_params.get('size_group')
         products = products.by_size_group(size_group)
+        products_for_filters = products_for_filters.by_size_group(size_group)
         
         # Boolean фильтры для кормов
         if request.query_params.get('is_grain_free') == 'true':
             products = products.grain_free()
+            products_for_filters = products_for_filters.grain_free()
         
         if request.query_params.get('is_hypoallergenic') == 'true':
             products = products.hypoallergenic()
+            products_for_filters = products_for_filters.hypoallergenic()
         
         if request.query_params.get('is_veterinary') == 'true':
             products = products.veterinary()
+            products_for_filters = products_for_filters.veterinary()
         
         # Фильтр по показаниям здоровья
         health_condition = request.query_params.get('health_condition')
         products = products.by_health_condition(health_condition)
-        
-        # === LEGACY ФИЛЬТРЫ ===
+        products_for_filters = products_for_filters.by_health_condition(health_condition)
         
         # Фильтр по цене
         min_price = request.query_params.get('min_price')
@@ -231,18 +227,21 @@ class ProductListView(APIView):
             min_price_val = float(min_price) if min_price else None
             max_price_val = float(max_price) if max_price else None
             products = products.by_price_range(min_price_val, max_price_val)
+            products_for_filters = products_for_filters.by_price_range(min_price_val, max_price_val)
         except ValueError:
             pass
         
         # Фильтр по наличию
         in_stock = request.query_params.get('in_stock')
         if in_stock == 'true':
-            products = products.filter(Q(in_stock=True) | Q(is_available=True))
+            products = products.filter(is_available=True)
+            products_for_filters = products_for_filters.filter(is_available=True)
         
         # Фильтр по скидкам
         has_discount = request.query_params.get('has_discount')
         if has_discount == 'true':
             products = products.with_discount()
+            products_for_filters = products_for_filters.with_discount()
 
         # Фильтр по ID товаров (для избранного)
         ids = request.query_params.get('ids')
@@ -251,18 +250,21 @@ class ProductListView(APIView):
                 ids_list = [int(id.strip()) for id in ids.split(',') if id.strip()]
                 if ids_list:
                     products = products.filter(id__in=ids_list)
+                    products_for_filters = products_for_filters.filter(id__in=ids_list)
             except ValueError:
                 pass
         
         # Поиск по названию
         search = request.query_params.get('search')
         products = products.search(search)
+        products_for_filters = products_for_filters.search(search)
 
         # Фильтр по рейтингу
         min_rating = request.query_params.get('min_rating')
         if min_rating:
             try:
                 products = products.with_min_rating(float(min_rating))
+                products_for_filters = products_for_filters.with_min_rating(float(min_rating))
             except ValueError:
                 pass
 
@@ -271,12 +273,22 @@ class ProductListView(APIView):
         if min_orders:
             try:
                 products = products.filter(order_count__gte=int(min_orders))
+                products_for_filters = products_for_filters.filter(order_count__gte=int(min_orders))
             except ValueError:
                 pass
 
         # Сортировка
         sort_by = request.query_params.get('sort_by')
-        if sort_by == 'rating':
+        if sort_by == 'discount':
+            from django.db.models import F, ExpressionWrapper, FloatField
+            products = products.with_discount()
+            products_for_filters = products_for_filters.with_discount()
+            discount_percent = ExpressionWrapper(
+                (F('compare_price') - F('price')) / F('compare_price'),
+                output_field=FloatField()
+            )
+            products = products.annotate(discount_percent=discount_percent).order_by('-discount_percent')
+        elif sort_by == 'rating':
             products = products.order_by_rating()
         elif sort_by == 'popularity':
             products = products.order_by_popularity()
@@ -312,7 +324,7 @@ class ProductListView(APIView):
         
         # === ФИЛЬТРЫ: Кэшируем отдельно с более длинным TTL ===
         if cached_filters is None:
-            cached_filters = self._build_filters_data(animal, category)
+            cached_filters = self._build_filters_data(products_for_filters, brand_query=products)
             cache_timeout_filters = getattr(settings, 'CACHE_TIMEOUTS', {}).get('filters', 600)  # 10 минут
             cache.set(cache_key_filters, cached_filters, cache_timeout_filters)
         
@@ -334,21 +346,11 @@ class ProductListView(APIView):
             'filters': filters_data
         }, status=status.HTTP_200_OK)
     
-    def _build_filters_data(self, animal=None, category=None):
-        """Построение данных фильтров с оптимизированными запросами."""
+    def _build_filters_data(self, filter_query, brand_query=None):
+        """Построение данных фильтров на текущем queryset."""
         from django.db.models import Count, Min, Max
         from .models import Category as ShopCategory, Brand
-        
-        # Базовый queryset для фильтров (поддержка legacy + новой структуры)
-        filter_query = Product.objects.filter(price__gt=0).filter(
-            Q(is_available=True) | Q(in_stock=True) | Q(stock_count__gt=0)
-        )
-        if animal:
-            filter_query = filter_query.filter(
-                Q(animal=animal) | Q(animal_type__in=[animal, 'all'])
-            )
-        if category:
-            filter_query = filter_query.filter(category=category)
+        from apps.shop.management.commands.populate_category_codes import CATEGORY_CODE_MAPPING
         
         # Один запрос для всех агрегаций
         aggregations = filter_query.aggregate(
@@ -356,122 +358,478 @@ class ProductListView(APIView):
             max_price=Max('price')
         )
         
-        # Подкатегории и бренды - отдельные оптимизированные запросы
-        subcategories = list(
-            filter_query.values('subcategory')
-            .annotate(count=Count('id'))
-            .filter(subcategory__isnull=False)
-            .order_by('subcategory')
-        )
-        
-        vendors = list(
-            filter_query.values('vendor')
-            .annotate(count=Count('id'))
-            .filter(vendor__isnull=False)
-            .order_by('-count')[:50]
-        )
-        
         # === НОВЫЕ ФИЛЬТРЫ ===
         
-        # Основные категории (фиксированный список с external_id из selected_categories_tree.txt)
-        # Уровень 0: Собаки/Кошки — это фильтр по животному, исключаем
-        # Уровень 1: Основные категории (Корм, Ветаптека, Амуниция и т.д.)
-        MAIN_CATEGORIES = {
-            'dog': [
-                {'external_id': 2136, 'name': 'Корм', 'icon': '🍖'},
-                {'external_id': 2138, 'name': 'Лакомства', 'icon': '🦴'},
-                {'external_id': 2341, 'name': 'Ветаптека', 'icon': '💊'},
-                {'external_id': 2139, 'name': 'Витамины и добавки', 'icon': '💪'},
-                {'external_id': 2143, 'name': 'Миски', 'icon': '🥣'},
-                {'external_id': 2142, 'name': 'Игрушки', 'icon': '🎾'},
-                {'external_id': 2145, 'name': 'Амуниция', 'icon': '🎒'},
-                {'external_id': 2147, 'name': 'Средства по уходу', 'icon': '🧴'},
-                {'external_id': 2332, 'name': 'Груминг', 'icon': '✂️'},
-                {'external_id': 2149, 'name': 'Одежда', 'icon': '👕'},
-                {'external_id': 2148, 'name': 'Транспортировка', 'icon': '🏠'},
-                {'external_id': 2151, 'name': 'Туалеты', 'icon': '🚽'},
-                {'external_id': 2338, 'name': 'Контроль поведения', 'icon': '🔔'},
-            ],
-            'cat': [
-                {'external_id': 2137, 'name': 'Корм', 'icon': '🍖'},
-                {'external_id': 2140, 'name': 'Лакомства', 'icon': '🐟'},
-                {'external_id': 2342, 'name': 'Ветаптека', 'icon': '💊'},
-                {'external_id': 2141, 'name': 'Витамины и добавки', 'icon': '💪'},
-                {'external_id': 2153, 'name': 'Наполнители', 'icon': '🧱'},
-                {'external_id': 2154, 'name': 'Миски', 'icon': '🥣'},
-                {'external_id': 2155, 'name': 'Игрушки', 'icon': '🧶'},
-                {'external_id': 2156, 'name': 'Амуниция', 'icon': '🎒'},
-                {'external_id': 2157, 'name': 'Средства по уходу', 'icon': '🧴'},
-                {'external_id': 2334, 'name': 'Груминг', 'icon': '✂️'},
-                {'external_id': 2337, 'name': 'Когтеточки', 'icon': '🐾'},
-                {'external_id': 2159, 'name': 'Одежда', 'icon': '👕'},
-                {'external_id': 2158, 'name': 'Транспортировка', 'icon': '🏠'},
-                {'external_id': 2160, 'name': 'Туалеты', 'icon': '🚽'},
-                {'external_id': 2339, 'name': 'Контроль поведения', 'icon': '🔔'},
-            ],
+        # Категории по спецификации (fixed order)
+        CATEGORY_SPEC = [
+            {
+                'code': 'food',
+                'name': 'Питание',
+                'icon': '🍖',
+                'children': [
+                    {'code': 'food.dry', 'name': 'Сухой корм'},
+                    {'code': 'food.wet', 'name': 'Влажный корм'},
+                    {'code': 'food.semi_moist', 'name': 'Полувлажный корм'},
+                    {'code': 'food.canned', 'name': 'Консервы'},
+                    {'code': 'food.pouches', 'name': 'Паучи'},
+                    {'code': 'food.pate', 'name': 'Паштеты'},
+                    {'code': 'food.holistic', 'name': 'Холистики'},
+                    {'code': 'food.diet', 'name': 'Диетический корм'},
+                    {'code': 'food.hypoallergenic', 'name': 'Гипоаллергенный корм'},
+                    {'code': 'food.treats', 'name': 'Лакомства'},
+                    {'code': 'food.supplements', 'name': 'Витамины и добавки'},
+                    {'code': 'food.lifestage.kitten', 'name': 'Правильное питание для котенка'},
+                    {'code': 'food.lifestage.puppy', 'name': 'Правильное питание для щенка'},
+                ],
+            },
+            {
+                'code': 'health',
+                'name': 'Ветаптека',
+                'icon': '💊',
+                'children': [
+                    {'code': 'health.parasite', 'name': 'Средства от паразитов'},
+                ],
+            },
+            {
+                'code': 'toilet',
+                'name': 'Туалеты и гигиена',
+                'icon': '🚽',
+                'children': [
+                    {'code': 'toilet.litter', 'name': 'Наполнители'},
+                    {'code': 'toilet.litter_boxes', 'name': 'Лотки'},
+                    {'code': 'toilet.litter_boxes_auto', 'name': 'Автоматические лотки'},
+                    {'code': 'toilet.bio_toilets', 'name': 'Биотуалеты'},
+                    {'code': 'toilet.waste_bags', 'name': 'Пакеты для выгула'},
+                    {'code': 'toilet.pads', 'name': 'Пеленки'},
+                    {'code': 'toilet.diapers', 'name': 'Подгузники'},
+                    {'code': 'toilet.scoops', 'name': 'Совочки'},
+                ],
+            },
+            {
+                'code': 'feeding',
+                'name': 'Миски и поилки',
+                'icon': '🥣',
+                'children': [
+                    {'code': 'feeding.bowls', 'name': 'Миски'},
+                    {'code': 'feeding.drinkers', 'name': 'Поилки'},
+                    {'code': 'feeding.bottles', 'name': 'Бутылочки'},
+                ],
+            },
+            {
+                'code': 'toys',
+                'name': 'Игрушки и развлечения',
+                'icon': '🎾',
+                'children': [
+                    {'code': 'toys.toys', 'name': 'Игрушки'},
+                    {'code': 'toys.scratching_posts', 'name': 'Когтеточки'},
+                    {'code': 'toys.playgrounds', 'name': 'Игровые площадки'},
+                    {'code': 'toys.tunnels', 'name': 'Тоннели'},
+                ],
+            },
+            {
+                'code': 'walk',
+                'name': 'Амуниция и выгул',
+                'icon': '🎒',
+                'children': [
+                    {'code': 'walk.collars', 'name': 'Ошейники'},
+                    {'code': 'walk.leashes', 'name': 'Поводки'},
+                    {'code': 'walk.harnesses', 'name': 'Шлейки'},
+                    {'code': 'walk.belts', 'name': 'Пояса'},
+                    {'code': 'walk.tags', 'name': 'Адресники'},
+                    {'code': 'walk.carabiners', 'name': 'Карабины'},
+                    {'code': 'walk.clickers', 'name': 'Кликеры'},
+                    {'code': 'walk.multiboxes', 'name': 'Мультибоксы'},
+                    {'code': 'walk.muzzles', 'name': 'Намордники'},
+                    {'code': 'walk.lights', 'name': 'Подсветки'},
+                    {'code': 'walk.retractable', 'name': 'Рулетки'},
+                    {'code': 'walk.bandanas', 'name': 'Банданы'},
+                    {'code': 'walk.popons', 'name': 'Попоны'},
+                    {'code': 'walk.accessories', 'name': 'Аксессуары'},
+                ],
+            },
+            {
+                'code': 'clothing',
+                'name': 'Одежда и обувь',
+                'icon': '👕',
+                'children': [
+                    {'code': 'clothing.general', 'name': 'Одежда'},
+                    {'code': 'clothing.jumpsuits', 'name': 'Комбинезоны'},
+                    {'code': 'clothing.raincoats', 'name': 'Дождевики'},
+                    {'code': 'clothing.vests', 'name': 'Жилетки'},
+                    {'code': 'clothing.popons', 'name': 'Попоны'},
+                    {'code': 'clothing.jackets', 'name': 'Куртки'},
+                    {'code': 'clothing.sweaters', 'name': 'Свитера'},
+                    {'code': 'clothing.hats', 'name': 'Шапки'},
+                    {'code': 'clothing.socks', 'name': 'Носки'},
+                    {'code': 'clothing.shoes', 'name': 'Ботинки'},
+                    {'code': 'clothing.tshirts', 'name': 'Футболки'},
+                    {'code': 'clothing.tops', 'name': 'Майки'},
+                    {'code': 'clothing.suits', 'name': 'Костюмы'},
+                    {'code': 'clothing.hoodies', 'name': 'Толстовки'},
+                    {'code': 'clothing.dresses', 'name': 'Платья'},
+                    {'code': 'clothing.accessories', 'name': 'Аксессуары'},
+                ],
+            },
+            {
+                'code': 'care',
+                'name': 'Уход и гигиена',
+                'icon': '🧴',
+                'children': [
+                    {'code': 'care.grooming', 'name': 'Груминг'},
+                    {'code': 'care.shampoos', 'name': 'Шампуни'},
+                    {'code': 'care.conditioners', 'name': 'Кондиционеры'},
+                    {'code': 'care.sprays', 'name': 'Спреи'},
+                    {'code': 'care.lotions', 'name': 'Лосьоны'},
+                    {'code': 'care.gels', 'name': 'Гели'},
+                    {'code': 'care.waxes', 'name': 'Воски'},
+                    {'code': 'care.perfumes', 'name': 'Парфюмерия'},
+                    {'code': 'care.oils', 'name': 'Масла'},
+                    {'code': 'care.masks', 'name': 'Маски'},
+                    {'code': 'care.serums', 'name': 'Сыворотки'},
+                    {'code': 'care.creams', 'name': 'Крема'},
+                    {'code': 'care.foams', 'name': 'Пены'},
+                    {'code': 'care.mousses', 'name': 'Муссы'},
+                    {'code': 'care.tonics', 'name': 'Тоники'},
+                    {'code': 'care.balms', 'name': 'Бальзамы'},
+                    {'code': 'care.deodorants', 'name': 'Дезодоранты'},
+                    {'code': 'care.wipes', 'name': 'Салфетки'},
+                    {'code': 'care.soap', 'name': 'Мыло'},
+                    {'code': 'care.liquids', 'name': 'Жидкости'},
+                    {'code': 'care.drops', 'name': 'Капли'},
+                    {'code': 'care.dental_pastes', 'name': 'Зубные пасты'},
+                    {'code': 'care.dental_brushes', 'name': 'Зубные щетки'},
+                    {'code': 'care.claw_clippers', 'name': 'Когтерезы'},
+                    {'code': 'care.claw_grinders', 'name': 'Гриндеры'},
+                    {'code': 'care.claw_files', 'name': 'Пилочки'},
+                    {'code': 'care.brushes', 'name': 'Щетки'},
+                    {'code': 'care.combs', 'name': 'Расчески'},
+                    {'code': 'care.slickers', 'name': 'Пуходерки'},
+                    {'code': 'care.scissors', 'name': 'Ножницы'},
+                    {'code': 'care.rollers', 'name': 'Ролики'},
+                    {'code': 'care.scrapers', 'name': 'Скребки'},
+                    {'code': 'care.tweezers', 'name': 'Пинцеты'},
+                    {'code': 'care.powders', 'name': 'Пудры'},
+                    {'code': 'care.massagers', 'name': 'Массажеры'},
+                    {'code': 'care.furminators', 'name': 'Фурминаторы'},
+                    {'code': 'care.clippers', 'name': 'Машинки для стрижки'},
+                    {'code': 'care.trimmers', 'name': 'Триммеры'},
+                    {'code': 'care.detanglers', 'name': 'Колотунорезы'},
+                    {'code': 'care.towels', 'name': 'Полотенца'},
+                    {'code': 'care.paw_washers', 'name': 'Лапомойки'},
+                    {'code': 'care.protective_collars', 'name': 'Защитные воротники'},
+                    {'code': 'care.misc', 'name': 'Техничка и аксессуары'},
+                ],
+            },
+            {
+                'code': 'housing',
+                'name': 'Дом и транспорт',
+                'icon': '🏠',
+                'children': [
+                    {'code': 'housing.kennels', 'name': 'Будки'},
+                    {'code': 'housing.enclosures', 'name': 'Вольеры'},
+                    {'code': 'housing.houses', 'name': 'Домики'},
+                    {'code': 'housing.cages', 'name': 'Клетки'},
+                    {'code': 'housing.partitions', 'name': 'Перегородки'},
+                    {'code': 'housing.bags', 'name': 'Сумки'},
+                    {'code': 'housing.beds', 'name': 'Лежанки'},
+                    {'code': 'housing.carriers', 'name': 'Переноски'},
+                    {'code': 'housing.containers', 'name': 'Контейнеры'},
+                    {'code': 'housing.doors', 'name': 'Дверцы'},
+                    {'code': 'housing.grates', 'name': 'Решетки'},
+                    {'code': 'housing.wheels_carriers', 'name': 'Колеса для переносок'},
+                    {'code': 'housing.wheels_cages', 'name': 'Колеса для клеток'},
+                    {'code': 'housing.trays', 'name': 'Поддоны'},
+                    {'code': 'housing.carts', 'name': 'Тележки'},
+                    {'code': 'housing.strollers', 'name': 'Коляски'},
+                    {'code': 'housing.hammocks', 'name': 'Гамаки'},
+                    {'code': 'housing.bedding', 'name': 'Подстилки'},
+                    {'code': 'housing.mattresses', 'name': 'Матрасы'},
+                    {'code': 'housing.blankets', 'name': 'Пледы'},
+                    {'code': 'housing.pillows', 'name': 'Подушки'},
+                    {'code': 'housing.mats', 'name': 'Коврики'},
+                    {'code': 'housing.ramps', 'name': 'Пандусы'},
+                    {'code': 'housing.stairs', 'name': 'Лестницы'},
+                    {'code': 'housing.carrier_straps', 'name': 'Ремни для переносок'},
+                    {'code': 'housing.safety_belts', 'name': 'Ремни безопасности'},
+                    {'code': 'housing.accessories', 'name': 'Аксессуары для содержания'},
+                ],
+            },
+            {
+                'code': 'behavior',
+                'name': 'Контроль поведения',
+                'icon': '🎯',
+                'children': [],
+            },
+            {
+                'code': 'misc',
+                'name': 'Прочее',
+                'icon': '📎',
+                'children': [
+                    {'code': 'misc.documents', 'name': 'Документы и паспорта'},
+                ],
+            },
+        ]
+        
+        def _normalize(value):
+            return ''.join([ch for ch in str(value or '').lower().replace('ё', 'е') if ch.isalnum()])
+        
+        def _match_category(candidates, aliases):
+            normalized_aliases = [_normalize(a) for a in aliases if a]
+            matches = []
+            for cat in candidates:
+                key_name = _normalize(cat.name)
+                key_slug = _normalize(cat.slug)
+                key_code = _normalize(getattr(cat, 'code', '') or '')
+                if any(a and (a in key_name or a in key_slug or (key_code and a in key_code)) for a in normalized_aliases):
+                    matches.append(cat)
+            if not matches:
+                return None
+            return sorted(matches, key=lambda c: c.product_count or 0, reverse=True)[0]
+        
+        PARENT_ALIASES = {
+            'food': ['food', 'питание', 'корм'],
+            'health': ['health', 'ветаптек'],
+            'toilet': ['toilet', 'туалет', 'наполнител'],
+            'feeding': ['feeding', 'мис', 'поил'],
+            'toys': ['toys', 'игрушк', 'когтеточ', 'тоннел', 'площадк'],
+            'walk': ['walk', 'амуниц', 'ошейн', 'повод', 'шлейк', 'наморд', 'рулет'],
+            'clothing': ['clothing', 'одежд', 'комбинезон', 'куртк', 'свитер', 'ботин', 'футбол', 'толстов', 'плать'],
+            'care': ['care', 'уход', 'груминг', 'шампун', 'космет'],
+            'housing': ['housing', 'транспорт', 'переноск', 'домик', 'лежанк', 'клетк', 'вольер', 'будк'],
+            'behavior': ['behavior', 'контроль', 'поведен'],
+            'misc': ['misc', 'прочее', 'документ', 'паспорт'],
         }
         
-        # Получаем категории для выбранного животного или все
-        main_cat_list = []
-        if animal:
-            main_cat_list = MAIN_CATEGORIES.get(animal, [])
-        else:
-            # Без фильтра по животному — показываем уникальные названия
-            seen_names = set()
-            for cat in MAIN_CATEGORIES.get('dog', []):
-                if cat['name'] not in seen_names:
-                    main_cat_list.append(cat)
-                    seen_names.add(cat['name'])
-        
-        # Загружаем данные из БД для этих категорий
-        external_ids = [c['external_id'] for c in main_cat_list]
-        db_categories = {
-            c.kotmatros_category_id: c 
-            for c in ShopCategory.objects.filter(
-                kotmatros_category_id__in=external_ids,
-                is_active=True
-            ).prefetch_related('children')
+        CHILD_ALIASES = {
+            'food.dry': ['сухой'],
+            'food.wet': ['влажн'],
+            'food.semi_moist': ['полувлажн'],
+            'food.canned': ['консерв'],
+            'food.pouches': ['пауч'],
+            'food.pate': ['пашт'],
+            'food.holistic': ['холистик'],
+            'food.diet': ['диет'],
+            'food.hypoallergenic': ['гипоаллер'],
+            'food.treats': ['лакомств'],
+            'food.supplements': ['витамин', 'добавк'],
+            'food.lifestage.kitten': ['котен', 'котён', 'котенка', 'котёнка'],
+            'food.lifestage.puppy': ['щен', 'щенка'],
+            'health.parasite': ['паразит'],
+            'toilet.litter': ['наполнител'],
+            'toilet.litter_boxes': ['лоток'],
+            'toilet.litter_boxes_auto': ['автоматическ'],
+            'toilet.bio_toilets': ['биотуалет'],
+            'toilet.waste_bags': ['пакет', 'выгул'],
+            'toilet.pads': ['пеленк', 'пелёнк'],
+            'toilet.diapers': ['подгузн'],
+            'toilet.scoops': ['совоч'],
+            'feeding.bowls': ['мис'],
+            'feeding.drinkers': ['поил'],
+            'feeding.bottles': ['бутылоч'],
+            'toys.toys': ['игрушк'],
+            'toys.scratching_posts': ['когтеточ'],
+            'toys.playgrounds': ['площадк'],
+            'toys.tunnels': ['тоннел'],
+            'walk.collars': ['ошейн'],
+            'walk.leashes': ['повод'],
+            'walk.harnesses': ['шлейк'],
+            'walk.belts': ['пояс'],
+            'walk.tags': ['адресн'],
+            'walk.carabiners': ['карабин'],
+            'walk.clickers': ['кликер'],
+            'walk.multiboxes': ['мультибокс'],
+            'walk.muzzles': ['наморд'],
+            'walk.lights': ['подсвет'],
+            'walk.retractable': ['рулет'],
+            'walk.bandanas': ['бандан'],
+            'walk.popons': ['попон'],
+            'walk.accessories': ['аксессуар', 'косынк'],
+            'clothing.general': ['одежд'],
+            'clothing.jumpsuits': ['комбинезон'],
+            'clothing.raincoats': ['дождевик'],
+            'clothing.vests': ['жилет'],
+            'clothing.popons': ['попон'],
+            'clothing.jackets': ['куртк'],
+            'clothing.sweaters': ['свитер'],
+            'clothing.hats': ['шапк'],
+            'clothing.socks': ['носк'],
+            'clothing.shoes': ['ботин'],
+            'clothing.tshirts': ['футбол'],
+            'clothing.tops': ['майк'],
+            'clothing.suits': ['костюм'],
+            'clothing.hoodies': ['толстов'],
+            'clothing.dresses': ['плать'],
+            'clothing.accessories': ['аксессуар'],
+            'care.grooming': ['груминг'],
+            'care.shampoos': ['шампун'],
+            'care.conditioners': ['кондицион'],
+            'care.sprays': ['спрей'],
+            'care.lotions': ['лосьон'],
+            'care.gels': ['гел'],
+            'care.waxes': ['воск'],
+            'care.perfumes': ['парфюм'],
+            'care.oils': ['масл'],
+            'care.masks': ['маск'],
+            'care.serums': ['сыворот'],
+            'care.creams': ['крем'],
+            'care.foams': ['пен'],
+            'care.mousses': ['мусс'],
+            'care.tonics': ['тоник'],
+            'care.balms': ['бальзам'],
+            'care.deodorants': ['дезодорант'],
+            'care.wipes': ['салфет'],
+            'care.soap': ['мыло'],
+            'care.liquids': ['жидкост'],
+            'care.drops': ['капл'],
+            'care.dental_pastes': ['зубн', 'паст'],
+            'care.dental_brushes': ['щетк', 'зубн'],
+            'care.claw_clippers': ['когтерез'],
+            'care.claw_grinders': ['гриндер'],
+            'care.claw_files': ['пилочк'],
+            'care.brushes': ['щетк'],
+            'care.combs': ['расческ'],
+            'care.slickers': ['пуходерк'],
+            'care.scissors': ['ножниц'],
+            'care.rollers': ['ролик'],
+            'care.scrapers': ['скреб'],
+            'care.tweezers': ['пинцет'],
+            'care.powders': ['пудр'],
+            'care.massagers': ['массаж'],
+            'care.furminators': ['фурмин'],
+            'care.clippers': ['машинк'],
+            'care.trimmers': ['триммер'],
+            'care.detanglers': ['колотун'],
+            'care.towels': ['полотен'],
+            'care.paw_washers': ['лапомойк'],
+            'care.protective_collars': ['воротник'],
+            'care.misc': ['техничк'],
+            'housing.kennels': ['будк'],
+            'housing.enclosures': ['вольер'],
+            'housing.houses': ['домик'],
+            'housing.cages': ['клетк'],
+            'housing.partitions': ['перегород'],
+            'housing.bags': ['сумк'],
+            'housing.beds': ['лежанк'],
+            'housing.carriers': ['переноск'],
+            'housing.containers': ['контейнер'],
+            'housing.doors': ['дверц'],
+            'housing.grates': ['решет'],
+            'housing.wheels_carriers': ['колес'],
+            'housing.wheels_cages': ['колес'],
+            'housing.trays': ['поддон'],
+            'housing.carts': ['тележк'],
+            'housing.strollers': ['коляск'],
+            'housing.hammocks': ['гамак'],
+            'housing.bedding': ['подстил'],
+            'housing.mattresses': ['матрас'],
+            'housing.blankets': ['плед'],
+            'housing.pillows': ['подушк'],
+            'housing.mats': ['коврик'],
+            'housing.ramps': ['пандус'],
+            'housing.stairs': ['лестниц'],
+            'housing.carrier_straps': ['ремн'],
+            'housing.safety_belts': ['ремн'],
+            'housing.accessories': ['аксессуар'],
+            'misc.documents': ['документ', 'паспорт'],
         }
         
-        # Собираем иерархическую структуру
+        all_categories = list(
+            ShopCategory.objects.filter(is_active=True).order_by('name')
+        )
+        category_counts = dict(
+            filter_query.values('new_category_id')
+            .annotate(count=Count('id'))
+            .values_list('new_category_id', 'count')
+        )
+
+        def _count_for(cat):
+            if not cat:
+                return 0
+            return category_counts.get(cat.id, 0)
+
+        def _code_for(cat):
+            return cat.code or CATEGORY_CODE_MAPPING.get(cat.kotmatros_category_id)
+
+        def _normalize_code(code):
+            if not code:
+                return None
+            if code.endswith('.dog') or code.endswith('.cat'):
+                return code.rsplit('.', 1)[0]
+            return code
+
         hierarchical_categories = []
-        for cat_info in main_cat_list:
-            db_cat = db_categories.get(cat_info['external_id'])
-            if not db_cat:
+        for spec in CATEGORY_SPEC:
+            spec_children_by_code = {
+                child['code']: child['name'] for child in spec.get('children', [])
+            }
+            allowed_child_codes = set(spec_children_by_code.keys())
+            children_by_code = {}
+            parent_count = 0
+            for cat in all_categories:
+                code = _normalize_code(_code_for(cat))
+                if not code:
+                    continue
+                if code == spec['code'] or code.startswith(f"{spec['code']}."):
+                    count = _count_for(cat)
+                    parent_count += count
+                    if code.startswith(f"{spec['code']}.") and count > 0:
+                        if code not in allowed_child_codes:
+                            continue
+                        entry = children_by_code.setdefault(code, {
+                            'id': cat.id,
+                            'name': spec_children_by_code.get(code, cat.name),
+                            'slug': cat.slug,
+                            'code': code,
+                            'product_count': 0
+                        })
+                        entry['product_count'] += count
+
+            children = list(children_by_code.values())
+            children.sort(key=lambda item: (-item['product_count'], item['name']))
+            if parent_count <= 0:
                 continue
-            
-            # Подкатегории
-            children = []
-            for child in db_cat.children.filter(is_active=True, product_count__gt=0).order_by('-product_count')[:15]:
-                children.append({
-                    'id': child.id,
-                    'name': child.name,
-                    'slug': child.slug,
-                    'product_count': child.product_count
+            if children:
+                children.insert(0, {
+                    'id': f'{spec["code"]}-all',
+                    'name': 'Все',
+                    'slug': '',
+                    'code': spec['code'],
+                    'product_count': parent_count
                 })
-            
             hierarchical_categories.append({
-                'id': db_cat.id,
-                'external_id': db_cat.kotmatros_category_id,
-                'name': cat_info['name'],  # Используем короткое название
-                'slug': db_cat.slug,
-                'icon': cat_info['icon'],
-                'product_count': db_cat.product_count,
+                'id': spec['code'],
+                'external_id': None,
+                'name': spec['name'],
+                'slug': '',
+                'code': spec['code'],
+                'icon': spec.get('icon'),
+                'product_count': parent_count,
                 'children': children
             })
         
-        # Legacy формат (плоский список) для совместимости
         new_categories = [
             {'id': c['id'], 'name': c['name'], 'slug': c['slug'], 'product_count': c['product_count']}
             for c in hierarchical_categories
         ]
         
         # Бренды из новой структуры
+        brand_source = brand_query or filter_query
         brands = list(
-            Brand.objects.filter(is_active=True, product_count__gt=0)
-            .values('id', 'name', 'slug', 'brand_class', 'product_count')
+            brand_source.values('brand_id', 'brand__name', 'brand__slug', 'brand__brand_class')
+            .annotate(product_count=Count('id'))
+            .filter(brand_id__isnull=False)
             .order_by('-product_count')[:30]
         )
+        brands = [
+            {
+                'id': b['brand_id'],
+                'name': b['brand__name'],
+                'slug': b['brand__slug'],
+                'brand_class': b['brand__brand_class'],
+                'product_count': b['product_count']
+            }
+            for b in brands
+        ]
         
         # Группы товаров с подсчётом
         product_groups = list(
@@ -508,28 +866,16 @@ class ProductListView(APIView):
         )
         
         return {
-            # Legacy фильтры
             'animals': [
                 {'value': 'dog', 'label': 'Для собак'},
                 {'value': 'cat', 'label': 'Для кошек'},
             ],
-            'categories': [
-                {'value': 'food', 'label': 'Корм'},
-                {'value': 'pharmacy', 'label': 'Ветаптека'},
-                {'value': 'ammunition', 'label': 'Амуниция'},
-                {'value': 'care', 'label': 'Средства по уходу'},
-                {'value': 'transport', 'label': 'Транспортировка'},
-                {'value': 'toys', 'label': 'Игрушки'},
-            ],
-            'subcategories': subcategories,
-            'vendors': vendors,
             'price_range': {
                 'min': float(aggregations['min_price']) if aggregations['min_price'] else 0,
                 'max': float(aggregations['max_price']) if aggregations['max_price'] else 0,
             },
-            # Новые фильтры
             'new_categories': new_categories,
-            'hierarchical_categories': hierarchical_categories,  # Иерархические категории с подкатегориями
+            'hierarchical_categories': hierarchical_categories,
             'brands': brands,
             'product_groups': product_groups,
             'age_groups': age_groups,
@@ -730,8 +1076,7 @@ class CartView(APIView):
             available_stock = sku.stock_quantity if sku.stock_quantity and sku.stock_quantity > 0 else 999
         else:
             # Если SKU не указан, проверяем доступность товара в целом
-            # Товар доступен если: is_available=True ИЛИ in_stock=True ИЛИ stock_count > 0
-            is_product_available = product.is_available or product.in_stock or product.stock_count > 0
+            is_product_available = product.is_available
             if not is_product_available:
                 return Response(
                     {'error': 'Товар закончился на складе'},
@@ -747,7 +1092,7 @@ class CartView(APIView):
                 sku = default_sku
                 available_stock = sku.stock_quantity if sku.stock_quantity and sku.stock_quantity > 0 else 999
             else:
-                available_stock = product.stock_count if product.stock_count > 0 else 999
+                available_stock = 999
 
         # Проверка текущего количества в корзине
         existing_item = CartItem.objects.filter(cart=cart, product=product, sku=sku).first()
@@ -912,12 +1257,6 @@ class CartItemView(APIView):
                     cart_item.delete()
                     message = 'Товар удалён из корзины'
                 else:
-                    # Проверка доступного количества на складе
-                    if new_quantity > cart_item.product.stock_count:
-                        return Response({
-                            'error': f'Недостаточно товара на складе. Доступно: {cart_item.product.stock_count} шт.'
-                        }, status=status.HTTP_400_BAD_REQUEST)
-                    
                     cart_item.quantity = new_quantity
                     cart_item.save()
                     message = 'Корзина обновлена'
@@ -1122,15 +1461,17 @@ class OrderCheckoutView(APIView):
         items_detail = []
         for item in cart_items:
             product = item.product
+            sku = item.sku
             items_detail.append({
                 'product_id': product.id,
                 'product_name': product.name,
-                'product_image': product.main_image,
-                'vendor': product.vendor,
+                'product_image': Product._fix_image_url(product.main_image),
+                'brand': product.brand.name if product.brand else None,
                 'price': float(product.price),
                 'quantity': item.quantity,
                 'item_total': float(item.get_total()),
-                'weight': float(product.weight) if product.weight else None,
+                'weight': float(sku.weight_kg) if sku and sku.weight_kg else None,
+                'weight_display': sku.weight_display if sku else None,
             })
         
         subtotal = float(cart.get_total())
@@ -1230,18 +1571,11 @@ class OrderCreateView(APIView):
             
             # Валидация наличия всех товаров
             unavailable_items = []
-            insufficient_items = []
             
             for item in cart_items:
                 product = products.get(item.product_id)
-                if not product:
+                if not product or not product.is_available:
                     unavailable_items.append(item.product.name if item.product else f'ID {item.product_id}')
-                elif product.stock_count < item.quantity:
-                    insufficient_items.append({
-                        'name': product.name,
-                        'requested': item.quantity,
-                        'available': product.stock_count
-                    })
             
             # Возврат ошибок валидации
             from core.exceptions import ApiError
@@ -1250,13 +1584,6 @@ class OrderCreateView(APIView):
                     'Некоторые товары больше недоступны',
                     errors={'unavailable_items': unavailable_items},
                     error_code='UNAVAILABLE_ITEMS'
-                )
-            
-            if insufficient_items:
-                raise ApiError.bad_request(
-                    'Недостаточно товаров на складе',
-                    errors={'insufficient_items': insufficient_items},
-                    error_code='INSUFFICIENT_STOCK'
                 )
             
             # Расчёт суммы с учётом актуальных цен и скидок
@@ -1293,8 +1620,8 @@ class OrderCreateView(APIView):
                 if item.product:
                     # Обработка товара
                     product = products[item.product_id]
-                    # Сохраняем цену со скидкой
-                    item_price = product.discounted_price
+                    # Сохраняем цену
+                    item_price = product.price
 
                     OrderItem.objects.create(
                         order=order,
@@ -1304,11 +1631,7 @@ class OrderCreateView(APIView):
                         quantity=item.quantity
                     )
 
-                    # Уменьшаем количество на складе
-                    product.stock_count -= item.quantity
-                    if product.stock_count <= 0:
-                        product.in_stock = False
-                    product.save(update_fields=['stock_count', 'in_stock'])
+                    # Наличие управляется отдельными SKU/складом
 
                 elif item.course:
                     # Обработка курса - создаем OrderItem
@@ -1887,13 +2210,12 @@ class UnifiedCheckoutView(APIView):
             )
 
             # Добавить элементы заказа для товаров
-            # Примечание: stock_count уже уменьшен при создании резервирования
             for item in product_items:
                 OrderItem.objects.create(
                     order=order,
                     product=item.product,
                     product_name=item.product.name,
-                    price=item.product.discounted_price,
+                    price=item.product.price,
                     quantity=item.quantity
                 )
 
@@ -2012,7 +2334,7 @@ class FrequentlyBoughtTogetherView(APIView):
 
     def get(self, request, product_id):
         from apps.shop.services import RecommendationEngine
-        
+
         try:
             # Получить основной товар
             product = Product.objects.get(id=product_id)
@@ -2031,11 +2353,24 @@ class FrequentlyBoughtTogetherView(APIView):
         
         # Получаем рекомендации через движок
         user = request.user if request.user.is_authenticated else None
-        result = RecommendationEngine.get_frequently_bought_together(
-            product_id=product_id,
-            limit=limit,
-            user=user
-        )
+        try:
+            result = RecommendationEngine.get_frequently_bought_together(
+                product_id=product_id,
+                limit=limit,
+                user=user
+            )
+        except Exception:
+            logger.exception(
+                "Frequently bought together failed",
+                extra={"product_id": product_id}
+            )
+            return Response({
+                'product': product.to_dict(),
+                'recommendations': [],
+                'total_analyzed_orders': 0,
+                'has_purchase_data': False,
+                'error': 'recommendations_unavailable'
+            })
         
         return Response({
             'product': product.to_dict(),

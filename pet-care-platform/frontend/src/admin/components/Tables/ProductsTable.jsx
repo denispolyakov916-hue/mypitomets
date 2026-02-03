@@ -13,10 +13,10 @@ const ProductsTable = () => {
   const [pagination, setPagination] = useState(null);
   const [filters, setFilters] = useState({
     search: '',
-    animal: '',
-    category: '',
-    in_stock: '',
-    vendor: '',
+    animal_type: '',
+    category_slug: '',
+    is_available: '',
+    brand: '',
     price_min: '',
     price_max: ''
   });
@@ -60,15 +60,9 @@ const ProductsTable = () => {
       const updates = {};
 
       if (action === 'activate') {
-        updates.in_stock = true;
+        updates.is_available = true;
       } else if (action === 'deactivate') {
-        updates.in_stock = false;
-      } else if (action === 'apply_discount_10') {
-        updates.discount_percent = 10;
-      } else if (action === 'apply_discount_20') {
-        updates.discount_percent = 20;
-      } else if (action === 'remove_discount') {
-        updates.discount_percent = 0;
+        updates.is_available = false;
       }
 
       await adminAPI.management.bulkUpdateProducts({
@@ -104,8 +98,7 @@ const ProductsTable = () => {
             {value}
           </div>
           <div className="text-sm text-gray-500">
-            {row.vendor && `Бренд: ${row.vendor}`}
-            {row.vendor_code && ` • Арт: ${row.vendor_code}`}
+            {row.brand_name && `Бренд: ${row.brand_name}`}
           </div>
         </div>
       )
@@ -116,17 +109,17 @@ const ProductsTable = () => {
       sortable: true,
       render: (value, row) => {
         const originalPrice = value;
-        const discountPercent = row.discount_percent || 0;
-        const discountedPrice = discountPercent > 0
-          ? originalPrice * (100 - discountPercent) / 100
-          : originalPrice;
+        const discountPercent = row.compare_price && row.compare_price > originalPrice
+          ? Math.round((1 - originalPrice / row.compare_price) * 100)
+          : 0;
+        const discountedPrice = originalPrice;
 
         return (
           <div>
             {discountPercent > 0 ? (
               <div>
                 <div className="text-sm text-gray-500 line-through">
-                  {originalPrice.toLocaleString()} ₽
+                  {row.compare_price.toLocaleString()} ₽
                 </div>
                 <div className="font-medium text-green-600">
                   {discountedPrice.toLocaleString()} ₽
@@ -145,7 +138,7 @@ const ProductsTable = () => {
       }
     },
     {
-      key: 'animal',
+      key: 'animal_type',
       label: 'Животное',
       sortable: true,
       render: (value) => (
@@ -166,29 +159,21 @@ const ProductsTable = () => {
       sortable: true,
       render: (value, row) => (
         <div>
-          <div className="text-sm text-gray-900">{value}</div>
-          {row.subcategory && (
-            <div className="text-xs text-gray-500">{row.subcategory}</div>
-          )}
+          <div className="text-sm text-gray-900">{value || '—'}</div>
         </div>
       )
     },
     {
-      key: 'stock_count',
+      key: 'sku_count',
       label: 'Наличие',
       sortable: true,
       render: (value, row) => (
         <div>
-          {row.in_stock ? (
+          {row.is_available ? (
             <div>
-              <span className={`text-sm font-medium ${
-                value <= 5 ? 'text-red-600' : 'text-green-600'
-              }`}>
-                {value} шт.
+              <span className="text-sm font-medium text-green-600">
+                Доступно
               </span>
-              {value <= 5 && (
-                <div className="text-xs text-red-500">Мало!</div>
-              )}
             </div>
           ) : (
             <span className="text-sm text-red-600 font-medium">Нет в наличии</span>

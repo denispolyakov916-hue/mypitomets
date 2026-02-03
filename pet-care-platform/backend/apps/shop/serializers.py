@@ -31,7 +31,8 @@ from .models import AnalyticMetric, ChartConfig, ChartSession, AnalyticsLog
 # Новые модели по database_tz.md
 from .models import (
     Category, Brand, Product, ProductSKU, ProductBreedRecommendation,
-    FoodDetails, Wishlist, Promotion, PromotionUsage, PriceHistory, ProductRelation
+    FoodDetails, Wishlist, Promotion, PromotionUsage, PriceHistory, ProductRelation,
+    ProductImage, AttributeValue
 )
 
 
@@ -122,6 +123,7 @@ class BrandListSerializer(serializers.ModelSerializer):
 
 class ProductSKUSerializer(serializers.ModelSerializer):
     """Сериализатор для вариаций товаров (SKU)."""
+    attribute_values = serializers.SerializerMethodField()
     
     class Meta:
         model = ProductSKU
@@ -133,7 +135,44 @@ class ProductSKUSerializer(serializers.ModelSerializer):
             'size_code', 'size_back_cm', 'size_chest_cm', 'size_neck_cm',
             'color', 'color_display', 'color_hex',
             'volume_ml', 'volume_display', 'pack_quantity',
-            'is_default', 'sort_order'
+            'is_default', 'sort_order',
+            'attribute_values'
+        ]
+
+    def get_attribute_values(self, obj):
+        values = obj.attribute_values.select_related('attribute_value__attribute')
+        result = []
+        for link in values:
+            av = link.attribute_value
+            result.append({
+                'attribute_code': av.attribute.code,
+                'attribute_name': av.attribute.name,
+                'value': av.value,
+                'display': av.display or av.value
+            })
+        return result
+
+
+class ProductImageSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ProductImage
+        fields = ['id', 'url', 'image_type', 'sort_order']
+
+
+class FoodDetailsSerializer(serializers.ModelSerializer):
+    """Сериализатор для деталей корма."""
+    
+    class Meta:
+        model = FoodDetails
+        fields = [
+            'product_type', 'target_size', 'activity_level',
+            'grain_free', 'is_hypoallergenic', 'is_veterinary',
+            'special_diet', 'compatibility_group', 'kibble_size',
+            'shelf_life_months', 'storage', 'meat_percent',
+            'energy_kcal_per_100g', 'protein_g_per_100g', 'fat_g_per_100g',
+            'carbs_g_per_100g', 'fiber_g_per_100g', 'ash_g_per_100g',
+            'moisture_percent', 'ingredients', 'allergens',
+            'health_conditions', 'age_min_months', 'age_max_months'
         ]
 
 
@@ -147,6 +186,7 @@ class ProductCatalogSerializer(serializers.ModelSerializer):
     brand_name = serializers.CharField(source='brand.name', read_only=True, allow_null=True)
     category_name = serializers.CharField(source='new_category.name', read_only=True, allow_null=True)
     discount_percent = serializers.SerializerMethodField()
+    image_url = serializers.SerializerMethodField()
     
     class Meta:
         model = Product
@@ -165,19 +205,27 @@ class ProductCatalogSerializer(serializers.ModelSerializer):
         if obj.compare_price and obj.compare_price > obj.price:
             return round((1 - float(obj.price) / float(obj.compare_price)) * 100)
         return 0
+    
+    def get_image_url(self, obj):
+        """Исправляет URL изображения (kotmatros.ru -> cdn.kotmatros.ru)."""
+        url = obj.image_url or obj.main_image
+        return Product._fix_image_url(url)
 
 
 class ProductDetailSerializer(serializers.ModelSerializer):
     """
     Полный сериализатор для страницы товара.
     
-    Включает все данные: category_details, SKU, изображения, бренд и т.д.
+    Включает все данные: SKU, изображения, бренд и т.д.
     """
     brand = BrandSerializer(read_only=True)
     category = CategoryListSerializer(source='new_category', read_only=True)
     skus = ProductSKUSerializer(many=True, read_only=True)
     discount_percent = serializers.SerializerMethodField()
     breed_recommendations = serializers.SerializerMethodField()
+    image_url = serializers.SerializerMethodField()
+    images = serializers.SerializerMethodField()
+    food_details = FoodDetailsSerializer(read_only=True)
     
     class Meta:
         model = Product
@@ -198,9 +246,8 @@ class ProductDetailSerializer(serializers.ModelSerializer):
             # Фильтры
             'age_group', 'size_group',
             'is_grain_free', 'is_hypoallergenic', 'is_veterinary',
-            'health_conditions', 'allergens',
-            # Детали категории (JSONB)
-            'category_details',
+            # Детали корма
+            'food_details',
             # Страна
             'country',
             # SEO
@@ -209,14 +256,31 @@ class ProductDetailSerializer(serializers.ModelSerializer):
             'skus',
             # Рекомендации для пород
             'breed_recommendations',
-            # Legacy
-            'vendor', 'vendor_code', 'weight', 'in_stock', 'stock_count'
+            # Legacy fields removed
         ]
     
     def get_discount_percent(self, obj):
         if obj.compare_price and obj.compare_price > obj.price:
             return round((1 - float(obj.price) / float(obj.compare_price)) * 100)
         return 0
+    
+    def get_image_url(self, obj):
+        """Исправляет URL изображения (kotmatros.ru -> cdn.kotmatros.ru)."""
+        url = obj.image_url or obj.main_image
+        return Product._fix_image_url(url)
+    
+    def get_images(self, obj):
+        """Возвращает изображения с исправленными URL."""
+        images = obj.product_images.filter(is_active=True).order_by('sort_order')
+        return [
+            {
+                'id': img.id,
+                'url': Product._fix_image_url(img.url),
+                'image_type': img.image_type,
+                'sort_order': img.sort_order
+            }
+            for img in images
+        ]
     
     def get_breed_recommendations(self, obj):
         """Топ-5 рекомендаций для пород."""
@@ -269,7 +333,7 @@ class ProductSerializer(serializers.Serializer):
         image_url (str): URL изображения товара
         pet_type (str): Целевое животное (dog, cat, all)
         product_type (str): Тип товара (dry_food, wet_food, treats)
-        in_stock (bool): Наличие на складе
+        is_available (bool): Наличие на складе
     """
     
     id = serializers.IntegerField(read_only=True)
@@ -279,7 +343,7 @@ class ProductSerializer(serializers.Serializer):
     image_url = serializers.CharField(read_only=True)
     pet_type = serializers.CharField(read_only=True)
     product_type = serializers.CharField(read_only=True)
-    in_stock = serializers.BooleanField(read_only=True)
+    is_available = serializers.BooleanField(read_only=True)
 
 
 class CartItemAddSerializer(serializers.Serializer):
@@ -1117,27 +1181,6 @@ class ChartExportSerializer(serializers.Serializer):
         max_value=100,
         help_text="Качество (для JPG)"
     )
-
-
-# =============================================================================
-# СЕРИАЛИЗАТОРЫ ДЛЯ НОВЫХ МОДЕЛЕЙ (V2)
-# =============================================================================
-
-class FoodDetailsSerializer(serializers.ModelSerializer):
-    """Сериализатор для деталей корма."""
-    
-    class Meta:
-        model = FoodDetails
-        fields = [
-            'product_type', 'target_size', 'activity_level',
-            'grain_free', 'is_hypoallergenic', 'is_veterinary',
-            'special_diet', 'compatibility_group', 'kibble_size',
-            'shelf_life_months', 'storage', 'meat_percent',
-            'energy_kcal_per_100g', 'protein_g_per_100g', 'fat_g_per_100g',
-            'carbs_g_per_100g', 'fiber_g_per_100g', 'ash_g_per_100g',
-            'moisture_percent', 'ingredients', 'allergens',
-            'health_conditions', 'age_min_months', 'age_max_months'
-        ]
 
 
 class WishlistSerializer(serializers.ModelSerializer):

@@ -233,6 +233,24 @@ class PersonalizationContext:
     def is_empty(self) -> bool:
         """Нет питомцев."""
         return len(self.pets) == 0
+
+    @property
+    def all_allergies(self) -> Set[str]:
+        """Все аллергены по питомцам."""
+        allergies: Set[str] = set()
+        for pet in self.pets:
+            pet_allergies = getattr(pet, 'allergies', None) or []
+            allergies.update(pet_allergies)
+        return allergies
+
+    @property
+    def all_favorites(self) -> Set[str]:
+        """Все любимые вкусы/предпочтения по питомцам."""
+        favorites: Set[str] = set()
+        for pet in self.pets:
+            pet_favorites = getattr(pet, 'favorites', None) or []
+            favorites.update(pet_favorites)
+        return favorites
     
     def get_pet_by_id(self, pet_id: str) -> Optional[PetContext]:
         """Получить контекст питомца по ID."""
@@ -278,9 +296,9 @@ class PersonalizationService:
             breed_data = {}
             if pet.breed and pet.species in ['dog', 'cat']:
                 breed_data = {
-                    'breed_energy_level': pet.breed.energy_level,
+                    'breed_energy_level': getattr(pet.breed, 'energy_level', None) or getattr(pet.breed, 'base_activity_level', None),
                     'breed_trainability': pet.breed.trainability,
-                    'breed_health_risks': pet.breed.genetic_risks or [],
+                    'breed_health_risks': getattr(pet.breed, 'genetic_risks', None) or getattr(pet.breed, 'health_risks', None) or [],
                 }
             
             pet_context = PetContext(
@@ -377,7 +395,7 @@ class PersonalizationService:
             if pet:
                 # Фильтруем по виду животного
                 queryset = queryset.filter(
-                    Q(animal=pet.animal_type) | Q(animal='all')
+                    Q(animal_type__in=[pet.animal_type, 'all'])
                 )
                 
                 # TODO: Исключение товаров с аллергенами через M2M PetAllergy
@@ -387,7 +405,7 @@ class PersonalizationService:
             animal_types = list(context.animal_types)
             if animal_types:
                 queryset = queryset.filter(
-                    Q(animal__in=animal_types) | Q(animal='all')
+                    Q(animal_type__in=animal_types + ['all'])
                 )
         
         return queryset
@@ -458,8 +476,8 @@ class PersonalizationService:
         for pet in context.pets:
             # Базовый QuerySet для питомца
             products = Product.objects.catalog().filter(
-                Q(animal=pet.animal_type) | Q(animal='all'),
-                in_stock=True
+                Q(animal_type__in=[pet.animal_type, 'all']),
+                is_available=True
             ).exclude(id__in=seen_ids)
             
             # TODO: Исключение товаров с аллергенами через M2M PetAllergy
@@ -475,7 +493,7 @@ class PersonalizationService:
                 keywords = life_stage_keywords[pet.life_stage]
                 q_filter = Q()
                 for kw in keywords:
-                    q_filter |= Q(name__icontains=kw) | Q(category_name__icontains=kw)
+                    q_filter |= Q(name__icontains=kw)
                 
                 age_products = products.filter(q_filter).exclude(id__in=seen_ids)[:3]
                 
@@ -724,18 +742,26 @@ class PersonalizationService:
         context = cls.get_context(user)
         
         # Базовый QuerySet
-        products = Product.objects.catalog().filter(in_stock=True)
+        products = Product.objects.catalog().filter(is_available=True)
         
         # Фильтруем по видам животных пользователя
         if not context.is_empty:
             animal_types = list(context.animal_types)
             products = products.filter(
-                Q(animal__in=animal_types) | Q(animal='all')
+                Q(animal_type__in=animal_types + ['all'])
             )
         
         # Фильтруем по категориям
         if config.get('categories'):
-            products = products.filter(category__in=config['categories'])
+            group_map = {
+                'food': 'food',
+                'pharmacy': 'vet',
+                'care': 'grooming',
+                'toys': 'toys',
+            }
+            groups = [group_map[c] for c in config['categories'] if c in group_map]
+            if groups:
+                products = products.filter(product_group__in=groups)
         
         # Ищем по ключевым словам
         keywords = config.get('keywords', [])

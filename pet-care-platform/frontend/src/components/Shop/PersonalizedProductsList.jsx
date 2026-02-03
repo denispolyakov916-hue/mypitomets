@@ -114,27 +114,27 @@ const PersonalizedProductsList = ({ petId, category = null, limit = 12 }) => {
               <div className="product-info">
                 <h4 className="product-name">{product.name}</h4>
                 
-                {product.vendor && (
-                  <div className="product-vendor">{product.vendor}</div>
+                {(product.brand?.name || product.brand_name) && (
+                  <div className="product-vendor">{product.brand?.name || product.brand_name}</div>
                 )}
                 
                 <div className="product-price">
-                  {product.discount_percent > 0 && (
+                  {product.compare_price && product.compare_price > product.price && (
                     <span className="price-old">
-                      {product.price} ₽
+                      {product.compare_price} ₽
                     </span>
                   )}
                   <span className="price-current">
-                    {product.discount_percent > 0
-                      ? Math.round(product.price * (1 - product.discount_percent / 100))
-                      : product.price} ₽
+                    {product.price} ₽
                   </span>
-                  {product.discount_percent > 0 && (
-                    <span className="discount-badge">-{product.discount_percent}%</span>
+                  {product.compare_price && product.compare_price > product.price && (
+                    <span className="discount-badge">
+                      -{Math.round((1 - product.price / product.compare_price) * 100)}%
+                    </span>
                   )}
                 </div>
                 
-                {product.in_stock ? (
+                {product.is_available ? (
                   <button className="add-to-cart-btn">
                     В корзину
                   </button>

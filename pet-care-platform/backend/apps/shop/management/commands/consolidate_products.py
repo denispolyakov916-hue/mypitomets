@@ -136,6 +136,12 @@ class Command(BaseCommand):
         category_filter = options['category']
         batch_size = options['batch_size']
         
+        self.stdout.write(self.style.WARNING(
+            'Команда устарела для новой структуры магазина. '
+            'Используйте нормализованные ProductSKU и ProductImage.'
+        ))
+        return
+
         if rollback:
             self.handle_rollback()
             return

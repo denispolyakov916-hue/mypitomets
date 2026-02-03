@@ -79,30 +79,27 @@ class OrderItemInline(admin.TabularInline):
 class ProductAdmin(ExportCsvMixin, admin.ModelAdmin):
     list_display = (
         'name', 'price_display', 'animal_type', 'category_display', 'brand',
-        'stock_count', 'stock_info', 'rating_display', 'order_count', 'is_available'
+        'rating_display', 'order_count', 'is_available'
     )
     list_filter = (
         'animal_type', 'product_group', 'new_category', 'brand', 'is_available',
         'is_grain_free', 'is_hypoallergenic', 'is_veterinary',
         'age_group', 'size_group', 'status',
-        # Legacy filters
-        'animal', 'category', 'subcategory', 'vendor', 'in_stock',
         'created_at', 'updated_at'
     )
-    search_fields = ('name', 'slug', 'vendor', 'kotmatros_product_id', 'vendor_code', 'barcode')
+    search_fields = ('name', 'slug', 'kotmatros_product_id')
     ordering = ('-order_count', 'name')
     readonly_fields = (
         'kotmatros_product_id', 'created_at', 'updated_at', 'rating_display',
         'reviews_count_display', 'main_image', 'sku_count'
     )
-    list_editable = ('is_available', 'stock_count')
+    list_editable = ('is_available',)
     list_per_page = 50
     date_hierarchy = 'created_at'
     raw_id_fields = ('brand', 'new_category')
     autocomplete_fields = ['brand', 'new_category']
     actions = [
         'mark_as_in_stock', 'mark_as_out_of_stock',
-        'apply_discount_10', 'apply_discount_20', 'remove_discount',
         'export_as_csv'
     ]
 
@@ -111,7 +108,7 @@ class ProductAdmin(ExportCsvMixin, admin.ModelAdmin):
             'fields': ('kotmatros_product_id', 'name', 'slug', 'short_description', 'description')
         }),
         ('Цены', {
-            'fields': ('price', 'compare_price', 'discount_percent')
+            'fields': ('price', 'compare_price')
         }),
         ('Новая классификация', {
             'fields': ('animal_type', 'new_category', 'product_group', 'brand')
@@ -120,12 +117,8 @@ class ProductAdmin(ExportCsvMixin, admin.ModelAdmin):
             'fields': ('age_group', 'size_group', 'is_grain_free', 'is_hypoallergenic', 'is_veterinary'),
             'classes': ('collapse',)
         }),
-        ('Здоровье', {
-            'fields': ('health_conditions', 'allergens'),
-            'classes': ('collapse',)
-        }),
         ('Изображения', {
-            'fields': ('image_url', 'images', 'main_image'),
+            'fields': ('image_url', 'main_image'),
             'classes': ('collapse',)
         }),
         ('Рейтинг', {
@@ -135,25 +128,8 @@ class ProductAdmin(ExportCsvMixin, admin.ModelAdmin):
         ('Наличие', {
             'fields': ('is_available', 'sku_count', 'status')
         }),
-        ('Детали категории (JSONB)', {
-            'fields': ('category_details',),
-            'classes': ('collapse',)
-        }),
         ('SEO', {
             'fields': ('meta_title', 'meta_description', 'country'),
-            'classes': ('collapse',)
-        }),
-        # Legacy fieldsets
-        ('Характеристики (legacy)', {
-            'fields': ('weight', 'vendor', 'vendor_code', 'barcode'),
-            'classes': ('collapse',)
-        }),
-        ('Классификация (legacy)', {
-            'fields': ('animal', 'category', 'subcategory', 'category_name'),
-            'classes': ('collapse',)
-        }),
-        ('Наличие (legacy)', {
-            'fields': ('in_stock', 'stock_count', 'order_count'),
             'classes': ('collapse',)
         }),
         ('Системная информация', {
@@ -164,13 +140,14 @@ class ProductAdmin(ExportCsvMixin, admin.ModelAdmin):
 
     def price_display(self, obj):
         """Отображение цены с учётом скидки."""
-        if obj.discount_percent > 0:
-            discounted = obj.discounted_price
+        if obj.compare_price and obj.compare_price > obj.price:
+            discounted = obj.price
+            percent = round((1 - float(obj.price) / float(obj.compare_price)) * 100)
             return format_html(
                 '<span style="text-decoration: line-through; color: #999;">{:.0f}₽</span> '
                 '<span style="color: #e53e3e; font-weight: bold;">{:.0f}₽</span> '
                 '<span style="background: #e53e3e; color: white; padding: 2px 4px; border-radius: 3px; font-size: 10px;">-{}%</span>',
-                obj.price, discounted, obj.discount_percent
+                obj.compare_price, discounted, percent
             )
         return f"{obj.price:.0f}₽"
     price_display.short_description = 'Цена'
@@ -178,20 +155,8 @@ class ProductAdmin(ExportCsvMixin, admin.ModelAdmin):
 
     def category_display(self, obj):
         """Отображение категории с подкатегорией."""
-        if obj.subcategory:
-            return f"{obj.category} → {obj.subcategory}"
-        return obj.category
+        return obj.new_category.name if obj.new_category else '-'
     category_display.short_description = 'Категория'
-
-    def stock_info(self, obj):
-        """Информация о наличии."""
-        if obj.in_stock:
-            if obj.stock_count <= 5:
-                return format_html('<span style="color: #dd6b20;">{} шт.</span>', obj.stock_count)
-            else:
-                return format_html('<span style="color: #38a169;">{} шт.</span>', obj.stock_count)
-        return format_html('<span style="color: #e53e3e;">Нет в наличии</span>')
-    stock_info.short_description = 'Наличие'
 
     def rating_display(self, obj):
         """Отображение рейтинга с звездами."""
@@ -213,33 +178,15 @@ class ProductAdmin(ExportCsvMixin, admin.ModelAdmin):
 
     def mark_as_in_stock(self, request, queryset):
         """Отметить товары как в наличии."""
-        updated = queryset.update(in_stock=True)
+        updated = queryset.update(is_available=True)
         self.message_user(request, f'Отмечено как в наличии: {updated} товаров')
     mark_as_in_stock.short_description = 'Отметить %(verbose_name_plural)s как в наличии'
 
     def mark_as_out_of_stock(self, request, queryset):
         """Отметить товары как нет в наличии."""
-        updated = queryset.update(in_stock=False)
+        updated = queryset.update(is_available=False)
         self.message_user(request, f'Отмечено как нет в наличии: {updated} товаров')
     mark_as_out_of_stock.short_description = 'Отметить %(verbose_name_plural)s как нет в наличии'
-
-    def apply_discount_10(self, request, queryset):
-        """Применить скидку 10%."""
-        updated = queryset.update(discount_percent=10)
-        self.message_user(request, f'Скидка 10% применена к {updated} товарам')
-    apply_discount_10.short_description = 'Применить скидку 10%% на %(verbose_name_plural)s'
-
-    def apply_discount_20(self, request, queryset):
-        """Применить скидку 20%."""
-        updated = queryset.update(discount_percent=20)
-        self.message_user(request, f'Скидка 20% применена к {updated} товарам')
-    apply_discount_20.short_description = 'Применить скидку 20%% на %(verbose_name_plural)s'
-
-    def remove_discount(self, request, queryset):
-        """Убрать скидку."""
-        updated = queryset.update(discount_percent=0)
-        self.message_user(request, f'Скидка убрана у {updated} товаров')
-    remove_discount.short_description = 'Убрать скидку с %(verbose_name_plural)s'
 
 
 @admin.register(Cart)

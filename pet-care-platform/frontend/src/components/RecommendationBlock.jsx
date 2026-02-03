@@ -35,7 +35,7 @@ const formatPrice = (price) => {
 /**
  * Компонент мини-карточки товара для рекомендаций
  */
-function RecommendationProductCard({ product, onAddToCart, showReason = false }) {
+function RecommendationProductCard({ product, onAddToCart, showReason = false, compact = false }) {
   const [isAdding, setIsAdding] = useState(false)
   const [imageError, setImageError] = useState(false)
   const navigate = useNavigate()
@@ -64,15 +64,15 @@ function RecommendationProductCard({ product, onAddToCart, showReason = false })
     e.stopPropagation()
     
     const newQuantity = cartQuantity + delta
-    if (newQuantity >= 0 && newQuantity <= (product.stock_count || 999)) {
+    if (newQuantity >= 0) {
       await updateQuantity(product.id, newQuantity)
     }
   }
 
-  const mainImage = product.main_image || (product.images && product.images[0])
+  const mainImage = product.image_url || product.main_image || (product.images && product.images[0])
 
   return (
-    <div className="group bg-white rounded-xl shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden flex flex-col h-full border border-gray-100 hover:border-primary-200">
+    <div className={`group bg-white rounded-xl shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden flex flex-col h-full border border-gray-100 hover:border-primary-200 ${compact ? 'text-sm' : ''}`}>
       {/* Изображение */}
       <Link to={`/shop/products/${product.id}`} className="aspect-square bg-gradient-to-br from-gray-50 to-gray-100 relative overflow-hidden block">
         {mainImage && !imageError ? (
@@ -86,15 +86,15 @@ function RecommendationProductCard({ product, onAddToCart, showReason = false })
         ) : (
           <div className="w-full h-full flex items-center justify-center">
             <span className="text-5xl opacity-20">
-              {product.animal === 'dog' ? '🐕' : product.animal === 'cat' ? '🐱' : '🐾'}
+              {product.animal_type === 'dog' ? '🐕' : product.animal_type === 'cat' ? '🐱' : '🐾'}
             </span>
           </div>
         )}
         
         {/* Бейдж скидки */}
-        {product.discount_percent > 0 && (
+        {product.compare_price && product.compare_price > product.price && (
           <div className="absolute top-2 right-2 px-2 py-0.5 bg-gradient-to-r from-red-500 to-rose-500 text-white text-xs rounded-full font-bold shadow-sm">
-            -{product.discount_percent}%
+            -{Math.round((1 - product.price / product.compare_price) * 100)}%
           </div>
         )}
         
@@ -109,35 +109,35 @@ function RecommendationProductCard({ product, onAddToCart, showReason = false })
       </Link>
       
       {/* Информация */}
-      <div className="flex-1 flex flex-col p-3">
+      <div className={`flex-1 flex flex-col ${compact ? 'p-2.5' : 'p-3'}`}>
         {/* Бренд */}
-        {product.vendor && (
+        {(product.brand_name || product.brand?.name) && (
           <p className="text-xs text-primary-600 font-semibold mb-0.5 uppercase tracking-wider">
-            {product.vendor}
+            {product.brand_name || product.brand?.name}
           </p>
         )}
         
         {/* Название */}
         <Link to={`/shop/products/${product.id}`}>
-          <h4 className="font-medium text-gray-900 text-sm line-clamp-2 leading-snug hover:text-primary-600 transition-colors mb-2">
+          <h4 className={`font-medium text-gray-900 line-clamp-2 leading-snug hover:text-primary-600 transition-colors ${compact ? 'text-xs mb-1.5' : 'text-sm mb-2'}`}>
             {product.name}
           </h4>
         </Link>
         
         {/* Цена и кнопка */}
-        <div className="flex items-center justify-between mt-auto pt-2 border-t border-gray-50">
+        <div className={`flex items-center justify-between mt-auto border-t border-gray-50 ${compact ? 'pt-1.5' : 'pt-2'}`}>
           <div className="flex flex-col">
-            {product.discount_percent > 0 ? (
+            {product.compare_price && product.compare_price > product.price ? (
               <>
-                <span className="text-xs text-gray-400 line-through">
-                  {formatPrice(product.price)}
+                <span className={`text-xs text-gray-400 line-through ${compact ? 'text-[10px]' : ''}`}>
+                  {formatPrice(product.compare_price)}
                 </span>
-                <span className="text-base font-bold text-red-600">
-                  {formatPrice(product.discounted_price)}
+                <span className={`${compact ? 'text-sm' : 'text-base'} font-bold text-red-600`}>
+                  {formatPrice(product.price)}
                 </span>
               </>
             ) : (
-              <span className="text-base font-bold text-gray-900">
+              <span className={`${compact ? 'text-sm' : 'text-base'} font-bold text-gray-900`}>
                 {formatPrice(product.price)}
               </span>
             )}
@@ -156,7 +156,7 @@ function RecommendationProductCard({ product, onAddToCart, showReason = false })
               <span className="px-2 font-medium text-gray-700">{cartQuantity}</span>
               <button
                 onClick={(e) => handleQuantityChange(e, 1)}
-                disabled={cartQuantity >= (product.stock_count || 999)}
+                disabled={false}
                 className="w-7 h-7 flex items-center justify-center hover:bg-gray-200 rounded-r-lg transition-colors disabled:opacity-50"
               >
                 <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -167,13 +167,13 @@ function RecommendationProductCard({ product, onAddToCart, showReason = false })
           ) : (
             <button
               onClick={handleAddToCart}
-              disabled={isAdding || product.stock_count <= 0}
+              disabled={isAdding || product.is_available === false}
               className={`p-2 rounded-lg transition-all duration-200 ${
-                product.stock_count <= 0
+                product.is_available === false
                   ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
                   : 'bg-primary-600 hover:bg-primary-700 text-white shadow-sm hover:shadow-md'
               }`}
-              title={product.stock_count <= 0 ? 'Нет в наличии' : 'Добавить в корзину'}
+              title={product.is_available === false ? 'Нет в наличии' : 'Добавить в корзину'}
             >
               {isAdding ? (
                 <ButtonLoader />
@@ -304,7 +304,9 @@ function RecommendationBlock({
   compact = false,
   showReason = true,
   emptyMessage = 'Нет рекомендаций',
-  className = ''
+  className = '',
+  maxItems = null,
+  gridCols = null,
 }) {
   if (loading) {
     return (
@@ -322,9 +324,12 @@ function RecommendationBlock({
     return null // Не показываем пустой блок
   }
 
-  const gridCols = compact 
-    ? 'grid-cols-2 sm:grid-cols-3' 
-    : 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6'
+  const gridColsClass = gridCols || (
+    compact 
+      ? 'grid-cols-2 sm:grid-cols-3' 
+      : 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6'
+  )
+  const itemsLimit = maxItems ?? (compact ? 6 : 12)
 
   return (
     <section className={`py-6 ${className}`}>
@@ -349,11 +354,12 @@ function RecommendationBlock({
       </div>
       
       {/* Карточки */}
-      <div className={`grid ${gridCols} gap-4`}>
-        {recommendations.slice(0, compact ? 6 : 12).map((item, index) => {
+      <div className={`grid ${gridColsClass} gap-4`}>
+        {recommendations.slice(0, itemsLimit).map((item, index) => {
+          const itemType = item.type
           // Определяем тип элемента
-          const isProduct = type === 'products' || item.product || item.price !== undefined
-          const isCourse = type === 'courses' || item.course || item.title !== undefined
+          const isCourse = itemType === 'course' || type === 'courses' || item.course || item.title !== undefined
+          const isProduct = itemType === 'product' || type === 'products' || item.product || item.price !== undefined
           
           // Извлекаем данные
           const data = item.product || item.course || item
@@ -374,6 +380,7 @@ function RecommendationBlock({
               product={data}
               onAddToCart={onAddToCart}
               showReason={showReason}
+              compact={compact}
             />
           )
         })}

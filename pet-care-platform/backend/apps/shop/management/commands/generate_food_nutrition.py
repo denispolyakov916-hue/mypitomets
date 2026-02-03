@@ -1,8 +1,7 @@
 """
 Генерация/заполнение нутриентов для кормов.
 
-Парсит данные из category_details.nutrition если есть,
-иначе генерирует правдоподобные значения на основе типа корма и бренда.
+Генерирует правдоподобные значения на основе типа корма и бренда.
 
 Также извлекает аллергены из ингредиентов.
 
@@ -14,7 +13,6 @@
 import random
 from decimal import Decimal
 from django.core.management.base import BaseCommand
-from django.db.models import Q
 from apps.shop.models import Product, FoodDetails, Brand
 
 
@@ -113,12 +111,7 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS(f'Заполнены аллергены: {allergens_filled}'))
 
     def get_or_generate_nutrition(self, product, fd):
-        """Получить нутриенты из category_details или сгенерировать."""
-        
-        # Пробуем извлечь из category_details
-        category_details = product.category_details or {}
-        nutrition = category_details.get('nutrition', {})
-        
+        """Сгенерировать нутриенты при отсутствии."""
         result = {
             'energy': None,
             'protein': None,
@@ -128,23 +121,8 @@ class Command(BaseCommand):
             'moisture': None,
         }
         
-        # Если есть данные - используем их
-        if nutrition:
-            if nutrition.get('kcal_per_100g'):
-                result['energy'] = Decimal(str(nutrition['kcal_per_100g']))
-            if nutrition.get('protein_percent'):
-                result['protein'] = Decimal(str(nutrition['protein_percent']))
-            if nutrition.get('fat_percent'):
-                result['fat'] = Decimal(str(nutrition['fat_percent']))
-            if nutrition.get('fiber_percent'):
-                result['fiber'] = Decimal(str(nutrition['fiber_percent']))
-            if nutrition.get('ash_percent'):
-                result['ash'] = Decimal(str(nutrition['ash_percent']))
-            if nutrition.get('moisture_percent'):
-                result['moisture'] = Decimal(str(nutrition['moisture_percent']))
-        
         # Генерируем недостающие значения
-        is_dry = self.is_dry_food(product, category_details)
+        is_dry = self.is_dry_food(product)
         brand_class = product.brand.brand_class if product.brand else 'premium'
         
         if result['energy'] is None:
@@ -162,15 +140,19 @@ class Command(BaseCommand):
         
         return result
 
-    def is_dry_food(self, product, category_details):
+    def is_dry_food(self, product):
         """Определяет, сухой ли корм."""
-        feed_type = category_details.get('feed_type', '')
-        if feed_type == 'dry':
-            return True
-        if feed_type in ('wet', 'canned', 'pouch', 'pate'):
-            return False
+        # Проверяем по коду/slug категории, если доступно
+        if product.new_category:
+            code = (product.new_category.code or "").lower()
+            slug = (product.new_category.slug or "").lower()
+            combined = f"{code}.{slug}"
+            if any(kw in combined for kw in ['dry', 'сух', 'granule', 'kibble']):
+                return True
+            if any(kw in combined for kw in ['wet', 'влаж', 'консерв', 'pouch', 'pate']):
+                return False
         
-        # Проверяем по названию
+        # Проверяем по названию товара
         name_lower = product.name.lower()
         if any(kw in name_lower for kw in ['сухой', 'dry', 'гранул']):
             return True

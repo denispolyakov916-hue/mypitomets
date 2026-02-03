@@ -114,6 +114,12 @@ class Command(BaseCommand):
         dry_run = options['dry_run']
         batch_size = options['batch_size']
         
+        self.stdout.write(self.style.WARNING(
+            'Команда устарела для новой структуры магазина. '
+            'Используйте import_shop_data_v2.'
+        ))
+        return
+
         self.stdout.write(f'Загрузка каталога из {json_file}...')
         
         # Читаем JSON

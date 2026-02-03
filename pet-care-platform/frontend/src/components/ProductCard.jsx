@@ -31,6 +31,15 @@ const getImageUrl = (image) => {
 }
 
 /**
+ * SVG-заглушка для отсутствующих изображений
+ */
+const getPlaceholderImage = (label = 'Нет фото') => {
+  const safeLabel = String(label || 'Нет фото').slice(0, 30)
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="600" height="600" viewBox="0 0 600 600"><rect width="600" height="600" fill="#f3f4f6"/><rect x="120" y="160" width="360" height="280" rx="24" fill="#e5e7eb"/><text x="300" y="325" text-anchor="middle" font-family="Arial, sans-serif" font-size="24" fill="#9ca3af">${safeLabel}</text></svg>`
+  return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`
+}
+
+/**
  * Форматирование цены
  */
 const priceFormatter = new Intl.NumberFormat('ru-RU', {
@@ -68,6 +77,12 @@ const ProductImage = memo(function ProductImage({ src, alt, animal }) {
   
   return (
     <div ref={imgRef} className="w-full h-full relative">
+      {/* #region agent log */}
+      {(!src) && (() => {
+        fetch('http://127.0.0.1:7242/ingest/4f373f70-f463-4309-8a8e-4162185b5f36',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ProductCard.jsx:72',message:'ProductImage missing src',data:{alt,animal},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H1'})}).catch(()=>{})
+        return null
+      })()}
+      {/* #endregion */}
       {(!isLoaded || !isInView) && !hasError && (
         <div className="absolute inset-0 flex items-center justify-center bg-gray-50">
           <span className="text-5xl opacity-30 animate-pulse">{animalEmoji}</span>
@@ -83,8 +98,18 @@ const ProductImage = memo(function ProductImage({ src, alt, animal }) {
           }`}
           loading="lazy"
           decoding="async"
-          onLoad={() => setIsLoaded(true)}
-          onError={() => setHasError(true)}
+          onLoad={() => {
+            setIsLoaded(true)
+            // #region agent log
+            fetch('http://127.0.0.1:7242/ingest/4f373f70-f463-4309-8a8e-4162185b5f36',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ProductCard.jsx:89',message:'ProductImage loaded',data:{src},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H2'})}).catch(()=>{});
+            // #endregion
+          }}
+          onError={() => {
+            setHasError(true)
+            // #region agent log
+            fetch('http://127.0.0.1:7242/ingest/4f373f70-f463-4309-8a8e-4162185b5f36',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ProductCard.jsx:94',message:'ProductImage error',data:{src},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H2'})}).catch(()=>{});
+            // #endregion
+          }}
         />
       )}
       
@@ -221,7 +246,7 @@ const CartButton = memo(function CartButton({
         
         <button
           onClick={() => onQuantityChange(1)}
-          disabled={cartQuantity >= (product.stock_count || 999)}
+          disabled={false}
           className="w-8 h-full flex items-center justify-center text-primary-700 hover:bg-gray-200 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           tabIndex={showCounter ? 0 : -1}
         >
@@ -249,18 +274,25 @@ const ProductCard = memo(function ProductCard({ product, onAddToCart, isLoading 
   const hasDiscount = product.compare_price && product.compare_price > product.price
   const discountPercent = hasDiscount 
     ? Math.round((1 - product.price / product.compare_price) * 100) 
-    : (product.discount_percent || 0)
+    : 0
   
   // Главное изображение
   const mainImage = getImageUrl(product.image_url) 
     || getImageUrl(product.main_image) 
     || getImageUrl(product.images?.[0])
+    || getPlaceholderImage()
+  ;
+  // #region agent log
+  (() => {
+    fetch('http://127.0.0.1:7242/ingest/4f373f70-f463-4309-8a8e-4162185b5f36',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ProductCard.jsx:264',message:'ProductCard image sources',data:{id:product.id,image_url:product.image_url,main_image:product.main_image,first_image:product.images?.[0],resolved:mainImage},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H1'})}).catch(()=>{})
+  })()
+  // #endregion
   
   // Тип животного
-  const animalType = product.animal_type || product.animal
+  const animalType = product.animal_type
   
   // Наличие
-  const isAvailable = product.is_available || product.in_stock || product.stock_count > 0
+  const isAvailable = product.is_available
   
   const handleAddToCart = useCallback(async () => {
     if (isAdding || isLoading) return
@@ -282,10 +314,9 @@ const ProductCard = memo(function ProductCard({ product, onAddToCart, isLoading 
 
   const handleQuantityChange = useCallback(async (delta) => {
     const newQuantity = cartQuantity + delta
-    if (delta > 0 && newQuantity > (product.stock_count || 999)) return
     if (newQuantity < 0) return
     await updateQuantity(product.id, newQuantity)
-  }, [cartQuantity, product.stock_count, product.id, updateQuantity])
+  }, [cartQuantity, product.id, updateQuantity])
 
   return (
     <div className="group bg-white rounded-2xl shadow-sm hover:shadow-lg border border-gray-100 transition-all duration-300 flex flex-col h-full overflow-hidden">
@@ -360,9 +391,9 @@ const ProductCard = memo(function ProductCard({ product, onAddToCart, isLoading 
         </div>
         
         {/* Бренд */}
-        {(product.brand_name || product.vendor) && (
+        {product.brand_name && (
           <p className="text-xs text-primary-700 font-semibold mb-1 truncate">
-            {product.brand_name || product.vendor}
+            {product.brand_name}
           </p>
         )}
         
@@ -389,12 +420,6 @@ const ProductCard = memo(function ProductCard({ product, onAddToCart, isLoading 
             </span>
           )}
           
-          {/* Остаток */}
-          {product.stock_count > 0 && product.stock_count <= 5 && isAvailable && (
-            <span className="ml-auto text-xs text-orange-500 font-medium">
-              Осталось {product.stock_count}
-            </span>
-          )}
         </div>
         
         {/* Кнопка корзины (анимированная) */}

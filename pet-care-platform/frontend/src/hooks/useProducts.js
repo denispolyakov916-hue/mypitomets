@@ -33,8 +33,8 @@ const getCacheKey = (filters) => {
 /**
  * Генерация ключа кэша для фильтров
  */
-const getFiltersCacheKey = (animal, category) => {
-  return `filters:${animal || ''}:${category || ''}`
+const getFiltersCacheKey = (filters) => {
+  return `filters:${getCacheKey(filters)}`
 }
 
 /**
@@ -76,7 +76,7 @@ export function useProducts(initialFilters = {}) {
     } = options
     
     const cacheKey = getCacheKey(filters)
-    const filtersCacheKey = getFiltersCacheKey(filters.animal, filters.category)
+    const filtersCacheKey = getFiltersCacheKey(filters)
     
     // Проверяем кэш товаров
     const cachedProducts = productsCache.get(cacheKey)

@@ -2,9 +2,7 @@
 Classify food products by age_group and size_group using names/metadata.
 """
 from django.core.management.base import BaseCommand
-from django.db.models import Q
-
-from apps.shop.models import Product
+from apps.shop.models import Product, FoodDetails
 
 
 class Command(BaseCommand):
@@ -55,7 +53,8 @@ class Command(BaseCommand):
         return 0, 999
 
     def _detect_size_group(self, product: Product) -> str:
-        if product.target_size and product.target_size != "all":
+        details = getattr(product, "food_details", None)
+        if details and details.target_size and details.target_size != "all":
             # Map target_size to size_group
             mapping = {
                 "toy": "mini",
@@ -64,7 +63,7 @@ class Command(BaseCommand):
                 "large": "large",
                 "giant": "giant",
             }
-            return mapping.get(product.target_size, "all")
+            return mapping.get(details.target_size, "all")
 
         text = f"{product.name or ''} {product.description or ''}".lower()
         for size, keywords in self.SIZE_KEYWORDS.items():
@@ -73,43 +72,50 @@ class Command(BaseCommand):
         return "all"
 
     def handle(self, *args, **options):
-        queryset = Product.objects.filter(
-            Q(product_group="food")
-            | Q(new_category__product_group="food")
-            | Q(category="food")
-        )
+        queryset = Product.objects.filter(product_group="food")
 
-        to_update = []
+        to_update_products = []
+        to_update_details = []
         for product in queryset.iterator():
+            details, _ = FoodDetails.objects.get_or_create(product=product)
             updated = False
             if not product.age_group:
                 product.age_group = self._detect_age_group(product)
                 updated = True
-            if product.min_age_months is None or product.max_age_months is None:
+            if details.age_min_months is None or details.age_max_months is None:
                 age_group = product.age_group or "all"
                 min_age, max_age = self._get_age_bounds(age_group)
-                if product.min_age_months is None:
-                    product.min_age_months = min_age
-                    updated = True
-                if product.max_age_months is None:
-                    product.max_age_months = max_age
-                    updated = True
+                if details.age_min_months is None:
+                    details.age_min_months = min_age
+                    to_update_details.append(details)
+                if details.age_max_months is None:
+                    details.age_max_months = max_age
+                    to_update_details.append(details)
             if not product.size_group:
                 product.size_group = self._detect_size_group(product)
                 updated = True
             if updated:
-                to_update.append(product)
+                to_update_products.append(product)
 
-        if not to_update:
+        if not to_update_products and not to_update_details:
             self.stdout.write(self.style.WARNING("No products needed updates."))
             return
 
-        Product.objects.bulk_update(
-            to_update,
-            ["age_group", "size_group", "min_age_months", "max_age_months"],
-            batch_size=500,
-        )
+        if to_update_products:
+            Product.objects.bulk_update(
+                to_update_products,
+                ["age_group", "size_group"],
+                batch_size=500,
+            )
+        if to_update_details:
+            FoodDetails.objects.bulk_update(
+                list({d.product_id: d for d in to_update_details}.values()),
+                ["age_min_months", "age_max_months"],
+                batch_size=500,
+            )
 
         self.stdout.write(
-            self.style.SUCCESS(f"Updated products: {len(to_update)}")
+            self.style.SUCCESS(
+                f"Updated products: {len(to_update_products)}, food details: {len(to_update_details)}"
+            )
         )

@@ -113,9 +113,11 @@ class Command(BaseCommand):
             self.stdout.write(self.style.SUCCESS('  [OK] All brands have brand_class'))
         
         # 9. Products without image
-        products_without_image = Product.objects.filter(
+        products_without_image = Product.objects.annotate(
+            image_count=Count('product_images')
+        ).filter(
             Q(image_url__isnull=True) | Q(image_url=''),
-            Q(images=[]) | Q(images__isnull=True)
+            image_count=0
         ).count()
         
         if products_without_image > 0:

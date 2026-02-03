@@ -41,6 +41,394 @@ const CATEGORY_ICONS = {
   'когтеточки': '🐾',
 }
 
+const CATEGORY_TREE_SPEC = [
+  {
+    id: 'food',
+    name: 'Питание',
+    icon: '🍖',
+    children: [
+      { id: 'food.dry', name: 'Сухой корм' },
+      { id: 'food.wet', name: 'Влажный корм' },
+      { id: 'food.semi_moist', name: 'Полувлажный корм' },
+      { id: 'food.canned', name: 'Консервы' },
+      { id: 'food.pouches', name: 'Паучи' },
+      { id: 'food.pate', name: 'Паштеты' },
+      { id: 'food.holistic', name: 'Холистики' },
+      { id: 'food.diet', name: 'Диетический корм' },
+      { id: 'food.hypoallergenic', name: 'Гипоаллергенный корм' },
+      { id: 'food.treats', name: 'Лакомства' },
+      { id: 'food.supplements', name: 'Витамины и добавки' },
+      { id: 'food.lifestage.kitten', name: 'Правильное питание для котенка' },
+      { id: 'food.lifestage.puppy', name: 'Правильное питание для щенка' },
+    ],
+  },
+  {
+    id: 'health',
+    name: 'Ветаптека',
+    icon: '💊',
+    children: [
+      { id: 'health.parasite', name: 'Средства от паразитов' },
+    ],
+  },
+  {
+    id: 'toilet',
+    name: 'Туалеты и гигиена',
+    icon: '🚽',
+    children: [
+      { id: 'toilet.litter', name: 'Наполнители' },
+      { id: 'toilet.litter_boxes', name: 'Лотки' },
+      { id: 'toilet.litter_boxes_auto', name: 'Автоматические лотки' },
+      { id: 'toilet.bio_toilets', name: 'Биотуалеты' },
+      { id: 'toilet.waste_bags', name: 'Пакеты для выгула' },
+      { id: 'toilet.pads', name: 'Пеленки' },
+      { id: 'toilet.diapers', name: 'Подгузники' },
+      { id: 'toilet.scoops', name: 'Совочки' },
+    ],
+  },
+  {
+    id: 'feeding',
+    name: 'Миски и поилки',
+    icon: '🥣',
+    children: [
+      { id: 'feeding.bowls', name: 'Миски' },
+      { id: 'feeding.drinkers', name: 'Поилки' },
+      { id: 'feeding.bottles', name: 'Бутылочки' },
+    ],
+  },
+  {
+    id: 'toys',
+    name: 'Игрушки и развлечения',
+    icon: '🎾',
+    children: [
+      { id: 'toys.toys', name: 'Игрушки' },
+      { id: 'toys.scratching_posts', name: 'Когтеточки' },
+      { id: 'toys.playgrounds', name: 'Игровые площадки' },
+      { id: 'toys.tunnels', name: 'Тоннели' },
+    ],
+  },
+  {
+    id: 'walk',
+    name: 'Амуниция и выгул',
+    icon: '🎒',
+    children: [
+      { id: 'walk.collars', name: 'Ошейники' },
+      { id: 'walk.leashes', name: 'Поводки' },
+      { id: 'walk.harnesses', name: 'Шлейки' },
+      { id: 'walk.belts', name: 'Пояса' },
+      { id: 'walk.tags', name: 'Адресники' },
+      { id: 'walk.carabiners', name: 'Карабины' },
+      { id: 'walk.clickers', name: 'Кликеры' },
+      { id: 'walk.multiboxes', name: 'Мультибоксы' },
+      { id: 'walk.muzzles', name: 'Намордники' },
+      { id: 'walk.lights', name: 'Подсветки' },
+      { id: 'walk.retractable', name: 'Рулетки' },
+      { id: 'walk.bandanas', name: 'Банданы' },
+      { id: 'walk.popons', name: 'Попоны' },
+      { id: 'walk.accessories', name: 'Аксессуары' },
+    ],
+  },
+  {
+    id: 'clothing',
+    name: 'Одежда и обувь',
+    icon: '👕',
+    children: [
+      { id: 'clothing.general', name: 'Одежда' },
+      { id: 'clothing.jumpsuits', name: 'Комбинезоны' },
+      { id: 'clothing.raincoats', name: 'Дождевики' },
+      { id: 'clothing.vests', name: 'Жилетки' },
+      { id: 'clothing.popons', name: 'Попоны' },
+      { id: 'clothing.jackets', name: 'Куртки' },
+      { id: 'clothing.sweaters', name: 'Свитера' },
+      { id: 'clothing.hats', name: 'Шапки' },
+      { id: 'clothing.socks', name: 'Носки' },
+      { id: 'clothing.shoes', name: 'Ботинки' },
+      { id: 'clothing.tshirts', name: 'Футболки' },
+      { id: 'clothing.tops', name: 'Майки' },
+      { id: 'clothing.suits', name: 'Костюмы' },
+      { id: 'clothing.hoodies', name: 'Толстовки' },
+      { id: 'clothing.dresses', name: 'Платья' },
+      { id: 'clothing.accessories', name: 'Аксессуары' },
+    ],
+  },
+  {
+    id: 'care',
+    name: 'Уход и гигиена',
+    icon: '🧴',
+    children: [
+      { id: 'care.grooming', name: 'Груминг' },
+      { id: 'care.shampoos', name: 'Шампуни' },
+      { id: 'care.conditioners', name: 'Кондиционеры' },
+      { id: 'care.sprays', name: 'Спреи' },
+      { id: 'care.lotions', name: 'Лосьоны' },
+      { id: 'care.gels', name: 'Гели' },
+      { id: 'care.waxes', name: 'Воски' },
+      { id: 'care.perfumes', name: 'Парфюмерия' },
+      { id: 'care.oils', name: 'Масла' },
+      { id: 'care.masks', name: 'Маски' },
+      { id: 'care.serums', name: 'Сыворотки' },
+      { id: 'care.creams', name: 'Крема' },
+      { id: 'care.foams', name: 'Пены' },
+      { id: 'care.mousses', name: 'Муссы' },
+      { id: 'care.tonics', name: 'Тоники' },
+      { id: 'care.balms', name: 'Бальзамы' },
+      { id: 'care.deodorants', name: 'Дезодоранты' },
+      { id: 'care.wipes', name: 'Салфетки' },
+      { id: 'care.soap', name: 'Мыло' },
+      { id: 'care.liquids', name: 'Жидкости' },
+      { id: 'care.drops', name: 'Капли' },
+      { id: 'care.dental_pastes', name: 'Зубные пасты' },
+      { id: 'care.dental_brushes', name: 'Зубные щетки' },
+      { id: 'care.claw_clippers', name: 'Когтерезы' },
+      { id: 'care.claw_grinders', name: 'Гриндеры' },
+      { id: 'care.claw_files', name: 'Пилочки' },
+      { id: 'care.brushes', name: 'Щетки' },
+      { id: 'care.combs', name: 'Расчески' },
+      { id: 'care.slickers', name: 'Пуходерки' },
+      { id: 'care.scissors', name: 'Ножницы' },
+      { id: 'care.rollers', name: 'Ролики' },
+      { id: 'care.scrapers', name: 'Скребки' },
+      { id: 'care.tweezers', name: 'Пинцеты' },
+      { id: 'care.powders', name: 'Пудры' },
+      { id: 'care.massagers', name: 'Массажеры' },
+      { id: 'care.furminators', name: 'Фурминаторы' },
+      { id: 'care.clippers', name: 'Машинки для стрижки' },
+      { id: 'care.trimmers', name: 'Триммеры' },
+      { id: 'care.detanglers', name: 'Колотунорезы' },
+      { id: 'care.towels', name: 'Полотенца' },
+      { id: 'care.paw_washers', name: 'Лапомойки' },
+      { id: 'care.protective_collars', name: 'Защитные воротники' },
+      { id: 'care.misc', name: 'Техничка и аксессуары' },
+    ],
+  },
+  {
+    id: 'housing',
+    name: 'Дом и транспорт',
+    icon: '🏠',
+    children: [
+      { id: 'housing.kennels', name: 'Будки' },
+      { id: 'housing.enclosures', name: 'Вольеры' },
+      { id: 'housing.houses', name: 'Домики' },
+      { id: 'housing.cages', name: 'Клетки' },
+      { id: 'housing.partitions', name: 'Перегородки' },
+      { id: 'housing.bags', name: 'Сумки' },
+      { id: 'housing.beds', name: 'Лежанки' },
+      { id: 'housing.carriers', name: 'Переноски' },
+      { id: 'housing.containers', name: 'Контейнеры' },
+      { id: 'housing.doors', name: 'Дверцы' },
+      { id: 'housing.grates', name: 'Решетки' },
+      { id: 'housing.wheels_carriers', name: 'Колеса для переносок' },
+      { id: 'housing.wheels_cages', name: 'Колеса для клеток' },
+      { id: 'housing.trays', name: 'Поддоны' },
+      { id: 'housing.carts', name: 'Тележки' },
+      { id: 'housing.strollers', name: 'Коляски' },
+      { id: 'housing.hammocks', name: 'Гамаки' },
+      { id: 'housing.bedding', name: 'Подстилки' },
+      { id: 'housing.mattresses', name: 'Матрасы' },
+      { id: 'housing.blankets', name: 'Пледы' },
+      { id: 'housing.pillows', name: 'Подушки' },
+      { id: 'housing.mats', name: 'Коврики' },
+      { id: 'housing.ramps', name: 'Пандусы' },
+      { id: 'housing.stairs', name: 'Лестницы' },
+      { id: 'housing.carrier_straps', name: 'Ремни для переносок' },
+      { id: 'housing.safety_belts', name: 'Ремни безопасности' },
+      { id: 'housing.accessories', name: 'Аксессуары для содержания' },
+    ],
+  },
+  {
+    id: 'behavior',
+    name: 'Контроль поведения',
+    icon: '🎯',
+    children: [],
+  },
+  {
+    id: 'misc',
+    name: 'Прочее',
+    icon: '📎',
+    children: [
+      { id: 'misc.documents', name: 'Документы и паспорта' },
+    ],
+  },
+]
+
+const normalizeCategoryKey = (value) => {
+  return String(value || '')
+    .toLowerCase()
+    .replace(/ё/g, 'е')
+    .replace(/[^a-zа-я0-9]+/g, '')
+}
+
+const CATEGORY_ALIASES = {
+  food: ['корм', 'питание'],
+  health: ['ветаптек'],
+  toilet: ['туалет', 'наполнител'],
+  feeding: ['мис', 'поил'],
+  toys: ['игрушк', 'когтеточ', 'тоннел', 'площадк'],
+  walk: ['амуниц', 'ошейн', 'повод', 'шлейк', 'наморд', 'рулет'],
+  clothing: ['одежд', 'комбинезон', 'куртк', 'свитер', 'ботин', 'футбол', 'толстов', 'плать'],
+  care: ['уход', 'груминг', 'шампун', 'кондицион', 'лосьон', 'спрей', 'космет'],
+  housing: ['транспорт', 'переноск', 'домик', 'лежанк', 'клетк', 'вольер', 'будк'],
+  behavior: ['контрольповеден'],
+  misc: ['документ', 'паспорт', 'прочее'],
+}
+
+const CATEGORY_CHILD_ALIASES = {
+  'food.dry': ['сухой'],
+  'food.wet': ['влажн'],
+  'food.semi_moist': ['полувлажн'],
+  'food.canned': ['консерв'],
+  'food.pouches': ['пауч'],
+  'food.pate': ['пашт'],
+  'food.holistic': ['холистик'],
+  'food.diet': ['диет'],
+  'food.hypoallergenic': ['гипоаллер'],
+  'food.treats': ['лакомств'],
+  'food.supplements': ['витамин', 'добавк'],
+  'food.lifestage.kitten': ['котен', 'котён', 'котенка', 'котёнка'],
+  'food.lifestage.puppy': ['щен', 'щенка'],
+  'health.parasite': ['паразит'],
+  'toilet.litter': ['наполнител'],
+  'toilet.litter_boxes': ['лоток'],
+  'toilet.litter_boxes_auto': ['автоматическ'],
+  'toilet.bio_toilets': ['биотуалет'],
+  'toilet.waste_bags': ['пакет', 'выгул'],
+  'toilet.pads': ['пеленк', 'пелёнк'],
+  'toilet.diapers': ['подгузн'],
+  'toilet.scoops': ['совоч'],
+  'feeding.bowls': ['мис'],
+  'feeding.drinkers': ['поил'],
+  'feeding.bottles': ['бутылоч'],
+  'toys.toys': ['игрушк'],
+  'toys.scratching_posts': ['когтеточ'],
+  'toys.playgrounds': ['площадк'],
+  'toys.tunnels': ['тоннел'],
+  'walk.collars': ['ошейн'],
+  'walk.leashes': ['повод'],
+  'walk.harnesses': ['шлейк'],
+  'walk.belts': ['пояс'],
+  'walk.tags': ['адресн'],
+  'walk.carabiners': ['карабин'],
+  'walk.clickers': ['кликер'],
+  'walk.multiboxes': ['мультибокс'],
+  'walk.muzzles': ['наморд'],
+  'walk.lights': ['подсвет'],
+  'walk.retractable': ['рулет'],
+  'walk.bandanas': ['бандан'],
+  'walk.popons': ['попон'],
+  'walk.accessories': ['аксессуар', 'косынк'],
+  'clothing.general': ['одежд'],
+  'clothing.jumpsuits': ['комбинезон'],
+  'clothing.raincoats': ['дождевик'],
+  'clothing.vests': ['жилет'],
+  'clothing.popons': ['попон'],
+  'clothing.jackets': ['куртк'],
+  'clothing.sweaters': ['свитер'],
+  'clothing.hats': ['шапк'],
+  'clothing.socks': ['носк'],
+  'clothing.shoes': ['ботин'],
+  'clothing.tshirts': ['футбол'],
+  'clothing.tops': ['майк'],
+  'clothing.suits': ['костюм'],
+  'clothing.hoodies': ['толстов'],
+  'clothing.dresses': ['плать'],
+  'clothing.accessories': ['аксессуар'],
+  'care.grooming': ['груминг'],
+  'care.shampoos': ['шампун'],
+  'care.conditioners': ['кондицион'],
+  'care.sprays': ['спрей'],
+  'care.lotions': ['лосьон'],
+  'care.gels': ['гел'],
+  'care.waxes': ['воск'],
+  'care.perfumes': ['парфюм'],
+  'care.oils': ['масл'],
+  'care.masks': ['маск'],
+  'care.serums': ['сыворот'],
+  'care.creams': ['крем'],
+  'care.foams': ['пен'],
+  'care.mousses': ['мусс'],
+  'care.tonics': ['тоник'],
+  'care.balms': ['бальзам'],
+  'care.deodorants': ['дезодорант'],
+  'care.wipes': ['салфет'],
+  'care.soap': ['мыло'],
+  'care.liquids': ['жидкост'],
+  'care.drops': ['капл'],
+  'care.dental_pastes': ['зубн', 'паст'],
+  'care.dental_brushes': ['щетк', 'зубн'],
+  'care.claw_clippers': ['когтерез'],
+  'care.claw_grinders': ['гриндер'],
+  'care.claw_files': ['пилочк'],
+  'care.brushes': ['щетк'],
+  'care.combs': ['расческ'],
+  'care.slickers': ['пуходерк'],
+  'care.scissors': ['ножниц'],
+  'care.rollers': ['ролик'],
+  'care.scrapers': ['скреб'],
+  'care.tweezers': ['пинцет'],
+  'care.powders': ['пудр'],
+  'care.massagers': ['массаж'],
+  'care.furminators': ['фурмин'],
+  'care.clippers': ['машинк'],
+  'care.trimmers': ['триммер'],
+  'care.detanglers': ['колотун'],
+  'care.towels': ['полотен'],
+  'care.paw_washers': ['лапомойк'],
+  'care.protective_collars': ['воротник'],
+  'care.misc': ['техничк'],
+  'housing.kennels': ['будк'],
+  'housing.enclosures': ['вольер'],
+  'housing.houses': ['домик'],
+  'housing.cages': ['клетк'],
+  'housing.partitions': ['перегород'],
+  'housing.bags': ['сумк'],
+  'housing.beds': ['лежанк'],
+  'housing.carriers': ['переноск'],
+  'housing.containers': ['контейнер'],
+  'housing.doors': ['дверц'],
+  'housing.grates': ['решет'],
+  'housing.wheels_carriers': ['колес'],
+  'housing.wheels_cages': ['колес'],
+  'housing.trays': ['поддон'],
+  'housing.carts': ['тележк'],
+  'housing.strollers': ['коляск'],
+  'housing.hammocks': ['гамак'],
+  'housing.bedding': ['подстил'],
+  'housing.mattresses': ['матрас'],
+  'housing.blankets': ['плед'],
+  'housing.pillows': ['подушк'],
+  'housing.mats': ['коврик'],
+  'housing.ramps': ['пандус'],
+  'housing.stairs': ['лестниц'],
+  'housing.carrier_straps': ['ремн'],
+  'housing.safety_belts': ['ремн'],
+  'housing.accessories': ['аксессуар'],
+  'misc.documents': ['документ', 'паспорт'],
+}
+
+const flattenCategories = (categories = []) => {
+  const result = []
+  categories.forEach(cat => {
+    result.push(cat)
+    if (Array.isArray(cat.children)) {
+      cat.children.forEach(child => result.push(child))
+    }
+  })
+  return result
+}
+
+const findBestMatch = (candidates, aliases) => {
+  if (!candidates.length) return null
+  const normalizedAliases = aliases.map(alias => normalizeCategoryKey(alias))
+  const matches = candidates.filter(item => {
+    const nameKey = normalizeCategoryKey(item.name)
+    const slugKey = normalizeCategoryKey(item.slug)
+    return normalizedAliases.some(alias =>
+      nameKey.includes(alias) || slugKey.includes(alias)
+    )
+  })
+  if (!matches.length) return null
+  return matches.sort((a, b) => (b.product_count || 0) - (a.product_count || 0))[0]
+}
+
 // Get icon for category by name or slug
 const getCategoryIcon = (category) => {
   if (category.icon) return category.icon
@@ -104,7 +492,7 @@ const FilterSection = memo(function FilterSection({
 })
 
 /**
- * Animal Type Filter - Dog/Cat toggle buttons
+ * Animal Type Filter - Checkbox list
  */
 const AnimalTypeFilter = memo(function AnimalTypeFilter({ value, onChange }) {
   const options = [
@@ -113,200 +501,213 @@ const AnimalTypeFilter = memo(function AnimalTypeFilter({ value, onChange }) {
   ]
   
   return (
-    <div className="flex gap-2">
-      {options.map(opt => (
-        <button
-          key={opt.value}
-          onClick={() => onChange(value === opt.value ? '' : opt.value)}
-          className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl font-medium transition-all duration-200 ${
-            value === opt.value
-              ? 'bg-primary-600 text-white shadow-md scale-[1.02]'
-              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-          }`}
-        >
-          <span className="text-xl">{opt.icon}</span>
-          <span className="text-sm">{opt.label}</span>
-        </button>
-      ))}
+    <div className="space-y-1">
+      {options.map(opt => {
+        const isChecked = value === opt.value
+        return (
+          <label
+            key={opt.value}
+            className={`flex items-center gap-2 px-2 py-1.5 rounded-lg cursor-pointer transition-colors ${
+              isChecked ? 'bg-primary-50 border border-primary-200' : 'hover:bg-gray-50'
+            }`}
+          >
+            <input
+              type="checkbox"
+              checked={isChecked}
+              onChange={() => onChange(isChecked ? '' : opt.value)}
+              className="w-4 h-4 text-primary-600 rounded focus:ring-primary-500"
+            />
+            <span className="text-base">{opt.icon}</span>
+            <span className={`text-sm ${isChecked ? 'text-primary-800 font-medium' : 'text-gray-700'}`}>
+              {opt.label}
+            </span>
+          </label>
+        )
+      })}
     </div>
   )
 })
 
 /**
- * Category Tree Filter with expand/collapse
+ * Category Accordion Filter (fixed 10 categories + children)
  */
 const CategoryTreeFilter = memo(function CategoryTreeFilter({ 
   categories, 
   value, 
   onChange,
-  productGroups = [],
 }) {
-  const [expanded, setExpanded] = useState(new Set())
-  
-  // #region agent log
-  // Debug: Log received categories data (Hypothesis A)
-  React.useEffect(() => {
-    fetch('http://127.0.0.1:7242/ingest/4f373f70-f463-4309-8a8e-4162185b5f36',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ShopFilters.jsx:CategoryTreeFilter',message:'Categories data received',data:{categoriesCount:categories?.length||0,firstCategory:categories?.[0],productGroupsCount:productGroups?.length||0,currentValue:value},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'A'})}).catch(()=>{});
-  }, [categories, productGroups, value]);
-  // #endregion
-  
-  // Build category tree from hierarchical_categories or product_groups
   const categoryTree = useMemo(() => {
-    if (categories && categories.length > 0) {
-      return categories
-    }
-    // Fallback to product_groups
-    return productGroups.map(pg => ({
-      id: pg.product_group,
-      slug: pg.product_group,
-      name: pg.product_group,
-      product_count: pg.count,
-      children: [],
+    if (!categories || categories.length === 0) return []
+    return categories.map(parent => ({
+      ...parent,
+      children: (parent.children || []).filter(child => (child.product_count || 0) > 0 || child.slug === value)
     }))
-  }, [categories, productGroups])
+  }, [categories, value])
   
-  const toggleExpand = (id) => {
-    setExpanded(prev => {
-      const next = new Set(prev)
-      if (next.has(id)) {
-        next.delete(id)
-      } else {
-        next.add(id)
-      }
-      return next
-    })
+  const [expanded, setExpanded] = useState(null)
+  
+  const toggle = (id) => {
+    setExpanded(prev => (prev === id ? null : id))
   }
   
-  const renderCategory = (category, level = 0) => {
-    const hasChildren = category.children && category.children.length > 0
-    const isExpanded = expanded.has(category.id)
-    const isSelected = value === category.slug
-    const icon = getCategoryIcon(category)
-    
-    return (
-      <div key={category.id || category.slug}>
-        <div
-          className={`flex items-center gap-2 py-2 px-2 rounded-lg cursor-pointer transition-all duration-150 ${
-            isSelected
-              ? 'bg-primary-100 text-primary-800'
-              : 'hover:bg-gray-50 text-gray-700'
-          }`}
-          style={{ paddingLeft: `${level * 16 + 8}px` }}
-          onClick={() => {
-            // #region agent log
-            fetch('http://127.0.0.1:7242/ingest/4f373f70-f463-4309-8a8e-4162185b5f36',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ShopFilters.jsx:CategoryTreeFilter:onClick',message:'Category clicked',data:{categoryId:category.id,categorySlug:category.slug,categoryName:category.name,hasChildren,isSelected,willSendValue:isSelected?'':category.slug},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'B',runId:'post-fix'})}).catch(()=>{});
-            // #endregion
-            if (hasChildren) {
-              toggleExpand(category.id)
-              // For parent categories, only expand/collapse, don't filter
-              // User must click on a child to filter
-              return
-            }
-            onChange(isSelected ? '' : category.slug)
-          }}
-        >
-          <span className="text-base w-6 text-center flex-shrink-0">{icon}</span>
-          <span className={`flex-1 text-sm ${isSelected ? 'font-semibold' : 'font-medium'}`}>
-            {category.name}
-          </span>
-          {category.product_count > 0 && (
-            <span className={`text-xs ${isSelected ? 'text-primary-600' : 'text-gray-400'}`}>
-              {category.product_count}
-            </span>
-          )}
-          {hasChildren && (
-            <svg 
-              className={`w-4 h-4 text-gray-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
-              fill="none" 
-              viewBox="0 0 24 24" 
-              stroke="currentColor"
-              onClick={(e) => {
-                e.stopPropagation()
-                toggleExpand(category.id)
-              }}
+  return (
+    <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+      {categoryTree.map(parent => {
+        const availableChildren = (parent.children || []).filter(
+          child => (child.product_count || 0) > 0 || child.code === value || child.slug === value
+        )
+        let childrenToShow = availableChildren
+        if (childrenToShow.length === 0 && parent.slug && (parent.product_count > 0 || parent.slug === value)) {
+          childrenToShow = [{
+            id: `${parent.id}-all`,
+            name: 'Все',
+            slug: parent.slug,
+            code: parent.code,
+            product_count: parent.product_count || 0,
+          }]
+        }
+        if (childrenToShow.length === 0) return null
+        const isOpen = expanded === parent.id
+        return (
+          <div key={parent.id} className="border border-gray-100 rounded-lg overflow-hidden">
+            <button
+              type="button"
+              onClick={() => toggle(parent.id)}
+              className="w-full flex items-center justify-between px-2.5 py-2 text-left hover:bg-gray-50 transition-colors"
             >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-            </svg>
-          )}
-        </div>
-        {hasChildren && isExpanded && (
-          <div className="ml-2 border-l-2 border-gray-100">
-            {category.children.map(child => renderCategory(child, level + 1))}
+              <div className="flex items-center gap-2 text-gray-900 font-semibold">
+                <span className="text-lg">{parent.icon || getCategoryIcon(parent)}</span>
+                <span className="text-sm">{parent.name}</span>
+                {parent.product_count > 0 && (
+                  <span className="text-xs text-gray-400">{parent.product_count}</span>
+                )}
+              </div>
+              <svg
+                className={`w-4 h-4 text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`}
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+            <div className={`px-2.5 pb-2 ${isOpen ? 'block' : 'hidden'}`}>
+              <div className="space-y-1.5">
+                {childrenToShow.map(child => {
+                  const itemValue = child.code || child.slug
+                  const isSelected = value === itemValue
+                  const isDisabled = !itemValue
+                  return (
+                    <label
+                      key={child.id}
+                      className={`flex items-center gap-2 text-sm ${
+                        isDisabled ? 'text-gray-400 cursor-not-allowed' : 'text-gray-700 cursor-pointer'
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        disabled={isDisabled}
+                        checked={isSelected}
+                        onChange={() => onChange(isSelected ? '' : itemValue)}
+                        className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                      />
+                      <span className={isSelected ? 'font-medium text-primary-800' : ''}>
+                        {child.name}
+                      </span>
+                      {child.product_count > 0 && (
+                        <span className="ml-auto text-xs text-gray-400">
+                          {child.product_count}
+                        </span>
+                      )}
+                    </label>
+                  )
+                })}
+              </div>
+            </div>
           </div>
-        )}
-      </div>
-    )
+        )
+      })}
+    </div>
+  )
+})
+
+/**
+ * Age Group Filter - Recommendations + age input
+ */
+const AgeGroupFilter = memo(function AgeGroupFilter({ 
+  onChange, 
+  animal = '',
+}) {
+  const [years, setYears] = useState('')
+  const [months, setMonths] = useState('')
+  
+  const handleAgeInput = (nextYears, nextMonths) => {
+    const y = Number(nextYears || 0)
+    const m = Number(nextMonths || 0)
+    const totalMonths = y * 12 + m
+    if (!totalMonths) {
+      onChange('')
+      return
+    }
+    if (!animal && totalMonths < 12) {
+      onChange('puppy,kitten')
+      return
+    }
+    if (animal === 'cat') {
+      if (totalMonths < 12) onChange('kitten')
+      else if (totalMonths < 96) onChange('adult')
+      else onChange('senior')
+      return
+    }
+    if (animal === 'dog') {
+      if (totalMonths < 12) onChange('puppy')
+      else if (totalMonths < 84) onChange('adult')
+      else onChange('senior')
+      return
+    }
+    if (totalMonths < 84) onChange('adult')
+    else onChange('senior')
   }
   
-  return (
-    <div className="space-y-0.5 max-h-64 overflow-y-auto scrollbar-thin">
-      {categoryTree.map(cat => renderCategory(cat))}
-    </div>
-  )
-})
-
-/**
- * Age Group Filter - Pill buttons
- */
-const AgeGroupFilter = memo(function AgeGroupFilter({ value, onChange, options = [] }) {
-  const defaultOptions = [
-    { value: 'puppy', label: 'Щенок', icon: '🐕' },
-    { value: 'kitten', label: 'Котёнок', icon: '🐈' },
-    { value: 'adult', label: 'Взрослый', icon: '🦮' },
-    { value: 'senior', label: 'Пожилой', icon: '🐕‍🦺' },
-  ]
-  
-  const items = options.length > 0 ? options : defaultOptions
+  useEffect(() => {
+    handleAgeInput(years, months)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [years, months, animal])
   
   return (
-    <div className="flex flex-wrap gap-2">
-      {items.map(opt => (
+    <div className="space-y-3">
+      <div className="flex gap-2 items-center">
+        <input
+          type="number"
+          min="0"
+          value={years}
+          onChange={(e) => setYears(e.target.value)}
+          placeholder="лет"
+          className="w-16 px-2 py-1.5 text-xs border border-gray-200 rounded-lg focus:ring-primary-500 focus:border-primary-500"
+        />
+        <span className="text-xs text-gray-400">и</span>
+        <input
+          type="number"
+          min="0"
+          max="11"
+          value={months}
+          onChange={(e) => setMonths(e.target.value)}
+          placeholder="мес"
+          className="w-16 px-2 py-1.5 text-xs border border-gray-200 rounded-lg focus:ring-primary-500 focus:border-primary-500"
+        />
         <button
-          key={opt.value}
-          onClick={() => onChange(value === opt.value ? '' : opt.value)}
-          className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all duration-150 ${
-            value === opt.value
-              ? 'bg-primary-600 text-white shadow-sm'
-              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-          }`}
+          type="button"
+          onClick={() => { setYears(''); setMonths(''); onChange('') }}
+          className="ml-auto text-xs text-gray-500 hover:text-gray-700"
         >
-          {opt.label}
+          Очистить
         </button>
-      ))}
-    </div>
-  )
-})
-
-/**
- * Size Group Filter - Visual size indicators
- */
-const SizeGroupFilter = memo(function SizeGroupFilter({ value, onChange, options = [] }) {
-  const defaultOptions = [
-    { value: 'mini', label: 'Мини', size: 'w-3 h-3' },
-    { value: 'small', label: 'Малый', size: 'w-4 h-4' },
-    { value: 'medium', label: 'Средний', size: 'w-5 h-5' },
-    { value: 'large', label: 'Крупный', size: 'w-6 h-6' },
-    { value: 'giant', label: 'Гигант', size: 'w-7 h-7' },
-  ]
-  
-  const items = options.length > 0 ? options : defaultOptions
-  
-  return (
-    <div className="flex flex-wrap gap-2">
-      {items.map(opt => (
-        <button
-          key={opt.value}
-          onClick={() => onChange(value === opt.value ? '' : opt.value)}
-          className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium transition-all duration-150 ${
-            value === opt.value
-              ? 'bg-primary-600 text-white shadow-sm'
-              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-          }`}
-        >
-          <div className={`${opt.size || 'w-4 h-4'} rounded-full bg-current opacity-60`} />
-          <span>{opt.label}</span>
-        </button>
-      ))}
+      </div>
+      {!animal && (
+        <p className="text-xs text-gray-400">
+          До 1 года без выбора животного применяются щенки и котята.
+        </p>
+      )}
     </div>
   )
 })
@@ -519,42 +920,6 @@ const PriceRangeFilter = memo(function PriceRangeFilter({
       >
         Применить
       </button>
-      {range && (
-        <p className="text-xs text-gray-400 text-center">
-          {Math.floor(range.min).toLocaleString()} — {Math.ceil(range.max).toLocaleString()} ₽
-        </p>
-      )}
-    </div>
-  )
-})
-
-/**
- * Additional Filters (in stock, discount)
- */
-const AdditionalFilters = memo(function AdditionalFilters({ filters, onChange }) {
-  return (
-    <div className="space-y-2">
-      <label className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors">
-        <input
-          type="checkbox"
-          checked={filters.in_stock === 'true'}
-          onChange={(e) => onChange('in_stock', e.target.checked ? 'true' : '')}
-          className="w-4 h-4 text-primary-600 rounded focus:ring-primary-500"
-        />
-        <span className="text-sm text-gray-700">Только в наличии</span>
-      </label>
-      <label className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors">
-        <input
-          type="checkbox"
-          checked={filters.has_discount === 'true'}
-          onChange={(e) => onChange('has_discount', e.target.checked ? 'true' : '')}
-          className="w-4 h-4 text-orange-500 rounded focus:ring-orange-500"
-        />
-        <div className="flex items-center gap-1">
-          <span className="text-sm text-gray-700">Со скидкой</span>
-          <span>🔥</span>
-        </div>
-      </label>
     </div>
   )
 })
@@ -566,25 +931,18 @@ const ShopFilters = memo(function ShopFilters({
   filters,
   availableFilters,
   onChange,
+  onPriceApply,
   onReset,
   isLoading = false,
   className = '',
 }) {
-  // Check if we're in a food-related category
-  const isFoodCategory = useMemo(() => {
-    const foodRelated = ['food', 'treats', 'vitamins', 'supplements']
-    const categorySlug = filters.category_slug || filters.category || ''
-    const productGroup = filters.product_group || ''
-    return foodRelated.some(f => categorySlug.includes(f) || productGroup.includes(f))
-  }, [filters.category_slug, filters.category, filters.product_group])
-  
   // Count active filters
   const activeFilterCount = useMemo(() => {
     let count = 0
     if (filters.animal) count++
-    if (filters.category_slug || filters.category) count++
+    if (filters.pet_id) count++
+    if (filters.category_code || filters.category_slug) count++
     if (filters.age_group) count++
-    if (filters.size_group) count++
     if (filters.brand_class) count++
     if (filters.brand_id) count++
     if (filters.is_grain_free === 'true') count++
@@ -597,6 +955,10 @@ const ShopFilters = memo(function ShopFilters({
   }, [filters])
   
   const handlePriceApply = (min, max) => {
+    if (onPriceApply) {
+      onPriceApply(min, max)
+      return
+    }
     onChange('min_price', min)
     onChange('max_price', max)
   }
@@ -631,96 +993,108 @@ const ShopFilters = memo(function ShopFilters({
       
       {/* Filter sections */}
       <div className="p-4 space-y-1 max-h-[calc(100vh-12rem)] overflow-y-auto scrollbar-thin">
-        {/* Animal Type */}
-        <FilterSection title="Для кого" icon="🐾" defaultOpen={true}>
+        {availableFilters.user_pets && availableFilters.user_pets.length > 0 && (
+          <div className="border-b border-gray-100 pb-4">
+            <div className="text-xs font-medium text-gray-500 mb-2">Мои питомцы</div>
+            <div className="space-y-2">
+              {availableFilters.user_pets.map(pet => {
+                const hasProducts = ['dog', 'cat'].includes(pet.species)
+                if (!hasProducts) return null
+                const isSelected = String(filters.pet_id) === String(pet.id)
+                return (
+                  <label
+                    key={pet.id}
+                    className={`flex items-center gap-3 p-2 rounded-lg cursor-pointer transition-colors ${
+                      isSelected ? 'bg-primary-50 border border-primary-200' : 'hover:bg-primary-50'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="pet_id"
+                      value={pet.id}
+                      checked={isSelected}
+                      onChange={(e) => onChange('pet_id', e.target.value)}
+                      className="w-4 h-4 text-primary-600 focus:ring-primary-500"
+                    />
+                    <span className={`text-sm ${isSelected ? 'text-primary-700 font-medium' : 'text-gray-700'}`}>
+                      {pet.name} <span className="text-primary-400">{pet.species_label}</span>
+                    </span>
+                  </label>
+                )
+              })}
+              {filters.pet_id && (
+                <button
+                  onClick={() => onChange('pet_id', '')}
+                  className="text-xs text-primary-600 hover:text-primary-700 font-medium"
+                >
+                  Показать все товары
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
+        <div className="border-b border-gray-100 pb-4">
+          <div className="text-xs font-medium text-gray-500 mb-2">Для кого</div>
           <AnimalTypeFilter 
             value={filters.animal || ''} 
             onChange={(val) => onChange('animal', val)} 
           />
-        </FilterSection>
-        
-        {/* Category */}
-        <FilterSection 
-          title="Категория" 
-          icon="📦" 
-          defaultOpen={true}
-          badge={filters.category_slug || filters.category ? 1 : 0}
-        >
+        </div>
+
+        <div className="border-b border-gray-100 pb-4">
           <CategoryTreeFilter
             categories={availableFilters.hierarchical_categories || []}
-            productGroups={availableFilters.product_groups || []}
-            value={filters.category_slug || filters.category || ''}
-            onChange={(val) => onChange('category_slug', val)}
+            value={filters.category_code || filters.category_slug || ''}
+            onChange={(val) => onChange('category_code', val)}
           />
-        </FilterSection>
-        
-        {/* Age Group - show for food categories */}
-        {(isFoodCategory || !filters.category_slug) && (
-          <FilterSection title="Возраст" icon="📅" defaultOpen={false}>
-            <AgeGroupFilter
-              value={filters.age_group || ''}
-              onChange={(val) => onChange('age_group', val)}
-              options={availableFilters.age_groups || []}
-            />
-          </FilterSection>
-        )}
-        
-        {/* Size Group - show for food categories */}
-        {(isFoodCategory || !filters.category_slug) && (
-          <FilterSection title="Размер породы" icon="📏" defaultOpen={false}>
-            <SizeGroupFilter
-              value={filters.size_group || ''}
-              onChange={(val) => onChange('size_group', val)}
-              options={availableFilters.size_groups || []}
-            />
-          </FilterSection>
-        )}
-        
-        {/* Brand Class */}
-        <FilterSection title="Класс бренда" icon="🏆" defaultOpen={false}>
-          <BrandClassFilter
-            value={filters.brand_class || ''}
-            onChange={(val) => onChange('brand_class', val)}
-          />
-        </FilterSection>
-        
-        {/* Special Diets - show for food categories */}
-        {(isFoodCategory || !filters.category_slug) && (
-          <FilterSection title="Особенности" icon="✨" defaultOpen={false}>
-            <SpecialDietFilters
-              filters={filters}
-              onChange={onChange}
-              counts={availableFilters.boolean_filters || {}}
-            />
-          </FilterSection>
-        )}
-        
-        {/* Brand */}
-        <FilterSection title="Бренд" icon="🏷️" defaultOpen={false}>
-          <BrandFilter
-            brands={availableFilters.brands || []}
-            value={filters.brand_id || ''}
-            onChange={(val) => onChange('brand_id', val)}
-          />
-        </FilterSection>
-        
-        {/* Price Range */}
-        <FilterSection title="Цена" icon="💰" defaultOpen={false}>
-          <PriceRangeFilter
-            minPrice={filters.min_price}
-            maxPrice={filters.max_price}
-            range={availableFilters.price_range}
-            onApply={handlePriceApply}
-          />
-        </FilterSection>
+        </div>
         
         {/* Additional */}
-        <FilterSection title="Дополнительно" icon="⚙️" defaultOpen={false}>
-          <AdditionalFilters
-            filters={filters}
-            onChange={onChange}
-          />
-        </FilterSection>
+        <div className="border-b border-gray-100 pb-4">
+          <div className="text-xs font-medium text-gray-500 mb-2 flex items-center gap-2">
+            <span>⚙️</span>
+            Дополнительно
+          </div>
+          <div className="space-y-4">
+            {!filters.pet_id && (
+              <div>
+                <div className="text-xs font-medium text-gray-500 mb-2">Возраст</div>
+                <AgeGroupFilter
+                  onChange={(val) => onChange('age_group', val)}
+                  animal={filters.animal || ''}
+                />
+              </div>
+            )}
+            {((filters.category_code || '').startsWith('food')) && (
+              <div>
+                <div className="text-xs font-medium text-gray-500 mb-2">Особенности</div>
+                <SpecialDietFilters
+                  filters={filters}
+                  onChange={onChange}
+                  counts={availableFilters.boolean_filters || {}}
+                />
+              </div>
+            )}
+            <div>
+              <div className="text-xs font-medium text-gray-500 mb-2">Бренд</div>
+              <BrandFilter
+                brands={availableFilters.brands || []}
+                value={filters.brand_id || ''}
+                onChange={(val) => onChange('brand_id', val)}
+              />
+            </div>
+            <div>
+              <div className="text-xs font-medium text-gray-500 mb-2">Цена</div>
+              <PriceRangeFilter
+                minPrice={filters.min_price}
+                maxPrice={filters.max_price}
+                range={availableFilters.price_range}
+                onApply={handlePriceApply}
+              />
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   )

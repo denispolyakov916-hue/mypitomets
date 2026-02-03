@@ -3,7 +3,7 @@
 
 Пересчитывает:
 - products.price, products.compare_price из default SKU
-- products.image_url из images
+- products.image_url из галереи изображений
 - categories.product_count
 - brands.product_count
 - FoodDetails для недостающих продуктов
@@ -76,24 +76,16 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS(f'    Исправлены товары без default SKU: {fixed}'))
 
     def update_product_images(self):
-        """Обновляет image_url из массива images."""
+        """Обновляет image_url из галереи изображений."""
         self.stdout.write('  Обновление изображений...')
         
         updated = 0
         for product in Product.objects.filter(Q(image_url='') | Q(image_url__isnull=True)):
-            if product.images:
-                first_image = product.images[0]
-                if isinstance(first_image, dict):
-                    url = first_image.get('url', '')
-                elif isinstance(first_image, str):
-                    url = first_image
-                else:
-                    url = ''
-                
-                if url:
-                    product.image_url = url
-                    product.save(update_fields=['image_url'])
-                    updated += 1
+            first_image = product.product_images.filter(is_active=True).order_by('sort_order', 'id').first()
+            if first_image and first_image.url:
+                product.image_url = first_image.url
+                product.save(update_fields=['image_url'])
+                updated += 1
         
         self.stdout.write(self.style.SUCCESS(f'    Изображения обновлены: {updated}'))
 

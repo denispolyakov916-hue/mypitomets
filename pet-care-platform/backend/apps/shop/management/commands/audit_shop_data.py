@@ -132,7 +132,7 @@ class Command(BaseCommand):
             'short_description': Product.objects.exclude(short_description='').exclude(short_description__isnull=True).count(),
             'new_category': Product.objects.exclude(new_category__isnull=True).count(),
             'brand': Product.objects.exclude(brand__isnull=True).count(),
-            'images (not empty)': Product.objects.exclude(images=[]).count(),
+            'images (not empty)': Product.objects.annotate(image_count=Count('product_images')).filter(image_count__gt=0).count(),
             'image_url': Product.objects.exclude(image_url='').exclude(image_url__isnull=True).count(),
             'price > 0': Product.objects.filter(price__gt=0).count(),
             'compare_price > 0': Product.objects.filter(compare_price__gt=0).count(),
@@ -161,7 +161,7 @@ class Command(BaseCommand):
             self.stdout.write(f'    - {at}: {count}')
         
         if verbose:
-            no_images = Product.objects.filter(images=[])[:5]
+            no_images = Product.objects.annotate(image_count=Count('product_images')).filter(image_count=0)[:5]
             if no_images:
                 self.stdout.write(self.style.WARNING('  Products without images:'))
                 for p in no_images:

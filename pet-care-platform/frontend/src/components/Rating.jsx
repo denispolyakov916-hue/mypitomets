@@ -27,6 +27,8 @@ function Rating({
   size = 'md' 
 }) {
   const [hoveredRating, setHoveredRating] = useState(0)
+  const parsedRating = typeof rating === 'number' ? rating : parseFloat(rating)
+  const safeRating = Number.isFinite(parsedRating) ? parsedRating : 0
   
   // Размеры звезд
   const sizeClasses = {
@@ -62,7 +64,7 @@ function Rating({
   }
   
   // Определяем активный рейтинг (hovered или текущий)
-  const activeRating = hoveredRating || rating
+  const activeRating = hoveredRating || safeRating
   
   return (
     <div className="flex items-center gap-1.5">
@@ -97,10 +99,10 @@ function Rating({
       </div>
       
       {/* Отображение рейтинга и количества отзывов */}
-      {(rating > 0 || reviewsCount !== null) && (
+      {(safeRating > 0 || reviewsCount !== null) && (
         <div className="flex items-center gap-1.5 text-sm">
           <span className="font-medium text-gray-700">
-            {rating > 0 ? rating.toFixed(1) : '0.0'}
+            {safeRating > 0 ? safeRating.toFixed(1) : '0.0'}
           </span>
           {reviewsCount !== null && reviewsCount !== undefined && (
             <span className="text-gray-500">

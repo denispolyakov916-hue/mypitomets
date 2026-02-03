@@ -201,8 +201,8 @@ export const getProductBreedRecommendations = async (productId) => {
  * @param {number} productId - Уникальный идентификатор товара
  * @returns {Promise<Object>} Рекомендации товаров
  */
-export const getFrequentlyBoughtTogether = async (productId) => {
-  return await api.get(`/shop/products/${productId}/frequently-bought/`)
+export const getFrequentlyBoughtTogether = async (productId, limit = 8) => {
+  return await api.get(`/shop/products/${productId}/frequently-bought/?limit=${limit}`)
 }
 
 /**

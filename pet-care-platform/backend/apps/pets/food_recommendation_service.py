@@ -249,11 +249,13 @@ class FoodRecommendationService:
         if age_months is None:
             return True
 
+        details = self._get_food_details(product)
         # Мин/макс возраст в месяцах
-        if product.min_age_months is not None and age_months < product.min_age_months:
-            return False
-        if product.max_age_months is not None and age_months > product.max_age_months:
-            return False
+        if details:
+            if details.age_min_months is not None and age_months < details.age_min_months:
+                return False
+            if details.age_max_months is not None and age_months > details.age_max_months:
+                return False
 
         # Возрастная группа товара
         product_age_group = product.age_group or 'all'
@@ -277,9 +279,9 @@ class FoodRecommendationService:
 
         # min/max возраст
         queryset = queryset.filter(
-            Q(min_age_months__isnull=True) | Q(min_age_months__lte=age_months)
+            Q(food_details__age_min_months__isnull=True) | Q(food_details__age_min_months__lte=age_months)
         ).filter(
-            Q(max_age_months__isnull=True) | Q(max_age_months__gte=age_months)
+            Q(food_details__age_max_months__isnull=True) | Q(food_details__age_max_months__gte=age_months)
         )
 
         # age_group: жёсткое соответствие
@@ -537,14 +539,15 @@ class FoodRecommendationService:
         from apps.shop.models import Product
         from django.db.models import Avg
         
-        # Базовый queryset (используем новые поля + legacy для совместимости)
+        dry_codes = ['food.dry', 'food.semi_moist', 'food.holistic', 'food.hypoallergenic', 'food.diet']
         base_queryset = Product.objects.filter(
-            Q(product_group='food') | Q(new_category__product_group='food') | Q(category='food'),
-            Q(subcategory__in=['dry', 'holistic', 'hypoallergenic', 'diet']) | Q(subcategory__isnull=True),
-            Q(animal_type__in=[filters.species, 'all']) | Q(animal=filters.species),
-            Q(is_available=True) | Q(in_stock=True),
-            kcal_per_100g__isnull=False
-        )
+            product_group='food',
+            new_category__code__in=dry_codes,
+            animal_type__in=[filters.species, 'all'],
+            is_available=True,
+            food_details__energy_kcal_per_100g__isnull=False,
+            food_details__product_type='food'
+        ).select_related('food_details')
         queryset = base_queryset
         
         # Фильтрация по возрасту - КРИТИЧНО для правильного подбора
@@ -553,17 +556,17 @@ class FoodRecommendationService:
         # Фильтрация по размеру для собак
         if filters.species == 'dog' and filters.size_category:
             queryset = queryset.filter(
-                Q(target_size='all') | 
-                Q(target_size=filters.size_category) |
-                Q(target_size__isnull=True)
+                Q(food_details__target_size='all') | 
+                Q(food_details__target_size=filters.size_category) |
+                Q(food_details__target_size__isnull=True)
             )
 
         # ЖКТ-режим: подбираем специализированные корма
         if filters.has_gi_issues:
             gi_queryset = queryset.filter(
-                Q(compatibility_group='therapeutic_digestive') |
-                Q(health_conditions__overlap=['digestive', 'gastro', 'gastrointestinal']) |
-                Q(subcategory__in=['diet', 'hypoallergenic'])
+                Q(food_details__compatibility_group='therapeutic_digestive') |
+                Q(food_details__health_conditions__overlap=['digestive', 'gastro', 'gastrointestinal']) |
+                Q(new_category__code__in=['food.diet', 'food.hypoallergenic'])
             )
             if gi_queryset.exists():
                 queryset = gi_queryset
@@ -625,7 +628,7 @@ class FoodRecommendationService:
                     daily_grams=daily_grams,
                     daily_kcal=round(component_kcal) if component_kcal else None,
                     price=product.price,
-                    weight_grams=int(product.weight * 1000) if product.weight else None,
+                    weight_grams=self._get_product_weight_grams(product),
                     reasons=reasons,
                     warnings=warnings,
                     badges=badges,
@@ -690,14 +693,15 @@ class FoodRecommendationService:
         from apps.shop.models import Product
         from django.db.models import Avg
         
-        # Используем новые поля + legacy для совместимости
+        wet_codes = ['food.wet', 'food.canned', 'food.pouches', 'food.pate']
         base_queryset = Product.objects.filter(
-            Q(product_group='food') | Q(new_category__product_group='food') | Q(category='food'),
-            Q(subcategory__in=['wet', 'canned', 'pouch', 'pate']) | Q(subcategory__isnull=True),
-            Q(animal_type__in=[filters.species, 'all']) | Q(animal=filters.species),
-            Q(is_available=True) | Q(in_stock=True),
-            kcal_per_100g__isnull=False
-        )
+            product_group='food',
+            new_category__code__in=wet_codes,
+            animal_type__in=[filters.species, 'all'],
+            is_available=True,
+            food_details__energy_kcal_per_100g__isnull=False,
+            food_details__product_type='food'
+        ).select_related('food_details')
         queryset = base_queryset
         
         # Фильтрация по возрасту
@@ -706,17 +710,17 @@ class FoodRecommendationService:
         # Фильтрация по размеру для собак
         if filters.species == 'dog' and filters.size_category:
             queryset = queryset.filter(
-                Q(target_size='all') | 
-                Q(target_size=filters.size_category) |
-                Q(target_size__isnull=True)
+                Q(food_details__target_size='all') | 
+                Q(food_details__target_size=filters.size_category) |
+                Q(food_details__target_size__isnull=True)
             )
 
         # ЖКТ-режим: подбираем специализированные корма
         if filters.has_gi_issues:
             gi_queryset = queryset.filter(
-                Q(compatibility_group='therapeutic_digestive') |
-                Q(health_conditions__overlap=['digestive', 'gastro', 'gastrointestinal']) |
-                Q(subcategory__in=['diet', 'hypoallergenic'])
+                Q(food_details__compatibility_group='therapeutic_digestive') |
+                Q(food_details__health_conditions__overlap=['digestive', 'gastro', 'gastrointestinal']) |
+                Q(new_category__code__in=['food.diet', 'food.hypoallergenic'])
             )
             if gi_queryset.exists():
                 queryset = gi_queryset
@@ -778,7 +782,7 @@ class FoodRecommendationService:
                     daily_grams=daily_grams,
                     daily_kcal=round(component_kcal) if component_kcal else None,
                     price=product.price,
-                    weight_grams=int(product.weight * 1000) if product.weight else None,
+                    weight_grams=self._get_product_weight_grams(product),
                     reasons=reasons,
                     warnings=warnings,
                     badges=badges,
@@ -871,13 +875,13 @@ class FoodRecommendationService:
         """
         from apps.shop.models import Product
         
-        # Используем новые поля + legacy для совместимости
         queryset = Product.objects.filter(
-            Q(product_group='treats') | Q(new_category__product_group='treats') | Q(category='treats'),
-            Q(animal_type__in=[filters.species, 'all']) | Q(animal=filters.species),
-            Q(is_available=True) | Q(in_stock=True),
-            kcal_per_100g__isnull=False
-        )
+            product_group='treats',
+            animal_type__in=[filters.species, 'all'],
+            is_available=True,
+            food_details__energy_kcal_per_100g__isnull=False,
+            food_details__product_type='treat'
+        ).select_related('food_details')
         
         # Фильтр по возрасту
         age_months = filters.age_months or 24
@@ -887,7 +891,7 @@ class FoodRecommendationService:
         size = filters.size_category
         if size:
             queryset = queryset.filter(
-                Q(target_size='all') | Q(target_size=size) | Q(target_size__isnull=True)
+                Q(food_details__target_size='all') | Q(food_details__target_size=size) | Q(food_details__target_size__isnull=True)
             )
         
         products = list(queryset[:30])
@@ -927,11 +931,11 @@ class FoodRecommendationService:
                 daily_grams = 20  # Fallback
             
             # Расчёт штук (~10-15г на штуку)
-            piece_weight = getattr(product, 'piece_weight_grams', None) or self.AVG_TREAT_PIECE_GRAMS
+            piece_weight = self.AVG_TREAT_PIECE_GRAMS
             pieces_per_day = max(1, round(daily_grams / piece_weight))
             
             # Вес упаковки и расчёт на период
-            weight_grams = int(product.weight * 1000) if product.weight else 200
+            weight_grams = self._get_product_weight_grams(product) or 200
             
             # Сколько упаковок на период
             total_grams_needed = daily_grams * filters.period_days * 1.15
@@ -1052,30 +1056,24 @@ class FoodRecommendationService:
         
         # === Ищем добавки в каталоге ===
         for supp_type in needed_types:
-            # Сначала ищем по subcategory (используем новые + legacy поля)
             queryset = Product.objects.filter(
-                Q(product_group='vitamins') | Q(category='supplements'),
-                Q(animal_type__in=[species, 'all']) | Q(animal=species),
-                Q(is_available=True) | Q(in_stock=True),
-                subcategory=supp_type
-            )
+                product_group='vitamins',
+                animal_type__in=[species, 'all'],
+                is_available=True,
+                food_details__product_type='supplement'
+            ).select_related('food_details')
             
-            # Если не нашли, ищем по названию/описанию
-            if not queryset.exists():
-                queryset = Product.objects.filter(
-                    Q(product_group='vitamins') | Q(category='supplements'),
-                    Q(animal_type__in=[species, 'all']) | Q(animal=species),
-                    Q(is_available=True) | Q(in_stock=True)
-                ).filter(
-                    Q(name__icontains=supp_type) | 
-                    Q(description__icontains=supp_type)
-                )
+            queryset = queryset.filter(
+                Q(new_category__code__icontains=supp_type) |
+                Q(name__icontains=supp_type) |
+                Q(description__icontains=supp_type)
+            )
             
             # Фильтруем по возрасту
             queryset = queryset.filter(
-                Q(min_age_months__isnull=True) | Q(min_age_months__lte=age_months)
+                Q(food_details__age_min_months__isnull=True) | Q(food_details__age_min_months__lte=age_months)
             ).filter(
-                Q(max_age_months__isnull=True) | Q(max_age_months__gte=age_months)
+                Q(food_details__age_max_months__isnull=True) | Q(food_details__age_max_months__gte=age_months)
             )
             
             product = queryset.first()
@@ -1088,7 +1086,7 @@ class FoodRecommendationService:
                 )
                 
                 # Расчёт упаковок на период
-                weight_grams = int(product.weight * 1000) if product.weight else 60
+                weight_grams = self._get_product_weight_grams(product) or 60
                 # Добавки обычно ~30-60 таблеток/капсул
                 packages_needed = max(1, math.ceil(filters.period_days / 30))  # ~1 уп/месяц
                 days_supply = 30 * packages_needed
@@ -1216,6 +1214,17 @@ class FoodRecommendationService:
         intake_instructions = instructions_map.get(supp_type, 'Следуйте инструкции на упаковке.')
         
         return dosage_text, intake_time, intake_instructions
+
+    def _get_food_details(self, product):
+        """Безопасно получить связанные FoodDetails."""
+        return getattr(product, 'food_details', None)
+
+    def _get_product_weight_grams(self, product) -> Optional[int]:
+        """Вес продукта в граммах по SKU."""
+        sku = product.skus.filter(available=True).order_by('-is_default', 'sort_order').first()
+        if sku and sku.weight_kg:
+            return int(sku.weight_kg * 1000)
+        return None
     
     def _get_short_description(self, product, max_length: int = 80) -> str:
         """
@@ -1241,13 +1250,13 @@ class FoodRecommendationService:
             truncated = desc[:max_length].rsplit(' ', 1)[0]
             return truncated + '...'
         
-        # Генерируем по категории
+        # Генерируем по группе товаров
         category_descriptions = {
             'food': 'Полнорационный корм',
             'treats': 'Лакомство для питомца',
-            'supplements': 'Витаминная добавка',
+            'vitamins': 'Витаминная добавка',
         }
-        return category_descriptions.get(product.category, 'Товар для питомца')
+        return category_descriptions.get(product.product_group, 'Товар для питомца')
     
     def _get_nutrition_data(self, product) -> dict:
         """
@@ -1256,16 +1265,21 @@ class FoodRecommendationService:
         Returns:
             dict с nutrition_* полями
         """
+        details = self._get_food_details(product)
+        if not details:
+            return {
+            'nutrition_protein': None,
+            'nutrition_fat': None,
+            'nutrition_fiber': None,
+            'nutrition_moisture': None,
+            'nutrition_ash': None,
+            }
         return {
-            'nutrition_protein': float(product.nutrition_protein) if product.nutrition_protein else None,
-            'nutrition_fat': float(product.nutrition_fat) if product.nutrition_fat else None,
-            'nutrition_fiber': float(product.nutrition_fiber) if product.nutrition_fiber else None,
-            'nutrition_moisture': float(product.nutrition_moisture) if product.nutrition_moisture else None,
-            'nutrition_ash': float(product.nutrition_ash) if product.nutrition_ash else None,
-            'nutrition_calcium': float(product.nutrition_calcium) if getattr(product, 'nutrition_calcium', None) else None,
-            'nutrition_phosphorus': float(product.nutrition_phosphorus) if getattr(product, 'nutrition_phosphorus', None) else None,
-            'nutrition_omega3': float(product.nutrition_omega3) if getattr(product, 'nutrition_omega3', None) else None,
-            'nutrition_omega6': float(product.nutrition_omega6) if getattr(product, 'nutrition_omega6', None) else None,
+            'nutrition_protein': float(details.protein_g_per_100g) if details.protein_g_per_100g else None,
+            'nutrition_fat': float(details.fat_g_per_100g) if details.fat_g_per_100g else None,
+            'nutrition_fiber': float(details.fiber_g_per_100g) if details.fiber_g_per_100g else None,
+            'nutrition_moisture': float(details.moisture_percent) if details.moisture_percent else None,
+            'nutrition_ash': float(details.ash_g_per_100g) if details.ash_g_per_100g else None,
         }
     
     def _evaluate_product(
@@ -1287,6 +1301,8 @@ class FoodRecommendationService:
         product_name = (product.name or '').lower()
         product_desc = (product.description or '').lower()
         full_text = f"{product_name} {product_desc}"
+        details = self._get_food_details(product)
+        category_code = product.new_category.code if getattr(product, 'new_category', None) else ''
 
         # 0. Жёсткий возрастной гейтинг
         if not self._is_age_compatible(product, filters.species, filters.age_months):
@@ -1302,7 +1318,7 @@ class FoodRecommendationService:
                 'giant': ['giant', 'гигант', 'xxl', 'очень крупн'],
             }
             # Определяем размер из target_size или названия
-            product_size = product.target_size or 'all'
+            product_size = details.target_size if details and details.target_size else 'all'
             detected_size = None
             if getattr(product, 'size_group', None) and product.size_group != 'all':
                 size_group_map = {
@@ -1326,7 +1342,7 @@ class FoodRecommendationService:
         
         # 1. КРИТИЧНО: Проверка аллергий - исключаем полностью
         if filters.allergy_codes:
-            allergens_list = [a.lower() for a in (product.allergens or [])]
+            allergens_list = [a.lower() for a in (details.allergens or [])] if details else []
             for allergy_code in filters.allergy_codes:
                 ingredients_to_check = self.ALLERGY_INGREDIENTS.get(allergy_code, [])
                 for ingredient in ingredients_to_check:
@@ -1347,17 +1363,21 @@ class FoodRecommendationService:
         # 3. Бонусы за соответствие заболеваниям
         for condition_code in filters.health_condition_codes:
             keywords = self.HEALTH_FOOD_KEYWORDS.get(condition_code, [])
-            subcategory = product.subcategory or ''
+            category_hint = category_code or ''
             for keyword in keywords:
-                if keyword in full_text or keyword in subcategory:
+                if keyword in full_text or keyword in category_hint:
                     score += 15
                     reasons.append(f"Подходит при: {condition_code}")
                     badges.append("Лечебный")
                     break
+            if details and condition_code in (details.health_conditions or []):
+                score += 10
+                reasons.append(f"Показания: {condition_code}")
         
         # 4. Гипоаллергенные корма если есть аллергии
         if filters.allergy_codes:
-            if product.is_hypoallergenic or 'hypoallergenic' in full_text or product.subcategory == 'hypoallergenic':
+            is_hypo = bool(details and details.is_hypoallergenic) or product.is_hypoallergenic
+            if is_hypo or 'hypoallergenic' in full_text or 'hypoallergenic' in category_code:
                 score += 20
                 reasons.append("Гипоаллергенный")
                 badges.append("Гипоаллергенный")
@@ -1373,9 +1393,9 @@ class FoodRecommendationService:
         if filters.macro_targets:
             macro_targets = filters.macro_targets
             macros = {
-                'protein': product.nutrition_protein,
-                'fat': product.nutrition_fat,
-                'fiber': product.nutrition_fiber,
+                'protein': details.protein_g_per_100g if details else None,
+                'fat': details.fat_g_per_100g if details else None,
+                'fiber': details.fiber_g_per_100g if details else None,
             }
             for macro, value in macros.items():
                 if value is None:
@@ -1425,16 +1445,16 @@ class FoodRecommendationService:
                     break
         
         # 7. Приоритетные бренды
-        vendor = (product.vendor or '').lower()
+        brand_name = (product.brand.name if product.brand else '').lower()
         if filters.priority_brands:
             for brand in filters.priority_brands:
-                if brand.lower() in vendor:
+                if brand.lower() in brand_name:
                     score += 10
                     badges.append("Приоритет")
                     break
         
         # 8. Холистик бонус
-        if product.subcategory == 'holistic':
+        if 'holistic' in category_code:
             score += 5
             badges.append("Холистик")
         
@@ -1467,20 +1487,9 @@ class FoodRecommendationService:
         """
         Получить калорийность продукта (ккал/100г).
         """
-        if getattr(product, 'kcal_per_100g', None):
-            return float(product.kcal_per_100g)
-
-        params = product.params or {}
-        
-        # Пробуем извлечь из params
-        for key in ['kcal_per_100g', 'calories_per_100g', 'kcal', 'metabolizable_energy']:
-            if key in params:
-                try:
-                    return float(params[key])
-                except (ValueError, TypeError):
-                    pass
-        
-        # Нет достоверной калорийности
+        details = self._get_food_details(product)
+        if details and details.energy_kcal_per_100g:
+            return float(details.energy_kcal_per_100g)
         return None
     
     def _calculate_costs(self, plan: FeedingPlan, period_days: int):
@@ -1816,40 +1825,41 @@ class FoodRecommendationService:
         """
         from apps.shop.models import Product
         
-        # Определяем подкатегории по типу
-        subcategories = {
-            'dry_food': ['dry', 'holistic', 'hypoallergenic', 'diet'],
-            'dry_food_multi': ['dry', 'holistic', 'hypoallergenic', 'diet'],
-            'wet_food': ['wet', 'canned', 'pouch', 'pate'],
-            'wet_food_multi': ['wet', 'canned', 'pouch', 'pate'],
-            'treat': [],  # Будет искать по category='treats'
-            'supplement': [],  # Добавки
+        category_codes = {
+            'dry_food': ['food.dry', 'food.semi_moist', 'food.holistic', 'food.hypoallergenic', 'food.diet'],
+            'dry_food_multi': ['food.dry', 'food.semi_moist', 'food.holistic', 'food.hypoallergenic', 'food.diet'],
+            'wet_food': ['food.wet', 'food.canned', 'food.pouches', 'food.pate'],
+            'wet_food_multi': ['food.wet', 'food.canned', 'food.pouches', 'food.pate'],
+            'treat': [],
+            'supplement': [],
         }
         
-        subcat = subcategories.get(component.product_type, ['dry'])
+        subcat = category_codes.get(component.product_type, ['food.dry'])
         product_type = component.product_type
         
-        # Используем новые поля + legacy для совместимости
         if product_type == 'treat':
             queryset = Product.objects.filter(
-                Q(product_group='treats') | Q(new_category__product_group='treats') | Q(category='treats'),
-                Q(animal_type__in=[filters.species, 'all']) | Q(animal=filters.species),
-                Q(is_available=True) | Q(in_stock=True),
-                kcal_per_100g__isnull=False
+                product_group='treats',
+                animal_type__in=[filters.species, 'all'],
+                is_available=True,
+                food_details__energy_kcal_per_100g__isnull=False,
+                food_details__product_type='treat'
             ).exclude(id=component.product_id)
         elif product_type == 'supplement':
             queryset = Product.objects.filter(
-                Q(product_group='vitamins') | Q(category='supplements'),
-                Q(animal_type__in=[filters.species, 'all']) | Q(animal=filters.species),
-                Q(is_available=True) | Q(in_stock=True)
+                product_group='vitamins',
+                animal_type__in=[filters.species, 'all'],
+                is_available=True,
+                food_details__product_type='supplement'
             ).exclude(id=component.product_id)
         else:
             queryset = Product.objects.filter(
-                Q(product_group='food') | Q(new_category__product_group='food') | Q(category='food'),
-                Q(subcategory__in=subcat) | Q(subcategory__isnull=True),
-                Q(animal_type__in=[filters.species, 'all']) | Q(animal=filters.species),
-                Q(is_available=True) | Q(in_stock=True),
-                kcal_per_100g__isnull=False
+                product_group='food',
+                new_category__code__in=subcat,
+                animal_type__in=[filters.species, 'all'],
+                is_available=True,
+                food_details__energy_kcal_per_100g__isnull=False,
+                food_details__product_type='food'
             ).exclude(id=component.product_id)
         
         queryset = self._apply_age_filters(queryset, filters.species, filters.age_months)
@@ -1879,7 +1889,7 @@ class FoodRecommendationService:
                 else:
                     daily_grams = None
                 
-                weight_grams = int(product.weight * 1000) if product.weight else None
+                weight_grams = self._get_product_weight_grams(product)
                 
                 # Расчёт упаковок с учётом периода
                 if weight_grams and daily_grams and daily_grams > 0:

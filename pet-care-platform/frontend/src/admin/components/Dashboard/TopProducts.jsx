@@ -36,7 +36,7 @@ const TopProducts = ({ products }) => {
                       {product.name}
                     </p>
                     <p className="text-xs text-gray-500">
-                      {product.vendor || 'Без бренда'}
+                      {product.brand || 'Без бренда'}
                     </p>
                   </div>
                 </div>
@@ -46,11 +46,8 @@ const TopProducts = ({ products }) => {
                 <div className="text-sm font-semibold text-gray-900">
                   {product.orders_count} заказов
                 </div>
-                <div className={`text-xs ${
-                  product.stock_count <= 5 ? 'text-red-600' : 'text-green-600'
-                }`}>
-                  {product.stock_count <= 5 ? '⚠️ ' : '✅ '}
-                  {product.stock_count} шт.
+                <div className="text-xs text-gray-500">
+                  {product.is_available ? '✅ В наличии' : '⚠️ Нет в наличии'}
                 </div>
               </div>
             </div>

@@ -6,7 +6,6 @@
 Архитектура по database_tz.md:
 - 0 JOIN для каталога — все критичные данные денормализованы в products
 - Минимум полей для фильтрации — только то, что реально фильтруется
-- category_details JSONB — все специфичные данные категории для детальной страницы
 - Иерархия категорий — path[] для быстрого получения подкатегорий
 """
 
@@ -18,7 +17,6 @@ from django.contrib.postgres.fields import ArrayField
 from datetime import timedelta
 from decimal import Decimal
 from core.utils import generate_uuid7
-from core.validators import validate_url_list, validate_product_params
 from .managers import ProductManager
 
 
@@ -278,7 +276,6 @@ class Product(models.Model):
     
     Архитектура по database_tz.md:
     - Базовые поля для каталога и фильтрации
-    - category_details JSONB для специфичных данных (нутриенты, размеры и т.д.)
     - Денормализованные поля для 0 JOIN при отображении каталога
     
     Товары можно фильтровать по:
@@ -406,7 +403,6 @@ class Product(models.Model):
         verbose_name='ID в Kotmatros',
         help_text='ID товара из внешнего API Kotmatros'
     )
-    group_id = models.CharField(max_length=50, blank=True, null=True, verbose_name='ID группы')
     
     # ==========================================================================
     # ОТОБРАЖЕНИЕ В КАТАЛОГЕ (карточка товара в списке)
@@ -448,12 +444,6 @@ class Product(models.Model):
         null=True,
         verbose_name='Основное изображение',
         help_text='URL основного изображения (загружается сразу в каталоге)'
-    )
-    # Дополнительные изображения (загружаются только при открытии карточки)
-    images = models.JSONField(
-        default=list,
-        verbose_name='Все изображения',
-        help_text='[{id, url, width, height, is_main}, ...]'
     )
     
     # Рейтинг (денормализовано)
@@ -558,32 +548,12 @@ class Product(models.Model):
         verbose_name='Ветеринарная диета'
     )
     
-    # Массивы для поиска "без X" и "для здоровья Y"
-    health_conditions = ArrayField(
-        models.CharField(max_length=50),
-        default=list,
-        blank=True,
-        verbose_name='Показания по здоровью',
-        help_text='["urinary", "obesity", "joint", "skin", "digestive"]'
-    )
-    
     # Страна
     country = models.CharField(
         max_length=100, 
         blank=True, 
         null=True,
         verbose_name='Страна производителя'
-    )
-    
-    # ==========================================================================
-    # ДЕТАЛИ ТОВАРА (JSONB для страницы товара)
-    # ==========================================================================
-    
-    category_details = models.JSONField(
-        default=dict,
-        blank=True,
-        verbose_name='Детали по категории',
-        help_text='ВСЕ специфичные данные категории (нутриенты, размеры, инструкции и т.д.)'
     )
     
     # ==========================================================================
@@ -600,195 +570,8 @@ class Product(models.Model):
         help_text='1=активен, 0=неактивен'
     )
     
-    # Производитель
-    vendor = models.CharField(max_length=200, blank=True, null=True, verbose_name='Бренд')
-    vendor_code = models.CharField(max_length=100, blank=True, null=True, verbose_name='Артикул')
-    barcode = models.CharField(max_length=50, blank=True, null=True, verbose_name='Штрихкод')
-    
-    # Характеристики
-    weight = models.DecimalField(max_digits=10, decimal_places=3, blank=True, null=True, verbose_name='Вес (кг)')
-    
-    # URL и изображения
-    url = models.URLField(max_length=1000, blank=True, null=True, verbose_name='URL товара')
-    images = models.JSONField(
-        default=list,
-        verbose_name='Изображения',
-        validators=[validate_url_list],
-        help_text='Массив URL изображений товара'
-    )
-    
-    # ==========================================================================
-    # DEPRECATED ПОЛЯ (будут удалены в v2.0)
-    # Используйте animal_type, new_category, product_group вместо этих полей
-    # ==========================================================================
-    
-    # DEPRECATED: Используйте animal_type
-    animal = models.CharField(
-        max_length=10,
-        choices=ANIMAL_CHOICES,
-        default='dog',
-        db_index=True,
-        verbose_name='Животное (DEPRECATED)',
-        help_text='DEPRECATED: Используйте animal_type'
-    )
-    # DEPRECATED: Используйте new_category (FK к Category)
-    category = models.CharField(
-        max_length=20,
-        choices=CATEGORY_CHOICES,
-        default='food',
-        db_index=True,
-        verbose_name='Категория (DEPRECATED)',
-        help_text='DEPRECATED: Используйте new_category'
-    )
-    # DEPRECATED: Используйте Category.children для иерархии
-    subcategory = models.CharField(
-        max_length=30,
-        choices=SUBCATEGORY_CHOICES,
-        blank=True,
-        null=True,
-        db_index=True,
-        verbose_name='Подкатегория (DEPRECATED)',
-        help_text='DEPRECATED: Используйте new_category'
-    )
-    # DEPRECATED: Используйте new_category.name
-    category_name = models.CharField(
-        max_length=100, 
-        blank=True, 
-        null=True, 
-        verbose_name='Название категории (DEPRECATED)',
-        help_text='DEPRECATED: Используйте new_category.name'
-    )
-    
-    # Наличие
-    in_stock = models.BooleanField(default=False, verbose_name='В наличии')
-    stock_count = models.PositiveIntegerField(default=0, verbose_name='Количество на складе')
-
     # Популярность (количество заказов)
     order_count = models.PositiveIntegerField(default=0, verbose_name='Количество заказов')
-    
-    # Скидка
-    discount_percent = models.PositiveIntegerField(
-        default=0,
-        verbose_name='Скидка (%)',
-        help_text='Процент скидки от 0 до 100'
-    )
-    
-    # Дополнительные параметры
-    params = models.JSONField(
-        default=dict,
-        blank=True,
-        verbose_name='Параметры',
-        validators=[validate_product_params],
-        help_text='Дополнительные параметры товара в формате словаря'
-    )
-    
-    # === ПОЛЯ ДЛЯ ПОДБОРА КОРМА ===
-    
-    # Калорийность (ккал на 100г) — для расчёта порций
-    kcal_per_100g = models.DecimalField(
-        max_digits=6, 
-        decimal_places=1,
-        null=True, 
-        blank=True,
-        verbose_name='Калорийность (ккал/100г)',
-        help_text='Калорийность продукта для расчёта порций. Обязательно для кормов.'
-    )
-    
-    # БЖУ (белки, жиры, углеводы в %)
-    nutrition_protein = models.DecimalField(
-        max_digits=5, decimal_places=2, null=True, blank=True,
-        verbose_name='Белок (%)', help_text='Содержание белка в %'
-    )
-    nutrition_fat = models.DecimalField(
-        max_digits=5, decimal_places=2, null=True, blank=True,
-        verbose_name='Жир (%)', help_text='Содержание жира в %'
-    )
-    nutrition_fiber = models.DecimalField(
-        max_digits=5, decimal_places=2, null=True, blank=True,
-        verbose_name='Клетчатка (%)', help_text='Содержание клетчатки в %'
-    )
-    nutrition_ash = models.DecimalField(
-        max_digits=5, decimal_places=2, null=True, blank=True,
-        verbose_name='Зола (%)', help_text='Содержание золы в %'
-    )
-    nutrition_moisture = models.DecimalField(
-        max_digits=5, decimal_places=2, null=True, blank=True,
-        verbose_name='Влажность (%)', help_text='Содержание влаги в %'
-    )
-    
-    # Минералы (в %)
-    nutrition_calcium = models.DecimalField(
-        max_digits=5, decimal_places=3, null=True, blank=True,
-        verbose_name='Кальций (%)', help_text='Содержание кальция в %'
-    )
-    nutrition_phosphorus = models.DecimalField(
-        max_digits=5, decimal_places=3, null=True, blank=True,
-        verbose_name='Фосфор (%)', help_text='Содержание фосфора в %'
-    )
-    nutrition_omega3 = models.DecimalField(
-        max_digits=5, decimal_places=2, null=True, blank=True,
-        verbose_name='Омега-3 (%)', help_text='Содержание омега-3 жирных кислот в %'
-    )
-    nutrition_omega6 = models.DecimalField(
-        max_digits=5, decimal_places=2, null=True, blank=True,
-        verbose_name='Омега-6 (%)', help_text='Содержание омега-6 жирных кислот в %'
-    )
-    
-    # Возрастные ограничения (в месяцах)
-    min_age_months = models.PositiveIntegerField(
-        null=True, blank=True,
-        verbose_name='Мин. возраст (мес.)', 
-        help_text='Минимальный возраст питомца в месяцах'
-    )
-    max_age_months = models.PositiveIntegerField(
-        null=True, blank=True,
-        verbose_name='Макс. возраст (мес.)', 
-        help_text='Максимальный возраст питомца в месяцах. NULL = без ограничений'
-    )
-    
-    # Размер питомца
-    SIZE_TARGETS = [
-        ('all', 'Все размеры'),
-        ('toy', 'Той'),
-        ('small', 'Маленький'),
-        ('medium', 'Средний'),
-        ('large', 'Крупный'),
-        ('giant', 'Гигантский'),
-    ]
-    target_size = models.CharField(
-        max_length=10, choices=SIZE_TARGETS, 
-        default='all', verbose_name='Целевой размер',
-        help_text='Для какого размера питомца предназначен корм'
-    )
-    
-    # Группа совместимости (для мультипитания)
-    COMPATIBILITY_GROUPS = [
-        ('regular', 'Обычный'),
-        ('hypoallergenic', 'Гипоаллергенный'),
-        ('therapeutic_renal', 'Лечебный: почки'),
-        ('therapeutic_diabetic', 'Лечебный: диабет'),
-        ('therapeutic_digestive', 'Лечебный: ЖКТ'),
-        ('therapeutic_weight', 'Лечебный: вес'),
-        ('therapeutic_urinary', 'Лечебный: МКБ'),
-    ]
-    compatibility_group = models.CharField(
-        max_length=30, choices=COMPATIBILITY_GROUPS, 
-        default='regular', verbose_name='Группа совместимости',
-        help_text='Группа для определения совместимости с другими кормами'
-    )
-    
-    # Приоритет бренда для рекомендаций (0-10)
-    brand_priority = models.PositiveSmallIntegerField(
-        default=0, verbose_name='Приоритет бренда',
-        help_text='Приоритет бренда для рекомендаций (0-10)'
-    )
-    
-    # Аллергены в составе (для фильтрации)
-    allergens = models.JSONField(
-        default=list, blank=True,
-        verbose_name='Аллергены',
-        help_text='Список аллергенов в составе: ["chicken", "beef", "fish", ...]'
-    )
     
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -797,24 +580,11 @@ class Product(models.Model):
     objects = ProductManager()
     
     class Meta:
-        db_table = 'products'
+        db_table = 'shop_products'
         verbose_name = 'Товар'
         verbose_name_plural = 'Товары'
         ordering = ['name']
         indexes = [
-            # === DEPRECATED ИНДЕКСЫ (будут удалены в v2.0) ===
-            # Сохранены для обратной совместимости с legacy API
-            models.Index(fields=['animal', 'category']),
-            models.Index(fields=['animal', 'category', 'subcategory']),
-            models.Index(fields=['vendor']),
-            models.Index(fields=['price']),
-            models.Index(fields=['price', 'stock_count'], name='idx_products_available'),
-            models.Index(fields=['in_stock', 'price'], name='idx_products_in_stock'),
-            models.Index(fields=['order_count'], name='idx_products_popularity'),
-            models.Index(fields=['-id'], name='idx_products_newest'),
-            models.Index(fields=['discount_percent'], name='idx_products_discount'),
-            
-            # === ОСНОВНЫЕ ИНДЕКСЫ V2 (по database_tz.md) ===
             # Каталог: основной составной индекс
             models.Index(
                 fields=['animal_type', 'new_category', 'is_available', 'status', 'price'],
@@ -844,13 +614,13 @@ class Product(models.Model):
     @property
     def main_image(self):
         """Главное изображение товара."""
-        return self.images[0] if self.images else None
+        return self.image_url
     
     @property
     def discounted_price(self):
         """Цена со скидкой."""
-        if self.discount_percent > 0:
-            return self.price * (100 - self.discount_percent) / 100
+        if self.compare_price and self.compare_price > self.price:
+            return self.price
         return self.price
     
     def get_average_rating(self):
@@ -891,8 +661,24 @@ class Product(models.Model):
             is_approved=True
         ).count()
     
+    @staticmethod
+    def _fix_image_url(url):
+        """
+        Возвращает URL изображения без изменений.
+        
+        Метод оставлен для обратной совместимости.
+        URL изображений используют домен kotmatros.ru.
+        """
+        return url
+    
     def to_dict(self):
-        """Сериализация для API (legacy + новые поля)."""
+        """Сериализация для API (новая схема)."""
+        fixed_image_url = self._fix_image_url(self.image_url)
+        images = [
+            self._fix_image_url(img.url)
+            for img in self.product_images.filter(is_active=True).order_by('sort_order')
+        ]
+        
         return {
             'id': self.id,
             'kotmatros_product_id': self.kotmatros_product_id,
@@ -902,40 +688,26 @@ class Product(models.Model):
             'description': self.description,
             'price': float(self.price),
             'compare_price': float(self.compare_price) if self.compare_price else None,
-            'discount_percent': self.discount_percent,
-            'discounted_price': round(self.discounted_price, 2),
-            'vendor': self.vendor,
-            'vendor_code': self.vendor_code,
-            'weight': float(self.weight) if self.weight else None,
-            'url': self.url,
-            'images': self.images,
-            'image_url': self.image_url,
-            'main_image': self.image_url or self.main_image,
-            # Legacy поля (для обратной совместимости)
-            'animal': self.animal,
-            'category': self.category,
-            'subcategory': self.subcategory,
-            'category_name': self.category_name or (self.new_category.name if self.new_category else None),
-            # Новые поля v2
+            'images': images,
+            'image_url': fixed_image_url,
+            'main_image': fixed_image_url,
             'animal_type': self.animal_type,
             'product_group': self.product_group,
             'brand_id': self.brand_id,
-            'brand_name': self.brand.name if self.brand else self.vendor,
+            'brand_name': self.brand.name if self.brand else None,
             'brand_class': self.brand.brand_class if self.brand else None,
             'age_group': self.age_group,
             'size_group': self.size_group,
             'is_grain_free': self.is_grain_free,
             'is_hypoallergenic': self.is_hypoallergenic,
             'is_veterinary': self.is_veterinary,
-            'health_conditions': self.health_conditions,
-            # Наличие
-            'in_stock': self.in_stock,
             'is_available': self.is_available,
-            'stock_count': self.stock_count,
-            # Рейтинг (денормализованное + legacy fallback)
+            'order_count': self.order_count,
             'rating': float(self.rating) if self.rating else round(self.get_average_rating(), 1),
             'rating_count': self.rating_count or self.get_reviews_count(),
             'reviews_count': self.get_reviews_count(),
+            'category': self.new_category.to_dict() if self.new_category else None,
+            'brand': self.brand.to_dict() if self.brand else None,
         }
     
     def to_catalog_dict(self):
@@ -951,7 +723,7 @@ class Product(models.Model):
             'short_description': self.short_description,
             'price': float(self.price),
             'compare_price': float(self.compare_price) if self.compare_price else None,
-            'image_url': self.image_url or self.main_image,
+            'image_url': self._fix_image_url(self.image_url or self.main_image),
             'rating': float(self.rating),
             'rating_count': self.rating_count,
             'is_available': self.is_available,
@@ -961,34 +733,28 @@ class Product(models.Model):
             'is_grain_free': self.is_grain_free,
             'is_hypoallergenic': self.is_hypoallergenic,
             'is_veterinary': self.is_veterinary,
-            'brand_name': self.brand.name if self.brand else self.vendor,
+            'brand_name': self.brand.name if self.brand else None,
         }
     
     def to_detail_dict(self):
         """
         Полная сериализация для страницы товара.
-        Включает category_details и все изображения.
+        Включает все изображения.
         """
         data = self.to_catalog_dict()
         data.update({
             'description': self.description,
-            'images': self.images,
-            'category_details': self.category_details,
+            'images': [
+                self._fix_image_url(img.url)
+                for img in self.product_images.filter(is_active=True).order_by('sort_order')
+            ],
             'age_group': self.age_group,
             'size_group': self.size_group,
-            'allergens': self.allergens,
-            'health_conditions': list(self.health_conditions) if self.health_conditions else [],
             'country': self.country,
             'meta_title': self.meta_title,
             'meta_description': self.meta_description,
             'brand': self.brand.to_dict() if self.brand else None,
             'category': self.new_category.to_dict() if self.new_category else None,
-            # Legacy fields для обратной совместимости
-            'vendor': self.vendor,
-            'vendor_code': self.vendor_code,
-            'weight': float(self.weight) if self.weight else None,
-            'in_stock': self.in_stock,
-            'stock_count': self.stock_count,
         })
         return data
     
@@ -1045,8 +811,10 @@ class Product(models.Model):
                 score -= 20
                 reasons.append(f'Размер корма не оптимален для породы')
         
+        details = getattr(self, 'food_details', None)
+        health_conditions = details.health_conditions if details else []
         # Проверка health_conditions
-        if self.health_conditions and breed.health_risks:
+        if health_conditions and breed.health_risks:
             HEALTH_MAP = {
                 'urinary': ['urinary_stones', 'kidney_disease', 'bladder_stones'],
                 'obesity': ['obesity', 'overweight'],
@@ -1063,22 +831,22 @@ class Product(models.Model):
                 if isinstance(risk, dict)
             }
             
-            for health_cond in self.health_conditions:
+            for health_cond in health_conditions:
                 mapped_conditions = HEALTH_MAP.get(health_cond, [])
                 if breed_conditions & set(mapped_conditions):
                     score += 15
                     reasons.append(f'Поддержка здоровья: {health_cond}')
         
         # Бонусы за специальные свойства
-        if self.is_hypoallergenic:
+        if (details.is_hypoallergenic if details else self.is_hypoallergenic):
             score += 5
             reasons.append('Гипоаллергенный корм')
         
-        if self.is_veterinary:
+        if (details.is_veterinary if details else self.is_veterinary):
             score += 10
             reasons.append('Ветеринарная диета')
         
-        if self.is_grain_free:
+        if (details.grain_free if details else self.is_grain_free):
             score += 3
             reasons.append('Беззерновой')
         
@@ -1375,6 +1143,147 @@ class ProductSKU(models.Model):
         }
 
 
+class ProductImage(models.Model):
+    """Галерея изображений товаров."""
+
+    IMAGE_TYPE_CHOICES = [
+        ('main', 'Основное'),
+        ('pack', 'Упаковка'),
+        ('composition', 'Состав'),
+        ('nutrition_table', 'Таблица нутриентов'),
+        ('other', 'Другое'),
+    ]
+
+    product = models.ForeignKey(
+        Product,
+        on_delete=models.CASCADE,
+        related_name='product_images',
+        verbose_name='Товар'
+    )
+    variant = models.ForeignKey(
+        ProductSKU,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='variant_images',
+        verbose_name='Вариант (SKU)'
+    )
+    url = models.TextField(verbose_name='URL изображения')
+    image_type = models.CharField(
+        max_length=30,
+        choices=IMAGE_TYPE_CHOICES,
+        default='other',
+        verbose_name='Тип изображения'
+    )
+    sort_order = models.IntegerField(default=0, verbose_name='Порядок')
+    is_active = models.BooleanField(default=True, verbose_name='Активно')
+
+    class Meta:
+        db_table = 'shop_product_images'
+        verbose_name = 'Изображение товара'
+        verbose_name_plural = 'Изображения товаров'
+        ordering = ['sort_order', 'id']
+        indexes = [
+            models.Index(fields=['product']),
+            models.Index(fields=['variant']),
+        ]
+
+
+class ProductCategory(models.Model):
+    """Дополнительные категории товара (many-to-many)."""
+
+    product = models.ForeignKey(
+        Product,
+        on_delete=models.CASCADE,
+        related_name='extra_category_links'
+    )
+    category = models.ForeignKey(
+        Category,
+        on_delete=models.CASCADE,
+        related_name='product_links'
+    )
+
+    class Meta:
+        db_table = 'shop_product_categories'
+        verbose_name = 'Связь товар-категория'
+        verbose_name_plural = 'Связи товар-категория'
+        unique_together = ('product', 'category')
+
+
+class Attribute(models.Model):
+    """Справочник атрибутов (цвет, размер, вкус и т.д.)."""
+
+    VALUE_TYPE_CHOICES = [
+        ('string', 'Строка'),
+        ('number', 'Число'),
+        ('boolean', 'Булево'),
+        ('enum', 'Перечисление'),
+    ]
+
+    code = models.CharField(max_length=100, unique=True, verbose_name='Код')
+    name = models.CharField(max_length=255, verbose_name='Название')
+    value_type = models.CharField(max_length=20, choices=VALUE_TYPE_CHOICES, verbose_name='Тип значения')
+    unit = models.CharField(max_length=50, blank=True, default='', verbose_name='Ед. измерения')
+    is_multi = models.BooleanField(default=False, verbose_name='Мультизначение')
+    is_filterable = models.BooleanField(default=True, verbose_name='Использовать в фильтрах')
+    is_active = models.BooleanField(default=True, verbose_name='Активно')
+
+    class Meta:
+        db_table = 'shop_attributes'
+        verbose_name = 'Атрибут'
+        verbose_name_plural = 'Атрибуты'
+        ordering = ['name']
+
+    def __str__(self):
+        return self.name
+
+
+class AttributeValue(models.Model):
+    """Значения атрибутов."""
+
+    attribute = models.ForeignKey(
+        Attribute,
+        on_delete=models.CASCADE,
+        related_name='values',
+        verbose_name='Атрибут'
+    )
+    value = models.CharField(max_length=255, verbose_name='Значение')
+    display = models.CharField(max_length=255, blank=True, default='', verbose_name='Отображаемое значение')
+    sort_order = models.IntegerField(default=0, verbose_name='Порядок')
+    is_active = models.BooleanField(default=True, verbose_name='Активно')
+
+    class Meta:
+        db_table = 'shop_attribute_values'
+        verbose_name = 'Значение атрибута'
+        verbose_name_plural = 'Значения атрибутов'
+        ordering = ['sort_order', 'id']
+        unique_together = ('attribute', 'value')
+
+    def __str__(self):
+        return self.display or self.value
+
+
+class VariantAttributeValue(models.Model):
+    """Связь значений атрибутов с SKU."""
+
+    variant = models.ForeignKey(
+        ProductSKU,
+        on_delete=models.CASCADE,
+        related_name='attribute_values'
+    )
+    attribute_value = models.ForeignKey(
+        AttributeValue,
+        on_delete=models.CASCADE,
+        related_name='variant_links'
+    )
+
+    class Meta:
+        db_table = 'shop_variant_attribute_values'
+        verbose_name = 'Значение атрибута SKU'
+        verbose_name_plural = 'Значения атрибутов SKU'
+        unique_together = ('variant', 'attribute_value')
+
+
 class ProductBreedRecommendation(models.Model):
     """
     Связь товаров с породами для персонализированных рекомендаций.
@@ -1559,8 +1468,10 @@ class ProductBreedRecommendation(models.Model):
                     score += 10
                     reasons.append(f"Подходит для {breed.get_size_category_display().lower()} пород")
             
+            details = getattr(product, 'food_details', None)
+            health_conditions = details.health_conditions if details else []
             # Бонус за health_conditions
-            if product.health_conditions and breed.health_risks:
+            if health_conditions and breed.health_risks:
                 # Маппинг health_conditions → health_risks condition_codes
                 HEALTH_MAP = {
                     'urinary': ['urinary_stones', 'kidney_disease', 'bladder_stones'],
@@ -1578,7 +1489,7 @@ class ProductBreedRecommendation(models.Model):
                     if isinstance(risk, dict)
                 }
                 
-                for health_cond in product.health_conditions:
+                for health_cond in health_conditions:
                     mapped_conditions = HEALTH_MAP.get(health_cond, [])
                     if breed_conditions & set(mapped_conditions):
                         score += 15
@@ -1587,7 +1498,7 @@ class ProductBreedRecommendation(models.Model):
                         reasons.append(f"Поддержка здоровья: {health_cond}")
             
             # Бонус за гипоаллергенность
-            if product.is_hypoallergenic:
+            if (details.is_hypoallergenic if details else product.is_hypoallergenic):
                 score += 5
                 reasons.append("Гипоаллергенный корм")
             
@@ -2707,10 +2618,12 @@ class OrderItem(models.Model):
                 'total': float(self.get_total())
             }
             # Добавляем изображение товара, если товар существует
-            if self.product and self.product.images:
-                data['product_image'] = self.product.images[0] if self.product.images else None
-            elif self.product:
-                data['product_image'] = None
+            if self.product:
+                if self.product.image_url:
+                    data['product_image'] = Product._fix_image_url(self.product.image_url)
+                else:
+                    first_image = self.product.product_images.filter(is_active=True).order_by('sort_order').first()
+                    data['product_image'] = Product._fix_image_url(first_image.url) if first_image else None
             return data
 
 
@@ -2831,12 +2744,17 @@ class Return(models.Model):
             self.approved_at = timezone.now()
 
             # Восстанавливаем товар на склад
-            if self.order_item.product:
+            if self.order_item.sku:
+                sku = self.order_item.sku
+                if sku.stock_quantity is None:
+                    sku.stock_quantity = 0
+                sku.stock_quantity += self.quantity
+                sku.available = sku.stock_quantity > 0
+                sku.save(update_fields=['stock_quantity', 'available'])
+            elif self.order_item.product:
                 product = self.order_item.product
-                product.stock_count += self.quantity
-                if product.stock_count > 0:
-                    product.in_stock = True
-                product.save(update_fields=['stock_count', 'in_stock'])
+                product.is_available = True
+                product.save(update_fields=['is_available'])
 
             self.save()
 

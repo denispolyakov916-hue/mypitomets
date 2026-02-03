@@ -61,6 +61,12 @@ class Command(BaseCommand):
         self.batch_size = options['batch_size']
         self.verbosity = options['verbosity']
         
+        self.stdout.write(self.style.WARNING(
+            'Команда устарела для новой структуры магазина. '
+            'Используйте import_shop_data_v2.'
+        ))
+        return
+
         # Проверяем существование директории с данными
         if not os.path.exists(self.DATA_DIR):
             self.stderr.write(self.style.ERROR(

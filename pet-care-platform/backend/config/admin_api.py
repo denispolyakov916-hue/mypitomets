@@ -67,9 +67,9 @@ class AdminAnalyticsViewSet(viewsets.ViewSet, DashboardCacheMixin):
 
         # Метрики товаров
         total_products = Product.objects.count()
-        active_products = Product.objects.filter(in_stock=True).count()
+        active_products = Product.objects.filter(is_available=True).count()
         low_stock_products = Product.objects.filter(
-            in_stock=True, stock_count__lte=5
+            is_available=True, sku_count__lte=1
         ).count()
 
         # Метрики курсов
@@ -502,21 +502,12 @@ class AdminAnalyticsViewSet(viewsets.ViewSet, DashboardCacheMixin):
             order__id__in=[p.object_id for p in payments],
             product__isnull=False  # Только товары, не курсы
         ).values(
-            'product__category'
+            'product__new_category__name'
         ).annotate(
             total_sales=Sum(F('quantity') * F('price')),
             order_count=Count('order', distinct=True),
             product_count=Count('product', distinct=True)
         ).order_by('-total_sales')
-
-        category_map = {
-            'food': 'Корм',
-            'pharmacy': 'Ветаптека',
-            'ammunition': 'Амуниция',
-            'care': 'Уход',
-            'transport': 'Транспортировка',
-            'toys': 'Игрушки'
-        }
 
         colors = [
             'rgba(59, 130, 246, 0.8)',
@@ -532,8 +523,7 @@ class AdminAnalyticsViewSet(viewsets.ViewSet, DashboardCacheMixin):
         category_data = []
 
         for item in sales_by_category:
-            category = item['product__category'] or 'other'
-            category_name = category_map.get(category, category.capitalize())
+            category_name = item['product__new_category__name'] or 'Прочее'
             sales = float(item['total_sales'] or 0)
             order_count = item['order_count'] or 0
 
@@ -754,20 +744,20 @@ class AdminAnalyticsViewSet(viewsets.ViewSet, DashboardCacheMixin):
         limit = int(request.query_params.get('limit', 10))
 
         top_products = Product.objects.filter(
-            is_active=True
+            status=1
         ).order_by('-order_count')[:limit]
 
         data = []
         for product in top_products:
             data.append({
-                'id': str(product.external_id),
+                'id': str(product.kotmatros_product_id or product.id),
                 'name': product.name,
                 'orders_count': product.order_count,
-                'stock_count': product.stock_count,
                 'price': float(product.price),
-                'discounted_price': float(product.discounted_price),
-                'vendor': product.vendor,
-                'category': product.category,
+                'compare_price': float(product.compare_price) if product.compare_price else None,
+                'brand': product.brand.name if product.brand else None,
+                'category': product.new_category.name if product.new_category else None,
+                'is_available': product.is_available,
             })
 
         return Response({'products': data})
@@ -1007,15 +997,18 @@ class AdminManagementViewSet(viewsets.ViewSet):
 
         elif model_name == 'products':
             for product in queryset:
+                discount_percent = 0
+                if product.compare_price and product.compare_price > product.price:
+                    discount_percent = round((1 - float(product.price) / float(product.compare_price)) * 100)
                 data.append({
-                    'ID': str(product.external_id),
+                    'ID': str(product.kotmatros_product_id or product.id),
                     'Название': product.name,
                     'Цена': float(product.price),
-                    'Скидка (%)': product.discount_percent,
-                    'В наличии': 'Да' if product.in_stock else 'Нет',
-                    'Количество': product.stock_count,
-                    'Категория': product.category,
-                    'Бренд': product.vendor or '',
+                    'Скидка (%)': discount_percent,
+                    'В наличии': 'Да' if product.is_available else 'Нет',
+                    'Количество вариаций': product.sku_count,
+                    'Категория': product.new_category.name if product.new_category else '',
+                    'Бренд': product.brand.name if product.brand else '',
                     'Дата добавления': product.created_at.strftime('%d.%m.%Y %H:%M'),
                 })
 
@@ -1337,32 +1330,32 @@ class AdminProductViewSet(AdminModelViewSet):
     """ViewSet для управления товарами."""
     queryset = Product.objects.all()
     ordering = ('-order_count', 'name')
-    lookup_field = 'external_id'
+    lookup_field = 'kotmatros_product_id'
     lookup_url_kwarg = 'id'
 
     def _serialize_product(self, product):
         """Сериализация товара в формат для API."""
+        discount_percent = 0
+        if product.compare_price and product.compare_price > product.price:
+            discount_percent = round((1 - float(product.price) / float(product.compare_price)) * 100)
         return {
-            'id': str(product.external_id),
+            'id': str(product.kotmatros_product_id or product.id),
             'name': product.name,
             'description': product.description or '',
             'price': float(product.price),
-            'discounted_price': float(product.discounted_price),
-            'discount_percent': product.discount_percent,
-            'in_stock': product.in_stock,
+            'compare_price': float(product.compare_price) if product.compare_price else None,
+            'discount_percent': discount_percent,
             'is_available': product.is_available,
-            'stock_count': product.stock_count,
-            'category': product.category,  # legacy
-            'product_group': product.product_group,  # новое
-            'vendor': product.vendor or '',
-            'brand_name': product.brand.name if product.brand else None,  # новое
+            'category': product.new_category.name if product.new_category else None,
+            'category_slug': product.new_category.slug if product.new_category else None,
+            'product_group': product.product_group,
+            'brand_name': product.brand.name if product.brand else None,
             'order_count': product.order_count,
-            'animal': product.animal,  # legacy
-            'animal_type': product.animal_type,  # новое
+            'animal_type': product.animal_type,
             'rating': float(product.rating) if product.rating else 0,
             'rating_count': product.rating_count,
             'created_at': product.created_at.isoformat(),
-            'main_image': product.image_url or (product.images[0] if product.images else None),
+            'main_image': product.image_url,
         }
 
     def list(self, request):
@@ -1372,17 +1365,17 @@ class AdminProductViewSet(AdminModelViewSet):
         if search:
             queryset = queryset.filter(
                 Q(name__icontains=search) |
-                Q(vendor__icontains=search) |
-                Q(external_id__icontains=search)
+                Q(brand__name__icontains=search) |
+                Q(kotmatros_product_id__icontains=search)
             )
         
-        category = request.query_params.get('category', '')
-        if category:
-            queryset = queryset.filter(category=category)
+        category_slug = request.query_params.get('category_slug', '')
+        if category_slug:
+            queryset = queryset.filter(new_category__slug=category_slug)
         
         in_stock = request.query_params.get('in_stock', '')
         if in_stock:
-            queryset = queryset.filter(in_stock=in_stock.lower() == 'true')
+            queryset = queryset.filter(is_available=in_stock.lower() == 'true')
         
         queryset = queryset.order_by('-order_count', 'name')
         page = self.paginate_queryset(queryset)
@@ -1396,7 +1389,7 @@ class AdminProductViewSet(AdminModelViewSet):
     def retrieve(self, request, id=None):
         """Получить один товар по external_id."""
         try:
-            product = Product.objects.get(external_id=id)
+            product = Product.objects.get(kotmatros_product_id=id)
             return Response(self._serialize_product(product))
         except Product.DoesNotExist:
             return Response(
@@ -1407,19 +1400,19 @@ class AdminProductViewSet(AdminModelViewSet):
     def update(self, request, id=None):
         """Обновить товар."""
         try:
-            product = Product.objects.get(external_id=id)
+            product = Product.objects.get(kotmatros_product_id=id)
             # Обновляем разрешенные поля
-            allowed_fields = ['name', 'description', 'price', 'discounted_price', 'discount_percent', 
-                            'in_stock', 'stock_count', 'category', 'vendor', 'animal']
+            allowed_fields = [
+                'name', 'description', 'price', 'compare_price', 'is_available',
+                'product_group', 'animal_type', 'brand_id', 'category_id'
+            ]
             for field in allowed_fields:
                 if field in request.data:
                     value = request.data[field]
-                    if field in ['price', 'discounted_price']:
+                    if field in ['price', 'compare_price']:
                         value = Decimal(str(value))
-                    elif field in ['discount_percent', 'stock_count']:
-                        value = int(value) if value else 0
-                    elif field == 'in_stock':
-                        value = bool(value)
+                    elif field in ['brand_id', 'category_id']:
+                        value = int(value) if value else None
                     setattr(product, field, value)
             product.save()
             return Response(self._serialize_product(product))
@@ -1432,7 +1425,7 @@ class AdminProductViewSet(AdminModelViewSet):
     def destroy(self, request, id=None):
         """Удалить товар."""
         try:
-            product = Product.objects.get(external_id=id)
+            product = Product.objects.get(kotmatros_product_id=id)
             product.delete()
             return Response(status=status.HTTP_204_NO_CONTENT)
         except Product.DoesNotExist:
@@ -1776,7 +1769,7 @@ def admin_stats_summary(request):
         'summary': {
             'users': User.objects.count(),
             'pets': Pet.objects.count(),
-            'products': Product.objects.filter(in_stock=True).count(),
+            'products': Product.objects.filter(is_available=True).count(),
             'orders_today': Order.objects.filter(
                 created_at__date=timezone.now().date()
             ).count(),

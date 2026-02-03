@@ -147,6 +147,12 @@ class Command(BaseCommand):
         export_file = options['export']
         min_group_size = options['min_group_size']
         
+        self.stdout.write(self.style.WARNING(
+            'Команда устарела для новой структуры магазина. '
+            'Используйте нормализованные поля и связи.'
+        ))
+        return
+
         self.stdout.write('Анализ товаров в базе данных...\n')
         
         # Получаем все товары

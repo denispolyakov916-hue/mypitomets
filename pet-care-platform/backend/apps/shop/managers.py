@@ -16,8 +16,7 @@ class ProductQuerySet(models.QuerySet):
     Предоставляет методы для эффективной загрузки данных,
     включая аннотации рейтинга и количества отзывов.
     
-    Поддерживает как legacy-фильтры (animal, category, subcategory),
-    так и новые фильтры (animal_type, new_category, product_group).
+    Поддерживает фильтры новой структуры (animal_type, new_category, product_group).
     """
     
     def with_ratings(self):
@@ -45,15 +44,13 @@ class ProductQuerySet(models.QuerySet):
         """
         Фильтрует только доступные товары.
         
-        Поддерживает как legacy (stock_count > 0), так и новую структуру (is_available=True).
-        
         Returns:
             QuerySet: Отфильтрованный QuerySet
         """
         return self.filter(
             price__gt=0
         ).filter(
-            Q(is_available=True) | Q(in_stock=True) | Q(stock_count__gt=0)
+            Q(is_available=True)
         )
     
     def active(self):
@@ -68,8 +65,6 @@ class ProductQuerySet(models.QuerySet):
     def for_animal(self, animal):
         """
         Фильтрует товары по типу животного.
-        Поддерживает как legacy (animal), так и новое поле (animal_type).
-        
         Args:
             animal: Тип животного ('dog', 'cat')
             
@@ -77,9 +72,8 @@ class ProductQuerySet(models.QuerySet):
             QuerySet: Отфильтрованный QuerySet
         """
         if animal and animal in ['dog', 'cat']:
-            # Пробуем новое поле, fallback на legacy
             return self.filter(
-                Q(animal_type__in=[animal, 'all']) | Q(animal=animal)
+                Q(animal_type__in=[animal, 'all'])
             )
         return self
     
@@ -96,24 +90,6 @@ class ProductQuerySet(models.QuerySet):
         if animal_type and animal_type != 'all':
             return self.filter(animal_type__in=[animal_type, 'all'])
         return self
-    
-    def in_category(self, category, subcategory=None):
-        """
-        Фильтрует товары по категории и подкатегории (legacy).
-        
-        Args:
-            category: Код категории
-            subcategory: Код подкатегории (опционально)
-            
-        Returns:
-            QuerySet: Отфильтрованный QuerySet
-        """
-        qs = self
-        if category:
-            qs = qs.filter(category=category)
-        if subcategory:
-            qs = qs.filter(subcategory=subcategory)
-        return qs
     
     def in_new_category(self, category):
         """
@@ -190,6 +166,10 @@ class ProductQuerySet(models.QuerySet):
             QuerySet: Отфильтрованный QuerySet
         """
         if age_group and age_group != 'all':
+            if isinstance(age_group, str) and ',' in age_group:
+                groups = [g.strip() for g in age_group.split(',') if g.strip()]
+                if groups:
+                    return self.filter(age_group__in=[*groups, 'all', None])
             return self.filter(age_group__in=[age_group, 'all', None])
         return self
     
@@ -230,7 +210,7 @@ class ProductQuerySet(models.QuerySet):
             QuerySet: Отфильтрованный QuerySet
         """
         if condition:
-            return self.filter(health_conditions__contains=[condition])
+            return self.filter(food_details__health_conditions__contains=[condition])
         return self
     
     def by_price_range(self, min_price=None, max_price=None):
@@ -258,9 +238,7 @@ class ProductQuerySet(models.QuerySet):
         Returns:
             QuerySet: Отфильтрованный QuerySet
         """
-        # Поддержка обоих способов определения скидки
         return self.filter(
-            Q(discount_percent__gt=0) | 
             Q(compare_price__gt=models.F('price'))
         )
     
@@ -278,23 +256,8 @@ class ProductQuerySet(models.QuerySet):
             return self.filter(
                 Q(name__icontains=query) |
                 Q(short_description__icontains=query) |
-                Q(vendor__icontains=query) |
                 Q(brand__name__icontains=query)
             )
-        return self
-    
-    def by_vendor(self, vendor):
-        """
-        Фильтрует товары по бренду (legacy).
-        
-        Args:
-            vendor: Название бренда
-            
-        Returns:
-            QuerySet: Отфильтрованный QuerySet
-        """
-        if vendor:
-            return self.filter(vendor__icontains=vendor)
         return self
     
     def with_min_rating(self, min_rating):

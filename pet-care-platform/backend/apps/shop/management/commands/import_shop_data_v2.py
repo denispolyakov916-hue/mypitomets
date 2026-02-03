@@ -18,7 +18,7 @@ from decimal import Decimal
 from django.core.management.base import BaseCommand
 from django.db import transaction
 from django.utils.text import slugify
-from apps.shop.models import Category, Brand, Product, ProductSKU, FoodDetails
+from apps.shop.models import Category, Brand, Product, ProductSKU, FoodDetails, ProductImage
 
 
 class Command(BaseCommand):
@@ -308,7 +308,6 @@ class Command(BaseCommand):
                     'price': Decimal(str(item.get('price', 0))),
                     'compare_price': Decimal(str(item.get('compare_price', 0))) if item.get('compare_price') else None,
                     'image_url': item.get('image_url', ''),
-                    'images': item.get('images', []),
                     'rating': Decimal(str(item.get('rating', 0))),
                     'rating_count': item.get('rating_count', 0),
                     'is_available': item.get('is_available', True),
@@ -323,11 +322,9 @@ class Command(BaseCommand):
                     'is_hypoallergenic': item.get('is_hypoallergenic', False),
                     'is_veterinary': item.get('is_veterinary', False),
                     'country': item.get('country', ''),
-                    'category_details': item.get('category_details', {}),
                     'meta_title': meta_title,
                     'meta_description': meta_desc[:255],
                     'status': 1,
-                    'in_stock': item.get('is_available', True),
                 }
             )
             
@@ -336,11 +333,31 @@ class Command(BaseCommand):
             else:
                 updated += 1
             
+            # Сохраняем изображения в галерею
+            images = item.get('images', []) or []
+            if product.image_url:
+                ProductImage.objects.get_or_create(
+                    product=product,
+                    url=product.image_url,
+                    defaults={'image_type': 'main', 'sort_order': 0}
+                )
+            sort_order = 1
+            for img in images:
+                url = img.get('url') if isinstance(img, dict) else img
+                if not url:
+                    continue
+                ProductImage.objects.get_or_create(
+                    product=product,
+                    url=url,
+                    defaults={'image_type': 'other', 'sort_order': sort_order}
+                )
+                sort_order += 1
+
             # Создаём FoodDetails для кормов
             product_group = item.get('product_group', '')
             if product_group in ('food', 'treats', 'vitamins'):
-                category_details = item.get('category_details', {})
-                nutrition = category_details.get('nutrition', {})
+                source_details = item.get('food_details') or item.get('category_details') or {}
+                nutrition = source_details.get('nutrition', {})
                 
                 food_type_map = {
                     'food': 'food',
@@ -349,11 +366,13 @@ class Command(BaseCommand):
                 }
                 
                 # Извлекаем ингредиенты
-                ingredients_raw = category_details.get('ingredients', [])
-                ingredients = [
-                    ing.get('name', '') for ing in ingredients_raw 
-                    if isinstance(ing, dict) and ing.get('name')
-                ]
+                ingredients_raw = source_details.get('ingredients', [])
+                ingredients = []
+                for ing in ingredients_raw:
+                    if isinstance(ing, dict) and ing.get('name'):
+                        ingredients.append(ing.get('name'))
+                    elif isinstance(ing, str):
+                        ingredients.append(ing)
                 
                 food_details, fd_created = FoodDetails.objects.update_or_create(
                     product=product,
