@@ -400,7 +400,7 @@ const FilterSidebar = memo(function FilterSidebar({
             type="checkbox"
             checked={filters.has_discount === 'true'}
             onChange={(e) => onFilterChange('has_discount', e.target.checked ? 'true' : '')}
-            className="w-4 h-4 text-orange-500 focus:ring-orange-500 rounded"
+            className="w-4 h-4 text-orange-600 focus:ring-orange-600 rounded"
           />
           <span className="ml-2 text-gray-700">🔥 Со скидкой</span>
         </label>

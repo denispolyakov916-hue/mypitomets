@@ -20,7 +20,7 @@ import OrdersDropdown from './OrdersDropdown'
 import HeaderCounters from './HeaderCounters'
 
 const MenuIcon = () => (
-  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
     <line x1="3" y1="12" x2="21" y2="12"></line>
     <line x1="3" y1="6" x2="21" y2="6"></line>
     <line x1="3" y1="18" x2="21" y2="18"></line>
@@ -28,7 +28,7 @@ const MenuIcon = () => (
 );
 
 const XIcon = () => (
-  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
     <line x1="18" y1="6" x2="6" y2="18"></line>
     <line x1="6" y1="6" x2="18" y2="18"></line>
   </svg>
@@ -102,61 +102,68 @@ function Navbar() {
           
           {/* Десктопная навигация */}
           <nav className="hidden lg:flex items-center gap-4 xl:gap-6 text-sm">
-            <button
-              onClick={() => navigate('/')}
+            <Link
+              to="/"
               className={`relative transition-all duration-300 whitespace-nowrap ${
                 location.pathname === '/' ? 'text-white font-semibold' : 'text-white/80 hover:text-white'
               }`}
+              aria-current={location.pathname === '/' ? 'page' : undefined}
             >
               Главная
               {location.pathname === '/' && (
                 <span className="absolute -bottom-1 left-0 w-full h-0.5 bg-orange-400 rounded-full shadow-lg shadow-orange-400/50"></span>
               )}
-            </button>
+            </Link>
 
             {/* Services */}
-            {services.map((service) => (
-              <button
-                key={service.id}
-                onClick={() => navigate(`/${service.id}`)}
-                className={`relative transition-all duration-300 whitespace-nowrap ${
-                  location.pathname === `/${service.id}` || location.pathname.startsWith(`/${service.id}/`)
-                    ? 'text-white font-semibold'
-                    : 'text-white/80 hover:text-white'
-                }`}
-              >
-                {service.label}
-                {(location.pathname === `/${service.id}` || location.pathname.startsWith(`/${service.id}/`)) && (
-                  <span className="absolute -bottom-1 left-0 w-full h-0.5 bg-orange-400 rounded-full shadow-lg shadow-orange-400/50"></span>
-                )}
-              </button>
-            ))}
+            {services.map((service) => {
+              const isActive = location.pathname === `/${service.id}` || location.pathname.startsWith(`/${service.id}/`)
+              return (
+                <Link
+                  key={service.id}
+                  to={`/${service.id}`}
+                  className={`relative transition-all duration-300 whitespace-nowrap ${
+                    isActive
+                      ? 'text-white font-semibold'
+                      : 'text-white/80 hover:text-white'
+                  }`}
+                  aria-current={isActive ? 'page' : undefined}
+                >
+                  {service.label}
+                  {isActive && (
+                    <span className="absolute -bottom-1 left-0 w-full h-0.5 bg-orange-400 rounded-full shadow-lg shadow-orange-400/50"></span>
+                  )}
+                </Link>
+              )
+            })}
 
 
             {isAuthenticated && (
               <>
-                <button
-                  onClick={() => navigate('/orders')}
+                <Link
+                  to="/orders"
                   className={`relative transition-all duration-300 whitespace-nowrap ${
                     location.pathname === '/orders' || location.pathname.startsWith('/orders/') ? 'text-white font-semibold' : 'text-white/80 hover:text-white'
                   }`}
+                  aria-current={(location.pathname === '/orders' || location.pathname.startsWith('/orders/')) ? 'page' : undefined}
                 >
                   Заказы
                   {(location.pathname === '/orders' || location.pathname.startsWith('/orders/')) && (
                     <span className="absolute -bottom-1 left-0 w-full h-0.5 bg-orange-400 rounded-full shadow-lg shadow-orange-400/50"></span>
                   )}
-                </button>
-                <button
-                  onClick={() => navigate('/profile')}
+                </Link>
+                <Link
+                  to="/profile"
                   className={`relative transition-all duration-300 whitespace-nowrap ${
                     location.pathname === '/profile' || location.pathname.startsWith('/profile/') ? 'text-white font-semibold' : 'text-white/80 hover:text-white'
                   }`}
+                  aria-current={(location.pathname === '/profile' || location.pathname.startsWith('/profile/')) ? 'page' : undefined}
                 >
                   Профиль
                   {(location.pathname === '/profile' || location.pathname.startsWith('/profile/')) && (
                     <span className="absolute -bottom-1 left-0 w-full h-0.5 bg-orange-400 rounded-full shadow-lg shadow-orange-400/50"></span>
                   )}
-                </button>
+                </Link>
               </>
             )}
           </nav>
@@ -176,19 +183,21 @@ function Navbar() {
               </button>
             ) : (
               <div className="flex items-center gap-4">
-                <button
-                  onClick={() => navigate('/login')}
-                  className="text-white/80 hover:text-white transition-all duration-300 relative group"
+                <Link
+                  to="/login"
+                  className="text-white/80 hover:text-white transition-all duration-300 relative group focus:outline-none focus:ring-2 focus:ring-orange-400 focus:ring-offset-2 focus:ring-offset-purple-600 rounded"
+                  aria-current={location.pathname === '/login' ? 'page' : undefined}
                 >
                   Вход
                   <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-orange-400 group-hover:w-full transition-all duration-300"></span>
-                </button>
-                <button
-                  onClick={() => navigate('/register')}
-                  className="bg-white text-purple-600 px-6 py-2.5 rounded-full hover:shadow-lg hover:shadow-white/30 hover:scale-105 transition-all duration-300 font-semibold"
+                </Link>
+                <Link
+                  to="/register"
+                  className="bg-orange-500 text-white px-6 py-2.5 rounded-full hover:bg-orange-600 transition-all duration-300 font-semibold shadow-lg focus:outline-none focus:ring-2 focus:ring-orange-400 focus:ring-offset-2 focus:ring-offset-purple-600"
+                  aria-current={location.pathname === '/register' ? 'page' : undefined}
                 >
                   Регистрация
-                </button>
+                </Link>
               </div>
             )}
           </div>
@@ -200,7 +209,10 @@ function Navbar() {
 
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="p-2 text-white flex-shrink-0"
+              className="p-2 text-white flex-shrink-0 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:ring-offset-2 focus:ring-offset-purple-600 rounded"
+              aria-label={mobileMenuOpen ? 'Закрыть меню' : 'Открыть меню'}
+              aria-expanded={mobileMenuOpen}
+              aria-controls="mobile-menu"
             >
               {mobileMenuOpen ? <XIcon /> : <MenuIcon />}
             </button>
@@ -210,84 +222,93 @@ function Navbar() {
 
         {/* Mobile Menu */}
         {mobileMenuOpen && (
-          <div className="lg:hidden py-4 border-t border-white/20 bg-purple-700/95 backdrop-blur-sm">
+          <div id="mobile-menu" className="lg:hidden py-4 border-t border-purple-400/30 bg-gradient-to-b from-purple-600 to-purple-500">
             <nav className="flex flex-col gap-3">
-              <button
-                onClick={() => {
-                  navigate('/')
-                  setMobileMenuOpen(false)
-                }}
+              <Link
+                to="/"
+                onClick={() => setMobileMenuOpen(false)}
                 className={`text-left px-4 py-2 rounded-lg transition-all duration-300 ${
-                  location.pathname === '/' ? 'bg-white/20 text-white font-semibold' : 'text-white/80 hover:bg-white/10'
+                  location.pathname === '/' ? 'bg-white/20 text-white font-semibold' : 'text-white/90 hover:bg-white/10'
                 }`}
+                aria-current={location.pathname === '/' ? 'page' : undefined}
               >
                 Главная
-              </button>
+              </Link>
 
               {/* Mobile Services */}
-              {services.map((service) => (
-                <button
-                  key={service.id}
-                  onClick={() => {
-                    navigate(`/${service.id}`)
-                    setMobileMenuOpen(false)
-                  }}
-                  className={`text-left px-4 py-2 rounded-lg transition-all duration-300 ${
-                    location.pathname === `/${service.id}` || location.pathname.startsWith(`/${service.id}/`)
-                      ? 'bg-white/20 text-white font-semibold'
-                      : 'text-white/80 hover:bg-white/10'
-                  }`}
-                >
-                  {service.label}
-                </button>
-              ))}
+              {services.map((service) => {
+                const isActive = location.pathname === `/${service.id}` || location.pathname.startsWith(`/${service.id}/`)
+                return (
+                  <Link
+                    key={service.id}
+                    to={`/${service.id}`}
+                    onClick={() => setMobileMenuOpen(false)}
+                    className={`text-left px-4 py-2 rounded-lg transition-all duration-300 ${
+                      isActive
+                        ? 'bg-white/20 text-white font-semibold'
+                        : 'text-white/90 hover:bg-white/10'
+                    }`}
+                    aria-current={isActive ? 'page' : undefined}
+                  >
+                    {service.label}
+                  </Link>
+                )
+              })}
 
 
               {isAuthenticated && (
                 <>
-                  <button
-                    onClick={() => {
-                      navigate('/orders')
-                      setMobileMenuOpen(false)
-                    }}
+                  <Link
+                    to="/orders"
+                    onClick={() => setMobileMenuOpen(false)}
                     className={`text-left px-4 py-2 rounded-lg transition-all duration-300 ${
-                      location.pathname === '/orders' || location.pathname.startsWith('/orders/') ? 'bg-white/20 text-white font-semibold' : 'text-white/80 hover:bg-white/10'
+                    location.pathname === '/orders' || location.pathname.startsWith('/orders/') ? 'bg-white/20 text-white font-semibold' : 'text-white/90 hover:bg-white/10'
                     }`}
+                    aria-current={(location.pathname === '/orders' || location.pathname.startsWith('/orders/')) ? 'page' : undefined}
                   >
                     Заказы
-                  </button>
-                  <button
-                    onClick={() => {
-                      navigate('/profile')
-                      setMobileMenuOpen(false)
-                    }}
+                  </Link>
+                  <Link
+                    to="/profile"
+                    onClick={() => setMobileMenuOpen(false)}
                     className={`text-left px-4 py-2 rounded-lg transition-all duration-300 ${
-                      location.pathname === '/profile' || location.pathname.startsWith('/profile/') ? 'bg-white/20 text-white font-semibold' : 'text-white/80 hover:bg-white/10'
+                    location.pathname === '/profile' || location.pathname.startsWith('/profile/') ? 'bg-white/20 text-white font-semibold' : 'text-white/90 hover:bg-white/10'
                     }`}
+                    aria-current={(location.pathname === '/profile' || location.pathname.startsWith('/profile/')) ? 'page' : undefined}
                   >
                     Профиль
-                  </button>
+                  </Link>
                 </>
               )}
 
-              <button
-                onClick={() => {
-                  isAuthenticated ? handleLogout() : navigate('/login')
-                  setMobileMenuOpen(false)
-                }}
-                className="text-white/80 hover:bg-white/10 hover:text-white text-left px-4 py-2 rounded-lg transition-all duration-300"
-              >
-                {isAuthenticated ? 'Выйти' : 'Вход'}
-              </button>
-              {!isAuthenticated && (
+              {!isAuthenticated ? (
+                <>
+                  <Link
+                    to="/login"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="text-white/90 hover:bg-white/10 hover:text-white text-left px-4 py-2 rounded-lg transition-all duration-300"
+                    aria-current={location.pathname === '/login' ? 'page' : undefined}
+                  >
+                    Вход
+                  </Link>
+                  <Link
+                    to="/register"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="bg-orange-500 text-white px-6 py-2.5 rounded-full hover:bg-orange-600 transition-all duration-300 mt-2 font-semibold shadow-lg"
+                    aria-current={location.pathname === '/register' ? 'page' : undefined}
+                  >
+                    Регистрация
+                  </Link>
+                </>
+              ) : (
                 <button
                   onClick={() => {
-                    navigate('/register')
+                    handleLogout()
                     setMobileMenuOpen(false)
                   }}
-                  className="bg-white text-purple-600 px-6 py-2.5 rounded-full hover:shadow-lg hover:shadow-white/30 transition-all duration-300 mt-2 font-semibold"
+                  className="text-white/90 hover:bg-white/10 hover:text-white text-left px-4 py-2 rounded-lg transition-all duration-300"
                 >
-                  Регистрация
+                  Выйти
                 </button>
               )}
             </nav>

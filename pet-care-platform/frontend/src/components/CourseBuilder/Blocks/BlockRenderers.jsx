@@ -331,7 +331,7 @@ export function GalleryRenderer({ block, mode = 'view', onComplete, onProgress }
           >
             <img
               src={image.url}
-              alt={image.alt || image.caption || ''}
+              alt={image.alt || image.caption || 'Изображение галереи'}
               className="w-full h-48 object-cover rounded-lg transition-transform group-hover:scale-105"
             />
             {image.caption && (

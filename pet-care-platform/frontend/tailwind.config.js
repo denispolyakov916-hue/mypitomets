@@ -15,7 +15,7 @@ export default {
   ],
   theme: {
     extend: {
-      // Брендовые цвета
+      // Брендовые цвета для платформы ухода за питомцами
       colors: {
         primary: {
           50: '#faf5ff',   // light purple

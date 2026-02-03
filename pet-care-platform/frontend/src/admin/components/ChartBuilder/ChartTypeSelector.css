@@ -116,6 +116,11 @@
   background: #f8fafc;
 }
 
+.type-option.active {
+  background: #eef2ff;
+  border-left-color: #6366f1;
+}
+
 .type-option.selected {
   background: #ecfdf5;
   border-left-color: #10b981;

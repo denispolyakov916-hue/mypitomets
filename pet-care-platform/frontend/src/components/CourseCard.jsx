@@ -138,157 +138,151 @@ function CourseCard({ course, onAddToCart, onEnrollFree, isOwned = false, isLoad
   }
   
   return (
-    <div className="bg-white rounded-xl shadow-sm hover:shadow-md transition-all flex flex-col h-full overflow-hidden group">
+    <div className="group bg-white rounded-2xl shadow-sm hover:shadow-lg border border-gray-100 transition-all duration-300 flex flex-col h-full overflow-hidden">
       {/* Изображение курса - кликабельное */}
-      <Link to={`/courses/${course.id}`} className="aspect-video bg-gradient-to-br from-primary-100 to-primary-200 relative overflow-hidden block">
+      <Link to={`/courses/${course.id}`} className="aspect-square relative overflow-hidden bg-gray-50 block">
         {course.image_url && !imageError ? (
           <img
             src={course.image_url}
             alt={course.title}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+            className="w-full h-full object-contain p-2 transition-opacity duration-300"
             loading="lazy"
             onError={() => setImageError(true)}
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center">
-            <span className="text-6xl opacity-30">
+            <span className="text-5xl opacity-30">
               {course.pet_type === 'dog' ? '🐕' : course.pet_type === 'cat' ? '🐱' : '📚'}
             </span>
           </div>
         )}
         
-        {/* Бейдж бесплатного курса */}
-        {course.price === 0 && (
-          <div className="absolute top-2 right-2 px-2 py-1 bg-green-500 text-white text-xs rounded-lg font-bold">
-            Бесплатно
-          </div>
-        )}
-        
-        {/* Бейдж типа животного */}
-        <div className="absolute top-2 left-2 px-2 py-1 bg-white/90 backdrop-blur-sm text-xs rounded-lg font-medium">
-          {petTypeLabels[course.pet_type] || course.pet_type}
+        {/* Бейджи сверху слева */}
+        <div className="absolute top-2 left-2 flex flex-col gap-1">
+          {/* Бесплатный курс */}
+          {course.price === 0 && (
+            <span className="px-2 py-0.5 bg-green-500 text-white text-xs font-bold rounded">
+              Бесплатно
+            </span>
+          )}
+          
+          {/* Формат курса */}
+          {course.format_type && (
+            <span className="px-2 py-0.5 bg-white/90 text-gray-700 text-[10px] font-semibold rounded shadow-sm border border-gray-200">
+              {formatLabels[course.format_type] || course.format_type}
+            </span>
+          )}
         </div>
         
-        {/* Бейдж формата */}
-        {course.format_type && (
-          <div className="absolute bottom-2 left-2 px-2 py-1 bg-primary-600/90 backdrop-blur-sm text-white text-xs rounded-lg font-medium">
-            {formatLabels[course.format_type] || course.format_type}
-          </div>
-        )}
-        
-        {/* Кнопка избранного */}
-        <div className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+        {/* Кнопка избранного - всегда видна */}
+        <div className="absolute top-2 right-2">
           <FavoriteButton itemId={course.id} type="course" size="sm" />
+        </div>
+        
+        {/* Тип животного */}
+        <div className="absolute bottom-2 left-2">
+          <span className={`px-2 py-0.5 text-[10px] font-medium rounded ${
+            course.pet_type === 'dog' ? 'bg-blue-100 text-blue-700' :
+            course.pet_type === 'cat' ? 'bg-primary-100 text-primary-700' :
+            'bg-gray-100 text-gray-700'
+          }`}>
+            {petTypeLabels[course.pet_type] || course.pet_type}
+          </span>
         </div>
       </Link>
       
       {/* Информация о курсе */}
       <div className="flex-1 flex flex-col p-4">
-        {/* Категория */}
+        {/* Цена */}
+        <div className="flex items-baseline gap-2 mb-1">
+          <span className={`text-lg font-bold ${
+            course.price === 0 ? 'text-green-600' : 'text-gray-900'
+          }`}>
+            {formatPrice(course.price)}
+          </span>
+        </div>
+        
+        {/* Категория (как бренд в ProductCard) */}
         {course.category && (
-          <p className="text-xs text-primary-600 font-medium mb-1 uppercase tracking-wide">
+          <p className="text-xs text-primary-700 font-semibold mb-1 truncate">
             {categoryLabels[course.category] || course.category}
           </p>
         )}
         
         {/* Название - кликабельное */}
-        <Link to={`/courses/${course.id}`}>
-          <h3 className="font-semibold text-gray-900 mb-2 line-clamp-2 text-base leading-snug hover:text-primary-600 transition-colors">
+        <Link to={`/courses/${course.id}`} className="block">
+          <h3 className="text-sm text-gray-900 leading-snug line-clamp-2 hover:text-primary-700 transition-colors mb-2 min-h-[2.6rem]">
             {course.title}
           </h3>
         </Link>
         
-        {/* Описание (краткое) */}
-        {course.description && (
-          <p className="text-sm text-gray-600 mb-2 line-clamp-2 flex-1">
-            {course.description}
-          </p>
-        )}
-        
-        {/* Рейтинг */}
-        {(course.rating || course.reviews_count !== undefined) && (
-          <div className="mb-3">
-            <Rating
-              rating={course.rating || 0}
-              reviewsCount={course.reviews_count}
-              readonly={true}
-              size="sm"
-            />
-          </div>
-        )}
-        
-        {/* Метаданные */}
-        <div className="flex flex-wrap gap-2 mb-3 text-xs text-gray-500">
-          {course.duration && (
-            <span className="flex items-center gap-1">
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              {formatDuration(course.duration)}
-            </span>
-          )}
-          {course.level && (
-            <span className="flex items-center gap-1">
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
-              </svg>
-              {levelLabels[course.level] || course.level}
-            </span>
+        {/* Рейтинг и отзывы */}
+        <div className="flex items-center gap-1 mb-3">
+          {(course.rating || course.reviews_count !== undefined) && (
+            <>
+              <div className="flex items-center">
+                <svg className="w-4 h-4 text-yellow-400 fill-current" viewBox="0 0 20 20">
+                  <path d="M10 15l-5.878 3.09 1.123-6.545L.489 6.91l6.572-.955L10 0l2.939 5.955 6.572.955-4.756 4.635 1.123 6.545z"/>
+                </svg>
+                <span className="ml-1 text-sm font-medium text-gray-700">
+                  {(course.rating || 0).toFixed(1)}
+                </span>
+              </div>
+              {course.reviews_count > 0 && (
+                <span className="text-xs text-gray-400">
+                  ({course.reviews_count})
+                </span>
+              )}
+            </>
           )}
         </div>
         
-        {/* Цена и добавление в корзину */}
-        <div className="flex items-center justify-between mt-auto pt-3 border-t border-gray-100">
-          <div className="flex flex-col">
-            <span className={`text-lg font-bold ${
-              course.price === 0 ? 'text-green-600' : 'text-gray-900'
-            }`}>
-              {formatPrice(course.price)}
-            </span>
-          </div>
+        {/* Кнопка корзины (анимированная) */}
+        <div className="mt-auto">
           {isOwned ? (
             <button
               onClick={() => navigate(`/training/courses/${course.id}/learn`)}
-              className="text-sm py-2 px-4 rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition-colors flex items-center gap-1.5 w-full justify-center font-medium"
+              className="w-full h-10 rounded-2xl flex flex-col items-center justify-center bg-blue-600 hover:bg-blue-700 text-white transition-all duration-300 active:scale-[0.98]"
             >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h1m4 0h1m-6 4h.01M21 12c0 4.418-4.03-8 9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-              </svg>
-              🎓 Начать обучение
+              <span className="text-sm font-medium leading-tight">Начать обучение</span>
             </button>
           ) : course.price === 0 ? (
             // Бесплатные курсы - открытие модального окна для записи
             <button
               onClick={handleEnrollFree}
-              className="text-sm py-2 px-4 rounded-lg bg-green-600 hover:bg-green-700 text-white transition-colors flex items-center gap-1.5"
+              className="w-full h-10 rounded-2xl flex flex-col items-center justify-center bg-green-600 hover:bg-green-700 text-white transition-all duration-300 active:scale-[0.98]"
             >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-              Получить курс
+              <span className="text-sm font-medium leading-tight">Получить курс</span>
             </button>
           ) : (
-            // Платные курсы - добавление в корзину
+            // Платные курсы - добавление в корзину (стиль как в магазине)
             <button
               onClick={isInCart ? handleGoToCart : handleAddToCart}
               disabled={isAdding || isLoading}
-              className={`text-sm py-2 px-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 ${
+              className={`w-full h-10 rounded-2xl relative flex flex-col items-center justify-center text-white transition-all duration-300 ease-in-out disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98] overflow-hidden ${
                 isInCart
-                  ? 'bg-green-600 hover:bg-green-700 text-white'
-                  : 'bg-primary-600 hover:bg-primary-700 text-white'
+                  ? 'bg-green-500 hover:bg-green-600'
+                  : 'bg-primary-600 hover:bg-primary-700'
               }`}
             >
               {isAdding ? (
-                <>
-                  <ButtonLoader />
-                  <span>...</span>
-                </>
+                <ButtonLoader />
               ) : (
                 <>
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
-                  </svg>
-                  {isInCart ? 'В корзину' : 'Купить'}
+                  {/* Текст "В корзину" / "Добавить" */}
+                  <div className={`absolute inset-0 flex flex-col items-center justify-center transition-all duration-300 ease-in-out ${
+                    isInCart ? 'opacity-0 scale-95' : 'opacity-100 scale-100'
+                  }`}>
+                    <span className="text-sm font-medium leading-tight">В корзину</span>
+                    <span className="text-[10px] opacity-80 leading-tight">Добавить</span>
+                  </div>
+                  {/* Текст "В корзине" / "Перейти" */}
+                  <div className={`absolute inset-0 flex flex-col items-center justify-center transition-all duration-300 ease-in-out ${
+                    isInCart ? 'opacity-100 scale-100' : 'opacity-0 scale-95'
+                  }`}>
+                    <span className="text-xs font-medium leading-tight">В корзине</span>
+                    <span className="text-[10px] opacity-80 leading-tight">Перейти</span>
+                  </div>
                 </>
               )}
             </button>

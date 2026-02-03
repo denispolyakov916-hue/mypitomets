@@ -125,8 +125,8 @@ export default function HeaderCounters() {
 	}, [location.pathname])
 
 	const itemClass =
-		'group relative flex flex-col items-center gap-1 px-2 py-1 text-white/90 hover:text-white transition-colors'
-	const iconClass = 'w-6 h-6 drop-shadow-sm'
+		'group relative flex flex-col items-center gap-1 px-2 py-1 text-slate-700 hover:text-slate-900 transition-colors'
+	const iconClass = 'w-6 h-6 text-slate-700 group-hover:text-slate-900 transition-colors'
 	const labelClass = 'text-[12px] leading-none'
 
 	return (
@@ -141,7 +141,7 @@ export default function HeaderCounters() {
 
 			<Link to="/favorites" className={itemClass} aria-label="Избранное">
 				<div className="relative">
-					<HeartIcon className={`${iconClass} text-pink-200`} />
+					<HeartIcon className={`${iconClass} text-primary-600 group-hover:text-primary-700`} />
 					<CounterBadge value={favoritesCount} />
 				</div>
 				<span className={`${labelClass} ${isActive('/favorites') ? 'font-semibold' : ''}`}>Избранное</span>

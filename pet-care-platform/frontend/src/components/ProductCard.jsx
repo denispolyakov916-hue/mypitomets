@@ -92,7 +92,7 @@ const ProductImage = memo(function ProductImage({ src, alt, animal }) {
       {isInView && src && !hasError && (
         <img
           src={src}
-          alt={alt}
+          alt={alt || 'Изображение товара'}
           className={`w-full h-full object-contain p-2 transition-opacity duration-300 ${
             isLoaded ? 'opacity-100' : 'opacity-0'
           }`}
@@ -138,11 +138,12 @@ const FavoriteBtn = memo(function FavoriteBtn({ productId }) {
   return (
     <button
       onClick={handleClick}
-      className={`w-8 h-8 rounded-full flex items-center justify-center transition-all duration-200 ${
+      className={`w-11 h-11 rounded-full flex items-center justify-center transition-all duration-200 ${
         isFavorite 
           ? 'bg-red-50 text-red-500 hover:bg-red-100' 
           : 'bg-white/90 text-gray-400 hover:text-red-500 hover:bg-white'
       } shadow-sm`}
+      aria-label={isFavorite ? 'Удалить из избранного' : 'Добавить в избранное'}
       title={isFavorite ? 'Удалить из избранного' : 'Добавить в избранное'}
     >
       <svg 
@@ -151,6 +152,7 @@ const FavoriteBtn = memo(function FavoriteBtn({ productId }) {
         viewBox="0 0 24 24" 
         stroke="currentColor"
         strokeWidth={isFavorite ? 0 : 2}
+        aria-hidden="true"
       >
         <path 
           strokeLinecap="round" 
@@ -232,10 +234,11 @@ const CartButton = memo(function CartButton({
       >
         <button
           onClick={() => onQuantityChange(-1)}
-          className="w-8 h-full flex items-center justify-center text-primary-700 hover:bg-gray-200 transition-colors"
+          className="min-w-11 h-11 flex items-center justify-center text-primary-700 hover:bg-gray-200 transition-colors"
           tabIndex={showCounter ? 0 : -1}
+          aria-label="Уменьшить количество"
         >
-          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
             <path d="M4 12a1.5 1.5 0 0 1 1.5-1.5h13a1.5 1.5 0 0 1 0 3h-13A1.5 1.5 0 0 1 4 12" />
           </svg>
         </button>
@@ -246,11 +249,12 @@ const CartButton = memo(function CartButton({
         
         <button
           onClick={() => onQuantityChange(1)}
-          disabled={false}
-          className="w-8 h-full flex items-center justify-center text-primary-700 hover:bg-gray-200 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+          disabled={cartQuantity >= (product.stock_count || 999)}
+          className="min-w-11 h-11 flex items-center justify-center text-primary-700 hover:bg-gray-200 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           tabIndex={showCounter ? 0 : -1}
+          aria-label="Увеличить количество"
         >
-          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
             <path d="M12 4a1.5 1.5 0 0 1 1.5 1.5v5h5a1.5 1.5 0 0 1 0 3h-5v5a1.5 1.5 0 0 1-3 0v-5h-5a1.5 1.5 0 0 1 0-3h5v-5A1.5 1.5 0 0 1 12 4" />
           </svg>
         </button>
@@ -319,10 +323,14 @@ const ProductCard = memo(function ProductCard({ product, onAddToCart, isLoading 
   }, [cartQuantity, product.id, updateQuantity])
 
   return (
-    <div className="group bg-white rounded-2xl shadow-sm hover:shadow-lg border border-gray-100 transition-all duration-300 flex flex-col h-full overflow-hidden">
+    <article className="group bg-white rounded-2xl shadow-sm hover:shadow-lg border border-gray-100 transition-all duration-300 flex flex-col h-full overflow-hidden">
       {/* Изображение */}
-      <Link to={`/shop/products/${product.id}`} className="aspect-square relative overflow-hidden bg-gray-50 block">
-        <ProductImage src={mainImage} alt={product.name} animal={animalType} />
+      <Link 
+        to={`/shop/products/${product.id}`} 
+        className="aspect-square relative overflow-hidden bg-gray-50 block"
+        aria-label={`Перейти к товару ${product.name}`}
+      >
+        <ProductImage src={mainImage} alt={product.name || 'Изображение товара'} animal={animalType} />
         
         {/* Бейджи сверху слева */}
         <div className="absolute top-2 left-2 flex flex-col gap-1">
@@ -407,7 +415,7 @@ const ProductCard = memo(function ProductCard({ product, onAddToCart, isLoading 
         {/* Рейтинг и отзывы */}
         <div className="flex items-center gap-1 mb-3">
           <div className="flex items-center">
-            <svg className="w-4 h-4 text-yellow-400 fill-current" viewBox="0 0 20 20">
+            <svg className="w-4 h-4 text-yellow-400 fill-current" viewBox="0 0 20 20" aria-hidden="true">
               <path d="M10 15l-5.878 3.09 1.123-6.545L.489 6.91l6.572-.955L10 0l2.939 5.955 6.572.955-4.756 4.635 1.123 6.545z"/>
             </svg>
             <span className="ml-1 text-sm font-medium text-gray-700">
@@ -419,7 +427,13 @@ const ProductCard = memo(function ProductCard({ product, onAddToCart, isLoading 
               ({product.rating_count || product.reviews_count})
             </span>
           )}
-          
+
+          {/* Остаток */}
+          {product.stock_count > 0 && product.stock_count <= 5 && isAvailable && (
+            <span className="ml-auto text-xs text-orange-700 font-medium">
+              Осталось {product.stock_count}
+            </span>
+          )}
         </div>
         
         {/* Кнопка корзины (анимированная) */}
@@ -435,7 +449,7 @@ const ProductCard = memo(function ProductCard({ product, onAddToCart, isLoading 
           />
         </div>
       </div>
-    </div>
+    </article>
   )
 })
 

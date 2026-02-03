@@ -155,9 +155,24 @@ function PetCard({ pet, onClick, showActions = false, onEdit, onDelete }) {
     </div>
   )
   
-  // Если передан onClick, оборачиваем в div, иначе в Link
+  // Если передан onClick, оборачиваем в доступный контейнер, иначе в Link
   if (onClick) {
-    return <div onClick={() => onClick(pet)}>{cardContent}</div>
+    return (
+      <div
+        onClick={() => onClick(pet)}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault()
+            onClick(pet)
+          }
+        }}
+        role="button"
+        tabIndex={0}
+        aria-label={`Открыть карточку питомца ${pet.name}`}
+      >
+        {cardContent}
+      </div>
+    )
   }
   
   return (

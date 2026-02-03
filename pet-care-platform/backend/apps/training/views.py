@@ -67,8 +67,24 @@ class CourseListView(APIView):
             all_courses_data = cached_data.get('all_courses_data', [])
             filters_data = cached_data.get('filters', {})
 
+            # Отладочная информация
+            logger.debug(f"Cache hit: total={total}, all_courses_count={len(all_courses_data)}, page={page}, per_page={per_page}")
+            
+            # Проверка: если total не совпадает с реальным количеством, используем реальное
+            if total != len(all_courses_data):
+                logger.warning(f"Cache data mismatch: total_count={total}, actual_count={len(all_courses_data)}. Using actual count.")
+                total = len(all_courses_data)
+
             offset = (page - 1) * per_page
-            courses_page_data = all_courses_data[offset:offset + per_page]
+            
+            # Проверяем, что offset не выходит за границы массива
+            if offset >= len(all_courses_data):
+                logger.warning(f"Offset {offset} is out of bounds for {len(all_courses_data)} courses. Returning empty page.")
+                courses_page_data = []
+            else:
+                courses_page_data = all_courses_data[offset:offset + per_page]
+            
+            logger.debug(f"Returning page {page}: {len(courses_page_data)} courses (offset={offset}, total={len(all_courses_data)})")
 
             response_data = {
                 'courses': courses_page_data,
@@ -208,12 +224,6 @@ class CourseListView(APIView):
             # По умолчанию сортировка по ID (новые курсы)
             courses = courses.order_by('-id')
         
-        # Общее количество до пагинации
-        total_count = courses.count()
-        
-        # Получаем все данные до пагинации для кэширования
-        all_courses_data = [c.to_dict() for c in courses]
-
         # Пагинация
         try:
             page = max(1, int(request.query_params.get('page', 1)))
@@ -223,7 +233,23 @@ class CourseListView(APIView):
             per_page = 12
 
         offset = (page - 1) * per_page
+        
+        # Получаем все данные до пагинации для кэширования
+        # Важно: сначала получаем все курсы, затем применяем пагинацию
+        # Используем list() чтобы гарантировать выполнение queryset
+        # Принудительно выполняем queryset, преобразуя его в список
+        all_courses_list = list(courses)
+        all_courses_data = [c.to_dict() for c in all_courses_list]
+        
+        # Общее количество после загрузки всех данных
+        total_count = len(all_courses_data)
+        
+        logger.debug(f"Loaded {total_count} courses total, page={page}, per_page={per_page}, offset={offset}")
+        
+        # Применяем пагинацию к данным
         courses_data = all_courses_data[offset:offset + per_page]
+        
+        logger.debug(f"Returning {len(courses_data)} courses for page {page} (total pages: {(total_count + per_page - 1) // per_page if total_count > 0 else 0})")
         
         # Сбор доступных фильтров
         filter_query = Course.objects.filter(is_active=True)
@@ -309,14 +335,26 @@ class CourseListView(APIView):
         from django.core.cache import cache
         from django.conf import settings
 
+        # Проверяем, что все данные загружены перед сохранением в кэш
+        if len(all_courses_data) != total_count:
+            logger.error(f"Data mismatch before caching: all_courses_data length={len(all_courses_data)}, total_count={total_count}")
+            # Исправляем total_count на основе реальных данных
+            total_count = len(all_courses_data)
+        
         cache_data = {
             'total_count': total_count,
             'all_courses_data': all_courses_data,
             'filters': response_data['filters']
         }
 
+        logger.debug(f"Caching {len(all_courses_data)} courses with total_count={total_count}")
+        
         cache_timeout = getattr(settings, 'CACHE_TIMEOUTS', {}).get('courses', 300)
-        cache.set(cache_key, cache_data, cache_timeout)
+        try:
+            cache.set(cache_key, cache_data, cache_timeout)
+            logger.debug(f"Cache saved successfully with {len(all_courses_data)} courses")
+        except Exception as e:
+            logger.error(f"Failed to save cache: {e}")
         
         return Response(response_data, status=status.HTTP_200_OK)
 

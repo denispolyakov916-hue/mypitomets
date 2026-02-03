@@ -28,11 +28,19 @@ function Layout({ children }) {
   
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
+      {/* Skip links для доступности */}
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:bg-purple-600 focus:text-white focus:rounded-lg focus:shadow-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2"
+      >
+        Перейти к основному содержимому
+      </a>
+      
       {/* Навигационная шапка */}
       <Navbar />
       
       {/* Основная область контента */}
-      <main className="flex-1 pt-20">
+      <main id="main-content" className="flex-1 pt-20" tabIndex={-1}>
         {children}
       </main>
       

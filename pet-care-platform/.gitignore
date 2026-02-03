@@ -239,3 +239,17 @@ lerna-debug.log*
 # PostgreSQL dumps (если есть)
 *.sql.backup
 *.dump
+
+# ============================================
+# Blender / 3D Assets
+# ============================================
+
+# Blender helper scripts and tools
+backend/scripts/blender_tools/
+
+# Baked textures from Blender
+frontend/public/models/bakes/
+
+# Blender files (optional - uncomment if not needed in repo)
+# *.blend
+# *.blend1

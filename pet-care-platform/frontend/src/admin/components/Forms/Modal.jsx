@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef, useCallback } from 'react';
 
 const Modal = ({
   isOpen,
@@ -10,25 +10,75 @@ const Modal = ({
   closeOnOverlayClick = true,
   closeOnEscape = true
 }) => {
+  const modalRef = useRef(null);
+  const previousActiveElement = useRef(null);
+
   // Обработка клавиши Escape
-  useEffect(() => {
-    const handleEscape = (e) => {
-      if (closeOnEscape && e.key === 'Escape') {
-        onClose();
-      }
-    };
-
-    if (isOpen) {
-      document.addEventListener('keydown', handleEscape);
-      // Предотвращаем скролл body при открытом модальном окне
-      document.body.style.overflow = 'hidden';
+  const handleEscape = useCallback((e) => {
+    if (closeOnEscape && e.key === 'Escape') {
+      onClose();
     }
+  }, [closeOnEscape, onClose]);
 
-    return () => {
-      document.removeEventListener('keydown', handleEscape);
-      document.body.style.overflow = 'unset';
-    };
-  }, [isOpen, onClose, closeOnEscape]);
+  // Управление фокусом и скроллом
+  useEffect(() => {
+    if (isOpen) {
+      // Сохраняем текущий активный элемент
+      previousActiveElement.current = document.activeElement;
+      
+      // Блокируем скролл body
+      document.body.style.overflow = 'hidden';
+      
+      // Добавляем слушатель Escape
+      document.addEventListener('keydown', handleEscape);
+      
+      // Устанавливаем фокус на модальное окно
+      setTimeout(() => {
+        if (modalRef.current) {
+          const focusable = modalRef.current.querySelector(
+            'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+          );
+          if (focusable) {
+            focusable.focus();
+          } else {
+            modalRef.current.focus();
+          }
+        }
+      }, 10);
+      
+      return () => {
+        document.body.style.overflow = 'unset';
+        document.removeEventListener('keydown', handleEscape);
+        
+        // Возвращаем фокус на предыдущий элемент
+        if (previousActiveElement.current) {
+          previousActiveElement.current.focus();
+        }
+      };
+    }
+  }, [isOpen, handleEscape]);
+
+  // Ловушка фокуса
+  const handleKeyDown = useCallback((e) => {
+    if (e.key !== 'Tab' || !modalRef.current) return;
+    
+    const focusableElements = modalRef.current.querySelectorAll(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    );
+    
+    if (focusableElements.length === 0) return;
+    
+    const firstElement = focusableElements[0];
+    const lastElement = focusableElements[focusableElements.length - 1];
+    
+    if (e.shiftKey && document.activeElement === firstElement) {
+      e.preventDefault();
+      lastElement.focus();
+    } else if (!e.shiftKey && document.activeElement === lastElement) {
+      e.preventDefault();
+      firstElement.focus();
+    }
+  }, []);
 
   if (!isOpen) return null;
 
@@ -47,34 +97,50 @@ const Modal = ({
     }
   };
 
+  const modalTitleId = title ? `modal-title-${Math.random().toString(36).substr(2, 9)}` : undefined;
+
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
+    <div 
+      className="fixed inset-0 z-50 overflow-y-auto"
+      role="presentation"
+    >
       {/* Overlay */}
       <div
         className="fixed inset-0 bg-black bg-opacity-50 transition-opacity"
         onClick={handleOverlayClick}
+        aria-hidden="true"
       />
 
       {/* Modal */}
       <div className="flex min-h-screen items-center justify-center p-4">
-        <div className={`
-          relative w-full ${sizeClasses[size]}
-          bg-white rounded-lg shadow-xl transform transition-all
-          max-h-[90vh] overflow-hidden
-        `}>
+        <div 
+          ref={modalRef}
+          className={`
+            relative w-full ${sizeClasses[size]}
+            bg-white rounded-lg shadow-xl transform transition-all
+            max-h-[90vh] overflow-hidden
+          `}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby={modalTitleId}
+          tabIndex={-1}
+          onKeyDown={handleKeyDown}
+        >
           {/* Header */}
           {(title || showCloseButton) && (
             <div className="flex items-center justify-between p-6 border-b border-gray-200">
               {title && (
-                <h3 className="text-lg font-medium text-gray-900">{title}</h3>
+                <h3 id={modalTitleId} className="text-lg font-medium text-gray-900">{title}</h3>
               )}
 
               {showCloseButton && (
                 <button
+                  type="button"
                   onClick={onClose}
-                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                  className="text-gray-400 hover:text-gray-600 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 rounded"
+                  aria-label="Закрыть модальное окно"
                 >
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </button>

@@ -40,7 +40,6 @@ from core.exceptions import ApiError, safe_api_operation
 from .models import Pet, CalendarEvent
 from .models import Breed
 from .services import pet_service
-from .autofill_service import pet_autofill
 from .calorie_calculator import calorie_calculator
 from .serializers import (
     PetCreateSerializer, PetUpdateSerializer, PetSerializer,
@@ -135,17 +134,8 @@ class PetListCreateView(BaseListCreateView):
                     )
 
             # Создание питомца через сервис
+            # Автозаполнение выполняется автоматически через SQL триггер pet_autofill_trigger
             pet = pet_service.create_pet(data, request.user)
-
-            # АВТОЗАПОЛНЕНИЕ из породы
-            # Если activity_level не передан пользователем, принудительно
-            # пересчитываем его, чтобы не оставлять дефолт 'moderate'.
-            force_update = []
-            if not request.data.get('activity_level'):
-                force_update.append('activity_level')
-            autofilled = pet_autofill.autofill_from_breed(pet, force_update=force_update)
-            if autofilled:
-                logger.info(f"Autofilled fields for pet {pet.id}: {autofilled}")
 
             # Обработка фото если загружено
             if 'photo' in request.FILES:
@@ -289,22 +279,8 @@ class PetDetailView(BaseDetailView):
         if not update_fields:
             raise ApiError.bad_request("Нет данных для обновления")
 
+        # Сохранение питомца - автозаполнение выполняется автоматически через SQL триггер
         pet.save(update_fields=update_fields + ['updated_at'])
-        
-        # АВТОЗАПОЛНЕНИЕ: если изменилась порода — пересчитываем всё
-        new_breed_id = pet.breed_id
-        new_weight = float(pet.weight) if pet.weight else None
-        
-        if new_breed_id != old_breed_id:
-            # Изменилась порода — полный пересчёт (только незаполненные поля)
-            autofilled = pet_autofill.autofill_from_breed(pet)
-            if autofilled:
-                logger.info(f"Autofilled on breed change for pet {pet.id}: {autofilled}")
-        if new_weight != old_weight:
-            # Изменился вес — пересчёт BCS (и размера для дворняг)
-            recalculated = pet_autofill.recalculate_on_weight_change(pet, old_weight)
-            if recalculated:
-                logger.info(f"Recalculated on weight change for pet {pet.id}: {recalculated}")
         
         logger.info(f"Питомец обновлён: {pet.id}")
         return pet
@@ -958,6 +934,9 @@ class PetAutofillSuggestionsView(APIView):
     
     GET /api/pets/{pet_id}/autofill-suggestions/
         Возвращает: предложенные значения из породы
+    
+    Примечание: Автозаполнение теперь выполняется автоматически через SQL триггер
+    при создании/обновлении питомца. Этот endpoint оставлен для совместимости.
     """
     permission_classes = [IsAuthenticated]
     
@@ -968,7 +947,48 @@ class PetAutofillSuggestionsView(APIView):
         except Pet.DoesNotExist:
             raise ApiError.not_found("Питомец не найден")
         
-        suggestions = pet_autofill.get_autofill_suggestions(pet)
+        # Простая логика предпросмотра без использования сервиса
+        suggestions = {}
+        
+        if pet.breed:
+            suggestions['size_category'] = pet.breed.size_category
+            suggestions['coat_type'] = pet.breed.coat_type
+            suggestions['activity_level'] = pet.breed.base_activity_level
+            
+            # Идеальный вес в зависимости от пола
+            if pet.sex == 'female' and pet.breed.weight_female_min and pet.breed.weight_female_max:
+                suggestions['ideal_weight_kg'] = float((pet.breed.weight_female_min + pet.breed.weight_female_max) / 2)
+            elif pet.sex == 'male' and pet.breed.weight_male_min and pet.breed.weight_male_max:
+                suggestions['ideal_weight_kg'] = float((pet.breed.weight_male_min + pet.breed.weight_male_max) / 2)
+            elif pet.breed.weight_male_min and pet.breed.weight_male_max:
+                suggestions['ideal_weight_kg'] = float((pet.breed.weight_male_min + pet.breed.weight_male_max) / 2)
+            else:
+                suggestions['ideal_weight_kg'] = None
+        else:
+            # Для дворняг
+            if pet.weight:
+                if pet.species == 'cat':
+                    if pet.weight < 4:
+                        suggestions['size_category'] = 'small'
+                    elif pet.weight < 6:
+                        suggestions['size_category'] = 'medium'
+                    else:
+                        suggestions['size_category'] = 'large'
+                elif pet.species == 'dog':
+                    if pet.weight < 5:
+                        suggestions['size_category'] = 'toy'
+                    elif pet.weight < 10:
+                        suggestions['size_category'] = 'small'
+                    elif pet.weight < 25:
+                        suggestions['size_category'] = 'medium'
+                    elif pet.weight < 45:
+                        suggestions['size_category'] = 'large'
+                    else:
+                        suggestions['size_category'] = 'giant'
+            suggestions['activity_level'] = 'moderate'
+        
+        suggestions['is_from_breed'] = pet.breed is not None
+        suggestions['breed_name'] = pet.breed.name if pet.breed else None
         
         return Response({
             'success': True,

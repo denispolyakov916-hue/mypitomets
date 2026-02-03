@@ -99,7 +99,7 @@ function AnalysisCard({ title, icon: Icon, analysis, iconColor = 'text-purple-60
         <div className="mt-3 space-y-1.5">
           {analysis.issues.map((issue, idx) => (
             <div key={idx} className="text-xs text-gray-600 flex items-start gap-2">
-              <span className="text-orange-500 mt-0.5">•</span>
+              <span className="text-orange-600 mt-0.5">•</span>
               {issue}
             </div>
           ))}
@@ -636,7 +636,7 @@ export default function PetDetailPage() {
             {comparison?.health_risks && comparison.health_risks.length > 0 && (
               <div>
                 <h3 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                  <AlertTriangle className="w-5 h-5 text-orange-500" />
+                  <AlertTriangle className="w-5 h-5 text-orange-600" />
                   Породные риски здоровья
                 </h3>
                 <div className="grid md:grid-cols-2 gap-4">

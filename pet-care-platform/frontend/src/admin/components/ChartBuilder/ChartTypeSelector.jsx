@@ -5,6 +5,8 @@ import './ChartTypeSelector.css';
 
 const ChartTypeSelector = ({ currentType, onTypeChange, onConfigChange, config }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(-1);
+  const listboxIdRef = React.useRef(`chart-type-listbox-${Math.random().toString(36).slice(2)}`);
 
   // Доступные типы графиков
   const chartTypes = [
@@ -75,6 +77,10 @@ const ChartTypeSelector = ({ currentType, onTypeChange, onConfigChange, config }
   ];
 
   const currentChartType = chartTypes.find(type => type.id === currentType);
+  const typeIndexMap = chartTypes.reduce((acc, type, index) => {
+    acc[type.id] = index;
+    return acc;
+  }, {});
 
   // Группировка по категориям
   const groupedTypes = chartTypes.reduce((acc, type) => {
@@ -196,11 +202,75 @@ const ChartTypeSelector = ({ currentType, onTypeChange, onConfigChange, config }
     }
   };
 
+  React.useEffect(() => {
+    if (!isOpen) {
+      setActiveIndex(-1);
+      return;
+    }
+    const selectedIndex = currentType ? typeIndexMap[currentType] : -1;
+    setActiveIndex(selectedIndex >= 0 ? selectedIndex : 0);
+  }, [isOpen, currentType]);
+
+  const moveActiveIndex = (delta) => {
+    if (chartTypes.length === 0) return;
+    setActiveIndex((prev) => {
+      const base = prev < 0 ? 0 : prev;
+      const next = base + delta;
+      if (next < 0) return chartTypes.length - 1;
+      if (next >= chartTypes.length) return 0;
+      return next;
+    });
+  };
+
   return (
     <div className="chart-type-selector">
       <div className="selector-header">
         <label>Тип графика:</label>
-        <div className="current-selection" onClick={() => setIsOpen(!isOpen)}>
+        <div
+          className="current-selection"
+          onClick={() => setIsOpen(!isOpen)}
+          role="combobox"
+          tabIndex={0}
+          aria-expanded={isOpen}
+          aria-controls={listboxIdRef.current}
+          aria-activedescendant={
+            activeIndex >= 0 ? `${listboxIdRef.current}-opt-${activeIndex}` : undefined
+          }
+          aria-haspopup="listbox"
+          onKeyDown={(e) => {
+            if (e.key === 'ArrowDown') {
+              e.preventDefault();
+              if (!isOpen) setIsOpen(true);
+              moveActiveIndex(1);
+              return;
+            }
+            if (e.key === 'ArrowUp') {
+              e.preventDefault();
+              if (!isOpen) setIsOpen(true);
+              moveActiveIndex(-1);
+              return;
+            }
+            if (e.key === 'Home') {
+              e.preventDefault();
+              if (chartTypes.length > 0) setActiveIndex(0);
+              return;
+            }
+            if (e.key === 'End') {
+              e.preventDefault();
+              if (chartTypes.length > 0) setActiveIndex(chartTypes.length - 1);
+              return;
+            }
+            if (e.key === 'Enter' && isOpen && activeIndex >= 0) {
+              e.preventDefault();
+              handleTypeSelect(chartTypes[activeIndex].id);
+              return;
+            }
+            if (e.key === 'Escape' && isOpen) {
+              e.preventDefault();
+              setIsOpen(false);
+            }
+          }}
+        >
           <span className="type-icon">{currentChartType?.icon}</span>
           <span className="type-name">{currentChartType?.name || 'Выберите тип'}</span>
           <span className={`dropdown-arrow ${isOpen ? 'open' : ''}`}>▼</span>
@@ -210,7 +280,7 @@ const ChartTypeSelector = ({ currentType, onTypeChange, onConfigChange, config }
       {isOpen && (
         <>
           <div className="selector-overlay" onClick={() => setIsOpen(false)} />
-          <div className="selector-dropdown">
+          <div className="selector-dropdown" id={listboxIdRef.current} role="listbox">
             {Object.entries(groupedTypes).map(([category, types]) => (
               <div key={category} className="type-category">
                 <div className="category-header">
@@ -221,7 +291,12 @@ const ChartTypeSelector = ({ currentType, onTypeChange, onConfigChange, config }
                   {types.map(type => (
                     <div
                       key={type.id}
-                      className={`type-option ${type.id === currentType ? 'selected' : ''}`}
+                      id={`${listboxIdRef.current}-opt-${typeIndexMap[type.id]}`}
+                      role="option"
+                      aria-selected={activeIndex === typeIndexMap[type.id]}
+                      className={`type-option ${
+                        activeIndex === typeIndexMap[type.id] ? 'active' : ''
+                      } ${type.id === currentType ? 'selected' : ''}`}
                       onClick={() => handleTypeSelect(type.id)}
                     >
                       <div className="type-icon-large">{type.icon}</div>

@@ -11,7 +11,9 @@ export default function StepBasicInfo({ formData, updateFormData }) {
   const [breedSearch, setBreedSearch] = useState(formData.breed || '');
   const [showBreedDropdown, setShowBreedDropdown] = useState(false);
   const [isLoadingBreeds, setIsLoadingBreeds] = useState(false);
+  const [activeBreedIndex, setActiveBreedIndex] = useState(-1);
   const dropdownRef = useRef(null);
+  const listboxIdRef = useRef(`basicinfo-breed-listbox-${Math.random().toString(36).slice(2)}`);
 
   // Загрузка пород при изменении вида животного
   useEffect(() => {
@@ -87,6 +89,32 @@ export default function StepBasicInfo({ formData, updateFormData }) {
     setBreedSearch('');
   };
 
+  useEffect(() => {
+    if (!showBreedDropdown) {
+      setActiveBreedIndex(-1);
+      return;
+    }
+    if (filteredBreeds.length === 0) {
+      setActiveBreedIndex(-1);
+      return;
+    }
+    const selectedIndex = formData.breed
+      ? filteredBreeds.findIndex((breed) => breed.name === formData.breed)
+      : -1;
+    setActiveBreedIndex(selectedIndex >= 0 ? selectedIndex : 0);
+  }, [showBreedDropdown, filteredBreeds, formData.breed]);
+
+  const moveActiveIndex = (delta) => {
+    if (filteredBreeds.length === 0) return;
+    setActiveBreedIndex((prev) => {
+      const base = prev < 0 ? 0 : prev;
+      const next = base + delta;
+      if (next < 0) return filteredBreeds.length - 1;
+      if (next >= filteredBreeds.length) return 0;
+      return next;
+    });
+  };
+
   return (
     <div className="space-y-6">
       <div className="mb-6">
@@ -139,6 +167,48 @@ export default function StepBasicInfo({ formData, updateFormData }) {
                 formData.species === 'cat' ? 'Начните вводить породу...' :
                 'Укажите породу'
               }
+              role="combobox"
+              aria-expanded={showBreedDropdown}
+              aria-controls={listboxIdRef.current}
+              aria-activedescendant={
+                activeBreedIndex >= 0 ? `${listboxIdRef.current}-opt-${activeBreedIndex}` : undefined
+              }
+              onKeyDown={(e) => {
+                if (e.key === 'ArrowDown') {
+                  e.preventDefault();
+                  if (!showBreedDropdown) setShowBreedDropdown(true);
+                  moveActiveIndex(1);
+                  return;
+                }
+                if (e.key === 'ArrowUp') {
+                  e.preventDefault();
+                  if (!showBreedDropdown) setShowBreedDropdown(true);
+                  moveActiveIndex(-1);
+                  return;
+                }
+                if (e.key === 'Home') {
+                  e.preventDefault();
+                  if (filteredBreeds.length > 0) setActiveBreedIndex(0);
+                  return;
+                }
+                if (e.key === 'End') {
+                  e.preventDefault();
+                  if (filteredBreeds.length > 0) {
+                    setActiveBreedIndex(filteredBreeds.length - 1);
+                  }
+                  return;
+                }
+                if (e.key === 'Enter' && showBreedDropdown && activeBreedIndex >= 0) {
+                  e.preventDefault();
+                  handleBreedSelect(filteredBreeds[activeBreedIndex]);
+                  return;
+                }
+                if (e.key === 'Escape' && showBreedDropdown) {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setShowBreedDropdown(false);
+                }
+              }}
             />
             <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1">
               {breedSearch && (
@@ -157,7 +227,11 @@ export default function StepBasicInfo({ formData, updateFormData }) {
           
           {/* Dropdown с породами */}
           {showBreedDropdown && (formData.species === 'dog' || formData.species === 'cat') && (
-            <div className="absolute z-50 w-full mt-2 bg-white border-2 border-gray-200 rounded-2xl shadow-xl max-h-64 overflow-y-auto">
+            <div
+              className="absolute z-50 w-full mt-2 bg-white border-2 border-gray-200 rounded-2xl shadow-xl max-h-64 overflow-y-auto"
+              id={listboxIdRef.current}
+              role="listbox"
+            >
               {isLoadingBreeds ? (
                 <div className="p-4 text-center text-gray-500">
                   <div className="animate-spin w-6 h-6 border-2 border-purple-500 border-t-transparent rounded-full mx-auto mb-2" />
@@ -176,12 +250,20 @@ export default function StepBasicInfo({ formData, updateFormData }) {
                 </div>
               ) : (
                 <div className="py-2">
-                  {filteredBreeds.map((breed) => (
+                  {filteredBreeds.map((breed, index) => (
                     <button
                       key={breed.slug}
                       onClick={() => handleBreedSelect(breed)}
-                      className={`w-full px-4 py-3 text-left hover:bg-purple-50 transition-colors flex items-center justify-between ${
-                        formData.breed === breed.name ? 'bg-purple-50' : ''
+                      id={`${listboxIdRef.current}-opt-${index}`}
+                      role="option"
+                      aria-selected={activeBreedIndex === index}
+                      tabIndex={-1}
+                      className={`w-full px-4 py-3 text-left transition-colors flex items-center justify-between ${
+                        activeBreedIndex === index
+                          ? 'bg-purple-100 text-purple-700'
+                          : formData.breed === breed.name
+                            ? 'bg-purple-50'
+                            : 'hover:bg-purple-50'
                       }`}
                     >
                       <div>

@@ -7,7 +7,20 @@ export function CustomCheckbox({ checked, onChange, variant = 'purple' }) {
     : 'from-purple-500 to-orange-500';
 
   return (
-    <div onClick={onChange} className="relative w-5 h-5 cursor-pointer">
+    <button
+      type="button"
+      onClick={onChange}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault()
+          onChange()
+        }
+      }}
+      className="relative w-5 h-5 cursor-pointer"
+      role="checkbox"
+      aria-checked={checked}
+      aria-label={checked ? 'Снять выбор' : 'Выбрать'}
+    >
       <motion.div
         className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
           checked 
@@ -25,6 +38,6 @@ export function CustomCheckbox({ checked, onChange, variant = 'purple' }) {
           <Check className="w-3.5 h-3.5 text-white stroke-[3]" />
         </motion.div>
       </motion.div>
-    </div>
+    </button>
   );
 }

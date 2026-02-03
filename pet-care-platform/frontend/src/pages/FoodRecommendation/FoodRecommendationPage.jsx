@@ -29,7 +29,9 @@ import { addToCart } from '../../api/shop';
 // ============================================================================
 const PetDropdown = ({ pets, selectedPet, onSelect, isLoading }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(-1);
   const dropdownRef = useRef(null);
+  const listboxIdRef = useRef(`pet-dropdown-listbox-${Math.random().toString(36).slice(2)}`);
   
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -40,6 +42,32 @@ const PetDropdown = ({ pets, selectedPet, onSelect, isLoading }) => {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  useEffect(() => {
+    if (!isOpen) {
+      setActiveIndex(-1);
+      return;
+    }
+    if (pets.length === 0) {
+      setActiveIndex(-1);
+      return;
+    }
+    const selectedIndex = selectedPet
+      ? pets.findIndex((pet) => pet.id === selectedPet.id)
+      : -1;
+    setActiveIndex(selectedIndex >= 0 ? selectedIndex : 0);
+  }, [isOpen, pets, selectedPet]);
+
+  const moveActiveIndex = (delta) => {
+    if (pets.length === 0) return;
+    setActiveIndex((prev) => {
+      const base = prev < 0 ? 0 : prev;
+      const next = base + delta;
+      if (next < 0) return pets.length - 1;
+      if (next >= pets.length) return 0;
+      return next;
+    });
+  };
   
   if (pets.length === 0) return null;
   
@@ -52,6 +80,48 @@ const PetDropdown = ({ pets, selectedPet, onSelect, isLoading }) => {
         className={`w-full flex items-center justify-between px-4 py-3 bg-white border-2 rounded-xl transition-all
           ${isOpen ? 'border-purple-500 ring-4 ring-purple-100' : 'border-gray-200 hover:border-purple-300'}
           ${isLoading ? 'opacity-50 cursor-wait' : ''}`}
+        role="combobox"
+        aria-expanded={isOpen}
+        aria-controls={listboxIdRef.current}
+        aria-activedescendant={
+          activeIndex >= 0 ? `${listboxIdRef.current}-opt-${activeIndex}` : undefined
+        }
+        aria-haspopup="listbox"
+        onKeyDown={(e) => {
+          if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            if (!isOpen) setIsOpen(true);
+            moveActiveIndex(1);
+            return;
+          }
+          if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            if (!isOpen) setIsOpen(true);
+            moveActiveIndex(-1);
+            return;
+          }
+          if (e.key === 'Home') {
+            e.preventDefault();
+            if (pets.length > 0) setActiveIndex(0);
+            return;
+          }
+          if (e.key === 'End') {
+            e.preventDefault();
+            if (pets.length > 0) setActiveIndex(pets.length - 1);
+            return;
+          }
+          if (e.key === 'Enter' && isOpen && activeIndex >= 0) {
+            e.preventDefault();
+            onSelect(pets[activeIndex]);
+            setIsOpen(false);
+            return;
+          }
+          if (e.key === 'Escape' && isOpen) {
+            e.preventDefault();
+            e.stopPropagation();
+            setIsOpen(false);
+          }
+        }}
       >
         {selectedPet ? (
           <div className="flex items-center gap-3">
@@ -77,16 +147,26 @@ const PetDropdown = ({ pets, selectedPet, onSelect, isLoading }) => {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
             className="absolute z-20 w-full mt-2 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden"
+            id={listboxIdRef.current}
+            role="listbox"
           >
-            {pets.map((pet) => (
+            {pets.map((pet, index) => (
               <button
                 key={pet.id}
                 onClick={() => {
                   onSelect(pet);
                   setIsOpen(false);
                 }}
-                className={`w-full flex items-center gap-3 px-4 py-3 hover:bg-purple-50 transition-colors text-left
-                  ${selectedPet?.id === pet.id ? 'bg-purple-50' : ''}`}
+                id={`${listboxIdRef.current}-opt-${index}`}
+                role="option"
+                aria-selected={activeIndex === index}
+                tabIndex={-1}
+                className={`w-full flex items-center gap-3 px-4 py-3 transition-colors text-left
+                  ${activeIndex === index
+                    ? 'bg-purple-100 text-purple-700'
+                    : selectedPet?.id === pet.id
+                      ? 'bg-purple-50'
+                      : 'hover:bg-purple-50'}`}
               >
                 <span className="text-xl">{pet.species === 'dog' ? '🐕' : '🐱'}</span>
                 <div className="flex-1">
@@ -111,7 +191,9 @@ const PetDropdown = ({ pets, selectedPet, onSelect, isLoading }) => {
 // ============================================================================
 const SelectDropdown = ({ options, value, onChange, label, disabled }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(-1);
   const dropdownRef = useRef(null);
+  const listboxIdRef = useRef(`select-dropdown-listbox-${Math.random().toString(36).slice(2)}`);
   
   const selectedOption = options.find(o => o.value === value);
   
@@ -124,6 +206,32 @@ const SelectDropdown = ({ options, value, onChange, label, disabled }) => {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  useEffect(() => {
+    if (!isOpen) {
+      setActiveIndex(-1);
+      return;
+    }
+    if (options.length === 0) {
+      setActiveIndex(-1);
+      return;
+    }
+    const selectedIndex = value
+      ? options.findIndex((option) => option.value === value)
+      : -1;
+    setActiveIndex(selectedIndex >= 0 ? selectedIndex : 0);
+  }, [isOpen, options, value]);
+
+  const moveActiveIndex = (delta) => {
+    if (options.length === 0) return;
+    setActiveIndex((prev) => {
+      const base = prev < 0 ? 0 : prev;
+      const next = base + delta;
+      if (next < 0) return options.length - 1;
+      if (next >= options.length) return 0;
+      return next;
+    });
+  };
   
   return (
     <div className="relative" ref={dropdownRef}>
@@ -134,6 +242,49 @@ const SelectDropdown = ({ options, value, onChange, label, disabled }) => {
         className={`w-full flex items-center justify-between px-4 py-3 bg-white border-2 rounded-xl transition-all
           ${isOpen ? 'border-purple-500 ring-4 ring-purple-100' : 'border-gray-200 hover:border-purple-300'}
           ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+        role="combobox"
+        aria-expanded={isOpen}
+        aria-controls={listboxIdRef.current}
+        aria-activedescendant={
+          activeIndex >= 0 ? `${listboxIdRef.current}-opt-${activeIndex}` : undefined
+        }
+        aria-haspopup="listbox"
+        onKeyDown={(e) => {
+          if (disabled) return;
+          if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            if (!isOpen) setIsOpen(true);
+            moveActiveIndex(1);
+            return;
+          }
+          if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            if (!isOpen) setIsOpen(true);
+            moveActiveIndex(-1);
+            return;
+          }
+          if (e.key === 'Home') {
+            e.preventDefault();
+            if (options.length > 0) setActiveIndex(0);
+            return;
+          }
+          if (e.key === 'End') {
+            e.preventDefault();
+            if (options.length > 0) setActiveIndex(options.length - 1);
+            return;
+          }
+          if (e.key === 'Enter' && isOpen && activeIndex >= 0) {
+            e.preventDefault();
+            onChange(options[activeIndex].value);
+            setIsOpen(false);
+            return;
+          }
+          if (e.key === 'Escape' && isOpen) {
+            e.preventDefault();
+            e.stopPropagation();
+            setIsOpen(false);
+          }
+        }}
       >
         <div className="flex items-center gap-2">
           {selectedOption?.icon && <span>{selectedOption.icon}</span>}
@@ -149,16 +300,26 @@ const SelectDropdown = ({ options, value, onChange, label, disabled }) => {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
             className="absolute z-20 w-full mt-2 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden"
+            id={listboxIdRef.current}
+            role="listbox"
           >
-            {options.map((option) => (
+            {options.map((option, index) => (
               <button
                 key={option.value}
                 onClick={() => {
                   onChange(option.value);
                   setIsOpen(false);
                 }}
-                className={`w-full flex items-center gap-3 px-4 py-3 hover:bg-purple-50 transition-colors text-left
-                  ${value === option.value ? 'bg-purple-50' : ''}`}
+                id={`${listboxIdRef.current}-opt-${index}`}
+                role="option"
+                aria-selected={activeIndex === index}
+                tabIndex={-1}
+                className={`w-full flex items-center gap-3 px-4 py-3 transition-colors text-left
+                  ${activeIndex === index
+                    ? 'bg-purple-100 text-purple-700'
+                    : value === option.value
+                      ? 'bg-purple-50'
+                      : 'hover:bg-purple-50'}`}
               >
                 {option.icon && <span className="text-lg">{option.icon}</span>}
                 <div className="flex-1">
@@ -184,8 +345,10 @@ const PeriodInput = ({ value, onChange, disabled }) => {
   const [inputValue, setInputValue] = useState(value.toString());
   const [isOpen, setIsOpen] = useState(false);
   const [showWarning, setShowWarning] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(-1);
   const inputRef = useRef(null);
   const dropdownRef = useRef(null);
+  const listboxIdRef = useRef(`period-listbox-${Math.random().toString(36).slice(2)}`);
   
   const presets = [
     { value: 7, label: '7 дн.', desc: 'Неделя' },
@@ -203,6 +366,30 @@ const PeriodInput = ({ value, onChange, disabled }) => {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  useEffect(() => {
+    if (!isOpen) {
+      setActiveIndex(-1);
+      return;
+    }
+    if (presets.length === 0) {
+      setActiveIndex(-1);
+      return;
+    }
+    const selectedIndex = presets.findIndex((preset) => preset.value === value);
+    setActiveIndex(selectedIndex >= 0 ? selectedIndex : 0);
+  }, [isOpen, presets, value]);
+
+  const moveActiveIndex = (delta) => {
+    if (presets.length === 0) return;
+    setActiveIndex((prev) => {
+      const base = prev < 0 ? 0 : prev;
+      const next = base + delta;
+      if (next < 0) return presets.length - 1;
+      if (next >= presets.length) return 0;
+      return next;
+    });
+  };
   
   const handleInputChange = (e) => {
     const val = e.target.value.replace(/\D/g, '');
@@ -258,6 +445,47 @@ const PeriodInput = ({ value, onChange, disabled }) => {
             ${isOpen ? 'border-purple-500 ring-4 ring-purple-100' : 'border-gray-200 hover:border-purple-300'}
             ${showWarning ? 'border-amber-400 ring-4 ring-amber-100' : ''}`}
           placeholder="Введите дни..."
+          role="combobox"
+          aria-expanded={isOpen}
+          aria-controls={listboxIdRef.current}
+          aria-activedescendant={
+            activeIndex >= 0 ? `${listboxIdRef.current}-opt-${activeIndex}` : undefined
+          }
+          onKeyDown={(e) => {
+            if (disabled) return;
+            if (e.key === 'ArrowDown') {
+              e.preventDefault();
+              if (!isOpen) setIsOpen(true);
+              moveActiveIndex(1);
+              return;
+            }
+            if (e.key === 'ArrowUp') {
+              e.preventDefault();
+              if (!isOpen) setIsOpen(true);
+              moveActiveIndex(-1);
+              return;
+            }
+            if (e.key === 'Home') {
+              e.preventDefault();
+              if (presets.length > 0) setActiveIndex(0);
+              return;
+            }
+            if (e.key === 'End') {
+              e.preventDefault();
+              if (presets.length > 0) setActiveIndex(presets.length - 1);
+              return;
+            }
+            if (e.key === 'Enter' && isOpen && activeIndex >= 0) {
+              e.preventDefault();
+              handleSelect(presets[activeIndex].value);
+              return;
+            }
+            if (e.key === 'Escape' && isOpen) {
+              e.preventDefault();
+              e.stopPropagation();
+              setIsOpen(false);
+            }
+          }}
         />
         <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-gray-400">дней</span>
       </div>
@@ -270,13 +498,23 @@ const PeriodInput = ({ value, onChange, disabled }) => {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
             className="absolute z-20 w-full mt-2 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden"
+            id={listboxIdRef.current}
+            role="listbox"
           >
-            {presets.map((preset) => (
+            {presets.map((preset, index) => (
               <button
                 key={preset.value}
                 onClick={() => handleSelect(preset.value)}
-                className={`w-full flex items-center justify-between px-4 py-3 hover:bg-purple-50 transition-colors text-left
-                  ${value === preset.value ? 'bg-purple-50' : ''}`}
+                id={`${listboxIdRef.current}-opt-${index}`}
+                role="option"
+                aria-selected={activeIndex === index}
+                tabIndex={-1}
+                className={`w-full flex items-center justify-between px-4 py-3 transition-colors text-left
+                  ${activeIndex === index
+                    ? 'bg-purple-100 text-purple-700'
+                    : value === preset.value
+                      ? 'bg-purple-50'
+                      : 'hover:bg-purple-50'}`}
               >
                 <div className="flex items-center gap-3">
                   <span className="font-semibold text-gray-800">{preset.label}</span>
@@ -598,7 +836,7 @@ const FeedingPlanBlock = ({ plan, isLoading }) => {
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
       <h3 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
-        <UtensilsCrossed className="w-5 h-5 text-orange-500" />
+        <UtensilsCrossed className="w-5 h-5 text-orange-600" />
         План питания
       </h3>
       

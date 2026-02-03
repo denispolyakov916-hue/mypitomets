@@ -175,8 +175,8 @@ const PetCard = React.memo(({ pet, index, onEdit, onDelete, onViewAnalysis, onNa
         {/* Предупреждения/подсказки */}
         {pet.profile_completeness < 50 && (
           <div className="mt-3 p-2.5 bg-orange-50 rounded-xl flex items-center gap-2">
-            <AlertCircle className="w-4 h-4 text-orange-500 flex-shrink-0" />
-            <p className="text-xs text-orange-600">
+            <AlertCircle className="w-4 h-4 text-orange-600 flex-shrink-0" />
+            <p className="text-xs text-orange-700">
               Заполните профиль для персонализации
             </p>
           </div>

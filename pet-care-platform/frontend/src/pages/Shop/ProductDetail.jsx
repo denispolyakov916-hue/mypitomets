@@ -513,7 +513,7 @@ function ProductDetail() {
                 <>
                   <img 
                     src={currentImage} 
-                    alt={product.name}
+                    alt={product.name ? `${product.name} - изображение товара` : 'Изображение товара'}
                     className="w-full h-full object-contain p-6"
                     onError={(e) => {
                       e.target.onerror = null
@@ -528,16 +528,18 @@ function ProductDetail() {
                       <button
                         onClick={() => setSelectedImageIndex(prev => prev > 0 ? prev - 1 : imageUrls.length - 1)}
                         className="absolute left-3 top-1/2 -translate-y-1/2 w-11 h-11 bg-white/90 hover:bg-white rounded-full shadow-lg flex items-center justify-center transition-all"
+                        aria-label="Предыдущее изображение"
                       >
-                        <svg className="w-6 h-6 text-gray-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <svg className="w-6 h-6 text-gray-700" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                         </svg>
                       </button>
                       <button
                         onClick={() => setSelectedImageIndex(prev => prev < imageUrls.length - 1 ? prev + 1 : 0)}
                         className="absolute right-3 top-1/2 -translate-y-1/2 w-11 h-11 bg-white/90 hover:bg-white rounded-full shadow-lg flex items-center justify-center transition-all"
+                        aria-label="Следующее изображение"
                       >
-                        <svg className="w-6 h-6 text-gray-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <svg className="w-6 h-6 text-gray-700" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                         </svg>
                       </button>
