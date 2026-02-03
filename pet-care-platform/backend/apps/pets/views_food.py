@@ -302,52 +302,24 @@ class PetFoodRecommendationsView(APIView):
             owner=request.user
         )
         
-        # Рассчитываем калории
+        # Парсим параметры запроса
+        params = request.query_params
+        
+        # Строим фильтры из PetID (единая логика с feeding-plan)
+        filters = food_recommendation_service._build_filters_from_pet(pet)
+        filters.food_type = params.get('food_type', 'dry')
+        filters.preferred_brands = params.get('brands', '').split(',') if params.get('brands') else []
+        filters.min_price = Decimal(params['min_price']) if params.get('min_price') else None
+        filters.max_price = Decimal(params['max_price']) if params.get('max_price') else None
+        filters.period_days = int(params.get('period_days', 30))
+
+        # Рассчитываем калории (после построения фильтров)
         daily_calories = None
         if pet.weight:
             result = calorie_calculator.calculate_daily_calories(pet)
             if result.calculation_method != 'failed':
                 daily_calories = result.mer
-        
-        # Получаем аллергии питомца из M2M
-        allergy_codes = []
-        excluded_ingredients = []
-        health_condition_codes = []
-        
-        try:
-            from .nutrition_models import PetAllergy, PetHealthCondition, PetFoodExclusion
-            allergy_codes = list(
-                PetAllergy.objects.filter(pet=pet, is_active=True)
-                .values_list('allergy__code', flat=True)
-            )
-            excluded_ingredients = list(
-                PetFoodExclusion.objects.filter(pet=pet)
-                .values_list('ingredient_name', flat=True)
-            )
-            health_condition_codes = list(
-                PetHealthCondition.objects.filter(pet=pet, is_active=True)
-                .values_list('condition__code', flat=True)
-            )
-        except Exception as e:
-            pass
-        
-        # Парсим параметры запроса
-        params = request.query_params
-        
-        filters = FoodSearchFilters(
-            species=pet.species or 'dog',
-            size_category=getattr(pet, 'size_category', None),
-            age_months=pet.age_months,
-            daily_calories=daily_calories,
-            allergy_codes=allergy_codes,
-            excluded_ingredients=excluded_ingredients,
-            health_condition_codes=health_condition_codes,
-            food_type=params.get('food_type', 'dry'),
-            preferred_brands=params.get('brands', '').split(',') if params.get('brands') else [],
-            min_price=Decimal(params['min_price']) if params.get('min_price') else None,
-            max_price=Decimal(params['max_price']) if params.get('max_price') else None,
-            period_days=int(params.get('period_days', 30)),
-        )
+        filters.daily_calories = daily_calories
         
         # Получаем план и возвращаем только компоненты
         plan = food_recommendation_service.get_recommendations_for_pet(pet, filters)

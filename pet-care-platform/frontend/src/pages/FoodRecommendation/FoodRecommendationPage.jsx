@@ -22,7 +22,7 @@ import {
   PLAN_VARIANT_OPTIONS,
   FEEDING_PERIOD_OPTIONS 
 } from '../../api/pets';
-import { addToCart } from '../../api/shop';
+import { addToCart, getCategories, getProductsV2 } from '../../api/shop';
 
 // ============================================================================
 // КОМПОНЕНТ: Выпадающий список выбора питомца
@@ -589,6 +589,78 @@ const isComponentTypeCompatible = (componentType, item) => {
   return true;
 };
 
+const findCategoryByCode = (nodes, codePrefix) => {
+  if (!Array.isArray(nodes)) return null;
+  for (const node of nodes) {
+    if (node?.code && node.code.startsWith(codePrefix)) {
+      return node;
+    }
+    const found = findCategoryByCode(node?.children, codePrefix);
+    if (found) return found;
+  }
+  return null;
+};
+
+const mapProductToSupplementComponent = (product) => ({
+  product_id: product.id,
+  product_name: product.name,
+  product_type: 'supplement',
+  match_score: 80,
+  price: product.price,
+  weight_grams: product.weight_grams,
+  packages_needed: 1,
+  days_supply: null,
+  reasons: [],
+  warnings: [],
+  badges: [],
+  short_description: product.short_description,
+  image_url: product.image_url,
+  shop_url: product.shop_url || `/shop/products/${product.id}`,
+  dosage_text: product.dosage_text,
+  intake_time: product.intake_time,
+  intake_instructions: product.intake_instructions,
+  supplement_type: product.supplement_type,
+});
+
+const SUPPLEMENT_LABELS = {
+  vitamins: 'Витамины',
+  omega3: 'Омега‑3',
+  joint: 'Суставы',
+  calcium: 'Кальций',
+  taurine: 'Таурин',
+  kidney: 'Почки',
+  skin: 'Кожа и шерсть',
+  digestion: 'Пищеварение',
+  probiotics: 'Пробиотики',
+  immune: 'Иммунитет',
+  senior: 'Для пожилых',
+  folic_acid: 'Фолиевая кислота',
+  heart: 'Сердце',
+};
+
+const inferSupplementTypeFromName = (name = '') => {
+  const n = name.toLowerCase();
+  if (n.includes('омега') || n.includes('omega')) return 'omega3';
+  if (n.includes('сустав') || n.includes('joint')) return 'joint';
+  if (n.includes('кальц')) return 'calcium';
+  if (n.includes('таур')) return 'taurine';
+  if (n.includes('почек') || n.includes('renal') || n.includes('kidney')) return 'kidney';
+  if (n.includes('кожа') || n.includes('шерст') || n.includes('skin')) return 'skin';
+  if (n.includes('пищевар') || n.includes('digest') || n.includes('gastro')) return 'digestion';
+  if (n.includes('пробиот')) return 'probiotics';
+  if (n.includes('иммун') || n.includes('immune')) return 'immune';
+  if (n.includes('senior') || n.includes('пожил')) return 'senior';
+  if (n.includes('фолиев')) return 'folic_acid';
+  if (n.includes('серд')) return 'heart';
+  if (n.includes('витамин')) return 'vitamins';
+  return null;
+};
+
+const getSupplementLabel = (component) => {
+  const type = component?.supplement_type || inferSupplementTypeFromName(component?.product_name);
+  return SUPPLEMENT_LABELS[type] || 'Добавка';
+};
+
 // ============================================================================
 // КОМПОНЕНТ: Компактная карточка компонента рациона
 // ============================================================================
@@ -599,7 +671,10 @@ const RationComponentCard = ({
   onChangeIndex,
   isLoading,
   componentType,
-  onProductClick
+  onProductClick,
+  labelOverride,
+  showRemove,
+  onRemove
 }) => {
   const navigate = useNavigate();
   
@@ -612,7 +687,7 @@ const RationComponentCard = ({
     'wet_food': 'Влажный корм',
     'wet_food_multi': 'Влажный корм (30%)',
     'treat': 'Лакомства (10%)',
-    'supplement': 'Добавка',
+    'supplement': labelOverride || 'Добавка',
   };
   
   const typeEmoji = {
@@ -659,6 +734,16 @@ const RationComponentCard = ({
             {typeLabels[baseType] || baseType}
           </span>
         </div>
+        {showRemove && (
+          <button
+            type="button"
+            onClick={onRemove}
+            className="text-gray-400 hover:text-gray-600 text-sm"
+            title="Убрать добавку"
+          >
+            ✕
+          </button>
+        )}
         {totalItems > 1 && (
           <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">
             {currentIndex + 1}/{totalItems}
@@ -785,9 +870,11 @@ const RationComponentCard = ({
               }
             </span>
             <div className="text-xs text-gray-400">
-              {component.packages_needed > 1 && (
+              {component.package_summary ? (
+                <span className="block">{component.package_summary}</span>
+              ) : component.packages_needed > 1 ? (
                 <span>×{component.packages_needed} уп.</span>
-              )}
+              ) : null}
               {component.days_supply > 0 && (
                 <span className="block text-green-600">~{component.days_supply} дн.</span>
               )}
@@ -812,7 +899,7 @@ const RationComponentCard = ({
 // ============================================================================
 // КОМПОНЕНТ: Блок плана питания (обновлённый)
 // ============================================================================
-const FeedingPlanBlock = ({ plan, isLoading }) => {
+const FeedingPlanBlock = ({ plan, isLoading, selectedComponents }) => {
   if (isLoading) {
     return (
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
@@ -828,6 +915,11 @@ const FeedingPlanBlock = ({ plan, isLoading }) => {
   if (!plan) return null;
   
   const regularDay = plan.regular_day || {};
+  // ВАЖНО: БЖУ/расписание должны считаться по текущему выбранному рациону (с учётом альтернатив),
+  // а не только по исходному plan.components с бэкенда.
+  const componentsForUi = (selectedComponents && selectedComponents.length > 0)
+    ? selectedComponents
+    : (plan.components || []);
   const meals = regularDay.meals || [];
   const treats = regularDay.treats;
   const supplements = regularDay.supplements || [];
@@ -851,35 +943,90 @@ const FeedingPlanBlock = ({ plan, isLoading }) => {
         </p>
         
         {/* БЖУ за день (расчёт из компонентов) */}
-        {plan.components?.length > 0 && (
+        {componentsForUi?.length > 0 && (
           <div className="mt-3 pt-3 border-t border-orange-200/50">
             <p className="text-xs text-gray-500 mb-1">Питательные вещества (в день)</p>
             <div className="grid grid-cols-4 gap-2 text-xs">
               {(() => {
                 // Суммируем БЖУ из всех компонентов с учётом порции
                 const totals = { protein: 0, fat: 0, fiber: 0, calcium: 0 };
-                plan.components.forEach(c => {
+                let totalFoodGrams = 0;
+                componentsForUi.forEach(c => {
                   if (c.nutrition && c.daily_grams) {
                     const ratio = c.daily_grams / 100;
+                    totalFoodGrams += c.daily_grams;
                     totals.protein += (c.nutrition.protein || 0) * ratio;
                     totals.fat += (c.nutrition.fat || 0) * ratio;
                     totals.fiber += (c.nutrition.fiber || 0) * ratio;
                     totals.calcium += (c.nutrition.calcium || 0) * ratio;
                   }
                 });
+
+                // Средние % по рациону (as-fed): сравниваем с macro_targets (PetID)
+                const avg = {
+                  protein: totalFoodGrams ? (totals.protein / totalFoodGrams) * 100 : null,
+                  fat: totalFoodGrams ? (totals.fat / totalFoodGrams) * 100 : null,
+                  fiber: totalFoodGrams ? (totals.fiber / totalFoodGrams) * 100 : null,
+                };
+
+                const getCoverage = (macroKey) => {
+                  const targets = plan.macro_targets?.[macroKey];
+                  const value = avg[macroKey];
+                  if (!targets || value == null) return null;
+                  const min = Number(targets.min);
+                  const max = Number(targets.max);
+                  if (!Number.isFinite(min) || !Number.isFinite(max) || min <= 0 || max <= 0) return null;
+
+                  let pct = 100;
+                  let status = 'green';
+                  if (value < min) {
+                    pct = Math.max(0, Math.min(100, (value / min) * 100));
+                    status = (min - value) / min <= 0.10 ? 'yellow' : 'red';
+                  } else if (value > max) {
+                    pct = Math.max(0, Math.min(100, (max / value) * 100));
+                    status = (value - max) / max <= 0.10 ? 'yellow' : 'red';
+                  }
+                  return { pct: Math.round(pct), status };
+                };
+
+                const covProtein = getCoverage('protein');
+                const covFat = getCoverage('fat');
+                const covFiber = getCoverage('fiber');
+
+                const covClass = (cov) => {
+                  if (!cov) return 'text-gray-400';
+                  if (cov.status === 'green') return 'text-green-700';
+                  if (cov.status === 'yellow') return 'text-amber-700';
+                  return 'text-red-700';
+                };
                 return (
                   <>
                     <div className="bg-white/60 rounded p-1.5 text-center">
                       <p className="font-semibold text-orange-700">{totals.protein.toFixed(1)}г</p>
                       <p className="text-[10px] text-gray-500">Белок</p>
+                      {covProtein && (
+                        <p className={`text-[10px] font-medium ${covClass(covProtein)}`}>
+                          {covProtein.pct}% от нормы
+                        </p>
+                      )}
                     </div>
                     <div className="bg-white/60 rounded p-1.5 text-center">
                       <p className="font-semibold text-orange-700">{totals.fat.toFixed(1)}г</p>
                       <p className="text-[10px] text-gray-500">Жир</p>
+                      {covFat && (
+                        <p className={`text-[10px] font-medium ${covClass(covFat)}`}>
+                          {covFat.pct}% от нормы
+                        </p>
+                      )}
                     </div>
                     <div className="bg-white/60 rounded p-1.5 text-center">
                       <p className="font-semibold text-orange-700">{totals.fiber.toFixed(1)}г</p>
                       <p className="text-[10px] text-gray-500">Клетч.</p>
+                      {covFiber && (
+                        <p className={`text-[10px] font-medium ${covClass(covFiber)}`}>
+                          {covFiber.pct}% от нормы
+                        </p>
+                      )}
                     </div>
                     <div className="bg-white/60 rounded p-1.5 text-center">
                       <p className="font-semibold text-orange-700">{(totals.calcium * 1000).toFixed(0)}мг</p>
@@ -889,12 +1036,17 @@ const FeedingPlanBlock = ({ plan, isLoading }) => {
                 );
               })()}
             </div>
+            {plan.macro_targets && (
+              <p className="mt-2 text-[10px] text-gray-500">
+                % от нормы рассчитан по средним Б/Ж/Клетч. в рационе и целевым диапазонам PetID.
+              </p>
+            )}
           </div>
         )}
       </div>
       
       {/* Расписание кормлений - динамическое на основе выбранных компонентов */}
-      {plan.components?.length > 0 && (
+      {componentsForUi?.length > 0 && (
         <div className="mb-4">
           <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">
             Расписание кормления
@@ -918,8 +1070,8 @@ const FeedingPlanBlock = ({ plan, isLoading }) => {
                 });
               } else {
                 // Фоллбек: формируем расписание из компонентов
-                const dryFood = plan.components.find(c => c.product_type?.includes('dry'));
-                const wetFood = plan.components.find(c => c.product_type?.includes('wet'));
+                const dryFood = componentsForUi.find(c => c.product_type?.includes('dry'));
+                const wetFood = componentsForUi.find(c => c.product_type?.includes('wet'));
                 
                 // Утро - сухой корм (если есть)
                 if (dryFood) {
@@ -1033,7 +1185,7 @@ const FeedingPlanBlock = ({ plan, isLoading }) => {
       
       {/* Лакомства - из компонентов */}
       {(() => {
-        const treatComp = plan.components?.find(c => c.product_type === 'treat');
+        const treatComp = componentsForUi?.find(c => c.product_type === 'treat');
         if (!treatComp && !treats) return null;
         
         const data = treatComp || treats;
@@ -1178,6 +1330,8 @@ export default function FoodRecommendationPage() {
   // Компоненты рациона с альтернативами
   // { type: 'dry_food', alternatives: [...], currentIndex: 0 }
   const [componentStates, setComponentStates] = useState({});
+  const [supplementPool, setSupplementPool] = useState([]);
+  const [isSuppPoolLoading, setIsSuppPoolLoading] = useState(false);
   const [restoreState, setRestoreState] = useState(null);
   const restoreAppliedRef = useRef(false);
   
@@ -1276,16 +1430,13 @@ export default function FoodRecommendationPage() {
           }
         });
         
-        // Добавляем добавки из бэкенда (для продвинутого набора)
-        // Каждая добавка - отдельный компонент
+        // Добавляем только основную добавку (по умолчанию одна)
         if (plan.supplements?.length > 0) {
-          plan.supplements.forEach((supp, index) => {
-            const type = `supplement_${index}`;
-            states[type] = {
-              alternatives: [supp],
-              currentIndex: 0
-            };
-          });
+          const primarySupp = plan.supplements[0];
+          states['supplement_0'] = {
+            alternatives: [primarySupp],
+            currentIndex: 0
+          };
         }
         
         setComponentStates(states);
@@ -1300,6 +1451,56 @@ export default function FoodRecommendationPage() {
     
     loadFeedingPlan();
   }, [selectedPet, feedingType, planVariant, period]);
+
+  // Загрузка каталога добавок для продвинутого набора
+  useEffect(() => {
+    if (!selectedPet || planVariant !== 'advanced') {
+      setSupplementPool([]);
+      return;
+    }
+
+    let isMounted = true;
+    const loadSupplements = async () => {
+      try {
+        setIsSuppPoolLoading(true);
+        const catResp = await getCategories({ animal_type: selectedPet.species, tree: true });
+        const categories = catResp.data || catResp;
+        const supplementsCategory = findCategoryByCode(categories, 'food.supplements');
+
+        let productsResp;
+        if (supplementsCategory?.id) {
+          productsResp = await getProductsV2({
+            category_id: supplementsCategory.id,
+            animal_type: selectedPet.species,
+            per_page: 60,
+          });
+        } else {
+          productsResp = await getProductsV2({
+            product_group: 'vitamins',
+            animal_type: selectedPet.species,
+            per_page: 60,
+          });
+        }
+
+        const rawProducts = productsResp?.data?.results || productsResp?.results || productsResp?.data?.products || productsResp?.products || [];
+        const mapped = rawProducts.map(mapProductToSupplementComponent);
+
+        if (isMounted) {
+          setSupplementPool(mapped);
+        }
+      } catch (e) {
+        console.error('Ошибка загрузки добавок:', e);
+        if (isMounted) setSupplementPool([]);
+      } finally {
+        if (isMounted) setIsSuppPoolLoading(false);
+      }
+    };
+
+    loadSupplements();
+    return () => {
+      isMounted = false;
+    };
+  }, [selectedPet, planVariant]);
   
   // Загрузка альтернатив для компонента
   const loadAlternatives = useCallback(async (componentType) => {
@@ -1428,6 +1629,48 @@ export default function FoodRecommendationPage() {
       }
     }));
   }, [componentStates]);
+
+  const handleAddSupplement = useCallback(() => {
+    if (planVariant !== 'advanced') return;
+    if (!supplementPool.length) return;
+
+    const existingSupplementKeys = Object.keys(componentStates).filter((key) => key.startsWith('supplement_'));
+    if (existingSupplementKeys.length >= 3) return;
+
+    const selectedIds = new Set(
+      existingSupplementKeys.map((key) => componentStates[key]?.alternatives?.[componentStates[key].currentIndex]?.product_id).filter(Boolean)
+    );
+
+    const available = supplementPool.filter((item) => !selectedIds.has(item.product_id));
+    if (available.length === 0) return;
+
+    let nextIndex = 0;
+    while (componentStates[`supplement_${nextIndex}`]) {
+      nextIndex += 1;
+    }
+
+    const alternatives = available.map((item) => ({
+      ...item,
+      supplement_type: item.supplement_type || inferSupplementTypeFromName(item.product_name),
+    }));
+    const currentIndex = 0;
+
+    setComponentStates((prev) => ({
+      ...prev,
+      [`supplement_${nextIndex}`]: {
+        alternatives,
+        currentIndex,
+      },
+    }));
+  }, [planVariant, supplementPool, componentStates]);
+
+  const handleRemoveSupplement = useCallback((componentType) => {
+    setComponentStates((prev) => {
+      const next = { ...prev };
+      delete next[componentType];
+      return next;
+    });
+  }, []);
   
   // Расчёт общей стоимости выбранных компонентов
   const totalCost = Object.values(componentStates).reduce((sum, state) => {
@@ -1660,25 +1903,102 @@ export default function FoodRecommendationPage() {
               
               {isPlanLoading && (
                 <div className="flex items-center justify-center py-8">
-                  <RefreshCw className="w-6 h-6 text-purple-500 animate-spin" />
+                  <div className="flex flex-col items-center gap-2 text-center">
+                    <RefreshCw className="w-6 h-6 text-purple-500 animate-spin" />
+                    <p className="text-sm text-gray-500">
+                      Подбираем корм для вашего питомца
+                    </p>
+                  </div>
                 </div>
               )}
               
               {/* Компоненты */}
               {!isPlanLoading && currentComponents.length > 0 && (
                 <div className="space-y-4">
-                  {currentComponents.map(({ type, component, alternatives, currentIndex, displayIndexMap }) => (
-                    <RationComponentCard
-                      key={type}
-                      component={component}
-                      alternatives={alternatives}
-                      currentIndex={currentIndex}
-                      onChangeIndex={(idx) => handleChangeComponentIndex(type, displayIndexMap[idx] ?? idx)}
-                      isLoading={isPlanLoading}
-                      componentType={type}
-                      onProductClick={handleOpenProduct}
-                    />
-                  ))}
+                  {(() => {
+                    const foodComponents = currentComponents.filter(({ type }) => !type.startsWith('supplement_'));
+                    const supplementComponents = currentComponents
+                      .filter(({ type }) => type.startsWith('supplement_'))
+                      .sort((a, b) => {
+                        const ai = parseInt(a.type.split('_')[1] || '0', 10);
+                        const bi = parseInt(b.type.split('_')[1] || '0', 10);
+                        return ai - bi;
+                      });
+                    return (
+                      <>
+                        {foodComponents.map(({ type, component, alternatives, currentIndex, displayIndexMap }) => (
+                          <RationComponentCard
+                            key={type}
+                            component={component}
+                            alternatives={alternatives}
+                            currentIndex={currentIndex}
+                            onChangeIndex={(idx) => handleChangeComponentIndex(type, displayIndexMap[idx] ?? idx)}
+                            isLoading={isPlanLoading}
+                            componentType={type}
+                            onProductClick={handleOpenProduct}
+                          />
+                        ))}
+
+                        {planVariant === 'advanced' && supplementComponents.length > 0 && (
+                          <div className="pt-2">
+                            <div className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-2">
+                              <span className="text-lg">💊</span>
+                              Витамины и добавки
+                            </div>
+                            <div className="space-y-3">
+                              {supplementComponents.map(({ type, component, alternatives, currentIndex, displayIndexMap }, idx) => (
+                                <RationComponentCard
+                                  key={type}
+                                  component={component}
+                                  alternatives={alternatives}
+                                  currentIndex={currentIndex}
+                                  onChangeIndex={(idx) => handleChangeComponentIndex(type, displayIndexMap[idx] ?? idx)}
+                                  isLoading={isPlanLoading}
+                                  componentType={type}
+                                  onProductClick={handleOpenProduct}
+                                  labelOverride={getSupplementLabel(component)}
+                                  showRemove={idx > 0}
+                                  onRemove={() => handleRemoveSupplement(type)}
+                                />
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {planVariant === 'advanced' && supplementComponents.length === 0 && (
+                          <div className="pt-2">
+                            <div className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-2">
+                              <span className="text-lg">💊</span>
+                              Витамины и добавки
+                            </div>
+                            <div className="text-sm text-gray-500 mb-3">
+                              Добавьте витамины и добавки по потребностям питомца (до 3 разных типов).
+                            </div>
+                          </div>
+                        )}
+
+                        {planVariant === 'advanced' && (
+                          <div className="pt-2">
+                            <button
+                              type="button"
+                              onClick={handleAddSupplement}
+                              disabled={isSuppPoolLoading || supplementComponents.length >= 3 || supplementPool.length === 0}
+                              className="inline-flex items-center gap-2 text-sm px-3 py-2 rounded-lg border border-purple-200 text-purple-700 hover:bg-purple-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              <span className="text-lg leading-none">＋</span>
+                              Добавить витамины
+                            </button>
+                            <span className="ml-3 text-xs text-gray-500">
+                              {supplementComponents.length}/3
+                            </span>
+                            {isSuppPoolLoading && (
+                              <span className="ml-3 text-xs text-gray-400">загружаем каталог...</span>
+                            )}
+                          </div>
+                        )}
+                      </>
+                    );
+                  })()}
                 </div>
               )}
               
@@ -1719,9 +2039,10 @@ export default function FoodRecommendationPage() {
         <div className="lg:col-span-1">
           {selectedPet && (
             <div className="sticky top-24">
-              <FeedingPlanBlock 
-                plan={feedingPlan} 
-                isLoading={isPlanLoading} 
+              <FeedingPlanBlock
+                plan={feedingPlan}
+                isLoading={isPlanLoading}
+                selectedComponents={currentComponents.map(x => x.component).filter(Boolean)}
               />
             </div>
           )}
