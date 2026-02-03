@@ -20,6 +20,7 @@ import { ButtonLoader } from './Loader'
 import Rating from './Rating'
 import FavoriteButton from './FavoriteButton'
 import { CoursePropTypes } from '../utils/propTypes'
+import { getCardPlaceholderImage } from '../utils/placeholderImages'
 
 /**
  * Маппинг названий типов животных
@@ -96,6 +97,14 @@ function CourseCard({ course, onAddToCart, onEnrollFree, isOwned = false, isLoad
   const [isAdding, setIsAdding] = useState(false)
   const [imageError, setImageError] = useState(false)
   const navigate = useNavigate()
+  const petTypeLabel = petTypeLabels[course.pet_type] || 'Для всех'
+  const placeholderImage = getCardPlaceholderImage({
+    title: course.title || 'Курс',
+    subtitle: petTypeLabel,
+    emoji: course.pet_type === 'dog' ? '🐕' : course.pet_type === 'cat' ? '🐱' : '📚',
+    accent: course.pet_type === 'dog' ? '#60a5fa' : course.pet_type === 'cat' ? '#f97316' : '#a78bfa',
+  })
+  const imageSrc = !imageError && course.image_url ? course.image_url : placeholderImage
   
   /**
    * Обработчик клика по добавлению в корзину
@@ -141,21 +150,15 @@ function CourseCard({ course, onAddToCart, onEnrollFree, isOwned = false, isLoad
     <div className="group bg-white rounded-2xl shadow-sm hover:shadow-lg border border-gray-100 transition-all duration-300 flex flex-col h-full overflow-hidden">
       {/* Изображение курса - кликабельное */}
       <Link to={`/courses/${course.id}`} className="aspect-square relative overflow-hidden bg-gray-50 block">
-        {course.image_url && !imageError ? (
-          <img
-            src={course.image_url}
-            alt={course.title}
-            className="w-full h-full object-contain p-2 transition-opacity duration-300"
-            loading="lazy"
-            onError={() => setImageError(true)}
-          />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center">
-            <span className="text-5xl opacity-30">
-              {course.pet_type === 'dog' ? '🐕' : course.pet_type === 'cat' ? '🐱' : '📚'}
-            </span>
-          </div>
-        )}
+        <img
+          src={imageSrc}
+          alt={course.title}
+          className="w-full h-full object-contain p-2 transition-opacity duration-300"
+          loading="lazy"
+          onError={() => {
+            if (!imageError) setImageError(true)
+          }}
+        />
         
         {/* Бейджи сверху слева */}
         <div className="absolute top-2 left-2 flex flex-col gap-1">
@@ -186,7 +189,7 @@ function CourseCard({ course, onAddToCart, onEnrollFree, isOwned = false, isLoad
             course.pet_type === 'cat' ? 'bg-primary-100 text-primary-700' :
             'bg-gray-100 text-gray-700'
           }`}>
-            {petTypeLabels[course.pet_type] || course.pet_type}
+            {petTypeLabel}
           </span>
         </div>
       </Link>

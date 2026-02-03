@@ -412,8 +412,9 @@ class FoodComponent:
     score_breakdown: Optional[Dict[str, Any]] = None
     
     # Специальные поля для лакомств
-    pieces_per_day: Optional[int] = None  # ~количество штук в день
+    pieces_per_day: Optional[int] = None  # ~количество штук в день (среднее)
     piece_weight_grams: Optional[int] = None  # Вес одной штуки
+    treat_frequency_days: Optional[int] = None  # 1 = ежедневно, 2 = раз в 2 дня и т.д.
     
     # Специальные поля для добавок
     dosage_text: Optional[str] = None  # "1-2 таблетки в день"
@@ -528,23 +529,24 @@ class FoodRecommendationService:
     # ЖЁСТКОЕ распределение калорий по типу питания (AAFCO/FEDIAF)
     CALORIE_DISTRIBUTION = {
         'dry': {
-            'dry_food': 0.90,   # 90% калорий из сухого корма
-            'treats': 0.10,     # 10% калорий MAX из лакомств
+            'dry_food': 0.95,   # 95% калорий из сухого корма
+            'treats': 0.05,     # 5% калорий MAX из лакомств
         },
         'wet': {
-            'wet_food': 0.90,   # 90% калорий из влажного корма  
-            'treats': 0.10,     # 10% калорий MAX из лакомств
+            'wet_food': 0.95,   # 95% калорий из влажного корма  
+            'treats': 0.05,     # 5% калорий MAX из лакомств
         },
         'multi': {
             'dry_food': 0.60,   # 60% калорий из сухого
-            'wet_food': 0.30,   # 30% калорий из влажного
-            'treats': 0.10,     # 10% калорий MAX из лакомств
+            'wet_food': 0.35,   # 35% калорий из влажного
+            'treats': 0.05,     # 5% калорий MAX из лакомств
         },
     }
     
     # Средний вес одного лакомства (для расчёта штук)
     AVG_TREAT_PIECE_GRAMS = 12  # ~10-15г на штуку
     TREAT_PIECES_PER_100G = 8   # ~100г / 12г = 8 штук
+    TREAT_FREQUENCY_DAYS = 2    # по умолчанию лакомства раз в 2 дня
     
     # Группы совместимости кормов
     COMPATIBILITY_GROUPS = {
@@ -1309,9 +1311,48 @@ class FoodRecommendationService:
 
                 if component_kcal and kcal_per_100g:
                     raw_grams = (component_kcal / kcal_per_100g) * 100
-                    daily_grams = round(raw_grams / 10) * 10
+                    daily_grams = round(raw_grams)
                 else:
                     daily_grams = None
+
+                macro_targets = filters.macro_targets or {}
+                bju_score = None
+                bju_avg_cov = None
+                bju_delta = None
+                bju_over = None
+                bju_valid = None
+                kcal_delta_pct = None
+                try:
+                    score_obj = ration_balancer.score_product(
+                        product,
+                        float(component_kcal or 0),
+                        macro_targets,
+                        float(daily_grams or 0),
+                    )
+                    bju_score = score_obj.total_score
+                    kcal_delta_pct = score_obj.kcal_delta_pct
+                    protein_dm = score_obj.details.get('protein_dm')
+                    fat_dm = score_obj.details.get('fat_dm')
+                    if protein_dm is not None and fat_dm is not None:
+                        p_mid = (macro_targets.get('protein', {}).get('min', 0) + macro_targets.get('protein', {}).get('max', 0)) / 2
+                        f_mid = (macro_targets.get('fat', {}).get('min', 0) + macro_targets.get('fat', {}).get('max', 0)) / 2
+                        p_min = macro_targets.get('protein', {}).get('min', 0)
+                        p_max = macro_targets.get('protein', {}).get('max', 0)
+                        f_min = macro_targets.get('fat', {}).get('min', 0)
+                        f_max = macro_targets.get('fat', {}).get('max', 0)
+                        p_cov = (protein_dm / p_mid * 100) if p_mid else None
+                        f_cov = (fat_dm / f_mid * 100) if f_mid else None
+                        if p_cov is not None and f_cov is not None:
+                            bju_avg_cov = (p_cov + f_cov) / 2
+                            bju_delta = abs(bju_avg_cov - 100)
+                            bju_over = bju_avg_cov > 100
+                            # BJU valid (±15% от диапазона)
+                            bju_valid = (
+                                (protein_dm >= p_min * 0.85 and protein_dm <= p_max * 1.15) and
+                                (fat_dm >= f_min * 0.85 and fat_dm <= f_max * 1.15)
+                            )
+                except Exception:
+                    pass
 
                 nutrition = self._get_nutrition_data(product)
                 component = FoodComponent(
@@ -1326,7 +1367,15 @@ class FoodRecommendationService:
                     reasons=reasons,
                     warnings=warnings,
                     badges=badges,
-                    score_breakdown=breakdown,
+                    score_breakdown={
+                        **breakdown,
+                        'bju_score': bju_score,
+                        'bju_avg_cov': bju_avg_cov,
+                        'bju_delta': bju_delta,
+                        'bju_over': bju_over,
+                        'bju_valid': bju_valid,
+                        'kcal_delta_pct': kcal_delta_pct,
+                    },
                     short_description=self._get_short_description(product),
                     image_url=getattr(product, 'image_url', None) or getattr(product, 'image', None),
                     shop_url=f"/shop/product/{product.id}",
@@ -1373,7 +1422,47 @@ class FoodRecommendationService:
             scored = build_scored(queryset)
         
         # Сортируем по score (desc), затем по цене (asc) - лучшее соотношение качества/цены
-        scored.sort(key=lambda x: (-x.match_score, float(x.price or 0)))
+        def bju_sort_key(item):
+            breakdown = item.score_breakdown or {}
+            bju_valid = breakdown.get('bju_valid')
+            bju_over = breakdown.get('bju_over')
+            bju_delta = breakdown.get('bju_delta')
+            kcal_delta = breakdown.get('kcal_delta_pct')
+            delta = bju_delta if bju_delta is not None else 999
+            kcal_abs = abs(kcal_delta) if kcal_delta is not None else 999
+            kcal_in_range = kcal_abs <= 15
+            return (
+                0 if bju_valid else 1,
+                0 if not bju_over else 1,
+                delta,
+                0 if kcal_in_range else 1,
+                kcal_abs,
+                -float(breakdown.get('bju_score') or 0),
+                -item.match_score,
+                float(item.price or 0),
+            )
+
+        def bju_sort_key(item):
+            breakdown = item.score_breakdown or {}
+            bju_valid = breakdown.get('bju_valid')
+            bju_over = breakdown.get('bju_over')
+            bju_delta = breakdown.get('bju_delta')
+            kcal_delta = breakdown.get('kcal_delta_pct')
+            delta = bju_delta if bju_delta is not None else 999
+            kcal_abs = abs(kcal_delta) if kcal_delta is not None else 999
+            kcal_in_range = kcal_abs <= 15
+            return (
+                0 if bju_valid else 1,
+                0 if not bju_over else 1,
+                delta,
+                0 if kcal_in_range else 1,
+                kcal_abs,
+                -float(breakdown.get('bju_score') or 0),
+                -item.match_score,
+                float(item.price or 0),
+            )
+
+        scored.sort(key=bju_sort_key)
         
         # Возвращаем лучший + считаем альтернативы
         if scored:
@@ -1501,10 +1590,48 @@ class FoodRecommendationService:
                 # Граммы с ОКРУГЛЕНИЕМ до 10г
                 if component_kcal and kcal_per_100g:
                     raw_grams = (component_kcal / kcal_per_100g) * 100
-                    daily_grams = round(raw_grams / 10) * 10  # Округляем до 10г
+                    daily_grams = round(raw_grams)
                 else:
                     daily_grams = None
                 
+                macro_targets = filters.macro_targets or {}
+                bju_score = None
+                bju_avg_cov = None
+                bju_delta = None
+                bju_over = None
+                bju_valid = None
+                kcal_delta_pct = None
+                try:
+                    score_obj = ration_balancer.score_product(
+                        product,
+                        float(component_kcal or 0),
+                        macro_targets,
+                        float(daily_grams or 0),
+                    )
+                    bju_score = score_obj.total_score
+                    kcal_delta_pct = score_obj.kcal_delta_pct
+                    protein_dm = score_obj.details.get('protein_dm')
+                    fat_dm = score_obj.details.get('fat_dm')
+                    if protein_dm is not None and fat_dm is not None:
+                        p_mid = (macro_targets.get('protein', {}).get('min', 0) + macro_targets.get('protein', {}).get('max', 0)) / 2
+                        f_mid = (macro_targets.get('fat', {}).get('min', 0) + macro_targets.get('fat', {}).get('max', 0)) / 2
+                        p_min = macro_targets.get('protein', {}).get('min', 0)
+                        p_max = macro_targets.get('protein', {}).get('max', 0)
+                        f_min = macro_targets.get('fat', {}).get('min', 0)
+                        f_max = macro_targets.get('fat', {}).get('max', 0)
+                        p_cov = (protein_dm / p_mid * 100) if p_mid else None
+                        f_cov = (fat_dm / f_mid * 100) if f_mid else None
+                        if p_cov is not None and f_cov is not None:
+                            bju_avg_cov = (p_cov + f_cov) / 2
+                            bju_delta = abs(bju_avg_cov - 100)
+                            bju_over = bju_avg_cov > 100
+                            bju_valid = (
+                                (protein_dm >= p_min * 0.85 and protein_dm <= p_max * 1.15) and
+                                (fat_dm >= f_min * 0.85 and fat_dm <= f_max * 1.15)
+                            )
+                except Exception:
+                    pass
+
                 # Получаем данные БЖУ
                 nutrition = self._get_nutrition_data(product)
                 
@@ -1520,7 +1647,15 @@ class FoodRecommendationService:
                     reasons=reasons,
                     warnings=warnings,
                     badges=badges,
-                    score_breakdown=breakdown,
+                    score_breakdown={
+                        **breakdown,
+                        'bju_score': bju_score,
+                        'bju_avg_cov': bju_avg_cov,
+                        'bju_delta': bju_delta,
+                        'bju_over': bju_over,
+                        'bju_valid': bju_valid,
+                        'kcal_delta_pct': kcal_delta_pct,
+                    },
                     # Расширенные поля для UI
                     short_description=self._get_short_description(product),
                     image_url=getattr(product, 'image_url', None) or getattr(product, 'image', None),
@@ -1545,7 +1680,22 @@ class FoodRecommendationService:
                 scored.append(component)
         
         # Сортируем по score (desc), затем по цене (asc)
-        scored.sort(key=lambda x: (-x.match_score, float(x.price or 0)))
+        def bju_sort_key(item):
+            breakdown = item.score_breakdown or {}
+            bju_valid = breakdown.get('bju_valid')
+            bju_over = breakdown.get('bju_over')
+            bju_delta = breakdown.get('bju_delta')
+            delta = bju_delta if bju_delta is not None else 999
+            return (
+                0 if bju_valid else 1,
+                0 if not bju_over else 1,
+                delta,
+                -float(breakdown.get('bju_score') or 0),
+                -item.match_score,
+                float(item.price or 0),
+            )
+
+        scored.sort(key=bju_sort_key)
         
         if scored:
             best = scored[0]
@@ -1700,9 +1850,13 @@ class FoodRecommendationService:
             # Расчёт граммов: (ккал / ккал_на_100г) * 100, округляем до 10г
             if treat_kcal and kcal_per_100g:
                 raw_grams = (treat_kcal / kcal_per_100g) * 100
-                daily_grams = max(10, round(raw_grams / 10) * 10)  # Минимум 10г
+                daily_grams = max(5, round(raw_grams))
             else:
                 daily_grams = 20  # Fallback
+
+            # Лакомства не каждый день
+            frequency_days = self.TREAT_FREQUENCY_DAYS
+            daily_grams = max(5, round(daily_grams / frequency_days))
             
             # Расчёт штук (~10-15г на штуку)
             piece_weight = self.AVG_TREAT_PIECE_GRAMS
@@ -1722,7 +1876,7 @@ class FoodRecommendationService:
                 product_type='treat',
                 match_score=score,
                 daily_grams=daily_grams,
-                daily_kcal=round(treat_kcal),
+                daily_kcal=round(treat_kcal / frequency_days),
                 price=product.price,
                 weight_grams=weight_grams,
                 packages_needed=packages_needed,
@@ -1740,6 +1894,7 @@ class FoodRecommendationService:
                 # Специальные поля для лакомств
                 pieces_per_day=pieces_per_day,
                 piece_weight_grams=piece_weight,
+                treat_frequency_days=frequency_days,
             )]
         
         return []
@@ -2708,7 +2863,8 @@ class FoodRecommendationService:
                     'daily_grams': treat_component.daily_grams,
                     'daily_kcal': round(treat_component.daily_kcal or 0),
                     'pieces_per_day': treat_component.pieces_per_day,
-                    'note': 'Используйте для поощрения и дрессировки, распределите в течение дня',
+                    'frequency_days': treat_component.treat_frequency_days,
+                    'note': 'Лакомства давайте не каждый день, распределите в течение недели',
                     'nutrition': get_nutrition_for_meal(treat_component, treat_component.daily_grams or 0),
                 }
             elif plan.calorie_distribution.get('treats', 0) > 0:
@@ -2765,7 +2921,8 @@ class FoodRecommendationService:
                     'daily_grams': treat_component.daily_grams,
                     'daily_kcal': round(treat_component.daily_kcal or 0),
                     'pieces_per_day': treat_component.pieces_per_day,
-                    'note': 'Используйте для поощрения между кормлениями',
+                    'frequency_days': treat_component.treat_frequency_days,
+                    'note': 'Лакомства давайте не каждый день, распределите в течение недели',
                     'nutrition': get_nutrition_for_meal(treat_component, treat_component.daily_grams or 0),
                 }
             elif plan.calorie_distribution.get('treats', 0) > 0:
@@ -2817,7 +2974,8 @@ class FoodRecommendationService:
                     'daily_grams': treat_component.daily_grams,
                     'daily_kcal': round(treat_component.daily_kcal or 0),
                     'pieces_per_day': treat_component.pieces_per_day,
-                    'note': 'Используйте для поощрения между кормлениями',
+                    'frequency_days': treat_component.treat_frequency_days,
+                    'note': 'Лакомства давайте не каждый день, распределите в течение недели',
                     'nutrition': get_nutrition_for_meal(treat_component, treat_component.daily_grams or 0),
                 }
             elif plan.calorie_distribution.get('treats', 0) > 0:
@@ -3085,7 +3243,7 @@ class FoodRecommendationService:
                 # Граммы с учётом распределения калорий, округление до 10г
                 if component_kcal and kcal_per_100g:
                     raw_grams = (component_kcal / kcal_per_100g) * 100
-                    daily_grams = round(raw_grams / 10) * 10  # Округляем до 10г
+                    daily_grams = round(raw_grams)
                 else:
                     daily_grams = None
                 
@@ -3250,6 +3408,7 @@ class FoodRecommendationService:
                     # Специальные поля для лакомств
                     'pieces_per_day': c.pieces_per_day,
                     'piece_weight_grams': c.piece_weight_grams,
+                    'treat_frequency_days': c.treat_frequency_days,
                     # Специальные поля для добавок
                     'dosage_text': c.dosage_text,
                     'intake_time': c.intake_time,

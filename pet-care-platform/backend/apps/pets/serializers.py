@@ -18,6 +18,7 @@
 
 from rest_framework import serializers
 from datetime import datetime
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from .models import Pet, Breed, Vaccine, Medication, PetVaccination, PetMedication
 from .models import CalendarEvent
 
@@ -265,6 +266,19 @@ class PetCreateSerializer(serializers.Serializer):
         if weight is None and weight_kg is not None:
             attrs['weight'] = weight_kg
         attrs.pop('weight_kg', None)
+
+        weight = attrs.get('weight')
+        if weight is not None:
+            try:
+                weight_val = float(weight)
+            except (TypeError, ValueError):
+                raise serializers.ValidationError({'weight': 'Вес должен быть числом'})
+            normalized_weight = self.validate_weight(weight_val)
+            try:
+                weight_decimal = Decimal(str(normalized_weight)).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+            except (InvalidOperation, ValueError):
+                raise serializers.ValidationError({'weight': 'Вес должен быть числом'})
+            attrs['weight'] = weight_decimal
 
         if not attrs.get('is_draft') and attrs.get('weight') is None:
             raise serializers.ValidationError({'weight': 'Вес обязателен для создания питомца'})
@@ -705,6 +719,19 @@ class PetUpdateSerializer(serializers.Serializer):
         if weight is None and weight_kg is not None:
             attrs['weight'] = weight_kg
         attrs.pop('weight_kg', None)
+
+        weight = attrs.get('weight')
+        if weight is not None:
+            try:
+                weight_val = float(weight)
+            except (TypeError, ValueError):
+                raise serializers.ValidationError({'weight': 'Вес должен быть числом'})
+            normalized_weight = self.validate_weight(weight_val)
+            try:
+                weight_decimal = Decimal(str(normalized_weight)).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+            except (InvalidOperation, ValueError):
+                raise serializers.ValidationError({'weight': 'Вес должен быть числом'})
+            attrs['weight'] = weight_decimal
 
         species = attrs.get('species') or (self.instance.species if self.instance else None)
         if attrs.get('weight') is not None and species:

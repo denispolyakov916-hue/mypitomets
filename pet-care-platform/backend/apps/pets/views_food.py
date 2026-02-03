@@ -120,7 +120,7 @@ class PetFeedingPlanView(APIView):
         filters = FoodSearchFilters(
             food_type=params.get('food_type', 'multi'),
             variant=params.get('variant', 'basic'),
-            period_days=int(params.get('period_days', 30)),
+            period_days=int(params.get('period_days', 14)),
         )
         
         # Получаем план
@@ -152,7 +152,7 @@ class PetFeedingPlanView(APIView):
             species=pet.species or 'dog',
             food_type=data.get('food_type', 'multi'),
             variant=data.get('variant', 'basic'),
-            period_days=int(data.get('period_days', 30)),
+            period_days=int(data.get('period_days', 14)),
             preferred_brands=data.get('preferred_brands', []),
             priority_brands=data.get('priority_brands', []),
             min_price=Decimal(str(data['min_price'])) if data.get('min_price') else None,

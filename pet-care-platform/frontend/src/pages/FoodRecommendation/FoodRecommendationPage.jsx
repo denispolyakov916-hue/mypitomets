@@ -23,6 +23,7 @@ import {
   FEEDING_PERIOD_OPTIONS 
 } from '../../api/pets';
 import { addToCart, getCategories, getProductsV2 } from '../../api/shop';
+import { getCardPlaceholderImage } from '../../utils/placeholderImages';
 
 // ============================================================================
 // КОМПОНЕНТ: Выпадающий список выбора питомца
@@ -351,8 +352,8 @@ const PeriodInput = ({ value, onChange, disabled }) => {
   const listboxIdRef = useRef(`period-listbox-${Math.random().toString(36).slice(2)}`);
   
   const presets = [
-    { value: 7, label: '7 дн.', desc: 'Неделя' },
     { value: 14, label: '14 дн.', desc: '2 недели' },
+    { value: 7, label: '7 дн.', desc: 'Неделя' },
     { value: 30, label: '30 дн.', desc: 'Месяц' },
   ];
   
@@ -661,6 +662,45 @@ const getSupplementLabel = (component) => {
   return SUPPLEMENT_LABELS[type] || 'Добавка';
 };
 
+const adjustTreatComponentForFrequency = (component, frequencyDays, periodDays) => {
+  if (!component || component.product_type !== 'treat') return component;
+  const baseDailyGrams = Number(component.daily_grams) || 0;
+  const baseDailyKcal = Number(component.daily_kcal) || 0;
+  const basePiecesPerDay = Number(component.pieces_per_day) || 0;
+  const defaultFreq = Number(component.treat_frequency_days) || 2;
+  const freq = Number(frequencyDays) || defaultFreq;
+
+  if (!baseDailyGrams || !freq) return component;
+
+  const adjustedDailyGrams = Math.max(1, Math.round((baseDailyGrams * defaultFreq) / freq));
+  const adjustedDailyKcal = baseDailyKcal ? Math.round((baseDailyKcal * defaultFreq) / freq) : baseDailyKcal;
+  const adjustedPiecesPerDay = basePiecesPerDay
+    ? Math.max(1, Math.round((basePiecesPerDay * defaultFreq) / freq))
+    : basePiecesPerDay;
+
+  let packagesNeeded = component.packages_needed;
+  let daysSupply = component.days_supply;
+  let packageSummary = component.package_summary;
+
+  if (component.weight_grams && periodDays) {
+    const totalGramsNeeded = adjustedDailyGrams * periodDays * 1.15;
+    packagesNeeded = Math.max(1, Math.ceil(totalGramsNeeded / component.weight_grams));
+    daysSupply = Math.floor((component.weight_grams * packagesNeeded) / adjustedDailyGrams);
+    packageSummary = `${packagesNeeded} уп.`;
+  }
+
+  return {
+    ...component,
+    daily_grams: adjustedDailyGrams,
+    daily_kcal: adjustedDailyKcal,
+    pieces_per_day: adjustedPiecesPerDay,
+    packages_needed: packagesNeeded,
+    days_supply: daysSupply,
+    package_summary: packageSummary,
+    treat_frequency_days: freq,
+  };
+};
+
 // ============================================================================
 // КОМПОНЕНТ: Компактная карточка компонента рациона
 // ============================================================================
@@ -703,6 +743,20 @@ const RationComponentCard = ({
   const baseType = componentType?.startsWith('supplement_') 
     ? 'supplement' 
     : (componentType || component?.product_type || 'dry_food');
+  const placeholderAccent = {
+    dry_food: '#60a5fa',
+    dry_food_multi: '#60a5fa',
+    wet_food: '#f97316',
+    wet_food_multi: '#f97316',
+    treat: '#f59e0b',
+    supplement: '#8b5cf6',
+  }[baseType] || '#94a3b8';
+  const placeholderImage = getCardPlaceholderImage({
+    title: component?.product_name || typeLabels[baseType] || 'Рацион',
+    subtitle: typeLabels[baseType] || 'Рацион',
+    emoji: typeEmoji[baseType] || '📦',
+    accent: placeholderAccent,
+  });
   
   const totalItems = alternatives?.length || 0;
   const canNavigate = totalItems > 1;
@@ -770,18 +824,16 @@ const RationComponentCard = ({
         >
           {/* Картинка товара */}
           <div className="w-16 h-16 flex-shrink-0 bg-gray-100 rounded-lg overflow-hidden">
-            {component.image_url ? (
-              <img 
-                src={component.image_url} 
-                alt={component.product_name}
-                className="w-full h-full object-cover"
-                onError={(e) => { e.target.style.display = 'none'; }}
-              />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center text-2xl">
-                {typeEmoji[baseType] || '📦'}
-              </div>
-            )}
+            <img 
+              src={component.image_url || placeholderImage} 
+              alt={component.product_name}
+              className="w-full h-full object-cover"
+              onError={(e) => {
+                if (e.currentTarget.src !== placeholderImage) {
+                  e.currentTarget.src = placeholderImage;
+                }
+              }}
+            />
           </div>
           
           {/* Информация */}
@@ -899,7 +951,7 @@ const RationComponentCard = ({
 // ============================================================================
 // КОМПОНЕНТ: Блок плана питания (обновлённый)
 // ============================================================================
-const FeedingPlanBlock = ({ plan, isLoading, selectedComponents }) => {
+const FeedingPlanBlock = ({ plan, isLoading, selectedComponents, treatFrequencyDays, onTreatFrequencyChange }) => {
   if (isLoading) {
     return (
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
@@ -923,6 +975,10 @@ const FeedingPlanBlock = ({ plan, isLoading, selectedComponents }) => {
   const meals = regularDay.meals || [];
   const treats = regularDay.treats;
   const supplements = regularDay.supplements || [];
+  const supplementsForUi = componentsForUi?.filter((c) => c?.product_type === 'supplement') || [];
+  const supplementSlots = (meals && meals.length > 0)
+    ? meals.map((m) => m.label || m.time).filter(Boolean)
+    : ['Завтрак', 'Обед', 'Ужин'];
   const tips = regularDay.feeding_tips || [];
   const caloriesForUi = (() => {
     if (!componentsForUi || componentsForUi.length === 0) return null;
@@ -938,8 +994,44 @@ const FeedingPlanBlock = ({ plan, isLoading, selectedComponents }) => {
     });
     if (totalKcal <= 0) return null;
     const target = Number(plan.daily_calories) || 0;
-    const rawScale = target > 0 ? target / totalKcal : 1;
-    const scale = Math.min(1.2, Math.max(0.85, rawScale));
+    const baseScale = 1;
+    const kcalMinScale = 0.85;
+    const kcalMaxScale = 1.15;
+    const clampScale = (val) => Math.min(kcalMaxScale, Math.max(kcalMinScale, val));
+
+    const computeProteinCoveragePct = (scale) => {
+      let totalGrams = 0;
+      let totalProteinG = 0;
+      let totalMoisture = 0;
+      componentsForUi.forEach((c) => {
+        if (!c?.daily_grams || !c?.nutrition) return;
+        const grams = (Number(c.daily_grams) || 0) * scale;
+        if (grams <= 0) return;
+        const proteinPct = Number(c.nutrition.protein) || 0;
+        const moisturePct = Number(c.nutrition.moisture) || (c.product_type?.includes('wet') ? 75 : 10);
+        totalGrams += grams;
+        totalProteinG += (grams * proteinPct) / 100;
+        totalMoisture += grams * moisturePct;
+      });
+      if (totalGrams <= 0) return null;
+      const avgMoisture = totalMoisture / totalGrams;
+      const dmFactor = avgMoisture < 100 ? 100 / (100 - avgMoisture) : 1;
+      const proteinDm = (totalProteinG / totalGrams) * 100 * dmFactor;
+      const targets = plan.macro_targets?.protein;
+      if (!targets) return null;
+      const min = Number(targets.min);
+      const max = Number(targets.max);
+      if (!Number.isFinite(min) || !Number.isFinite(max) || min <= 0 || max <= 0) return null;
+      const mid = (min + max) / 2;
+      return mid > 0 ? (proteinDm / mid) * 100 : null;
+    };
+
+    const baseProteinPct = computeProteinCoveragePct(baseScale);
+    let desiredScale = 1;
+    if (baseProteinPct && baseProteinPct > 0) {
+      desiredScale = 100 / baseProteinPct;
+    }
+    const scale = clampScale(desiredScale);
     const adjustedKcal = totalKcal * scale;
     const percent = target > 0 ? Math.round((adjustedKcal / target) * 100) : null;
     return { total: Math.round(adjustedKcal), percent, scale };
@@ -1023,11 +1115,10 @@ const FeedingPlanBlock = ({ plan, isLoading, selectedComponents }) => {
           {(caloriesForUi?.total ?? regularDay.total_kcal ?? Math.round(plan.daily_calories))}{" "}
           <span className="text-sm font-normal">ккал</span>
         </p>
-        {caloriesForUi?.percent && (
-          <p className="text-xs text-gray-500 mt-1">
-            {caloriesForUi.percent}% от нормы
-          </p>
-        )}
+        <p className="text-xs text-gray-500 mt-1">
+          Норма: {Math.round(plan.daily_calories)} ккал
+          {caloriesForUi?.percent ? ` • ${caloriesForUi.percent}% от нормы` : ''}
+        </p>
         <p className="text-xs text-gray-500 mt-1">
           {regularDay.meals_count || 2} кормления в день
         </p>
@@ -1124,95 +1215,80 @@ const FeedingPlanBlock = ({ plan, isLoading, selectedComponents }) => {
             {(() => {
               const schedule = [];
 
-              if (meals.length > 0) {
-                meals.forEach((meal) => {
-                  const grams = meal.grams || 0;
-                  const kcal = meal.kcal ?? Math.round(grams * (meal.kcal_per_100g || 0) / 100);
-                  schedule.push({
-                    time: meal.time || '',
-                    label: meal.label || '',
-                    product: meal.product || '',
-                    type: meal.type || 'dry',
-                    grams,
-                    kcal,
-                  });
+              // Формируем расписание из выбранных компонентов (актуально для альтернатив)
+              const dryFood = componentsForUi.find(c => c.product_type?.includes('dry'));
+              const wetFood = componentsForUi.find(c => c.product_type?.includes('wet'));
+              
+              // Утро - сухой корм (если есть)
+              if (dryFood) {
+                const portion = Math.round((dryFood.daily_grams || 0) * 0.5);
+                schedule.push({
+                  time: '08:00',
+                  label: 'Завтрак',
+                  product: dryFood.product_name || 'Сухой корм',
+                  type: 'dry',
+                  grams: portion,
+                  kcal: Math.round(portion * (dryFood.kcal_per_100g || 350) / 100)
                 });
-              } else {
-                // Фоллбек: формируем расписание из компонентов
-                const dryFood = componentsForUi.find(c => c.product_type?.includes('dry'));
-                const wetFood = componentsForUi.find(c => c.product_type?.includes('wet'));
-                
-                // Утро - сухой корм (если есть)
-                if (dryFood) {
-                  const portion = Math.round(dryFood.daily_grams * 0.5);
-                  schedule.push({
-                    time: '08:00',
-                    label: 'Завтрак',
-                    product: dryFood.product_name || 'Сухой корм',
-                    type: 'dry',
-                    grams: portion,
-                    kcal: Math.round(portion * (dryFood.kcal_per_100g || 350) / 100)
-                  });
-                }
-                
-                // Обед - влажный корм (если есть)
-                if (wetFood) {
-                  const portion = Math.round(wetFood.daily_grams * 0.5);
-                  schedule.push({
-                    time: '13:00',
-                    label: 'Обед',
-                    product: wetFood.product_name || 'Влажный корм',
-                    type: 'wet',
-                    grams: portion,
-                    kcal: Math.round(portion * (wetFood.kcal_per_100g || 95) / 100)
-                  });
-                }
-                
-                // Ужин
-                if (dryFood && wetFood) {
-                  // Мультипитание: вечером сухой
-                  const portion = Math.round(dryFood.daily_grams * 0.5);
-                  schedule.push({
-                    time: '18:00',
-                    label: 'Ужин',
-                    product: dryFood.product_name || 'Сухой корм',
-                    type: 'dry',
-                    grams: portion,
-                    kcal: Math.round(portion * (dryFood.kcal_per_100g || 350) / 100)
-                  });
-                  // + влажный
-                  const wetPortion = Math.round(wetFood.daily_grams * 0.5);
-                  schedule.push({
-                    time: '18:00',
-                    label: '+',
-                    product: wetFood.product_name || 'Влажный корм',
-                    type: 'wet',
-                    grams: wetPortion,
-                    kcal: Math.round(wetPortion * (wetFood.kcal_per_100g || 95) / 100)
-                  });
-                } else if (dryFood) {
-                  // Только сухой
-                  const portion = Math.round(dryFood.daily_grams * 0.5);
-                  schedule.push({
-                    time: '18:00',
-                    label: 'Ужин',
-                    product: dryFood.product_name || 'Сухой корм',
-                    type: 'dry',
-                    grams: portion,
-                    kcal: Math.round(portion * (dryFood.kcal_per_100g || 350) / 100)
-                  });
-                } else if (wetFood) {
-                  // Только влажный
-                  const portion = Math.round(wetFood.daily_grams * 0.5);
-                  schedule.push({
-                    time: '18:00',
-                    label: 'Ужин',
-                    product: wetFood.product_name || 'Влажный корм',
-                    type: 'wet',
-                    grams: portion,
-                    kcal: Math.round(portion * (wetFood.kcal_per_100g || 95) / 100)
-                  });
-                }
+              }
+              
+              // Обед - влажный корм (если есть)
+              if (wetFood) {
+                const portion = Math.round((wetFood.daily_grams || 0) * 0.5);
+                schedule.push({
+                  time: '13:00',
+                  label: 'Обед',
+                  product: wetFood.product_name || 'Влажный корм',
+                  type: 'wet',
+                  grams: portion,
+                  kcal: Math.round(portion * (wetFood.kcal_per_100g || 95) / 100)
+                });
+              }
+              
+              // Ужин
+              if (dryFood && wetFood) {
+                // Мультипитание: вечером сухой
+                const portion = Math.round((dryFood.daily_grams || 0) * 0.5);
+                schedule.push({
+                  time: '18:00',
+                  label: 'Ужин',
+                  product: dryFood.product_name || 'Сухой корм',
+                  type: 'dry',
+                  grams: portion,
+                  kcal: Math.round(portion * (dryFood.kcal_per_100g || 350) / 100)
+                });
+                // + влажный
+                const wetPortion = Math.round((wetFood.daily_grams || 0) * 0.5);
+                schedule.push({
+                  time: '18:00',
+                  label: '+',
+                  product: wetFood.product_name || 'Влажный корм',
+                  type: 'wet',
+                  grams: wetPortion,
+                  kcal: Math.round(wetPortion * (wetFood.kcal_per_100g || 95) / 100)
+                });
+              } else if (dryFood) {
+                // Только сухой
+                const portion = Math.round((dryFood.daily_grams || 0) * 0.5);
+                schedule.push({
+                  time: '18:00',
+                  label: 'Ужин',
+                  product: dryFood.product_name || 'Сухой корм',
+                  type: 'dry',
+                  grams: portion,
+                  kcal: Math.round(portion * (dryFood.kcal_per_100g || 350) / 100)
+                });
+              } else if (wetFood) {
+                // Только влажный
+                const portion = Math.round((wetFood.daily_grams || 0) * 0.5);
+                schedule.push({
+                  time: '18:00',
+                  label: 'Ужин',
+                  product: wetFood.product_name || 'Влажный корм',
+                  type: 'wet',
+                  grams: portion,
+                  kcal: Math.round(portion * (wetFood.kcal_per_100g || 95) / 100)
+                });
               }
               
               return schedule.map((meal, i) => (
@@ -1259,8 +1335,11 @@ const FeedingPlanBlock = ({ plan, isLoading, selectedComponents }) => {
         
         const data = treatComp || treats;
         const productName = treatComp?.product_name?.split(' ').slice(0, 4).join(' ') || 'Лакомства';
-        const dailyGrams = treatComp?.daily_grams || treats?.daily_grams;
-        const piecesPerDay = treatComp?.pieces_per_day || treats?.pieces_per_day || (dailyGrams ? Math.max(1, Math.round(dailyGrams / 10)) : null);
+        const baseDailyGrams = treatComp?.daily_grams || treats?.daily_grams;
+        const basePiecesPerDay = treatComp?.pieces_per_day || treats?.pieces_per_day || (baseDailyGrams ? Math.max(1, Math.round(baseDailyGrams / 10)) : null);
+        const frequencyDays = treatFrequencyDays || treatComp?.treat_frequency_days || treats?.frequency_days || 2;
+        const gramsPerTreatDay = baseDailyGrams ? Math.round(baseDailyGrams * frequencyDays) : null;
+        const piecesPerTreatDay = basePiecesPerDay ? Math.max(1, Math.round(basePiecesPerDay * frequencyDays)) : null;
         
         return (
           <div className="mb-4">
@@ -1274,13 +1353,30 @@ const FeedingPlanBlock = ({ plan, isLoading, selectedComponents }) => {
                   <span className="text-orange-700 font-medium line-clamp-1">{productName}</span>
                 </div>
                 <div className="text-right flex-shrink-0 ml-2">
-                  {dailyGrams && (
-                    <span className="text-orange-700 font-semibold">{dailyGrams}г</span>
+                  {gramsPerTreatDay && (
+                    <span className="text-orange-700 font-semibold">{gramsPerTreatDay}г</span>
                   )}
-                  {piecesPerDay && (
-                    <span className="text-xs text-gray-500 ml-1">(~{piecesPerDay} шт)</span>
+                  {piecesPerTreatDay && (
+                    <span className="text-xs text-gray-500 ml-1">(~{piecesPerTreatDay} шт)</span>
                   )}
                 </div>
+              </div>
+              <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-gray-600">
+                <span>Частота:</span>
+                {[1, 2, 3, 7].map((days) => (
+                  <button
+                    key={days}
+                    type="button"
+                    onClick={() => onTreatFrequencyChange?.(days)}
+                    className={`px-2 py-0.5 rounded border ${
+                      frequencyDays === days
+                        ? 'bg-orange-200 border-orange-300 text-orange-900'
+                        : 'bg-white border-orange-200 text-orange-700 hover:bg-orange-100'
+                    }`}
+                  >
+                    {days === 1 ? 'Ежедневно' : `Раз в ${days} дн.`}
+                  </button>
+                ))}
               </div>
               <p className="text-xs text-gray-500 mt-1">
                 💡 Распределить в течение дня, не более 10% от суточной нормы
@@ -1290,16 +1386,16 @@ const FeedingPlanBlock = ({ plan, isLoading, selectedComponents }) => {
         );
       })()}
       
-      {/* Добавки - из supplements или компонентов */}
+      {/* Добавки - только активные */}
       {(() => {
-        // Берём добавки из supplements или из компонентов с типом supplement
-        const suppList = supplements.length > 0 
-          ? supplements 
-          : plan.supplements?.map(s => ({
+        const suppList = supplementsForUi.length > 0
+          ? supplementsForUi.map((s, index) => ({
               product: s.product_name,
               dosage: s.dosage_text || 'По инструкции',
-              time: s.intake_time || 'с едой'
-            })) || [];
+              time: s.intake_time || supplementSlots[index % supplementSlots.length] || 'с едой',
+              instructions: s.intake_instructions,
+            }))
+          : [];
         
         if (suppList.length === 0) return null;
         
@@ -1321,6 +1417,7 @@ const FeedingPlanBlock = ({ plan, isLoading, selectedComponents }) => {
                   </div>
                   <div className="flex items-center gap-2 mt-1 text-xs text-gray-500">
                     <span>⏰ {supp.time}</span>
+                    {supp.instructions && <span>• {supp.instructions}</span>}
                   </div>
                 </div>
               ))}
@@ -1391,10 +1488,11 @@ export default function FoodRecommendationPage() {
   // Настройки плана
   const [feedingType, setFeedingType] = useState('multi');
   const [planVariant, setPlanVariant] = useState('basic');
-  const [period, setPeriod] = useState(30);
+  const [period, setPeriod] = useState(14);
   
   // Данные плана
   const [feedingPlan, setFeedingPlan] = useState(null);
+  const [treatFrequencyDays, setTreatFrequencyDays] = useState(2);
   
   // Компоненты рациона с альтернативами
   // { type: 'dry_food', alternatives: [...], currentIndex: 0 }
@@ -1520,6 +1618,12 @@ export default function FoodRecommendationPage() {
     
     loadFeedingPlan();
   }, [selectedPet, feedingType, planVariant, period]);
+
+  useEffect(() => {
+    if (feedingPlan?.regular_day?.treats?.frequency_days) {
+      setTreatFrequencyDays(feedingPlan.regular_day.treats.frequency_days);
+    }
+  }, [feedingPlan]);
 
   // Загрузка каталога добавок для продвинутого набора
   useEffect(() => {
@@ -1740,10 +1844,34 @@ export default function FoodRecommendationPage() {
       return next;
     });
   }, []);
+
+  // Получение текущих компонентов для отображения
+  const currentComponents = Object.entries(componentStates).map(([type, state]) => {
+    const filteredAlternatives = state.alternatives.filter(alt => isComponentTypeCompatible(type, alt));
+    const rawAlternatives = filteredAlternatives.length > 0 ? filteredAlternatives : state.alternatives;
+    const displayAlternatives = rawAlternatives.map((item) =>
+      item?.product_type === 'treat'
+        ? adjustTreatComponentForFrequency(item, treatFrequencyDays, period)
+        : item
+    );
+    const displayIndexMap = displayAlternatives.map((item) => (
+      state.alternatives.findIndex(a => a.product_id === item.product_id)
+    ));
+    const displayIndex = displayIndexMap.indexOf(state.currentIndex);
+    const fallbackIndex = displayIndex >= 0 ? displayIndex : 0;
+
+    return {
+      type,
+      component: displayAlternatives[fallbackIndex],
+      alternatives: displayAlternatives,
+      currentIndex: fallbackIndex,
+      displayIndexMap,
+    };
+  });
   
   // Расчёт общей стоимости выбранных компонентов
-  const totalCost = Object.values(componentStates).reduce((sum, state) => {
-    const current = state.alternatives[state.currentIndex];
+  const totalCost = currentComponents.reduce((sum, entry) => {
+    const current = entry.component;
     if (!current?.price) return sum;
     const price = parseFloat(current.price);
     const packages = current.packages_needed || 1;
@@ -1753,8 +1881,8 @@ export default function FoodRecommendationPage() {
   // Добавление в корзину
   const handleAddToCart = async () => {
     try {
-      for (const state of Object.values(componentStates)) {
-        const component = state.alternatives[state.currentIndex];
+      for (const entry of currentComponents) {
+        const component = entry.component;
         if (component?.product_id) {
           await addToCart(component.product_id, component.packages_needed || 1);
         }
@@ -1803,25 +1931,6 @@ export default function FoodRecommendationPage() {
     const productUrl = `/shop/products/${component.product_id}?return_to=${encodeURIComponent(returnTo)}`;
     navigate(productUrl);
   }, [saveDietState, buildReturnTo, navigate]);
-  
-  // Получение текущих компонентов для отображения
-  const currentComponents = Object.entries(componentStates).map(([type, state]) => {
-    const filteredAlternatives = state.alternatives.filter(alt => isComponentTypeCompatible(type, alt));
-    const displayAlternatives = filteredAlternatives.length > 0 ? filteredAlternatives : state.alternatives;
-    const displayIndexMap = displayAlternatives.map((item) => (
-      state.alternatives.findIndex(a => a.product_id === item.product_id)
-    ));
-    const displayIndex = displayIndexMap.indexOf(state.currentIndex);
-    const fallbackIndex = displayIndex >= 0 ? displayIndex : 0;
-
-    return {
-      type,
-      component: displayAlternatives[fallbackIndex],
-      alternatives: displayAlternatives,
-      currentIndex: fallbackIndex,
-      displayIndexMap,
-    };
-  });
   
   // Загрузка
   if (isLoading) {
@@ -2112,6 +2221,8 @@ export default function FoodRecommendationPage() {
                 plan={feedingPlan}
                 isLoading={isPlanLoading}
                 selectedComponents={currentComponents.map(x => x.component).filter(Boolean)}
+                treatFrequencyDays={treatFrequencyDays}
+                onTreatFrequencyChange={setTreatFrequencyDays}
               />
             </div>
           )}

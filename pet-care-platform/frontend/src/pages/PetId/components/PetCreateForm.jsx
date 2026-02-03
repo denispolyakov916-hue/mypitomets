@@ -919,6 +919,9 @@ const PetCreateForm = ({ onClose }) => {
     
     try {
       const dateOfBirth = calculateDateOfBirth();
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/4f373f70-f463-4309-8a8e-4162185b5f36',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'PetCreateForm.jsx:handleSubmit:dob',message:'Calculated date_of_birth for create',data:{ageType:formData.ageType,ageYears:formData.ageYears,ageMonths:formData.ageMonths,dateOfBirthISO:dateOfBirth ? dateOfBirth.toISOString() : null},timestamp:Date.now(),sessionId:'debug-session',runId:'pre',hypothesisId:'A'})}).catch(()=>{});
+      // #endregion
       
       const payload = {
         name: formData.name.trim(),
@@ -929,6 +932,9 @@ const PetCreateForm = ({ onClose }) => {
         weight_kg: parseFloat(formData.weightKg),
         is_neutered: formData.isNeutered,
       };
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/4f373f70-f463-4309-8a8e-4162185b5f36',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'PetCreateForm.jsx:handleSubmit:payload',message:'Create pet payload summary',data:{species:payload.species,sex:payload.sex,breed_id:payload.breed_id,weight_kg:payload.weight_kg,date_of_birth:payload.date_of_birth,is_neutered:payload.is_neutered,hasPhoto:!!payload.photo},timestamp:Date.now(),sessionId:'debug-session',runId:'pre',hypothesisId:'B'})}).catch(()=>{});
+      // #endregion
       
       // Добавляем фото если есть
       if (formData.photo) {
