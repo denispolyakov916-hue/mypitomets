@@ -17,7 +17,6 @@ import { ButtonLoader } from './Loader'
 import { useCartStore } from '../store/cartStore'
 import { useFavoritesStore } from '../store/favoritesStore'
 import { ProductPropTypes } from '../utils/propTypes'
-import { getCardPlaceholderImage } from '../utils/placeholderImages'
 
 /**
  * Получение URL изображения из различных форматов
@@ -44,11 +43,10 @@ const formatPrice = (price) => priceFormatter.format(price)
 /**
  * Компонент оптимизированного изображения товара
  */
-const ProductImage = memo(function ProductImage({ src, alt, animal, fallbackSrc }) {
+const ProductImage = memo(function ProductImage({ src, alt, animal }) {
   const [isLoaded, setIsLoaded] = useState(false)
   const [hasError, setHasError] = useState(false)
   const [isInView, setIsInView] = useState(false)
-  const [currentSrc, setCurrentSrc] = useState(src)
   const imgRef = useRef(null)
   
   useEffect(() => {
@@ -67,12 +65,6 @@ const ProductImage = memo(function ProductImage({ src, alt, animal, fallbackSrc 
   }, [])
   
   const animalEmoji = animal === 'dog' ? '🐕' : animal === 'cat' ? '🐱' : '🐾'
-
-  useEffect(() => {
-    setCurrentSrc(src)
-    setHasError(false)
-    setIsLoaded(false)
-  }, [src])
   
   return (
     <div ref={imgRef} className="w-full h-full relative">
@@ -88,9 +80,9 @@ const ProductImage = memo(function ProductImage({ src, alt, animal, fallbackSrc 
         </div>
       )}
       
-      {isInView && currentSrc && !hasError && (
+      {isInView && src && !hasError && (
         <img
-          src={currentSrc}
+          src={src}
           alt={alt || 'Изображение товара'}
           className={`w-full h-full object-contain p-2 transition-opacity duration-300 ${
             isLoaded ? 'opacity-100' : 'opacity-0'
@@ -104,11 +96,6 @@ const ProductImage = memo(function ProductImage({ src, alt, animal, fallbackSrc 
             // #endregion
           }}
           onError={() => {
-            if (fallbackSrc && currentSrc !== fallbackSrc) {
-              setCurrentSrc(fallbackSrc)
-              setIsLoaded(false)
-              return
-            }
             setHasError(true)
             // #region agent log
             fetch('http://127.0.0.1:7242/ingest/4f373f70-f463-4309-8a8e-4162185b5f36',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ProductCard.jsx:94',message:'ProductImage error',data:{src},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H2'})}).catch(()=>{});
@@ -284,33 +271,19 @@ const ProductCard = memo(function ProductCard({ product, onAddToCart, isLoading 
     ? Math.round((1 - product.price / product.compare_price) * 100) 
     : 0
   
-  // Тип животного
-  const animalType = product.animal_type
-  const animalLabel = animalType === 'dog'
-    ? 'Для собак'
-    : animalType === 'cat'
-      ? 'Для кошек'
-      : 'Для всех'
-  const animalEmoji = animalType === 'dog' ? '🐕' : animalType === 'cat' ? '🐱' : '🐾'
-  const animalAccent = animalType === 'dog' ? '#60a5fa' : animalType === 'cat' ? '#f97316' : '#94a3b8'
-  const placeholderImage = getCardPlaceholderImage({
-    title: product.name || 'Корм',
-    subtitle: animalLabel,
-    emoji: animalEmoji,
-    accent: animalAccent,
-  })
-
   // Главное изображение
   const mainImage = getImageUrl(product.image_url) 
     || getImageUrl(product.main_image) 
     || getImageUrl(product.images?.[0])
-    || placeholderImage
   ;
   // #region agent log
   (() => {
     fetch('http://127.0.0.1:7242/ingest/4f373f70-f463-4309-8a8e-4162185b5f36',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ProductCard.jsx:264',message:'ProductCard image sources',data:{id:product.id,image_url:product.image_url,main_image:product.main_image,first_image:product.images?.[0],resolved:mainImage},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H1'})}).catch(()=>{})
   })()
   // #endregion
+  
+  // Тип животного
+  const animalType = product.animal_type
   
   // Наличие
   const isAvailable = product.is_available
@@ -347,12 +320,7 @@ const ProductCard = memo(function ProductCard({ product, onAddToCart, isLoading 
         className="aspect-square relative overflow-hidden bg-gray-50 block"
         aria-label={`Перейти к товару ${product.name}`}
       >
-        <ProductImage
-          src={mainImage}
-          fallbackSrc={placeholderImage}
-          alt={product.name || 'Изображение товара'}
-          animal={animalType}
-        />
+        <ProductImage src={mainImage} alt={product.name || 'Изображение товара'} animal={animalType} />
         
         {/* Бейджи сверху слева */}
         <div className="absolute top-2 left-2 flex flex-col gap-1">
@@ -383,7 +351,7 @@ const ProductCard = memo(function ProductCard({ product, onAddToCart, isLoading 
             animalType === 'cat' ? 'bg-primary-100 text-primary-700' :
             'bg-gray-100 text-gray-700'
           }`}>
-            {animalLabel}
+            {animalType === 'dog' ? 'Для собак' : animalType === 'cat' ? 'Для кошек' : 'Для всех'}
           </span>
         </div>
         

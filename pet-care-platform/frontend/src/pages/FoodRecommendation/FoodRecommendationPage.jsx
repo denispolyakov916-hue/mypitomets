@@ -23,7 +23,6 @@ import {
   FEEDING_PERIOD_OPTIONS 
 } from '../../api/pets';
 import { addToCart, getCategories, getProductsV2 } from '../../api/shop';
-import { getCardPlaceholderImage } from '../../utils/placeholderImages';
 
 // ============================================================================
 // КОМПОНЕНТ: Выпадающий список выбора питомца
@@ -743,20 +742,6 @@ const RationComponentCard = ({
   const baseType = componentType?.startsWith('supplement_') 
     ? 'supplement' 
     : (componentType || component?.product_type || 'dry_food');
-  const placeholderAccent = {
-    dry_food: '#60a5fa',
-    dry_food_multi: '#60a5fa',
-    wet_food: '#f97316',
-    wet_food_multi: '#f97316',
-    treat: '#f59e0b',
-    supplement: '#8b5cf6',
-  }[baseType] || '#94a3b8';
-  const placeholderImage = getCardPlaceholderImage({
-    title: component?.product_name || typeLabels[baseType] || 'Рацион',
-    subtitle: typeLabels[baseType] || 'Рацион',
-    emoji: typeEmoji[baseType] || '📦',
-    accent: placeholderAccent,
-  });
   
   const totalItems = alternatives?.length || 0;
   const canNavigate = totalItems > 1;
@@ -824,16 +809,18 @@ const RationComponentCard = ({
         >
           {/* Картинка товара */}
           <div className="w-16 h-16 flex-shrink-0 bg-gray-100 rounded-lg overflow-hidden">
-            <img 
-              src={component.image_url || placeholderImage} 
-              alt={component.product_name}
-              className="w-full h-full object-cover"
-              onError={(e) => {
-                if (e.currentTarget.src !== placeholderImage) {
-                  e.currentTarget.src = placeholderImage;
-                }
-              }}
-            />
+            {component.image_url ? (
+              <img 
+                src={component.image_url} 
+                alt={component.product_name}
+                className="w-full h-full object-cover"
+                onError={(e) => { e.currentTarget.style.display = 'none'; }}
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-2xl">
+                {typeEmoji[baseType] || '📦'}
+              </div>
+            )}
           </div>
           
           {/* Информация */}

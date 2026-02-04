@@ -2279,13 +2279,26 @@ class FoodRecommendationService:
         if not daily_grams or daily_grams <= 0:
             return (1, period_days, None, None)
 
+        tolerance_days = self._get_period_tolerance_days(period_days)
+        min_days = max(1, period_days - tolerance_days)
+        max_days = period_days + tolerance_days
         required_grams = daily_grams * period_days
+        min_required_grams = daily_grams * min_days
+        max_required_grams = daily_grams * max_days
         skus = self._get_available_skus(product)
         if not skus:
             w = self._get_product_weight_grams(product)
             if not w:
                 return (1, period_days, None, None)
-            packages = max(1, math.ceil(required_grams / w))
+            min_pkg = max(1, math.ceil(min_required_grams / w))
+            max_pkg = max(1, math.floor(max_required_grams / w))
+            if min_pkg <= max_pkg:
+                # выбираем пакет, дающий дни ближе к цели
+                candidates = list(range(min_pkg, max_pkg + 1))
+                packages = min(candidates, key=lambda p: abs((w * p / daily_grams) - period_days))
+            else:
+                # если диапазон не попадает, берем ближайший
+                packages = min_pkg if abs((w * min_pkg / daily_grams) - period_days) <= abs((w * max_pkg / daily_grams) - period_days) else max_pkg
             total_grams = w * packages
             return (packages, int(total_grams / daily_grams), None, None)
 
@@ -2298,28 +2311,26 @@ class FoodRecommendationService:
             for w in weights
         ]
 
-        best = None  # (overage, packages, deviation, counts)
+        best = None  # (out_of_range, deviation, overage, packages, counts)
 
         def consider(counts: List[int]):
             total_packages = sum(counts)
             if total_packages <= 0 or total_packages > max_packages:
                 return
             total_grams = sum(c * w for c, w in zip(counts, weights))
-            if total_grams < required_grams:
-                return
-            overage = total_grams - required_grams
+            days_supply = total_grams / daily_grams if daily_grams else period_days
+            out_of_range = 1 if (total_grams < min_required_grams or total_grams > max_required_grams) else 0
+            deviation = abs(days_supply - period_days)
+            overage = abs(total_grams - required_grams)
 
-            deviation = 0.0
-            if period_days == 30:
-                if total_packages == 2:
-                    days_list = [w / daily_grams for c, w in zip(counts, weights) for _ in range(c)]
-                    target = 14.5
-                    deviation = sum(abs(d - target) for d in days_list) / max(1, len(days_list))
-                else:
-                    deviation = 5.0
+            if period_days == 30 and total_packages == 2:
+                # мягкий бонус для 2х ~14–15 дней
+                days_list = [w / daily_grams for c, w in zip(counts, weights) for _ in range(c)]
+                target = 14.5
+                deviation = min(deviation, sum(abs(d - target) for d in days_list) / max(1, len(days_list)))
 
             nonlocal best
-            cand = (overage, total_packages, deviation, tuple(counts))
+            cand = (out_of_range, deviation, overage, total_packages, tuple(counts))
             if best is None or cand < best:
                 best = cand
 
@@ -2340,7 +2351,13 @@ class FoodRecommendationService:
             # fallback: крупнейший SKU
             largest = max(skus, key=lambda s: s['weight_grams'])
             w = largest['weight_grams']
-            packages = max(1, math.ceil(required_grams / w))
+            min_pkg = max(1, math.ceil(min_required_grams / w))
+            max_pkg = max(1, math.floor(max_required_grams / w))
+            if min_pkg <= max_pkg:
+                candidates = list(range(min_pkg, max_pkg + 1))
+                packages = min(candidates, key=lambda p: abs((w * p / daily_grams) - period_days))
+            else:
+                packages = min_pkg if abs((w * min_pkg / daily_grams) - period_days) <= abs((w * max_pkg / daily_grams) - period_days) else max_pkg
             total_grams = w * packages
             breakdown = [{
                 'sku_id': largest['sku_id'],
@@ -2350,7 +2367,7 @@ class FoodRecommendationService:
             }]
             return (packages, int(total_grams / daily_grams), breakdown, self._format_package_summary(breakdown))
 
-        _, _, _, counts_tuple = best
+        _, _, _, _, counts_tuple = best
         counts = list(counts_tuple)
         total_packages = int(sum(counts))
         total_grams = sum(c * w for c, w in zip(counts, weights))
@@ -2401,6 +2418,18 @@ class FoodRecommendationService:
             'vitamins': 'Витаминная добавка',
         }
         return category_descriptions.get(product.product_group, 'Товар для питомца')
+
+    def _get_period_tolerance_days(self, period_days: int) -> int:
+        """
+        Допуск по дням для подбора упаковок.
+        """
+        if period_days <= 7:
+            return 1
+        if period_days < 14:
+            return 2
+        if period_days < 25:
+            return 4
+        return 7
     
     def _get_nutrition_data(self, product) -> dict:
         """

@@ -48,6 +48,7 @@ const CourseLearningPage = () => {
   const [loadingProgress, setLoadingProgress] = useState(false)
   const [enrolling, setEnrolling] = useState(false)
   const [petId, setPetId] = useState(searchParams.get('pet_id') || '')
+  const [imageError, setImageError] = useState(false)
 
   // Мемоизированная проверка доступа
   const isOwned = useMemo(() => course?.is_owned, [course])
@@ -282,12 +283,19 @@ const CourseLearningPage = () => {
                 </div>
               </div>
 
-              {course.image_url && (
+              {course.image_url && !imageError ? (
                 <img
                   src={course.image_url}
                   alt={course.title}
                   className="w-32 h-32 object-cover rounded-lg ml-6"
+                  onError={() => setImageError(true)}
                 />
+              ) : (
+                <div className="w-32 h-32 rounded-lg ml-6 bg-gray-100 flex items-center justify-center">
+                  <span className="text-4xl opacity-40">
+                    {course.pet_type === 'dog' ? '🐕' : course.pet_type === 'cat' ? '🐱' : '📚'}
+                  </span>
+                </div>
               )}
             </div>
           </div>
