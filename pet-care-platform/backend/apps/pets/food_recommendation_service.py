@@ -481,6 +481,8 @@ class FoodSearchFilters:
     # Тип питания
     food_type: str = 'multi'  # dry, wet, multi
     variant: str = 'basic'  # basic, advanced
+    # Соотношение сухой/влажный при мультипитании: more_dry, balanced, more_wet (см. MULTI_RATIO_PRESETS по species).
+    multi_ratio_preset: Optional[str] = None
     
     # Предпочтения
     preferred_brands: List[str] = field(default_factory=list)
@@ -526,20 +528,39 @@ class FoodRecommendationService:
         'supplement': 0,   # Добавки не учитываем в калориях
     }
     
-    # ЖЁСТКОЕ распределение калорий по типу питания (AAFCO/FEDIAF)
+    # Распределение калорий ТОЛЬКО между основным кормом (сухой/влажный). Лакомства не входят в расчёт.
+    # dry: 100% сухой; wet: 100% влажный; multi: dry_food + wet_food = 1.0 (100%).
     CALORIE_DISTRIBUTION = {
-        'dry': {
-            'dry_food': 0.95,   # 95% калорий из сухого корма
-            'treats': 0.05,     # 5% калорий MAX из лакомств
+        'dry': {'dry_food': 1.0},
+        'wet': {'wet_food': 1.0},
+        'multi': {'dry_food': 0.60, 'wet_food': 0.40},
+    }
+
+    # Соотношение сухой/влажный для мультипитания. Сумма dry_food + wet_food = 1.0 (100%).
+    # Лакомства в расчёт не входят — опциональная добавка по желанию.
+    MULTI_RATIO_PRESETS = {
+        'dog': {
+            'more_dry': {'dry_food': 0.70, 'wet_food': 0.30},
+            'balanced': {'dry_food': 0.60, 'wet_food': 0.40},
+            'more_wet': {'dry_food': 0.50, 'wet_food': 0.50},
         },
-        'wet': {
-            'wet_food': 0.95,   # 95% калорий из влажного корма  
-            'treats': 0.05,     # 5% калорий MAX из лакомств
+        'cat': {
+            'more_wet': {'dry_food': 0.40, 'wet_food': 0.60},
+            'balanced': {'dry_food': 0.50, 'wet_food': 0.50},
+            'more_dry': {'dry_food': 0.60, 'wet_food': 0.40},
         },
-        'multi': {
-            'dry_food': 0.60,   # 60% калорий из сухого
-            'wet_food': 0.35,   # 35% калорий из влажного
-            'treats': 0.05,     # 5% калорий MAX из лакомств
+    }
+    # Человекочитаемые названия пресетов для UI (вид → код пресета → название).
+    MULTI_RATIO_PRESET_LABELS = {
+        'dog': {
+            'more_dry': 'Больше сухого (70% сухой / 30% влажный)',
+            'balanced': 'Сбалансировано (60% сухой / 40% влажный)',
+            'more_wet': 'Больше влажного (50% сухой / 50% влажный)',
+        },
+        'cat': {
+            'more_wet': 'Больше влажного (40% сухой / 60% влажный)',
+            'balanced': 'Сбалансировано (50% сухой / 50% влажный)',
+            'more_dry': 'Больше сухого (60% сухой / 40% влажный)',
         },
     }
     
@@ -733,53 +754,39 @@ class FoodRecommendationService:
 
     def _get_calorie_distribution(self, pet, filters: FoodSearchFilters) -> Dict[str, float]:
         """
-        Адаптивное распределение калорий по компонентам.
-        Правила: species × age × activity × GI/health.
+        Распределение калорий ТОЛЬКО между сухим и влажным кормом (сумма 100%).
+        Лакомства в расчёт не входят — опциональная добавка по желанию.
         """
-        # Базовое распределение по типу питания
-        if filters.food_type == 'dry':
-            distribution = {'dry_food': 0.95, 'treats': 0.05}
-        elif filters.food_type == 'wet':
-            distribution = {'wet_food': 0.95, 'treats': 0.05}
-        else:
-            distribution = {'dry_food': 0.60, 'wet_food': 0.30, 'treats': 0.10}
-
-        species = filters.species
-        age_months = filters.age_months
-        age_group = self._get_age_category(species, age_months)
+        species = (filters.species or 'dog').strip().lower()
+        age_group = self._get_age_category(species, filters.age_months)
         activity = getattr(pet, 'activity_level', 'moderate') or 'moderate'
 
-        # Видовые корректировки
-        if species == 'cat' and filters.food_type == 'multi':
-            distribution['wet_food'] += 0.10
-            distribution['dry_food'] -= 0.10
+        if filters.food_type == 'dry':
+            return {'dry_food': 1.0}
+        if filters.food_type == 'wet':
+            return {'wet_food': 1.0}
 
-        # Возрастные корректировки
-        if age_group in ['puppy', 'kitten']:
-            distribution['treats'] = min(distribution.get('treats', 0.10), 0.05)
-        if age_group == 'senior':
-            distribution['treats'] = min(distribution.get('treats', 0.10), 0.05)
-            if 'wet_food' in distribution:
-                distribution['wet_food'] += 0.05
-                if 'dry_food' in distribution:
-                    distribution['dry_food'] = max(0.0, distribution['dry_food'] - 0.05)
+        # Мультипитание: пресет или дефолт по виду, только dry + wet (сумма 1.0)
+        preset = (filters.multi_ratio_preset or '').strip().lower()
+        presets_for_species = self.MULTI_RATIO_PRESETS.get(species, self.MULTI_RATIO_PRESETS['dog'])
+        if preset and preset in presets_for_species:
+            distribution = dict(presets_for_species[preset])
+        else:
+            distribution = {'dry_food': 0.60, 'wet_food': 0.40}
+            if species == 'cat':
+                distribution['dry_food'], distribution['wet_food'] = 0.50, 0.50
 
-        # Активность (больше энергии днём = больше сухого)
+        # Корректировки только между сухим и влажным (без лакомств)
+        if age_group == 'senior' and 'wet_food' in distribution:
+            distribution['wet_food'] += 0.05
+            distribution['dry_food'] = max(0.0, distribution['dry_food'] - 0.05)
         if activity in ['high', 'very_high'] and 'dry_food' in distribution:
             distribution['dry_food'] += 0.05
-            if 'wet_food' in distribution:
-                distribution['wet_food'] = max(0.0, distribution['wet_food'] - 0.05)
+            distribution['wet_food'] = max(0.0, distribution['wet_food'] - 0.05)
+        if filters.has_gi_issues and 'wet_food' in distribution:
+            distribution['wet_food'] += 0.05
+            distribution['dry_food'] = max(0.0, distribution['dry_food'] - 0.05)
 
-        # ЖКТ проблемы: минимум лакомств, мягкие корма
-        if filters.has_gi_issues:
-            if 'treats' in distribution:
-                distribution['treats'] = min(distribution['treats'], 0.03)
-            if 'wet_food' in distribution:
-                distribution['wet_food'] += 0.05
-                if 'dry_food' in distribution:
-                    distribution['dry_food'] = max(0.0, distribution['dry_food'] - 0.05)
-
-        # Нормализация
         total = sum(distribution.values())
         if total <= 0:
             return distribution
@@ -832,6 +839,7 @@ class FoodRecommendationService:
             base_filters.food_type = filters.food_type or base_filters.food_type
             base_filters.variant = filters.variant or base_filters.variant
             base_filters.period_days = filters.period_days or base_filters.period_days
+            base_filters.multi_ratio_preset = getattr(filters, 'multi_ratio_preset', None) or base_filters.multi_ratio_preset
             base_filters.preferred_brands = list(filters.preferred_brands or [])
             base_filters.priority_brands = list(filters.priority_brands or [])
             base_filters.min_price = filters.min_price
@@ -1306,6 +1314,7 @@ class FoodRecommendationService:
                 if not kcal_per_100g:
                     continue
 
+                # Доля калорий из выбранного соотношения (multi_ratio_preset) — размер порции пересчитывается гибко
                 calorie_percent = (filters.calorie_distribution or {}).get('dry_food', 0.90)
                 component_kcal = (filters.daily_calories or 0) * calorie_percent
 
@@ -1580,11 +1589,8 @@ class FoodRecommendationService:
                 if not kcal_per_100g:
                     continue
                 
-                # Получаем % калорий для влажного корма по типу питания
-                # wet: 90%, multi: 30%
+                # Доля калорий из выбранного соотношения (multi_ratio_preset) — размер порции пересчитывается гибко
                 calorie_percent = (filters.calorie_distribution or {}).get('wet_food', 0.90)
-                
-                # Калории для этого компонента
                 component_kcal = (filters.daily_calories or 0) * calorie_percent
                 
                 # Граммы с ОКРУГЛЕНИЕМ до 10г
@@ -1796,12 +1802,9 @@ class FoodRecommendationService:
         if not products:
             return []
         
-        # СТРОГО 10% от калорий для лакомств
-        treat_calorie_percent = (filters.calorie_distribution or {}).get('treats', 0.10)
-        if treat_calorie_percent <= 0:
-            return []
-        
-        treat_kcal = (filters.daily_calories or 0) * treat_calorie_percent
+        # Лакомства не участвуют в расчёте дневной калорийности — подбираем по виду/возрасту как опцию
+        treat_calorie_percent = (filters.calorie_distribution or {}).get('treats', 0)
+        treat_kcal = (filters.daily_calories or 0) * treat_calorie_percent if treat_calorie_percent > 0 else 0
         
         # Сортируем по релевантности (+ эвристика мягкости для пожилых/проблем зубов)
         age_group = self._get_age_category(filters.species, filters.age_months)
@@ -1838,37 +1841,38 @@ class FoodRecommendationService:
         
         scored_products.sort(key=lambda x: x[1], reverse=True)
         
-        # Возвращаем лучшее лакомство с ПРАВИЛЬНЫМ расчётом граммов
+        # Возвращаем лучшее лакомство: подбор по виду/возрасту; в калорийность рациона не входит
         if scored_products:
             product, score, reasons, warnings, badges, breakdown = scored_products[0]
             
-            # Калорийность лакомства (обычно 300-400 ккал/100г)
             kcal_per_100g = self._get_product_kcal(product, 'treat')
             if not kcal_per_100g:
                 return []
             
-            # Расчёт граммов: (ккал / ккал_на_100г) * 100, округляем до 10г
-            if treat_kcal and kcal_per_100g:
+            # Если лакомства не входят в расчёт — рекомендуемая порция «по желанию» (1–2 шт/день)
+            if treat_kcal > 0 and kcal_per_100g:
                 raw_grams = (treat_kcal / kcal_per_100g) * 100
                 daily_grams = max(5, round(raw_grams))
             else:
-                daily_grams = 20  # Fallback
-
-            # Лакомства не каждый день
-            frequency_days = self.TREAT_FREQUENCY_DAYS
-            daily_grams = max(5, round(daily_grams / frequency_days))
+                daily_grams = 15  # рекомендуемые ~15 г/день (опционально)
             
-            # Расчёт штук (~10-15г на штуку)
+            frequency_days = self.TREAT_FREQUENCY_DAYS
+            if treat_kcal > 0:
+                daily_grams = max(5, round(daily_grams / frequency_days))
+            
             piece_weight = self.AVG_TREAT_PIECE_GRAMS
             pieces_per_day = max(1, round(daily_grams / piece_weight))
             
-            # Вес упаковки и расчёт на период
             weight_grams = self._get_product_weight_grams(product) or 200
-            
-            # Сколько упаковок на период
             total_grams_needed = daily_grams * filters.period_days * 1.15
             packages_needed = max(1, math.ceil(total_grams_needed / weight_grams))
             days_supply = int((weight_grams * packages_needed) / daily_grams) if daily_grams else filters.period_days
+            
+            # daily_kcal = 0, чтобы не учитывать лакомства в дневной калорийности рациона
+            component_daily_kcal = round(treat_kcal / frequency_days) if treat_kcal > 0 else 0
+            treat_reasons = list(reasons) if reasons else ['Подходит по возрасту и размеру']
+            if component_daily_kcal == 0:
+                treat_reasons.append('По желанию, не входят в расчёт калорий')
             
             return [FoodComponent(
                 product_id=product.id,
@@ -1876,12 +1880,12 @@ class FoodRecommendationService:
                 product_type='treat',
                 match_score=score,
                 daily_grams=daily_grams,
-                daily_kcal=round(treat_kcal / frequency_days),
+                daily_kcal=component_daily_kcal,
                 price=product.price,
                 weight_grams=weight_grams,
                 packages_needed=packages_needed,
                 days_supply=days_supply,
-                reasons=reasons if reasons else ['Подходит по возрасту и размеру'],
+                reasons=treat_reasons,
                 warnings=warnings,
                 badges=badges if badges else ['Подходит'],
                 alternatives_count=len(scored_products) - 1,
@@ -3387,7 +3391,16 @@ class FoodRecommendationService:
         """
         Сериализация плана для API.
         """
-        return {
+        species = (getattr(plan, 'species', None) or 'dog').strip().lower()
+        multi_ratio_presets = None
+        if plan.plan_type == 'multi':
+            presets = self.MULTI_RATIO_PRESETS.get(species, self.MULTI_RATIO_PRESETS['dog'])
+            labels = self.MULTI_RATIO_PRESET_LABELS.get(species, self.MULTI_RATIO_PRESET_LABELS['dog'])
+            multi_ratio_presets = [
+                {'value': key, 'label': labels.get(key, key)}
+                for key in presets
+            ]
+        out = {
             'pet_id': plan.pet_id,
             'pet_name': plan.pet_name,
             'daily_calories': round(plan.daily_calories, 0),
@@ -3395,6 +3408,7 @@ class FoodRecommendationService:
             'variant': plan.variant,
             'period_days': plan.period_days,
             'calorie_distribution': plan.calorie_distribution,
+            'multi_ratio_presets': multi_ratio_presets,
             'transition_plan': plan.transition_plan,
             'has_gi_issues': plan.has_gi_issues,
             'macro_targets': plan.macro_targets,
@@ -3475,6 +3489,7 @@ class FoodRecommendationService:
             'warnings': plan.warnings,
             'recommendations': plan.recommendations,
         }
+        return out
 
 
 # Глобальный экземпляр

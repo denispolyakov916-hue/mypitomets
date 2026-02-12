@@ -89,8 +89,9 @@ class PetFeedingPlanView(APIView):
     POST /api/pets/{pet_id}/feeding-plan/
         Body:
         {
-            "food_type": "multi",  // dry, wet, multi
-            "variant": "basic",    // basic, advanced
+            "food_type": "multi",       // dry, wet, multi
+            "multi_ratio_preset": null, // при food_type=multi: more_dry, balanced, more_wet (см. опции по виду)
+            "variant": "basic",
             "period_days": 30,
             "preferred_brands": ["Royal Canin", "Hill's"],
             "min_price": 500,
@@ -116,9 +117,11 @@ class PetFeedingPlanView(APIView):
         
         # Парсим query params
         params = request.query_params
-        
+        species = getattr(pet, 'species', None) or 'dog'
         filters = FoodSearchFilters(
+            species=species,
             food_type=params.get('food_type', 'multi'),
+            multi_ratio_preset=params.get('multi_ratio_preset') or None,
             variant=params.get('variant', 'basic'),
             period_days=int(params.get('period_days', 14)),
         )
@@ -151,6 +154,7 @@ class PetFeedingPlanView(APIView):
         filters = FoodSearchFilters(
             species=pet.species or 'dog',
             food_type=data.get('food_type', 'multi'),
+            multi_ratio_preset=data.get('multi_ratio_preset') or None,
             variant=data.get('variant', 'basic'),
             period_days=int(data.get('period_days', 14)),
             preferred_brands=data.get('preferred_brands', []),
