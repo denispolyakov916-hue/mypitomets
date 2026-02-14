@@ -96,14 +96,18 @@ class Command(BaseCommand):
             self.stdout.write(f'  Импортировано {count} коэффициентов климата')
         
         # Импорт коэффициентов жилья
-        if 'housing' in data:
-            count = self._import_housing_coefficients(data['housing'])
+        # Исторически в данных может быть ключ housing_type (см. docs/.../coefficients_nutrition.json)
+        housing_data = data.get('housing') or data.get('housing_type')
+        if housing_data:
+            count = self._import_housing_coefficients(housing_data)
             total_count += count
             self.stdout.write(f'  Импортировано {count} коэффициентов жилья')
         
         # Импорт репродуктивных коэффициентов
-        if 'reproductive' in data:
-            count = self._import_reproductive_coefficients(data['reproductive'])
+        # Исторически в данных может быть ключ reproductive_state
+        reproductive_data = data.get('reproductive') or data.get('reproductive_state')
+        if reproductive_data:
+            count = self._import_reproductive_coefficients(reproductive_data)
             total_count += count
             self.stdout.write(f'  Импортировано {count} репродуктивных коэффициентов')
         

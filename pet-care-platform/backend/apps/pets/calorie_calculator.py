@@ -22,6 +22,17 @@ from functools import lru_cache
 
 logger = logging.getLogger('apps.pets.calorie_calculator')
 
+@dataclass(frozen=True)
+class Modifier:
+    """
+    Модификатор расчёта MER.
+    Нужен для объяснимого комбинирования факторов (болезни/BCS и т.д.).
+    """
+    kind: str  # disease | life_stage | reproductive | neutering | lifestyle | bcs | other
+    priority: int  # чем меньше, тем важнее
+    multiplier: float
+    reason: str
+
 
 @dataclass
 class CalorieResult:
@@ -50,6 +61,11 @@ class CalorieResult:
     
     # Целевые диапазоны БЖУ (в %)
     macro_targets: Optional[Dict[str, Dict[str, float]]] = None
+    macro_targets_dm: Optional[Dict[str, Dict[str, float]]] = None
+    macro_coverage_rules: Optional[Dict[str, Any]] = None
+
+    # Топ-влияния на результат (для объяснимости)
+    top_influences: List[Dict[str, Any]] = field(default_factory=list)
     
     # Метаданные расчёта
     calculation_method: str = 'standard'
@@ -77,6 +93,9 @@ class CalorieResult:
             },
             'treat_kcal_per_day': round(self.treat_kcal_per_day, 0) if self.treat_kcal_per_day else None,
             'macro_targets': self.macro_targets,
+            'macro_targets_dm': self.macro_targets_dm,
+            'macro_coverage_rules': self.macro_coverage_rules,
+            'top_influences': self.top_influences,
             'calculation_method': self.calculation_method,
             'data_completeness': self.data_completeness,
         }
@@ -221,6 +240,103 @@ class CalorieCalculatorService:
             logger.warning(f"Error getting coefficients from DB: {e}")
         
         return result
+
+    def _get_factor_rules(self, species: str) -> Dict[str, Dict[str, Optional[float]]]:
+        """
+        Правила ограниченных корректировок (priority+caps).
+        Возвращает словарь {factor_key: {priority, max_delta_pct}}.
+        """
+        rules = {
+            'activity': {'priority': 2, 'max_delta_pct': 15.0},
+            'neutering': {'priority': 2, 'max_delta_pct': 10.0},
+            'size': {'priority': 2, 'max_delta_pct': 10.0},
+            'coat': {'priority': 2, 'max_delta_pct': 5.0},
+            'climate': {'priority': 2, 'max_delta_pct': 10.0},
+            'housing': {'priority': 2, 'max_delta_pct': 10.0},
+            'bcs': {'priority': 1, 'max_delta_pct': None},
+            'critical_disease': {'priority': 1, 'max_delta_pct': None},
+            'base_disease': {'priority': 0, 'max_delta_pct': None},
+            'base_reproductive': {'priority': 0, 'max_delta_pct': None},
+            'base_growth': {'priority': 0, 'max_delta_pct': None},
+            'base_age': {'priority': 0, 'max_delta_pct': None},
+        }
+        try:
+            from .nutrition_models import NutritionFactorRule
+
+            rows = NutritionFactorRule.objects.filter(
+                is_active=True,
+                scope__in=[species, 'both']
+            )
+            for row in rows:
+                rules[row.factor_key] = {
+                    'priority': int(row.priority),
+                    'max_delta_pct': float(row.max_delta_pct) if row.max_delta_pct is not None else None,
+                }
+        except Exception as e:
+            logger.warning(f"Error loading factor rules: {e}")
+        return rules
+
+    def _get_cap_rules(self, species: str) -> Dict[str, Tuple[float, float]]:
+        """
+        Правила caps по MER/RER. Возвращает {context_key: (min, max)}.
+        """
+        rules = {
+            'bcs_obese_8_9': (0.60, 0.80),
+            'bcs_overweight_7': (0.80, 1.00),
+            'bcs_underweight': (1.30, 2.20),
+            'critical_disease': (1.00, 1.20),
+        }
+        try:
+            from .nutrition_models import NutritionCapRule
+
+            rows = NutritionCapRule.objects.filter(
+                is_active=True,
+                scope__in=[species, 'both']
+            )
+            for row in rows:
+                rules[row.context_key] = (float(row.min_mer_rer), float(row.max_mer_rer))
+        except Exception as e:
+            logger.warning(f"Error loading cap rules: {e}")
+        return rules
+
+    def _apply_limited_modifier(
+        self,
+        mer: float,
+        raw_multiplier: float,
+        factor_key: str,
+        factor_rules: Dict[str, Dict[str, Optional[float]]],
+        result: CalorieResult,
+        influences: List[Dict[str, Any]],
+        reason: str
+    ) -> float:
+        if raw_multiplier == 1.0:
+            return mer
+        max_delta_pct = factor_rules.get(factor_key, {}).get('max_delta_pct')
+        delta = raw_multiplier - 1.0
+        capped_delta = delta
+        if max_delta_pct is not None:
+            cap = float(max_delta_pct) / 100.0
+            capped_delta = max(min(delta, cap), -cap)
+            if capped_delta != delta:
+                result.warnings.append(
+                    f"{factor_key}: ограничение коррекции до ±{float(max_delta_pct)}%"
+                )
+        applied_multiplier = 1.0 + capped_delta
+        mer_after = mer * applied_multiplier
+        influences.append({
+            'key': factor_key,
+            'reason': reason,
+            'multiplier': round(applied_multiplier, 3),
+            'impact_kcal': round(mer_after - mer, 1),
+        })
+        result.coefficients_applied.setdefault('secondary_adjustments', []).append({
+            'key': factor_key,
+            'raw_multiplier': round(raw_multiplier, 3),
+            'applied_multiplier': round(applied_multiplier, 3),
+            'max_delta_pct': max_delta_pct,
+            'reason': reason,
+        })
+        return mer_after
     
     def calculate_rer(self, weight_kg: float, species: str = 'dog') -> float:
         """
@@ -240,10 +356,9 @@ class CalorieCalculatorService:
         if weight_kg <= 0:
             raise ValueError("Вес должен быть положительным")
         
-        if species == 'cat':
-            return 70 * (weight_kg ** 0.67)
-        else:
-            return 70 * (weight_kg ** 0.75)
+        # Практика вет-калькуляторов (WSAVA/PNA/Tufts): 70 × (BWkg)^0.75 для собак и кошек.
+        # Отклонения по индивидуальному метаболизму далее учитываются коэффициентами/BCS/кейсами.
+        return 70 * (weight_kg ** 0.75)
     
     def calculate_daily_calories(self, pet) -> CalorieResult:
         """
@@ -268,104 +383,250 @@ class CalorieCalculatorService:
         
         weight = float(pet.weight)
         species = pet.species or 'dog'
+        bcs = getattr(pet, 'body_condition_score', None)
+
+        # Для программ снижения веса в клинической практике часто используют RER от целевого веса.
+        # Используем ideal_weight_kg если он задан и BCS>=7 (безопасно: только если ideal < текущего и >0).
+        weight_for_rer = weight
+        try:
+            if bcs is not None and int(bcs) >= 7:
+                ideal = getattr(pet, 'ideal_weight_kg', None)
+                if ideal:
+                    ideal_w = float(ideal)
+                    if 0 < ideal_w < weight:
+                        weight_for_rer = ideal_w
+                        result.coefficients_applied['rer_weight_kg'] = weight_for_rer
+                        result.warnings.append(
+                            f"BCS {int(bcs)}: RER рассчитан от целевого веса {weight_for_rer} кг (вместо {weight} кг)"
+                        )
+        except Exception:
+            pass
         
         # 1. Расчёт базового метаболизма (RER)
-        result.rer = self.calculate_rer(weight, species)
+        result.rer = self.calculate_rer(weight_for_rer, species)
+        result.coefficients_applied['rer_formula'] = '70*(kg^0.75)'
         
         # 2. K_age — возрастной коэффициент
         k_age, age_reason = self._get_k_age(pet)
         result.coefficients_applied['k_age'] = {'value': k_age, 'reason': age_reason}
-        
+
         # 3. K_neutering — кастрация
         k_neutering, neutering_reason = self._get_k_neutering(pet)
         result.coefficients_applied['k_neutering'] = {'value': k_neutering, 'reason': neutering_reason}
-        
+
         # 4. K_activity — активность
-        k_activity = self._get_k_activity(pet)
-        result.coefficients_applied['k_activity'] = k_activity
-        
+        k_activity, activity_meta = self._get_k_activity(pet)
+        result.coefficients_applied['k_activity'] = activity_meta
+        if activity_meta.get('source') == 'base':
+            result.warnings.append(activity_meta.get('warning') or "Коэффициент активности не найден в БД — использована базовая норма")
+
         # 5. K_size — размер (только для собак)
         k_size = 1.0
         if species == 'dog':
             k_size = self._get_k_size(pet)
             result.coefficients_applied['k_size'] = k_size
-        
+
         # 6. K_coat — тип шерсти
         k_coat = self._get_k_coat(pet)
         if k_coat != 1.0:
             result.coefficients_applied['k_coat'] = k_coat
-        
+
         # 7. K_climate — климат
         k_climate = self._get_k_climate(pet)
         if k_climate != 1.0:
             result.coefficients_applied['k_climate'] = k_climate
-        
-        # 8. K_health — заболевания
-        k_health, health_warnings = self._get_k_health(pet)
+
+        # 8. K_health — заболевания (только как базовый фактор)
+        k_health, health_warnings, health_modifiers, health_priority = self._get_k_health(pet)
         result.coefficients_applied['k_health'] = k_health
+        if health_modifiers:
+            result.coefficients_applied['health_modifiers'] = [
+                {
+                    'kind': m.kind,
+                    'priority': m.priority,
+                    'multiplier': m.multiplier,
+                    'reason': m.reason,
+                }
+                for m in health_modifiers
+            ]
         result.warnings.extend(health_warnings)
-        
+
         # 9. K_reproductive — репродукция
         k_reproductive = self._get_k_reproductive(pet)
         if k_reproductive != 1.0:
             result.coefficients_applied['k_reproductive'] = k_reproductive
-        
-        # 10. Расчёт MER
-        # ВАЖНО: K_age и K_neutering НЕ ПЕРЕМНОЖАЮТСЯ!
-        # По стандартам NRC/FEDIAF это АЛЬТЕРНАТИВНЫЕ базовые коэффициенты:
-        # - Для щенков/котят: используем K_age (2.0-3.0)
-        # - Для взрослых: используем K_neutering (1.6/1.8)
-        # - Для пожилых: используем K_age × K_neutering_modifier
-        
+
+        # 10. Priority+caps модель
         age_months = pet.age_months or 24
         species = pet.species or 'dog'
-        
-        if species == 'dog':
-            if age_months < 12:
-                # Щенок - используем K_age как основу (2.0-3.0)
-                k_base = k_age
-                result.coefficients_applied['k_base_source'] = 'age (puppy)'
-            elif age_months >= 84:
-                # Пожилой - K_age (1.0-1.2), но умножаем на коэффициент стерилизации
-                # относительно базы 1.8 для интактных
-                neuter_factor = k_neutering / 1.8
-                k_base = k_age * neuter_factor
-                result.coefficients_applied['k_base_source'] = 'age (senior) + neuter_factor'
+        pet_age_category = getattr(pet, 'age_category', None)
+        is_senior = bool(pet_age_category == 'senior') if pet_age_category is not None else (age_months >= 84)
+
+        factor_rules = self._get_factor_rules(species)
+        cap_rules = self._get_cap_rules(species)
+        influences: List[Dict[str, Any]] = []
+
+        base_factor = 1.0
+        base_source = 'age'
+        base_includes_neuter = False
+
+        if health_modifiers:
+            base_factor = k_health
+            base_source = 'disease'
+        elif k_reproductive != 1.0:
+            base_factor = k_reproductive
+            base_source = 'reproductive'
+        elif age_months < 12:
+            base_factor = k_age
+            base_source = 'growth'
+        else:
+            if is_senior:
+                if species == 'dog':
+                    neuter_base = 1.6 if getattr(pet, 'is_neutered', False) else 1.8
+                    neuter_factor = neuter_base / 1.8
+                else:
+                    neuter_base = 1.2 if getattr(pet, 'is_neutered', False) else 1.4
+                    neuter_factor = neuter_base / 1.4
+                base_factor = k_age * neuter_factor
+                base_source = 'age'
+                base_includes_neuter = True
+                result.coefficients_applied['neuter_factor_source'] = 'standard'
             else:
-                # Взрослый (12+ мес) - используем K_neutering как основу (1.6/1.8)
-                k_base = k_neutering
-                result.coefficients_applied['k_base_source'] = 'neutering (adult)'
-        else:  # cat
+                base_factor = k_neutering
+                base_source = 'neutering (adult)'
+                base_includes_neuter = True
+
+        result.coefficients_applied['k_base_source'] = base_source
+        result.coefficients_applied['k_base'] = round(base_factor, 3)
+        influences.append({
+            'key': 'base',
+            'reason': base_source,
+            'multiplier': round(base_factor, 3),
+            'impact_kcal': round((result.rer * base_factor) - result.rer, 1),
+        })
+
+        # Caps по контекстам (BCS + critical disease)
+        caps_applied = []
+        min_ratio, max_ratio = 0.0, 999.0
+        try:
+            bcs_int = int(bcs) if bcs is not None else None
+        except Exception:
+            bcs_int = None
+
+        contexts = []
+        if bcs_int is not None:
             if age_months < 12:
-                # Котёнок/юниор - K_age как основа (1.6-2.5)
-                k_base = k_age
-                result.coefficients_applied['k_base_source'] = 'age (kitten/junior)'
-            elif age_months >= 84:
-                # Пожилая кошка - K_age с учётом стерилизации
-                neuter_factor = k_neutering / 1.4
-                k_base = k_age * neuter_factor
-                result.coefficients_applied['k_base_source'] = 'age (senior) + neuter_factor'
+                if bcs_int >= 8:
+                    contexts.append('growth_bcs_obese_8_9')
+                    result.warnings.append("BCS 8-9 (рост): ограничение без агрессивного дефицита")
+                elif bcs_int == 7:
+                    contexts.append('growth_bcs_overweight_7')
+                    result.warnings.append("BCS 7 (рост): мягкое ограничение")
+                elif bcs_int <= 3:
+                    contexts.append('bcs_underweight')
+                    result.warnings.append("BCS 1-3: рекомендуется увеличение калорий")
             else:
-                # Взрослая кошка - K_neutering (1.2/1.4)
-                k_base = k_neutering
-                result.coefficients_applied['k_base_source'] = 'neutering (adult)'
-        
-        # K_activity для взрослых - это МОДИФИКАТОР относительно базы
-        # Нормализуем: собаки moderate=1.4, кошки moderate=1.2
+                if bcs_int >= 8:
+                    contexts.append('bcs_obese_8_9')
+                    result.warnings.append("BCS 8-9: рекомендуется программа снижения веса")
+                elif bcs_int == 7:
+                    contexts.append('bcs_overweight_7')
+                    result.warnings.append("BCS 7: рекомендуется умеренное снижение калорий")
+                elif bcs_int <= 3:
+                    contexts.append('bcs_underweight')
+                    result.warnings.append("BCS 1-3: рекомендуется увеличение калорий")
+        if (health_priority or '').upper() in ['CRITICAL', 'HIGH']:
+            contexts.append('critical_disease')
+            result.warnings.append("Критическое заболевание: старт от 1.0×RER с узким коридором")
+
+        for ctx in contexts:
+            if ctx in cap_rules:
+                caps_applied.append(ctx)
+                min_ratio = max(min_ratio, cap_rules[ctx][0])
+                max_ratio = min(max_ratio, cap_rules[ctx][1])
+
+        capped_base = base_factor
+        if caps_applied:
+            if capped_base < min_ratio:
+                capped_base = min_ratio
+                result.warnings.append(f"MER/RER ниже порога ({round(base_factor, 2)}), применён min {min_ratio}")
+            if capped_base > max_ratio:
+                capped_base = max_ratio
+                result.warnings.append(f"MER/RER выше порога ({round(base_factor, 2)}), применён max {max_ratio}")
+            influences.append({
+                'key': 'caps',
+                'reason': ', '.join(caps_applied),
+                'multiplier': round(capped_base / base_factor, 3) if base_factor else 1.0,
+                'impact_kcal': round((result.rer * capped_base) - (result.rer * base_factor), 1),
+            })
+        result.coefficients_applied['caps_applied'] = caps_applied
+
+        mer = result.rer * capped_base
+
+        # Secondary adjustments (ограниченные)
         base_activity = 1.4 if species == 'dog' else 1.2
-        k_activity_modifier = k_activity / base_activity if age_months >= 12 else 1.0
-        
-        # K_size для щенков/котят не применяется (уже учтён в K_age)
-        k_size_applied = k_size if age_months >= 12 else 1.0
-        
-        # MER = RER × K_base × модификаторы
-        mer = result.rer * k_base * k_activity_modifier * k_size_applied * k_coat * k_climate * k_health * k_reproductive
+        if age_months >= 12:
+            activity_raw = k_activity / base_activity
+            mer = self._apply_limited_modifier(
+                mer,
+                activity_raw,
+                'activity',
+                factor_rules,
+                result,
+                influences,
+                reason=activity_meta.get('activity_level') or 'activity'
+            )
+
+        if species == 'dog' and age_months >= 12:
+            mer = self._apply_limited_modifier(
+                mer,
+                k_size,
+                'size',
+                factor_rules,
+                result,
+                influences,
+                reason='size_category'
+            )
+
+        if not base_includes_neuter and age_months >= 12:
+            standard_neuter_base = 1.8 if species == 'dog' else 1.4
+            neuter_raw = k_neutering / standard_neuter_base
+            mer = self._apply_limited_modifier(
+                mer,
+                neuter_raw,
+                'neutering',
+                factor_rules,
+                result,
+                influences,
+                reason=neutering_reason
+            )
+
+        mer = self._apply_limited_modifier(
+            mer,
+            k_coat,
+            'coat',
+            factor_rules,
+            result,
+            influences,
+            reason='coat_type'
+        )
+
+        mer = self._apply_limited_modifier(
+            mer,
+            k_climate,
+            'climate',
+            factor_rules,
+            result,
+            influences,
+            reason='climate'
+        )
+
         result.mer = round(mer, 1)
-        
-        result.coefficients_applied['k_base'] = round(k_base, 3)
-        result.coefficients_applied['k_activity_modifier'] = round(k_activity_modifier, 3)
-        if k_size_applied != 1.0:
-            result.coefficients_applied['k_size_applied'] = round(k_size_applied, 3)
+        result.coefficients_applied['mer_rer_ratio'] = round((result.mer / result.rer), 3) if result.rer else None
+
+        # Top influences (топ-3 по абсолютному влиянию)
+        influences_sorted = sorted(influences, key=lambda x: abs(x.get('impact_kcal', 0.0)), reverse=True)
+        result.top_influences = influences_sorted[:3]
         
         # 11. Рекомендации по кормлению
         result.meals_per_day = self._get_meals_per_day(pet)
@@ -373,6 +634,12 @@ class CalorieCalculatorService:
 
         # 11.1 Целевые диапазоны БЖУ
         result.macro_targets = self._get_macro_targets(pet)
+        result.macro_targets_dm = self._get_macro_targets_dm(pet)
+        result.macro_coverage_rules = {
+            # green: внутри диапазона, yellow: до 10% отклонение, red: больше
+            'soft_outside_percent': 10,
+            'status': {'ok': 'green', 'soft': 'yellow', 'hard': 'red'},
+        }
         
         # 12. Перевод в граммы корма
         dry_kcal = self.FOOD_CALORIE_DENSITY['dry']
@@ -423,61 +690,199 @@ class CalorieCalculatorService:
     def _get_macro_targets(self, pet) -> Dict[str, Dict[str, float]]:
         """
         Целевые диапазоны БЖУ (в процентах) по виду/возрасту/здоровью.
+        Использует priority-based lookup из MacroTargetRule.
+        """
+        return self._resolve_macro_targets(pet, dm_basis=False)
+
+    def _get_macro_targets_dm(self, pet) -> Dict[str, Dict[str, float]]:
+        """
+        Целевые диапазоны БЖУ на сухое вещество (DM basis).
+        Это более корректно для сравнения wet vs dry, т.к. влажность (as-fed) искажает проценты.
+        """
+        return self._resolve_macro_targets(pet, dm_basis=True)
+
+    def _resolve_macro_targets(self, pet, dm_basis: bool = True) -> Dict[str, Dict[str, float]]:
+        """
+        Priority-based macro targets lookup.
+        Порядок приоритетов: disease > reproductive > growth > age > activity > bcs > baseline.
         """
         age_months = pet.age_months or 24
         species = pet.species or 'dog'
+        activity = pet.activity_level or 'moderate'
+        bcs = getattr(pet, 'body_condition_score', None)
+        reproductive_state = getattr(pet, 'reproductive_state', None) or 'none'
 
-        # Базовые диапазоны
-        if species == 'cat':
-            if age_months < 12:
-                protein = (35, 45)
-                fat = (18, 25)
-                fiber = (1, 4)
-            elif age_months >= 84:
-                protein = (30, 40)
-                fat = (12, 20)
-                fiber = (2, 6)
-            else:
-                protein = (30, 40)
-                fat = (15, 22)
-                fiber = (2, 6)
-        else:
-            if age_months < 12:
-                protein = (26, 34)
-                fat = (14, 20)
-                fiber = (2, 6)
-            elif age_months >= 84:
-                protein = (22, 30)
-                fat = (8, 14)
-                fiber = (3, 8)
-            else:
-                protein = (22, 30)
-                fat = (10, 18)
-                fiber = (2, 8)
+        # Собираем контексты для поиска (от высшего к низшему приоритету)
+        contexts_to_check: List[str] = []
 
-        # Корректировки по ЖКТ и весу
+        # 1. Disease contexts
         try:
             from .nutrition_models import PetHealthCondition
-            has_gi = PetHealthCondition.objects.filter(
+            conditions = PetHealthCondition.objects.filter(
                 pet=pet,
-                is_active=True,
-                condition__category='gastrointestinal'
-            ).exists()
+                is_active=True
+            ).select_related('condition')
+            for pc in conditions:
+                cond = pc.condition
+                if cond:
+                    contexts_to_check.append(cond.code)
         except Exception:
-            has_gi = False
+            pass
 
-        bcs = getattr(pet, 'body_condition_score', None)
-        if has_gi:
-            fat = (fat[0], min(fat[1], 12 if species == 'dog' else 15))
-            fiber = (max(fiber[0], 3), fiber[1])
-        if bcs and int(bcs) >= 7:
-            fat = (fat[0], min(fat[1], 12))
-            fiber = (max(fiber[0], 4), fiber[1])
+        # 2. Reproductive contexts
+        if reproductive_state == 'lactating':
+            litter = getattr(pet, 'litter_size', 3) or 3
+            if litter >= 4:
+                contexts_to_check.append('lactation_large_litter')
+            else:
+                contexts_to_check.append('lactation_small_litter')
+        elif reproductive_state == 'pregnant':
+            week = getattr(pet, 'pregnancy_week', 5) or 5
+            if week <= 3:
+                contexts_to_check.append('pregnancy_early')
+            elif week <= 6:
+                contexts_to_check.append('pregnancy_mid')
+            else:
+                contexts_to_check.append('pregnancy_late')
+
+        # 3. Growth contexts
+        if age_months < 12:
+            if age_months < 4:
+                contexts_to_check.append(f'growth_early_{species}')
+            else:
+                contexts_to_check.append(f'growth_late_{species}')
+            # Для крупных собак
+            size_cat = getattr(pet, 'size_category', None) or getattr(pet, 'calculated_size_category', None)
+            if species == 'dog' and size_cat in ['large', 'giant'] and age_months >= 4:
+                contexts_to_check.append('growth_large_breed_dog')
+
+        # 4. Age contexts (senior/geriatric)
+        if species == 'cat':
+            if age_months >= 180:
+                contexts_to_check.append('geriatric_cat')
+            elif age_months >= 120:
+                contexts_to_check.append('senior_cat')
+        else:
+            if age_months >= 120:
+                contexts_to_check.append('geriatric_dog')
+            elif age_months >= 84:
+                contexts_to_check.append('senior_dog')
+
+        # 5. Activity contexts
+        if activity == 'very_low':
+            contexts_to_check.append('very_low_activity')
+        elif activity == 'low':
+            contexts_to_check.append('low_activity')
+        elif activity == 'high':
+            contexts_to_check.append('high_activity')
+        elif activity == 'very_high':
+            contexts_to_check.append('very_high_activity')
+
+        # 6. BCS contexts
+        try:
+            bcs_int = int(bcs) if bcs is not None else None
+        except (ValueError, TypeError):
+            bcs_int = None
+        if bcs_int is not None:
+            if bcs_int >= 8:
+                contexts_to_check.append('bcs_obese')
+            elif bcs_int == 7:
+                contexts_to_check.append('bcs_overweight')
+            elif bcs_int <= 3:
+                contexts_to_check.append('bcs_underweight')
+
+        # 7. Baseline
+        if species == 'cat':
+            contexts_to_check.append('baseline_cat_adult')
+        else:
+            contexts_to_check.append('baseline_dog_adult')
+
+        # Lookup из БД
+        rule = self._find_best_macro_rule(species, contexts_to_check, age_months)
+
+        if rule:
+            result = {
+                'protein': {
+                    'min': float(rule.protein_min) if rule.protein_min else 22,
+                    'max': float(rule.protein_max) if rule.protein_max else 35,
+                },
+                'fat': {
+                    'min': float(rule.fat_min) if rule.fat_min else 10,
+                    'max': float(rule.fat_max) if rule.fat_max else 25,
+                },
+                'fiber': {
+                    'min': float(rule.fiber_min) if rule.fiber_min else 2,
+                    'max': float(rule.fiber_max) if rule.fiber_max else 10,
+                },
+                '_source': rule.context_key,
+                '_priority': rule.priority,
+            }
+            return result
+
+        # Fallback hardcoded (если БД пуста)
+        return self._get_fallback_macro_targets(species, age_months, dm_basis)
+
+    def _find_best_macro_rule(self, species: str, contexts: List[str], age_months: int):
+        """
+        Ищет правило БЖУ с наивысшим приоритетом (наименьшим числом) среди контекстов.
+        """
+        try:
+            from .nutrition_models import MacroTargetRule
+
+            rules = MacroTargetRule.objects.filter(
+                is_active=True,
+                context_key__in=contexts,
+                scope__in=[species, 'both']
+            ).order_by('priority')
+
+            for rule in rules:
+                # Проверяем возрастные границы если заданы
+                if rule.age_from_months is not None and age_months < rule.age_from_months:
+                    continue
+                if rule.age_to_months is not None and age_months > rule.age_to_months:
+                    continue
+                return rule
+        except Exception as e:
+            logger.warning(f"Error finding macro rule: {e}")
+        return None
+
+    def _get_fallback_macro_targets(self, species: str, age_months: int, dm_basis: bool) -> Dict[str, Dict[str, float]]:
+        """
+        Fallback hardcoded targets если БД пуста.
+        """
+        if species == 'cat':
+            if age_months < 12:
+                protein = (40, 55) if dm_basis else (35, 45)
+                fat = (20, 35) if dm_basis else (18, 25)
+                fiber = (1, 5) if dm_basis else (1, 4)
+            elif age_months >= 120:
+                protein = (38, 52) if dm_basis else (30, 42)
+                fat = (15, 28) if dm_basis else (12, 22)
+                fiber = (2, 8) if dm_basis else (2, 6)
+            else:
+                protein = (34, 50) if dm_basis else (30, 40)
+                fat = (16, 28) if dm_basis else (15, 22)
+                fiber = (2, 10) if dm_basis else (2, 6)
+        else:
+            if age_months < 12:
+                protein = (28, 40) if dm_basis else (26, 34)
+                fat = (16, 28) if dm_basis else (14, 20)
+                fiber = (2, 10) if dm_basis else (2, 6)
+            elif age_months >= 84:
+                protein = (28, 38) if dm_basis else (24, 32)
+                fat = (12, 22) if dm_basis else (10, 18)
+                fiber = (3, 12) if dm_basis else (3, 8)
+            else:
+                protein = (24, 34) if dm_basis else (22, 30)
+                fat = (12, 24) if dm_basis else (10, 18)
+                fiber = (2, 14) if dm_basis else (2, 8)
 
         return {
             'protein': {'min': protein[0], 'max': protein[1]},
             'fat': {'min': fat[0], 'max': fat[1]},
             'fiber': {'min': fiber[0], 'max': fiber[1]},
+            '_source': 'fallback',
+            '_priority': 99,
         }
 
     def _get_multi_distribution(self, pet) -> Dict[str, float]:
@@ -582,8 +987,24 @@ class CalorieCalculatorService:
         """
         species = pet.species or 'dog'
         is_neutered = pet.is_neutered
-        
-        code_suffix = 'neutered' if is_neutered else 'intact'
+        bcs = getattr(pet, 'body_condition_score', None)
+        housing_type = getattr(pet, 'housing_type', None)
+
+        # Расширенные коды при наличии данных (если коэффициента нет — будет fallback ниже)
+        if is_neutered:
+            code_suffix = 'neutered'
+            # Собаки склонные к ожирению
+            if species == 'dog' and bcs is not None:
+                try:
+                    if int(bcs) >= 7:
+                        code_suffix = 'neutered_obesity_prone'
+                except (TypeError, ValueError):
+                    pass
+            # Домашние кастрированные кошки
+            if species == 'cat' and housing_type == 'apartment':
+                code_suffix = 'neutered_indoor'
+        else:
+            code_suffix = 'intact'
         
         # Пробуем получить из БД
         coef = self._get_coefficient_from_db(species, 'neutering', code_suffix)
@@ -595,9 +1016,12 @@ class CalorieCalculatorService:
         # Fallback
         fallback = self.FALLBACK_K_NEUTERING.get(species, self.FALLBACK_K_NEUTERING['dog'])
         reason = 'Кастрирован' if is_neutered else 'Не кастрирован'
-        return fallback[code_suffix], reason
+        fallback_key = code_suffix
+        if fallback_key not in fallback:
+            fallback_key = 'neutered' if is_neutered else 'intact'
+        return fallback[fallback_key], reason
     
-    def _get_k_activity(self, pet) -> float:
+    def _get_k_activity(self, pet) -> Tuple[float, Dict[str, Any]]:
         """
         Коэффициент активности из БД.
         """
@@ -608,10 +1032,21 @@ class CalorieCalculatorService:
         coef = self._get_coefficient_from_db(species, 'activity_level', activity)
         
         if coef:
-            return float(coef)
+            return float(coef), {
+                'value': float(coef),
+                'activity_level': activity,
+                'source': 'db',
+            }
         
-        # Fallback
-        return self.FALLBACK_K_ACTIVITY.get(activity, 1.4)
+        # Важно: при неполной БД не используем общий fallback-словарь (он dog-ориентированный).
+        # Вместо этого возвращаем базовую «норму» по виду, чтобы не завышать/занижать MER.
+        base = 1.4 if species == 'dog' else 1.2
+        return base, {
+            'value': base,
+            'activity_level': activity,
+            'source': 'base',
+            'warning': f"Не найден коэффициент activity_level={activity} для {species} в БД — использовано базовое значение {base}",
+        }
     
     def _get_k_size(self, pet) -> float:
         """
@@ -620,7 +1055,14 @@ class CalorieCalculatorService:
         if pet.species != 'dog':
             return 1.0
         
-        size_category = getattr(pet, 'size_category', None) or self._calculate_size_category(pet)
+        # Единый источник: сначала явное поле, затем рассчитанная категория из PetID
+        # (важно для щенков — Pet.calculated_size_category оценивает «взрослый» размер),
+        # затем грубая оценка по текущему весу.
+        size_category = (
+            getattr(pet, 'size_category', None)
+            or getattr(pet, 'calculated_size_category', None)
+            or self._calculate_size_category(pet)
+        )
         
         if not size_category:
             return 1.0
@@ -690,7 +1132,7 @@ class CalorieCalculatorService:
         
         return 1.0
     
-    def _get_k_health(self, pet) -> Tuple[float, List[str]]:
+    def _get_k_health(self, pet) -> Tuple[float, List[str], List[Modifier], Optional[str]]:
         """
         Коэффициент при заболеваниях.
         
@@ -699,63 +1141,88 @@ class CalorieCalculatorService:
         """
         k_health = 1.0
         warnings = []
+        modifiers: List[Modifier] = []
+        top_priority: Optional[str] = None
         
-        # Получаем заболевания из M2M
+        # Получаем заболевания из M2M или из "переданных" в тест/аудит данных.
         try:
-            from .nutrition_models import PetHealthCondition, HealthCondition
-            
-            conditions = PetHealthCondition.objects.filter(
-                pet=pet, 
-                is_active=True
-            ).select_related('condition')
+            from .nutrition_models import PetHealthCondition
+
+            injected = getattr(pet, "health_conditions_for_calc", None)
+            if injected:
+                # ожидаем список HealthCondition (или объектов с теми же полями)
+                rows_sorted = sorted(
+                    list(injected),
+                    key=lambda c: {'CRITICAL': 0, 'HIGH': 1, 'MEDIUM': 2, 'LOW': 3}.get(getattr(c, 'priority', None), 3)
+                )
+                conditions = rows_sorted
+            else:
+                conditions = PetHealthCondition.objects.filter(
+                    pet=pet,
+                    is_active=True
+                ).select_related('condition')
             
             if conditions:
                 # Сортируем по приоритету
                 priority_order = {'CRITICAL': 0, 'HIGH': 1, 'MEDIUM': 2, 'LOW': 3}
-                sorted_conditions = sorted(
-                    conditions,
-                    key=lambda c: priority_order.get(c.condition.priority, 3)
+                if injected:
+                    rows_sorted = conditions  # already sorted
+                    rows = rows_sorted
+                    # адаптируем к интерфейсу ниже
+                    def _cond(obj):  # type: ignore
+                        return obj
+                else:
+                    rows = [pc for pc in conditions if getattr(pc, 'condition', None)]
+                    rows_sorted = sorted(
+                        rows,
+                        key=lambda c: priority_order.get(getattr(c.condition, 'priority', None), 3)
+                    )
+                    def _cond(obj):  # type: ignore
+                        return obj.condition
+
+                # guided priority: берём только top-priority группу
+                top_prio = (
+                    priority_order.get(getattr(_cond(rows_sorted[0]), 'priority', None), 3)
+                    if rows_sorted else None
                 )
-                
-                for pet_condition in sorted_conditions:
-                    condition = pet_condition.condition
-                    
-                    # Берём средний коэффициент
+                if rows_sorted:
+                    top_priority = getattr(_cond(rows_sorted[0]), 'priority', None)
+                top_group = [
+                    r for r in rows_sorted
+                    if priority_order.get(getattr(_cond(r), 'priority', None), 3) == top_prio
+                ]
+
+                disease_multipliers: List[Tuple[str, str, float]] = []
+                for pet_condition in top_group:
+                    condition = _cond(pet_condition)
                     coef = float(condition.coefficient_min + condition.coefficient_max) / 2
-                    
-                    # Применяем направление
-                    if condition.direction == 'DECREASE':
-                        k_health *= coef  # Уже < 1
-                    elif condition.direction == 'INCREASE':
-                        k_health *= coef  # Уже > 1
-                    
-                    # Добавляем предупреждение если критическое
-                    if condition.priority in ['CRITICAL', 'HIGH']:
-                        warnings.append(
-                            f"Учтено заболевание: {condition.name_ru} (коэф. {coef})"
+                    disease_multipliers.append((condition.code, condition.direction, coef))
+                    modifiers.append(
+                        Modifier(
+                            kind='disease',
+                            priority=priority_order.get(condition.priority, 3),
+                            multiplier=round(coef, 3),
+                            reason=f"{condition.name_ru} ({condition.code}, {condition.priority})",
                         )
+                    )
+                    if condition.priority in ['CRITICAL', 'HIGH']:
+                        warnings.append(f"Учтено заболевание: {condition.name_ru} (коэф. {round(coef, 2)})")
+
+                decreases = [m for (_, direction, m) in disease_multipliers if (direction or '').upper() == 'DECREASE']
+                increases = [m for (_, direction, m) in disease_multipliers if (direction or '').upper() == 'INCREASE']
+
+                # Комбинирование: DECREASE → берём минимальный, INCREASE → максимальный
+                if decreases:
+                    k_health *= min(decreases)
+                elif increases:
+                    k_health *= max(increases)
+                else:
+                    k_health *= 1.0
                         
         except Exception as e:
             logger.warning(f"Error loading health conditions: {e}")
         
-        # Проверяем BCS (Body Condition Score)
-        bcs = getattr(pet, 'body_condition_score', None)
-        if bcs:
-            try:
-                bcs_int = int(bcs)
-                if bcs_int >= 8:  # Ожирение 2-3 степени
-                    k_health *= 0.70
-                    warnings.append("BCS 8-9: рекомендуется программа похудения")
-                elif bcs_int >= 7:  # Ожирение 1 степени
-                    k_health *= 0.85
-                    warnings.append("BCS 7: рекомендуется снижение калорий")
-                elif bcs_int <= 3:  # Недобор веса
-                    k_health *= 1.25
-                    warnings.append("BCS 1-3: рекомендуется увеличение калорий")
-            except (ValueError, TypeError):
-                pass
-        
-        return round(k_health, 2), warnings
+        return round(k_health, 2), warnings, modifiers, top_priority
     
     def _get_k_reproductive(self, pet) -> float:
         """
@@ -779,18 +1246,29 @@ class CalorieCalculatorService:
             code_suffix = 'heat'
         elif state == 'pregnant':
             week = getattr(pet, 'pregnancy_week', 5) or 5
-            if week <= 4:
-                code_suffix = 'pregnant_early'
+            # Коды в данных: pregnancy_early / pregnancy_mid / pregnancy_late
+            if week <= 3:
+                code_suffix = 'pregnancy_early'
+            elif week <= 6:
+                code_suffix = 'pregnancy_mid'
             else:
-                code_suffix = 'pregnant_late'
+                code_suffix = 'pregnancy_late'
         elif state == 'lactating':
             litter = getattr(pet, 'litter_size', 3) or 3
+            # Коды в данных: lactation_1_2 / lactation_3_4 / lactation_5_6 / lactation_7_plus (dog)
+            #              lactation_1_2 / lactation_3_4 / lactation_5_plus (cat)
             if litter <= 2:
-                code_suffix = 'lactating_small'
+                code_suffix = 'lactation_1_2'
             elif litter <= 4:
-                code_suffix = 'lactating_medium'
+                code_suffix = 'lactation_3_4'
             else:
-                code_suffix = 'lactating_large'
+                if species == 'cat':
+                    code_suffix = 'lactation_5_plus'
+                else:
+                    if litter <= 6:
+                        code_suffix = 'lactation_5_6'
+                    else:
+                        code_suffix = 'lactation_7_plus'
         else:
             return 1.0
         
@@ -803,11 +1281,14 @@ class CalorieCalculatorService:
         # Fallback значения
         fallback = {
             'heat': 1.10,
-            'pregnant_early': 1.25,
-            'pregnant_late': 1.50,
-            'lactating_small': 2.00,
-            'lactating_medium': 2.50,
-            'lactating_large': 3.00,
+            'pregnancy_early': 1.25,
+            'pregnancy_mid': 1.40,
+            'pregnancy_late': 1.60 if species == 'cat' else 1.50,
+            'lactation_1_2': 2.00,
+            'lactation_3_4': 2.50,
+            'lactation_5_6': 3.00,
+            'lactation_7_plus': 3.50,
+            'lactation_5_plus': 3.00,
         }
         return fallback.get(code_suffix, 1.0)
     

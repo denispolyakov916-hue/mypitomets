@@ -31,15 +31,6 @@ const getImageUrl = (image) => {
 }
 
 /**
- * SVG-заглушка для отсутствующих изображений
- */
-const getPlaceholderImage = (label = 'Нет фото') => {
-  const safeLabel = String(label || 'Нет фото').slice(0, 30)
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="600" height="600" viewBox="0 0 600 600"><rect width="600" height="600" fill="#f3f4f6"/><rect x="120" y="160" width="360" height="280" rx="24" fill="#e5e7eb"/><text x="300" y="325" text-anchor="middle" font-family="Arial, sans-serif" font-size="24" fill="#9ca3af">${safeLabel}</text></svg>`
-  return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`
-}
-
-/**
  * Форматирование цены
  */
 const priceFormatter = new Intl.NumberFormat('ru-RU', {
@@ -284,7 +275,6 @@ const ProductCard = memo(function ProductCard({ product, onAddToCart, isLoading 
   const mainImage = getImageUrl(product.image_url) 
     || getImageUrl(product.main_image) 
     || getImageUrl(product.images?.[0])
-    || getPlaceholderImage()
   ;
   // #region agent log
   (() => {

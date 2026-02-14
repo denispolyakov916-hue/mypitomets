@@ -22,7 +22,7 @@ import {
   PLAN_VARIANT_OPTIONS,
   FEEDING_PERIOD_OPTIONS 
 } from '../../api/pets';
-import { addToCart } from '../../api/shop';
+import { addToCart, getCategories, getProductsV2 } from '../../api/shop';
 
 // ============================================================================
 // КОМПОНЕНТ: Выпадающий список выбора питомца
@@ -351,8 +351,8 @@ const PeriodInput = ({ value, onChange, disabled }) => {
   const listboxIdRef = useRef(`period-listbox-${Math.random().toString(36).slice(2)}`);
   
   const presets = [
-    { value: 7, label: '7 дн.', desc: 'Неделя' },
     { value: 14, label: '14 дн.', desc: '2 недели' },
+    { value: 7, label: '7 дн.', desc: 'Неделя' },
     { value: 30, label: '30 дн.', desc: 'Месяц' },
   ];
   
@@ -589,6 +589,117 @@ const isComponentTypeCompatible = (componentType, item) => {
   return true;
 };
 
+const findCategoryByCode = (nodes, codePrefix) => {
+  if (!Array.isArray(nodes)) return null;
+  for (const node of nodes) {
+    if (node?.code && node.code.startsWith(codePrefix)) {
+      return node;
+    }
+    const found = findCategoryByCode(node?.children, codePrefix);
+    if (found) return found;
+  }
+  return null;
+};
+
+const mapProductToSupplementComponent = (product) => ({
+  product_id: product.id,
+  product_name: product.name,
+  product_type: 'supplement',
+  match_score: 80,
+  price: product.price,
+  weight_grams: product.weight_grams,
+  packages_needed: 1,
+  days_supply: null,
+  reasons: [],
+  warnings: [],
+  badges: [],
+  short_description: product.short_description,
+  image_url: product.image_url,
+  shop_url: product.shop_url || `/shop/products/${product.id}`,
+  dosage_text: product.dosage_text,
+  intake_time: product.intake_time,
+  intake_instructions: product.intake_instructions,
+  supplement_type: product.supplement_type,
+});
+
+const SUPPLEMENT_LABELS = {
+  vitamins: 'Витамины',
+  omega3: 'Омега‑3',
+  joint: 'Суставы',
+  calcium: 'Кальций',
+  taurine: 'Таурин',
+  kidney: 'Почки',
+  skin: 'Кожа и шерсть',
+  digestion: 'Пищеварение',
+  probiotics: 'Пробиотики',
+  immune: 'Иммунитет',
+  senior: 'Для пожилых',
+  folic_acid: 'Фолиевая кислота',
+  heart: 'Сердце',
+};
+
+const inferSupplementTypeFromName = (name = '') => {
+  const n = name.toLowerCase();
+  if (n.includes('омега') || n.includes('omega')) return 'omega3';
+  if (n.includes('сустав') || n.includes('joint')) return 'joint';
+  if (n.includes('кальц')) return 'calcium';
+  if (n.includes('таур')) return 'taurine';
+  if (n.includes('почек') || n.includes('renal') || n.includes('kidney')) return 'kidney';
+  if (n.includes('кожа') || n.includes('шерст') || n.includes('skin')) return 'skin';
+  if (n.includes('пищевар') || n.includes('digest') || n.includes('gastro')) return 'digestion';
+  if (n.includes('пробиот')) return 'probiotics';
+  if (n.includes('иммун') || n.includes('immune')) return 'immune';
+  if (n.includes('senior') || n.includes('пожил')) return 'senior';
+  if (n.includes('фолиев')) return 'folic_acid';
+  if (n.includes('серд')) return 'heart';
+  if (n.includes('витамин')) return 'vitamins';
+  return null;
+};
+
+const getSupplementLabel = (component) => {
+  const type = component?.supplement_type || inferSupplementTypeFromName(component?.product_name);
+  return SUPPLEMENT_LABELS[type] || 'Добавка';
+};
+
+const adjustTreatComponentForFrequency = (component, frequencyDays, periodDays) => {
+  if (!component || component.product_type !== 'treat') return component;
+  const baseDailyGrams = Number(component.daily_grams) || 0;
+  const baseDailyKcal = Number(component.daily_kcal) || 0;
+  const basePiecesPerDay = Number(component.pieces_per_day) || 0;
+  const defaultFreq = Number(component.treat_frequency_days) || 2;
+  const freq = Number(frequencyDays) || defaultFreq;
+
+  if (!baseDailyGrams || !freq) return component;
+
+  const adjustedDailyGrams = Math.max(1, Math.round((baseDailyGrams * defaultFreq) / freq));
+  const adjustedDailyKcal = baseDailyKcal ? Math.round((baseDailyKcal * defaultFreq) / freq) : baseDailyKcal;
+  const adjustedPiecesPerDay = basePiecesPerDay
+    ? Math.max(1, Math.round((basePiecesPerDay * defaultFreq) / freq))
+    : basePiecesPerDay;
+
+  let packagesNeeded = component.packages_needed;
+  let daysSupply = component.days_supply;
+  let packageSummary = component.package_summary;
+
+  if (component.weight_grams && periodDays) {
+    const totalGramsNeeded = adjustedDailyGrams * periodDays * 1.15;
+    packagesNeeded = Math.max(1, Math.ceil(totalGramsNeeded / component.weight_grams));
+    daysSupply = Math.floor((component.weight_grams * packagesNeeded) / adjustedDailyGrams);
+    packageSummary = `${packagesNeeded} уп.`;
+  }
+
+  return {
+    ...component,
+    daily_grams: adjustedDailyGrams,
+    daily_kcal: adjustedDailyKcal,
+    pieces_per_day: adjustedPiecesPerDay,
+    packages_needed: packagesNeeded,
+    days_supply: daysSupply,
+    package_summary: packageSummary,
+    treat_frequency_days: freq,
+  };
+};
+
 // ============================================================================
 // КОМПОНЕНТ: Компактная карточка компонента рациона
 // ============================================================================
@@ -599,7 +710,10 @@ const RationComponentCard = ({
   onChangeIndex,
   isLoading,
   componentType,
-  onProductClick
+  onProductClick,
+  labelOverride,
+  showRemove,
+  onRemove
 }) => {
   const navigate = useNavigate();
   
@@ -612,7 +726,7 @@ const RationComponentCard = ({
     'wet_food': 'Влажный корм',
     'wet_food_multi': 'Влажный корм (30%)',
     'treat': 'Лакомства (10%)',
-    'supplement': 'Добавка',
+    'supplement': labelOverride || 'Добавка',
   };
   
   const typeEmoji = {
@@ -659,6 +773,16 @@ const RationComponentCard = ({
             {typeLabels[baseType] || baseType}
           </span>
         </div>
+        {showRemove && (
+          <button
+            type="button"
+            onClick={onRemove}
+            className="text-gray-400 hover:text-gray-600 text-sm"
+            title="Убрать добавку"
+          >
+            ✕
+          </button>
+        )}
         {totalItems > 1 && (
           <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">
             {currentIndex + 1}/{totalItems}
@@ -690,7 +814,7 @@ const RationComponentCard = ({
                 src={component.image_url} 
                 alt={component.product_name}
                 className="w-full h-full object-cover"
-                onError={(e) => { e.target.style.display = 'none'; }}
+                onError={(e) => { e.currentTarget.style.display = 'none'; }}
               />
             ) : (
               <div className="w-full h-full flex items-center justify-center text-2xl">
@@ -785,9 +909,11 @@ const RationComponentCard = ({
               }
             </span>
             <div className="text-xs text-gray-400">
-              {component.packages_needed > 1 && (
+              {component.package_summary ? (
+                <span className="block">{component.package_summary}</span>
+              ) : component.packages_needed > 1 ? (
                 <span>×{component.packages_needed} уп.</span>
-              )}
+              ) : null}
               {component.days_supply > 0 && (
                 <span className="block text-green-600">~{component.days_supply} дн.</span>
               )}
@@ -812,7 +938,7 @@ const RationComponentCard = ({
 // ============================================================================
 // КОМПОНЕНТ: Блок плана питания (обновлённый)
 // ============================================================================
-const FeedingPlanBlock = ({ plan, isLoading }) => {
+const FeedingPlanBlock = ({ plan, isLoading, selectedComponents, treatFrequencyDays, onTreatFrequencyChange }) => {
   if (isLoading) {
     return (
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
@@ -828,10 +954,139 @@ const FeedingPlanBlock = ({ plan, isLoading }) => {
   if (!plan) return null;
   
   const regularDay = plan.regular_day || {};
+  // ВАЖНО: БЖУ/расписание должны считаться по текущему выбранному рациону (с учётом альтернатив),
+  // а не только по исходному plan.components с бэкенда.
+  const componentsForUi = (selectedComponents && selectedComponents.length > 0)
+    ? selectedComponents
+    : (plan.components || []);
   const meals = regularDay.meals || [];
   const treats = regularDay.treats;
   const supplements = regularDay.supplements || [];
+  const supplementsForUi = componentsForUi?.filter((c) => c?.product_type === 'supplement') || [];
+  const supplementSlots = (meals && meals.length > 0)
+    ? meals.map((m) => m.label || m.time).filter(Boolean)
+    : ['Завтрак', 'Обед', 'Ужин'];
   const tips = regularDay.feeding_tips || [];
+  const caloriesForUi = (() => {
+    if (!componentsForUi || componentsForUi.length === 0) return null;
+    let totalKcal = 0;
+    componentsForUi.forEach((c) => {
+      if (c?.daily_kcal != null) {
+        totalKcal += Number(c.daily_kcal) || 0;
+        return;
+      }
+      if (c?.daily_grams && c?.kcal_per_100g) {
+        totalKcal += (Number(c.daily_grams) * Number(c.kcal_per_100g)) / 100;
+      }
+    });
+    if (totalKcal <= 0) return null;
+    const target = Number(plan.daily_calories) || 0;
+    const baseScale = 1;
+    const kcalMinScale = 0.85;
+    const kcalMaxScale = 1.15;
+    const clampScale = (val) => Math.min(kcalMaxScale, Math.max(kcalMinScale, val));
+
+    const computeProteinCoveragePct = (scale) => {
+      let totalGrams = 0;
+      let totalProteinG = 0;
+      let totalMoisture = 0;
+      componentsForUi.forEach((c) => {
+        if (!c?.daily_grams || !c?.nutrition) return;
+        const grams = (Number(c.daily_grams) || 0) * scale;
+        if (grams <= 0) return;
+        const proteinPct = Number(c.nutrition.protein) || 0;
+        const moisturePct = Number(c.nutrition.moisture) || (c.product_type?.includes('wet') ? 75 : 10);
+        totalGrams += grams;
+        totalProteinG += (grams * proteinPct) / 100;
+        totalMoisture += grams * moisturePct;
+      });
+      if (totalGrams <= 0) return null;
+      const avgMoisture = totalMoisture / totalGrams;
+      const dmFactor = avgMoisture < 100 ? 100 / (100 - avgMoisture) : 1;
+      const proteinDm = (totalProteinG / totalGrams) * 100 * dmFactor;
+      const targets = plan.macro_targets?.protein;
+      if (!targets) return null;
+      const min = Number(targets.min);
+      const max = Number(targets.max);
+      if (!Number.isFinite(min) || !Number.isFinite(max) || min <= 0 || max <= 0) return null;
+      const mid = (min + max) / 2;
+      return mid > 0 ? (proteinDm / mid) * 100 : null;
+    };
+
+    const baseProteinPct = computeProteinCoveragePct(baseScale);
+    let desiredScale = 1;
+    if (baseProteinPct && baseProteinPct > 0) {
+      desiredScale = 100 / baseProteinPct;
+    }
+    const scale = clampScale(desiredScale);
+    const adjustedKcal = totalKcal * scale;
+    const percent = target > 0 ? Math.round((adjustedKcal / target) * 100) : null;
+    return { total: Math.round(adjustedKcal), percent, scale };
+  })();
+  const dailyNutritionForUi = (() => {
+    if (!componentsForUi || componentsForUi.length === 0) return null;
+
+    const scale = caloriesForUi?.scale || 1;
+    let totalGrams = 0;
+    let totalProteinG = 0;
+    let totalFatG = 0;
+    let totalFiberG = 0;
+    let totalMoisture = 0;
+
+    componentsForUi.forEach((c) => {
+      if (!c?.daily_grams || !c?.nutrition) return;
+      const grams = (Number(c.daily_grams) || 0) * scale;
+      if (grams <= 0) return;
+      const proteinPct = Number(c.nutrition.protein) || 0;
+      const fatPct = Number(c.nutrition.fat) || 0;
+      const fiberPct = Number(c.nutrition.fiber) || 0;
+      const moisturePct = Number(c.nutrition.moisture) || (c.product_type?.includes('wet') ? 75 : 10);
+
+      totalGrams += grams;
+      totalProteinG += (grams * proteinPct) / 100;
+      totalFatG += (grams * fatPct) / 100;
+      totalFiberG += (grams * fiberPct) / 100;
+      totalMoisture += grams * moisturePct;
+    });
+
+    if (totalGrams <= 0) return null;
+
+    const avgMoisture = totalMoisture / totalGrams;
+    const dmFactor = avgMoisture < 100 ? 100 / (100 - avgMoisture) : 1;
+    const proteinDm = (totalProteinG / totalGrams) * 100 * dmFactor;
+    const fatDm = (totalFatG / totalGrams) * 100 * dmFactor;
+    const fiberDm = (totalFiberG / totalGrams) * 100 * dmFactor;
+
+    const getCoverage = (macroKey, actual) => {
+      const targets = plan.macro_targets?.[macroKey];
+      if (!targets) return null;
+      const min = Number(targets.min);
+      const max = Number(targets.max);
+      if (!Number.isFinite(min) || !Number.isFinite(max) || min <= 0 || max <= 0) return null;
+      const mid = (min + max) / 2;
+      const percent = mid > 0 ? Math.round((actual / mid) * 100) : 100;
+      let color = 'green';
+      if (actual < min * 0.85 || actual > max * 1.15) color = 'red';
+      else if (actual < min || actual > max) color = 'yellow';
+      return { percent, color };
+    };
+
+    return {
+      protein: {
+        grams: Number(totalProteinG.toFixed(1)),
+        coverage: getCoverage('protein', proteinDm),
+      },
+      fat: {
+        grams: Number(totalFatG.toFixed(1)),
+        coverage: getCoverage('fat', fatDm),
+      },
+      fiber: {
+        grams: Number(totalFiberG.toFixed(1)),
+        coverage: getCoverage('fiber', fiberDm),
+      },
+      note: `БЖУ на сухое вещество (DM ${Math.round(100 - avgMoisture)}%)`,
+    };
+  })();
   
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
@@ -844,21 +1099,63 @@ const FeedingPlanBlock = ({ plan, isLoading }) => {
       <div className="bg-gradient-to-r from-orange-50 to-amber-50 rounded-xl p-4 mb-4">
         <p className="text-xs text-gray-500 mb-1">Дневная норма</p>
         <p className="text-2xl font-bold text-gray-800">
-          {regularDay.total_kcal || Math.round(plan.daily_calories)} <span className="text-sm font-normal">ккал</span>
+          {(caloriesForUi?.total ?? regularDay.total_kcal ?? Math.round(plan.daily_calories))}{" "}
+          <span className="text-sm font-normal">ккал</span>
+        </p>
+        <p className="text-xs text-gray-500 mt-1">
+          Норма: {Math.round(plan.daily_calories)} ккал
+          {caloriesForUi?.percent ? ` • ${caloriesForUi.percent}% от нормы` : ''}
         </p>
         <p className="text-xs text-gray-500 mt-1">
           {regularDay.meals_count || 2} кормления в день
         </p>
         
-        {/* БЖУ за день (расчёт из компонентов) */}
-        {plan.components?.length > 0 && (
+        {/* БЖУ за день */}
+        {componentsForUi?.length > 0 && (
           <div className="mt-3 pt-3 border-t border-orange-200/50">
             <p className="text-xs text-gray-500 mb-1">Питательные вещества (в день)</p>
             <div className="grid grid-cols-4 gap-2 text-xs">
               {(() => {
-                // Суммируем БЖУ из всех компонентов с учётом порции
+                const dailyNutrition = dailyNutritionForUi || regularDay?.daily_nutrition;
+                const covClass = (cov) => {
+                  if (!cov) return 'text-gray-400';
+                  if (cov.color === 'green') return 'text-green-700';
+                  if (cov.color === 'yellow') return 'text-amber-700';
+                  return 'text-red-700';
+                };
+
+                if (dailyNutrition?.protein) {
+                  return (
+                    <>
+                      <div className="bg-white/60 rounded p-1.5 text-center">
+                        <p className="font-semibold text-orange-700">{dailyNutrition.protein.grams}г</p>
+                        <p className="text-[10px] text-gray-500">Белок</p>
+                        {dailyNutrition.protein.coverage && (
+                          <p className={`text-[10px] font-medium ${covClass(dailyNutrition.protein.coverage)}`}>
+                            {dailyNutrition.protein.coverage.percent}% от нормы
+                          </p>
+                        )}
+                      </div>
+                      <div className="bg-white/60 rounded p-1.5 text-center">
+                        <p className="font-semibold text-orange-700">{dailyNutrition.fat.grams}г</p>
+                        <p className="text-[10px] text-gray-500">Жир</p>
+                        {dailyNutrition.fat.coverage && (
+                          <p className={`text-[10px] font-medium ${covClass(dailyNutrition.fat.coverage)}`}>
+                            {dailyNutrition.fat.coverage.percent}% от нормы
+                          </p>
+                        )}
+                      </div>
+                      <div className="bg-white/60 rounded p-1.5 text-center">
+                        <p className="font-semibold text-orange-700">—</p>
+                        <p className="text-[10px] text-gray-500">Другие показатели</p>
+                      </div>
+                    </>
+                  );
+                }
+
+                // Fallback: старая логика as-fed
                 const totals = { protein: 0, fat: 0, fiber: 0, calcium: 0 };
-                plan.components.forEach(c => {
+                componentsForUi.forEach(c => {
                   if (c.nutrition && c.daily_grams) {
                     const ratio = c.daily_grams / 100;
                     totals.protein += (c.nutrition.protein || 0) * ratio;
@@ -867,6 +1164,7 @@ const FeedingPlanBlock = ({ plan, isLoading }) => {
                     totals.calcium += (c.nutrition.calcium || 0) * ratio;
                   }
                 });
+
                 return (
                   <>
                     <div className="bg-white/60 rounded p-1.5 text-center">
@@ -878,23 +1176,24 @@ const FeedingPlanBlock = ({ plan, isLoading }) => {
                       <p className="text-[10px] text-gray-500">Жир</p>
                     </div>
                     <div className="bg-white/60 rounded p-1.5 text-center">
-                      <p className="font-semibold text-orange-700">{totals.fiber.toFixed(1)}г</p>
-                      <p className="text-[10px] text-gray-500">Клетч.</p>
-                    </div>
-                    <div className="bg-white/60 rounded p-1.5 text-center">
-                      <p className="font-semibold text-orange-700">{(totals.calcium * 1000).toFixed(0)}мг</p>
-                      <p className="text-[10px] text-gray-500">Кальций</p>
+                      <p className="font-semibold text-orange-700">—</p>
+                      <p className="text-[10px] text-gray-500">Другие показатели</p>
                     </div>
                   </>
                 );
               })()}
             </div>
+            {dailyNutritionForUi?.note && (
+              <p className="mt-2 text-[10px] text-gray-500">
+                {dailyNutritionForUi.note}
+              </p>
+            )}
           </div>
         )}
       </div>
       
       {/* Расписание кормлений - динамическое на основе выбранных компонентов */}
-      {plan.components?.length > 0 && (
+      {componentsForUi?.length > 0 && (
         <div className="mb-4">
           <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">
             Расписание кормления
@@ -903,95 +1202,80 @@ const FeedingPlanBlock = ({ plan, isLoading }) => {
             {(() => {
               const schedule = [];
 
-              if (meals.length > 0) {
-                meals.forEach((meal) => {
-                  const grams = meal.grams || 0;
-                  const kcal = meal.kcal ?? Math.round(grams * (meal.kcal_per_100g || 0) / 100);
-                  schedule.push({
-                    time: meal.time || '',
-                    label: meal.label || '',
-                    product: meal.product || '',
-                    type: meal.type || 'dry',
-                    grams,
-                    kcal,
-                  });
+              // Формируем расписание из выбранных компонентов (актуально для альтернатив)
+              const dryFood = componentsForUi.find(c => c.product_type?.includes('dry'));
+              const wetFood = componentsForUi.find(c => c.product_type?.includes('wet'));
+              
+              // Утро - сухой корм (если есть)
+              if (dryFood) {
+                const portion = Math.round((dryFood.daily_grams || 0) * 0.5);
+                schedule.push({
+                  time: '08:00',
+                  label: 'Завтрак',
+                  product: dryFood.product_name || 'Сухой корм',
+                  type: 'dry',
+                  grams: portion,
+                  kcal: Math.round(portion * (dryFood.kcal_per_100g || 350) / 100)
                 });
-              } else {
-                // Фоллбек: формируем расписание из компонентов
-                const dryFood = plan.components.find(c => c.product_type?.includes('dry'));
-                const wetFood = plan.components.find(c => c.product_type?.includes('wet'));
-                
-                // Утро - сухой корм (если есть)
-                if (dryFood) {
-                  const portion = Math.round(dryFood.daily_grams * 0.5);
-                  schedule.push({
-                    time: '08:00',
-                    label: 'Завтрак',
-                    product: dryFood.product_name || 'Сухой корм',
-                    type: 'dry',
-                    grams: portion,
-                    kcal: Math.round(portion * (dryFood.kcal_per_100g || 350) / 100)
-                  });
-                }
-                
-                // Обед - влажный корм (если есть)
-                if (wetFood) {
-                  const portion = Math.round(wetFood.daily_grams * 0.5);
-                  schedule.push({
-                    time: '13:00',
-                    label: 'Обед',
-                    product: wetFood.product_name || 'Влажный корм',
-                    type: 'wet',
-                    grams: portion,
-                    kcal: Math.round(portion * (wetFood.kcal_per_100g || 95) / 100)
-                  });
-                }
-                
-                // Ужин
-                if (dryFood && wetFood) {
-                  // Мультипитание: вечером сухой
-                  const portion = Math.round(dryFood.daily_grams * 0.5);
-                  schedule.push({
-                    time: '18:00',
-                    label: 'Ужин',
-                    product: dryFood.product_name || 'Сухой корм',
-                    type: 'dry',
-                    grams: portion,
-                    kcal: Math.round(portion * (dryFood.kcal_per_100g || 350) / 100)
-                  });
-                  // + влажный
-                  const wetPortion = Math.round(wetFood.daily_grams * 0.5);
-                  schedule.push({
-                    time: '18:00',
-                    label: '+',
-                    product: wetFood.product_name || 'Влажный корм',
-                    type: 'wet',
-                    grams: wetPortion,
-                    kcal: Math.round(wetPortion * (wetFood.kcal_per_100g || 95) / 100)
-                  });
-                } else if (dryFood) {
-                  // Только сухой
-                  const portion = Math.round(dryFood.daily_grams * 0.5);
-                  schedule.push({
-                    time: '18:00',
-                    label: 'Ужин',
-                    product: dryFood.product_name || 'Сухой корм',
-                    type: 'dry',
-                    grams: portion,
-                    kcal: Math.round(portion * (dryFood.kcal_per_100g || 350) / 100)
-                  });
-                } else if (wetFood) {
-                  // Только влажный
-                  const portion = Math.round(wetFood.daily_grams * 0.5);
-                  schedule.push({
-                    time: '18:00',
-                    label: 'Ужин',
-                    product: wetFood.product_name || 'Влажный корм',
-                    type: 'wet',
-                    grams: portion,
-                    kcal: Math.round(portion * (wetFood.kcal_per_100g || 95) / 100)
-                  });
-                }
+              }
+              
+              // Обед - влажный корм (если есть)
+              if (wetFood) {
+                const portion = Math.round((wetFood.daily_grams || 0) * 0.5);
+                schedule.push({
+                  time: '13:00',
+                  label: 'Обед',
+                  product: wetFood.product_name || 'Влажный корм',
+                  type: 'wet',
+                  grams: portion,
+                  kcal: Math.round(portion * (wetFood.kcal_per_100g || 95) / 100)
+                });
+              }
+              
+              // Ужин
+              if (dryFood && wetFood) {
+                // Мультипитание: вечером сухой
+                const portion = Math.round((dryFood.daily_grams || 0) * 0.5);
+                schedule.push({
+                  time: '18:00',
+                  label: 'Ужин',
+                  product: dryFood.product_name || 'Сухой корм',
+                  type: 'dry',
+                  grams: portion,
+                  kcal: Math.round(portion * (dryFood.kcal_per_100g || 350) / 100)
+                });
+                // + влажный
+                const wetPortion = Math.round((wetFood.daily_grams || 0) * 0.5);
+                schedule.push({
+                  time: '18:00',
+                  label: '+',
+                  product: wetFood.product_name || 'Влажный корм',
+                  type: 'wet',
+                  grams: wetPortion,
+                  kcal: Math.round(wetPortion * (wetFood.kcal_per_100g || 95) / 100)
+                });
+              } else if (dryFood) {
+                // Только сухой
+                const portion = Math.round((dryFood.daily_grams || 0) * 0.5);
+                schedule.push({
+                  time: '18:00',
+                  label: 'Ужин',
+                  product: dryFood.product_name || 'Сухой корм',
+                  type: 'dry',
+                  grams: portion,
+                  kcal: Math.round(portion * (dryFood.kcal_per_100g || 350) / 100)
+                });
+              } else if (wetFood) {
+                // Только влажный
+                const portion = Math.round((wetFood.daily_grams || 0) * 0.5);
+                schedule.push({
+                  time: '18:00',
+                  label: 'Ужин',
+                  product: wetFood.product_name || 'Влажный корм',
+                  type: 'wet',
+                  grams: portion,
+                  kcal: Math.round(portion * (wetFood.kcal_per_100g || 95) / 100)
+                });
               }
               
               return schedule.map((meal, i) => (
@@ -1033,13 +1317,16 @@ const FeedingPlanBlock = ({ plan, isLoading }) => {
       
       {/* Лакомства - из компонентов */}
       {(() => {
-        const treatComp = plan.components?.find(c => c.product_type === 'treat');
+        const treatComp = componentsForUi?.find(c => c.product_type === 'treat');
         if (!treatComp && !treats) return null;
         
         const data = treatComp || treats;
         const productName = treatComp?.product_name?.split(' ').slice(0, 4).join(' ') || 'Лакомства';
-        const dailyGrams = treatComp?.daily_grams || treats?.daily_grams;
-        const piecesPerDay = treatComp?.pieces_per_day || treats?.pieces_per_day || (dailyGrams ? Math.max(1, Math.round(dailyGrams / 10)) : null);
+        const baseDailyGrams = treatComp?.daily_grams || treats?.daily_grams;
+        const basePiecesPerDay = treatComp?.pieces_per_day || treats?.pieces_per_day || (baseDailyGrams ? Math.max(1, Math.round(baseDailyGrams / 10)) : null);
+        const frequencyDays = treatFrequencyDays || treatComp?.treat_frequency_days || treats?.frequency_days || 2;
+        const gramsPerTreatDay = baseDailyGrams ? Math.round(baseDailyGrams * frequencyDays) : null;
+        const piecesPerTreatDay = basePiecesPerDay ? Math.max(1, Math.round(basePiecesPerDay * frequencyDays)) : null;
         
         return (
           <div className="mb-4">
@@ -1053,13 +1340,30 @@ const FeedingPlanBlock = ({ plan, isLoading }) => {
                   <span className="text-orange-700 font-medium line-clamp-1">{productName}</span>
                 </div>
                 <div className="text-right flex-shrink-0 ml-2">
-                  {dailyGrams && (
-                    <span className="text-orange-700 font-semibold">{dailyGrams}г</span>
+                  {gramsPerTreatDay && (
+                    <span className="text-orange-700 font-semibold">{gramsPerTreatDay}г</span>
                   )}
-                  {piecesPerDay && (
-                    <span className="text-xs text-gray-500 ml-1">(~{piecesPerDay} шт)</span>
+                  {piecesPerTreatDay && (
+                    <span className="text-xs text-gray-500 ml-1">(~{piecesPerTreatDay} шт)</span>
                   )}
                 </div>
+              </div>
+              <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-gray-600">
+                <span>Частота:</span>
+                {[1, 2, 3, 7].map((days) => (
+                  <button
+                    key={days}
+                    type="button"
+                    onClick={() => onTreatFrequencyChange?.(days)}
+                    className={`px-2 py-0.5 rounded border ${
+                      frequencyDays === days
+                        ? 'bg-orange-200 border-orange-300 text-orange-900'
+                        : 'bg-white border-orange-200 text-orange-700 hover:bg-orange-100'
+                    }`}
+                  >
+                    {days === 1 ? 'Ежедневно' : `Раз в ${days} дн.`}
+                  </button>
+                ))}
               </div>
               <p className="text-xs text-gray-500 mt-1">
                 💡 Распределить в течение дня, не более 10% от суточной нормы
@@ -1069,16 +1373,16 @@ const FeedingPlanBlock = ({ plan, isLoading }) => {
         );
       })()}
       
-      {/* Добавки - из supplements или компонентов */}
+      {/* Добавки - только активные */}
       {(() => {
-        // Берём добавки из supplements или из компонентов с типом supplement
-        const suppList = supplements.length > 0 
-          ? supplements 
-          : plan.supplements?.map(s => ({
+        const suppList = supplementsForUi.length > 0
+          ? supplementsForUi.map((s, index) => ({
               product: s.product_name,
               dosage: s.dosage_text || 'По инструкции',
-              time: s.intake_time || 'с едой'
-            })) || [];
+              time: s.intake_time || supplementSlots[index % supplementSlots.length] || 'с едой',
+              instructions: s.intake_instructions,
+            }))
+          : [];
         
         if (suppList.length === 0) return null;
         
@@ -1100,6 +1404,7 @@ const FeedingPlanBlock = ({ plan, isLoading }) => {
                   </div>
                   <div className="flex items-center gap-2 mt-1 text-xs text-gray-500">
                     <span>⏰ {supp.time}</span>
+                    {supp.instructions && <span>• {supp.instructions}</span>}
                   </div>
                 </div>
               ))}
@@ -1170,14 +1475,17 @@ export default function FoodRecommendationPage() {
   // Настройки плана
   const [feedingType, setFeedingType] = useState('multi');
   const [planVariant, setPlanVariant] = useState('basic');
-  const [period, setPeriod] = useState(30);
+  const [period, setPeriod] = useState(14);
   
   // Данные плана
   const [feedingPlan, setFeedingPlan] = useState(null);
+  const [treatFrequencyDays, setTreatFrequencyDays] = useState(2);
   
   // Компоненты рациона с альтернативами
   // { type: 'dry_food', alternatives: [...], currentIndex: 0 }
   const [componentStates, setComponentStates] = useState({});
+  const [supplementPool, setSupplementPool] = useState([]);
+  const [isSuppPoolLoading, setIsSuppPoolLoading] = useState(false);
   const [restoreState, setRestoreState] = useState(null);
   const restoreAppliedRef = useRef(false);
   
@@ -1276,16 +1584,13 @@ export default function FoodRecommendationPage() {
           }
         });
         
-        // Добавляем добавки из бэкенда (для продвинутого набора)
-        // Каждая добавка - отдельный компонент
+        // Добавляем только основную добавку (по умолчанию одна)
         if (plan.supplements?.length > 0) {
-          plan.supplements.forEach((supp, index) => {
-            const type = `supplement_${index}`;
-            states[type] = {
-              alternatives: [supp],
-              currentIndex: 0
-            };
-          });
+          const primarySupp = plan.supplements[0];
+          states['supplement_0'] = {
+            alternatives: [primarySupp],
+            currentIndex: 0
+          };
         }
         
         setComponentStates(states);
@@ -1300,6 +1605,62 @@ export default function FoodRecommendationPage() {
     
     loadFeedingPlan();
   }, [selectedPet, feedingType, planVariant, period]);
+
+  useEffect(() => {
+    if (feedingPlan?.regular_day?.treats?.frequency_days) {
+      setTreatFrequencyDays(feedingPlan.regular_day.treats.frequency_days);
+    }
+  }, [feedingPlan]);
+
+  // Загрузка каталога добавок для продвинутого набора
+  useEffect(() => {
+    if (!selectedPet || planVariant !== 'advanced') {
+      setSupplementPool([]);
+      return;
+    }
+
+    let isMounted = true;
+    const loadSupplements = async () => {
+      try {
+        setIsSuppPoolLoading(true);
+        const catResp = await getCategories({ animal_type: selectedPet.species, tree: true });
+        const categories = catResp.data || catResp;
+        const supplementsCategory = findCategoryByCode(categories, 'food.supplements');
+
+        let productsResp;
+        if (supplementsCategory?.id) {
+          productsResp = await getProductsV2({
+            category_id: supplementsCategory.id,
+            animal_type: selectedPet.species,
+            per_page: 60,
+          });
+        } else {
+          productsResp = await getProductsV2({
+            product_group: 'vitamins',
+            animal_type: selectedPet.species,
+            per_page: 60,
+          });
+        }
+
+        const rawProducts = productsResp?.data?.results || productsResp?.results || productsResp?.data?.products || productsResp?.products || [];
+        const mapped = rawProducts.map(mapProductToSupplementComponent);
+
+        if (isMounted) {
+          setSupplementPool(mapped);
+        }
+      } catch (e) {
+        console.error('Ошибка загрузки добавок:', e);
+        if (isMounted) setSupplementPool([]);
+      } finally {
+        if (isMounted) setIsSuppPoolLoading(false);
+      }
+    };
+
+    loadSupplements();
+    return () => {
+      isMounted = false;
+    };
+  }, [selectedPet, planVariant]);
   
   // Загрузка альтернатив для компонента
   const loadAlternatives = useCallback(async (componentType) => {
@@ -1428,10 +1789,76 @@ export default function FoodRecommendationPage() {
       }
     }));
   }, [componentStates]);
+
+  const handleAddSupplement = useCallback(() => {
+    if (planVariant !== 'advanced') return;
+    if (!supplementPool.length) return;
+
+    const existingSupplementKeys = Object.keys(componentStates).filter((key) => key.startsWith('supplement_'));
+    if (existingSupplementKeys.length >= 3) return;
+
+    const selectedIds = new Set(
+      existingSupplementKeys.map((key) => componentStates[key]?.alternatives?.[componentStates[key].currentIndex]?.product_id).filter(Boolean)
+    );
+
+    const available = supplementPool.filter((item) => !selectedIds.has(item.product_id));
+    if (available.length === 0) return;
+
+    let nextIndex = 0;
+    while (componentStates[`supplement_${nextIndex}`]) {
+      nextIndex += 1;
+    }
+
+    const alternatives = available.map((item) => ({
+      ...item,
+      supplement_type: item.supplement_type || inferSupplementTypeFromName(item.product_name),
+    }));
+    const currentIndex = 0;
+
+    setComponentStates((prev) => ({
+      ...prev,
+      [`supplement_${nextIndex}`]: {
+        alternatives,
+        currentIndex,
+      },
+    }));
+  }, [planVariant, supplementPool, componentStates]);
+
+  const handleRemoveSupplement = useCallback((componentType) => {
+    setComponentStates((prev) => {
+      const next = { ...prev };
+      delete next[componentType];
+      return next;
+    });
+  }, []);
+
+  // Получение текущих компонентов для отображения
+  const currentComponents = Object.entries(componentStates).map(([type, state]) => {
+    const filteredAlternatives = state.alternatives.filter(alt => isComponentTypeCompatible(type, alt));
+    const rawAlternatives = filteredAlternatives.length > 0 ? filteredAlternatives : state.alternatives;
+    const displayAlternatives = rawAlternatives.map((item) =>
+      item?.product_type === 'treat'
+        ? adjustTreatComponentForFrequency(item, treatFrequencyDays, period)
+        : item
+    );
+    const displayIndexMap = displayAlternatives.map((item) => (
+      state.alternatives.findIndex(a => a.product_id === item.product_id)
+    ));
+    const displayIndex = displayIndexMap.indexOf(state.currentIndex);
+    const fallbackIndex = displayIndex >= 0 ? displayIndex : 0;
+
+    return {
+      type,
+      component: displayAlternatives[fallbackIndex],
+      alternatives: displayAlternatives,
+      currentIndex: fallbackIndex,
+      displayIndexMap,
+    };
+  });
   
   // Расчёт общей стоимости выбранных компонентов
-  const totalCost = Object.values(componentStates).reduce((sum, state) => {
-    const current = state.alternatives[state.currentIndex];
+  const totalCost = currentComponents.reduce((sum, entry) => {
+    const current = entry.component;
     if (!current?.price) return sum;
     const price = parseFloat(current.price);
     const packages = current.packages_needed || 1;
@@ -1441,8 +1868,8 @@ export default function FoodRecommendationPage() {
   // Добавление в корзину
   const handleAddToCart = async () => {
     try {
-      for (const state of Object.values(componentStates)) {
-        const component = state.alternatives[state.currentIndex];
+      for (const entry of currentComponents) {
+        const component = entry.component;
         if (component?.product_id) {
           await addToCart(component.product_id, component.packages_needed || 1);
         }
@@ -1491,25 +1918,6 @@ export default function FoodRecommendationPage() {
     const productUrl = `/shop/products/${component.product_id}?return_to=${encodeURIComponent(returnTo)}`;
     navigate(productUrl);
   }, [saveDietState, buildReturnTo, navigate]);
-  
-  // Получение текущих компонентов для отображения
-  const currentComponents = Object.entries(componentStates).map(([type, state]) => {
-    const filteredAlternatives = state.alternatives.filter(alt => isComponentTypeCompatible(type, alt));
-    const displayAlternatives = filteredAlternatives.length > 0 ? filteredAlternatives : state.alternatives;
-    const displayIndexMap = displayAlternatives.map((item) => (
-      state.alternatives.findIndex(a => a.product_id === item.product_id)
-    ));
-    const displayIndex = displayIndexMap.indexOf(state.currentIndex);
-    const fallbackIndex = displayIndex >= 0 ? displayIndex : 0;
-
-    return {
-      type,
-      component: displayAlternatives[fallbackIndex],
-      alternatives: displayAlternatives,
-      currentIndex: fallbackIndex,
-      displayIndexMap,
-    };
-  });
   
   // Загрузка
   if (isLoading) {
@@ -1660,25 +2068,102 @@ export default function FoodRecommendationPage() {
               
               {isPlanLoading && (
                 <div className="flex items-center justify-center py-8">
-                  <RefreshCw className="w-6 h-6 text-purple-500 animate-spin" />
+                  <div className="flex flex-col items-center gap-2 text-center">
+                    <RefreshCw className="w-6 h-6 text-purple-500 animate-spin" />
+                    <p className="text-sm text-gray-500">
+                      Подбираем корм для вашего питомца
+                    </p>
+                  </div>
                 </div>
               )}
               
               {/* Компоненты */}
               {!isPlanLoading && currentComponents.length > 0 && (
                 <div className="space-y-4">
-                  {currentComponents.map(({ type, component, alternatives, currentIndex, displayIndexMap }) => (
-                    <RationComponentCard
-                      key={type}
-                      component={component}
-                      alternatives={alternatives}
-                      currentIndex={currentIndex}
-                      onChangeIndex={(idx) => handleChangeComponentIndex(type, displayIndexMap[idx] ?? idx)}
-                      isLoading={isPlanLoading}
-                      componentType={type}
-                      onProductClick={handleOpenProduct}
-                    />
-                  ))}
+                  {(() => {
+                    const foodComponents = currentComponents.filter(({ type }) => !type.startsWith('supplement_'));
+                    const supplementComponents = currentComponents
+                      .filter(({ type }) => type.startsWith('supplement_'))
+                      .sort((a, b) => {
+                        const ai = parseInt(a.type.split('_')[1] || '0', 10);
+                        const bi = parseInt(b.type.split('_')[1] || '0', 10);
+                        return ai - bi;
+                      });
+                    return (
+                      <>
+                        {foodComponents.map(({ type, component, alternatives, currentIndex, displayIndexMap }) => (
+                          <RationComponentCard
+                            key={type}
+                            component={component}
+                            alternatives={alternatives}
+                            currentIndex={currentIndex}
+                            onChangeIndex={(idx) => handleChangeComponentIndex(type, displayIndexMap[idx] ?? idx)}
+                            isLoading={isPlanLoading}
+                            componentType={type}
+                            onProductClick={handleOpenProduct}
+                          />
+                        ))}
+
+                        {planVariant === 'advanced' && supplementComponents.length > 0 && (
+                          <div className="pt-2">
+                            <div className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-2">
+                              <span className="text-lg">💊</span>
+                              Витамины и добавки
+                            </div>
+                            <div className="space-y-3">
+                              {supplementComponents.map(({ type, component, alternatives, currentIndex, displayIndexMap }, idx) => (
+                                <RationComponentCard
+                                  key={type}
+                                  component={component}
+                                  alternatives={alternatives}
+                                  currentIndex={currentIndex}
+                                  onChangeIndex={(idx) => handleChangeComponentIndex(type, displayIndexMap[idx] ?? idx)}
+                                  isLoading={isPlanLoading}
+                                  componentType={type}
+                                  onProductClick={handleOpenProduct}
+                                  labelOverride={getSupplementLabel(component)}
+                                  showRemove={idx > 0}
+                                  onRemove={() => handleRemoveSupplement(type)}
+                                />
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {planVariant === 'advanced' && supplementComponents.length === 0 && (
+                          <div className="pt-2">
+                            <div className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-2">
+                              <span className="text-lg">💊</span>
+                              Витамины и добавки
+                            </div>
+                            <div className="text-sm text-gray-500 mb-3">
+                              Добавьте витамины и добавки по потребностям питомца (до 3 разных типов).
+                            </div>
+                          </div>
+                        )}
+
+                        {planVariant === 'advanced' && (
+                          <div className="pt-2">
+                            <button
+                              type="button"
+                              onClick={handleAddSupplement}
+                              disabled={isSuppPoolLoading || supplementComponents.length >= 3 || supplementPool.length === 0}
+                              className="inline-flex items-center gap-2 text-sm px-3 py-2 rounded-lg border border-purple-200 text-purple-700 hover:bg-purple-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              <span className="text-lg leading-none">＋</span>
+                              Добавить витамины
+                            </button>
+                            <span className="ml-3 text-xs text-gray-500">
+                              {supplementComponents.length}/3
+                            </span>
+                            {isSuppPoolLoading && (
+                              <span className="ml-3 text-xs text-gray-400">загружаем каталог...</span>
+                            )}
+                          </div>
+                        )}
+                      </>
+                    );
+                  })()}
                 </div>
               )}
               
@@ -1719,9 +2204,12 @@ export default function FoodRecommendationPage() {
         <div className="lg:col-span-1">
           {selectedPet && (
             <div className="sticky top-24">
-              <FeedingPlanBlock 
-                plan={feedingPlan} 
-                isLoading={isPlanLoading} 
+              <FeedingPlanBlock
+                plan={feedingPlan}
+                isLoading={isPlanLoading}
+                selectedComponents={currentComponents.map(x => x.component).filter(Boolean)}
+                treatFrequencyDays={treatFrequencyDays}
+                onTreatFrequencyChange={setTreatFrequencyDays}
               />
             </div>
           )}

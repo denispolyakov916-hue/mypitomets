@@ -122,6 +122,7 @@ function CourseDetail() {
   const { pets } = usePets()
   
   const [course, setCourse] = useState(null)
+  const [imageError, setImageError] = useState(false)
   const [isOwned, setIsOwned] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -324,6 +325,10 @@ function CourseDetail() {
   }
   
   const petInfo = petTypeInfo[course.pet_type] || petTypeInfo.all
+
+  useEffect(() => {
+    setImageError(false)
+  }, [course?.image_url])
   
   // Проверка наличия курса в корзине
   const cartItem = course ? getItemInCart(course.id) : null
@@ -347,11 +352,12 @@ function CourseDetail() {
         <div className="lg:col-span-2 space-y-6">
           {/* Обложка и заголовок */}
           <div>
-            {course.image_url ? (
+            {course.image_url && !imageError ? (
               <img 
                 src={course.image_url} 
                 alt={course.title}
                 className="w-full h-80 object-cover rounded-xl mb-4 shadow-lg"
+                onError={() => setImageError(true)}
               />
             ) : (
               <div className={`w-full h-80 bg-gradient-to-br ${petInfo.color} rounded-xl flex items-center justify-center mb-4 shadow-lg`}>

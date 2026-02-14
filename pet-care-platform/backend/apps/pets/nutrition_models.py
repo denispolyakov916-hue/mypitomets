@@ -113,6 +113,308 @@ class NutritionCoefficient(models.Model):
         return f"{self.get_coefficient_type_display()} ({self.species}): {self.name_ru} = {self.coefficient}"
 
 
+class NutritionFactorRule(models.Model):
+    """
+    Правила влияния факторов на MER (priority+caps модель).
+    Хранит приоритет и допустимую коррекцию факторов.
+    """
+
+    SCOPE_CHOICES = [
+        ('dog', 'Собака'),
+        ('cat', 'Кошка'),
+        ('both', 'Оба'),
+    ]
+
+    factor_key = models.CharField(
+        max_length=50,
+        verbose_name='Ключ фактора',
+        help_text='Например: activity, neutering, bcs, disease, size, coat, climate'
+    )
+    priority = models.PositiveSmallIntegerField(
+        default=1,
+        verbose_name='Приоритет',
+        help_text='0=base, 1=cap, 2=secondary'
+    )
+    max_delta_pct = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(0)],
+        verbose_name='Макс. коррекция (%)',
+        help_text='Ограничение влияния фактора, например 15.0 = ±15%'
+    )
+    scope = models.CharField(
+        max_length=10,
+        choices=SCOPE_CHOICES,
+        default='both',
+        verbose_name='Вид'
+    )
+    notes = models.TextField(blank=True, verbose_name='Заметки')
+    is_active = models.BooleanField(default=True, verbose_name='Активно')
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Правило фактора MER'
+        verbose_name_plural = 'Правила факторов MER'
+        db_table = 'nutrition_factor_rules'
+        ordering = ['priority', 'factor_key']
+        indexes = [
+            models.Index(fields=['scope', 'factor_key']),
+        ]
+
+    def __str__(self):
+        return f"{self.factor_key} (prio={self.priority})"
+
+
+class NutritionCapRule(models.Model):
+    """
+    Правила ограничений MER/RER по контекстам (BCS, критические состояния, рост и т.п.).
+    """
+
+    SCOPE_CHOICES = [
+        ('dog', 'Собака'),
+        ('cat', 'Кошка'),
+        ('both', 'Оба'),
+    ]
+
+    context_key = models.CharField(
+        max_length=50,
+        verbose_name='Контекст',
+        help_text='Например: weight_loss_obesity_2_3, growth, lactation, critical'
+    )
+    min_mer_rer = models.DecimalField(
+        max_digits=4,
+        decimal_places=2,
+        validators=[MinValueValidator(0.1)],
+        verbose_name='Мин. MER/RER'
+    )
+    max_mer_rer = models.DecimalField(
+        max_digits=4,
+        decimal_places=2,
+        validators=[MinValueValidator(0.1)],
+        verbose_name='Макс. MER/RER'
+    )
+    scope = models.CharField(
+        max_length=10,
+        choices=SCOPE_CHOICES,
+        default='both',
+        verbose_name='Вид'
+    )
+    notes = models.TextField(blank=True, verbose_name='Заметки')
+    is_active = models.BooleanField(default=True, verbose_name='Активно')
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Кап MER/RER'
+        verbose_name_plural = 'Капы MER/RER'
+        db_table = 'nutrition_cap_rules'
+        ordering = ['context_key']
+        indexes = [
+            models.Index(fields=['scope', 'context_key']),
+        ]
+
+    def __str__(self):
+        return f"{self.context_key} [{self.min_mer_rer}-{self.max_mer_rer}]"
+
+
+class MacroTargetRule(models.Model):
+    """
+    Целевые диапазоны БЖУ по контекстам (вид, возраст, здоровье, репродукция, активность).
+    Приоритет определяет, какое правило применяется при конфликте.
+    """
+
+    SCOPE_CHOICES = [
+        ('dog', 'Собака'),
+        ('cat', 'Кошка'),
+        ('both', 'Оба'),
+    ]
+
+    CONTEXT_TYPE_CHOICES = [
+        ('disease', 'Заболевание'),
+        ('reproductive', 'Репродукция'),
+        ('growth', 'Рост'),
+        ('age', 'Возраст'),
+        ('activity', 'Активность'),
+        ('bcs', 'BCS/Вес'),
+        ('baseline', 'Базовый'),
+    ]
+
+    context_key = models.CharField(
+        max_length=80,
+        verbose_name='Контекст',
+        help_text='Например: ckd_early, lactation, growth_early, senior, high_activity, baseline'
+    )
+    context_type = models.CharField(
+        max_length=20,
+        choices=CONTEXT_TYPE_CHOICES,
+        default='baseline',
+        db_index=True,
+        verbose_name='Тип контекста'
+    )
+    priority = models.PositiveSmallIntegerField(
+        default=10,
+        verbose_name='Приоритет',
+        help_text='0=highest (disease), 10=baseline'
+    )
+    scope = models.CharField(
+        max_length=10,
+        choices=SCOPE_CHOICES,
+        default='both',
+        verbose_name='Вид'
+    )
+
+    # Диапазоны БЖУ (% DM — dry matter basis)
+    protein_min = models.DecimalField(
+        max_digits=4, decimal_places=1, null=True, blank=True,
+        verbose_name='Белок мин (%)'
+    )
+    protein_max = models.DecimalField(
+        max_digits=4, decimal_places=1, null=True, blank=True,
+        verbose_name='Белок макс (%)'
+    )
+    fat_min = models.DecimalField(
+        max_digits=4, decimal_places=1, null=True, blank=True,
+        verbose_name='Жир мин (%)'
+    )
+    fat_max = models.DecimalField(
+        max_digits=4, decimal_places=1, null=True, blank=True,
+        verbose_name='Жир макс (%)'
+    )
+    fiber_min = models.DecimalField(
+        max_digits=4, decimal_places=1, null=True, blank=True,
+        verbose_name='Клетчатка мин (%)'
+    )
+    fiber_max = models.DecimalField(
+        max_digits=4, decimal_places=1, null=True, blank=True,
+        verbose_name='Клетчатка макс (%)'
+    )
+
+    # Возрастные границы (опционально)
+    age_from_months = models.PositiveIntegerField(null=True, blank=True, verbose_name='Возраст от (мес)')
+    age_to_months = models.PositiveIntegerField(null=True, blank=True, verbose_name='Возраст до (мес)')
+
+    # Связь с заболеванием (опционально)
+    disease_code = models.CharField(max_length=50, blank=True, verbose_name='Код заболевания')
+
+    notes = models.TextField(blank=True, verbose_name='Заметки/Источник')
+    is_active = models.BooleanField(default=True, verbose_name='Активно')
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Правило БЖУ'
+        verbose_name_plural = 'Правила БЖУ'
+        db_table = 'macro_target_rules'
+        ordering = ['priority', 'context_type', 'context_key']
+        indexes = [
+            models.Index(fields=['scope', 'context_type']),
+            models.Index(fields=['priority']),
+        ]
+
+    def __str__(self):
+        return f"{self.context_key} (prio={self.priority}): P{self.protein_min}-{self.protein_max} F{self.fat_min}-{self.fat_max}"
+
+
+class SupplementRule(models.Model):
+    """
+    Правила приоритетного подбора витаминов и добавок по контексту питомца.
+    """
+
+    SCOPE_CHOICES = [
+        ('dog', 'Собака'),
+        ('cat', 'Кошка'),
+        ('both', 'Оба'),
+    ]
+
+    CONTEXT_TYPE_CHOICES = [
+        ('growth', 'Рост'),
+        ('age', 'Возраст'),
+        ('reproductive', 'Репродукция'),
+        ('disease', 'Заболевание'),
+        ('activity', 'Активность'),
+        ('breed_risk', 'Породный риск'),
+        ('baseline', 'Базовый'),
+    ]
+
+    context_key = models.CharField(
+        max_length=50,
+        verbose_name='Контекст',
+        help_text='Например: growth_puppy_early, senior_dog, lactation, arthritis'
+    )
+    context_type = models.CharField(
+        max_length=20,
+        choices=CONTEXT_TYPE_CHOICES,
+        default='baseline',
+        db_index=True,
+        verbose_name='Тип контекста'
+    )
+    priority = models.PositiveSmallIntegerField(
+        default=5,
+        verbose_name='Приоритет',
+        help_text='0=highest (критически важно), 10=baseline'
+    )
+    scope = models.CharField(
+        max_length=10,
+        choices=SCOPE_CHOICES,
+        default='both',
+        verbose_name='Вид'
+    )
+
+    supplement_type = models.CharField(
+        max_length=30,
+        verbose_name='Тип добавки',
+        help_text='calcium, omega3, joint, vitamins, probiotics, taurine, senior и др.'
+    )
+    reason_ru = models.TextField(
+        verbose_name='Причина рекомендации',
+        help_text='Текст для UI: "Для роста костей и зубов"'
+    )
+
+    dosage_factor = models.DecimalField(
+        max_digits=4,
+        decimal_places=2,
+        default=1.0,
+        verbose_name='Множитель дозы',
+        help_text='Множитель к стандартной дозе (1.0 = норма, 1.5 = повышенная)'
+    )
+
+    # Возрастные границы
+    age_from_months = models.PositiveIntegerField(null=True, blank=True, verbose_name='Возраст от (мес)')
+    age_to_months = models.PositiveIntegerField(null=True, blank=True, verbose_name='Возраст до (мес)')
+
+    # Связь с заболеванием (опционально)
+    disease_code = models.CharField(max_length=50, blank=True, verbose_name='Код заболевания')
+
+    # Связь с размером (для крупных пород)
+    size_category = models.CharField(max_length=20, blank=True, verbose_name='Размер (large, giant и т.д.)')
+
+    notes = models.TextField(blank=True, verbose_name='Заметки')
+    is_active = models.BooleanField(default=True, verbose_name='Активно')
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Правило добавки'
+        verbose_name_plural = 'Правила добавок'
+        db_table = 'supplement_rules'
+        ordering = ['priority', 'context_type', 'supplement_type']
+        indexes = [
+            models.Index(fields=['scope', 'context_type']),
+            models.Index(fields=['priority']),
+            models.Index(fields=['supplement_type']),
+        ]
+
+    def __str__(self):
+        return f"{self.context_key}: {self.supplement_type} (prio={self.priority})"
+
+
 class HealthCondition(models.Model):
     """
     Справочник заболеваний с коэффициентами для расчёта калорийности.
