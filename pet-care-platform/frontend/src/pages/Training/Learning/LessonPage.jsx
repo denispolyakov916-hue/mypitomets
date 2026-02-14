@@ -34,8 +34,13 @@ const LessonPage = () => {
     try {
       setLoadingLesson(true)
       const lessonResponse = await getLesson(lessonId, petId)
+      
       // API клиент возвращает response.data напрямую
-      setLesson(lessonResponse.lesson)
+      if (lessonResponse.lesson) {
+        setLesson(lessonResponse.lesson)
+      } else {
+        console.error('LessonPage: No lesson in response', lessonResponse)
+      }
       return lessonResponse.lesson?.course_id
     } catch (error) {
       console.error('Error loading lesson:', error)
@@ -48,7 +53,9 @@ const LessonPage = () => {
 
   // Загрузка навигации (фоновая)
   const loadNavigation = useCallback(async (courseId) => {
-    if (!courseId) return
+    if (!courseId) {
+      return
+    }
     
     try {
       setLoadingNavigation(true)
@@ -66,7 +73,9 @@ const LessonPage = () => {
   // Прогрессивная загрузка
   useEffect(() => {
     // Используем isAuthenticated вместо user, т.к. user может быть null пока грузится профиль
-    if (!lessonId || !isAuthenticated) return
+    if (!lessonId || !isAuthenticated) {
+      return
+    }
 
     const loadData = async () => {
       const courseId = await loadLesson()

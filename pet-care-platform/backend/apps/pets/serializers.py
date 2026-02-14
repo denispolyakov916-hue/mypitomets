@@ -813,6 +813,9 @@ class PetSerializer(serializers.Serializer):
         """Получение URL фото."""
         if obj.photo:
             try:
+                request = self.context.get('request')
+                if request:
+                    return request.build_absolute_uri(obj.photo.url)
                 return obj.photo.url
             except (ValueError, AttributeError):
                 pass

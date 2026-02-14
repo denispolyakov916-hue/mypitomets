@@ -33,6 +33,9 @@ import Layout from './components/Layout'
 import PrivateRoute from './components/PrivateRoute'
 import AdminRoute from './components/AdminRoute'
 
+// Страницы ошибок
+import Error404 from './pages/Errors/Error404'
+
 // Скелетоны для ленивой загрузки
 import { CourseLearningPageSkeleton, LessonPageSkeleton } from './components/Skeletons'
 import Loader from './components/Loader'
@@ -324,8 +327,8 @@ function App() {
                 />
               </Route>
 
-              {/* Fallback - Редирект на главную */}
-              <Route path="*" element={<Navigate to="/" replace />} />
+              {/* Fallback - Страница 404 */}
+              <Route path="*" element={<Error404 />} />
             </Routes>
           </Layout>
         }

@@ -596,7 +596,11 @@ class Course(models.Model):
 
     def get_pages_ordered(self):
         """Получить страницы курса в правильном порядке (новая архитектура)."""
-        return CoursePage.objects.filter(course_id=self.id, is_active=True).order_by('order_number')
+        try:
+            return CoursePage.objects.filter(course_id=self.id, is_active=True).order_by('order_number')
+        except Exception:
+            # Если таблица course_pages не существует, возвращаем пустой queryset
+            return CoursePage.objects.none()
 
     def get_first_page(self):
         """Получить первую страницу курса (новая архитектура)."""
@@ -608,7 +612,11 @@ class Course(models.Model):
 
     def has_pages(self):
         """Проверить, есть ли у курса страницы (новая архитектура)."""
-        return CoursePage.objects.filter(course_id=self.id, is_active=True).exists()
+        try:
+            return CoursePage.objects.filter(course_id=self.id, is_active=True).exists()
+        except Exception:
+            # Если таблица course_pages не существует, возвращаем False
+            return False
 
     def has_lessons(self):
         """Проверить, есть ли у курса уроки (старая архитектура)."""

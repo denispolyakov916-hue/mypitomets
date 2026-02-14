@@ -30,7 +30,7 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 
 from ..models import (
     Course, Lesson, UserCourse, UserCourseProgress, UserLessonProgress,
-    Comment
+    Comment, CommentLike
 )
 from apps.pets.models import Pet
 
@@ -138,7 +138,7 @@ class LessonDetailView(APIView):
     Возвращает полную информацию об уроке.
     """
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [AllowAny]  # Разрешаем доступ для всех, включая неавторизованных
 
     def get(self, request, lesson_id):
         try:
@@ -150,14 +150,23 @@ class LessonDetailView(APIView):
             )
 
         # Проверка доступа к курсу
-        if not UserCourse.objects.filter(
-            user=request.user,
-            course=lesson.course
-        ).exists():
-            return Response(
-                {'error': 'У вас нет доступа к этому уроку'},
-                status=status.HTTP_403_FORBIDDEN
-            )
+        # Для бесплатных курсов разрешаем доступ всем
+        # Для платных курсов проверяем запись пользователя
+        if lesson.course.price > 0:
+            if not request.user.is_authenticated:
+                return Response(
+                    {'error': 'Требуется авторизация для доступа к платному курсу'},
+                    status=status.HTTP_401_UNAUTHORIZED
+                )
+            has_access = UserCourse.objects.filter(
+                user=request.user,
+                course=lesson.course
+            ).exists()
+            if not has_access:
+                return Response(
+                    {'error': 'У вас нет доступа к этому уроку. Необходимо приобрести курс.'},
+                    status=status.HTTP_403_FORBIDDEN
+                )
 
         lesson_data = {
             'id': lesson.id,
@@ -172,34 +181,34 @@ class LessonDetailView(APIView):
             'additional_materials': lesson.additional_materials,
         }
 
-        # Прогресс пользователя по уроку
-        pet_id = request.query_params.get('pet_id')
-        try:
-            course_progress = UserCourseProgress.objects.get(
-                user=request.user,
-                course=lesson.course,
-                pet_id=pet_id
-            )
-            lesson_progress = UserLessonProgress.objects.filter(
-                course_progress=course_progress,
-                lesson=lesson
-            ).first()
+        # Прогресс пользователя по уроку (только для авторизованных пользователей)
+        lesson_data['progress'] = None
+        if request.user.is_authenticated:
+            pet_id = request.query_params.get('pet_id')
+            try:
+                course_progress = UserCourseProgress.objects.get(
+                    user=request.user,
+                    course=lesson.course,
+                    pet_id=pet_id
+                )
+                lesson_progress = UserLessonProgress.objects.filter(
+                    course_progress=course_progress,
+                    lesson=lesson
+                ).first()
 
-            if lesson_progress:
-                lesson_data['progress'] = {
-                    'id': str(lesson_progress.id),
-                    'status': lesson_progress.status,
-                    'time_spent': lesson_progress.time_spent,
-                    'attempts_count': lesson_progress.attempts_count,
-                    'success_rate': lesson_progress.success_rate,
-                    'notes': lesson_progress.notes,
-                    'started_at': lesson_progress.started_at.isoformat() if lesson_progress.started_at else None,
-                    'completed_at': lesson_progress.completed_at.isoformat() if lesson_progress.completed_at else None,
-                }
-            else:
-                lesson_data['progress'] = None
-        except UserCourseProgress.DoesNotExist:
-            lesson_data['progress'] = None
+                if lesson_progress:
+                    lesson_data['progress'] = {
+                        'id': str(lesson_progress.id),
+                        'status': lesson_progress.status,
+                        'time_spent': lesson_progress.time_spent,
+                        'attempts_count': lesson_progress.attempts_count,
+                        'success_rate': lesson_progress.success_rate,
+                        'notes': lesson_progress.notes,
+                        'started_at': lesson_progress.started_at.isoformat() if lesson_progress.started_at else None,
+                        'completed_at': lesson_progress.completed_at.isoformat() if lesson_progress.completed_at else None,
+                    }
+            except UserCourseProgress.DoesNotExist:
+                pass
 
         return Response({'lesson': lesson_data}, status=status.HTTP_200_OK)
 
@@ -481,50 +490,56 @@ class LessonCommentsView(APIView):
                 status=status.HTTP_404_NOT_FOUND
             )
 
-        # Проверяем доступ к курсу для приватных комментариев
-        has_access = UserCourse.objects.filter(
-            user=request.user,
-            course=lesson.course
-        ).exists() if request.user.is_authenticated else False
+        # Для бесплатных курсов комментарии доступны всем
+        # Для платных курсов проверяем доступ
+        has_access = True
+        if lesson.course.price > 0:
+            has_access = UserCourse.objects.filter(
+                user=request.user,
+                course=lesson.course
+            ).exists() if request.user.is_authenticated else False
 
+        # Получаем только промодерированные комментарии
         comments = Comment.objects.filter(
             lesson=lesson,
-            is_active=True
-        ).select_related('user', 'parent')
+            is_moderated=True,
+            parent__isnull=True  # Только корневые комментарии
+        ).select_related('user', 'parent').prefetch_related('replies')
 
-        # Для неавторизованных пользователей показываем только публичные комментарии
-        if not request.user.is_authenticated:
-            comments = comments.filter(is_private=False)
-        elif not has_access:
-            # Для авторизованных, но не имеющих доступа - только публичные
-            comments = comments.filter(is_private=False)
-
-        comments = comments.order_by('created_at')
+        comments = comments.order_by('-created_at')
 
         comments_data = []
         for comment in comments:
+            # Получаем количество ответов
+            replies_count = comment.replies.filter(is_moderated=True).count()
+            
             comment_data = {
-                'id': comment.id,
+                'id': str(comment.id),
                 'content': comment.content,
                 'created_at': comment.created_at.isoformat(),
                 'updated_at': comment.updated_at.isoformat(),
-                'is_private': comment.is_private,
                 'likes_count': comment.likes_count,
-                'replies_count': comment.replies_count,
+                'dislikes_count': comment.dislikes_count,
+                'replies_count': replies_count,
                 'user': {
                     'id': comment.user.id,
-                    'username': comment.user.username,
-                    'avatar': comment.user.profile.avatar.url if hasattr(comment.user, 'profile') and comment.user.profile.avatar else None,
+                    'email': comment.user.email,
+                    'first_name': getattr(comment.user, 'first_name', ''),
+                    'last_name': getattr(comment.user, 'last_name', ''),
                 } if comment.user else None,
-                'parent_id': comment.parent.id if comment.parent else None,
+                'parent_id': str(comment.parent.id) if comment.parent else None,
             }
 
             # Для авторизованного пользователя добавляем информацию о лайке
             if request.user.is_authenticated:
-                comment_data['is_liked'] = CommentLike.objects.filter(
-                    user=request.user,
-                    comment=comment
-                ).exists()
+                try:
+                    like = CommentLike.objects.get(
+                        user=request.user,
+                        comment=comment
+                    )
+                    comment_data['user_reaction'] = 'like' if like.is_like else 'dislike'
+                except CommentLike.DoesNotExist:
+                    comment_data['user_reaction'] = None
 
             comments_data.append(comment_data)
 

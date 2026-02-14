@@ -86,6 +86,10 @@ class BaseCRUDMixin:
     def get_serializer(self, *args, **kwargs):
         """Получить экземпляр сериализатора."""
         serializer_class = self.get_serializer_class()
+        # Передаем request в контекст для формирования абсолютных URL медиа-файлов
+        kwargs.setdefault('context', {})
+        if 'request' not in kwargs['context'] and hasattr(self, 'request'):
+            kwargs['context']['request'] = self.request
         return serializer_class(*args, **kwargs)
 
     def get_object(self):

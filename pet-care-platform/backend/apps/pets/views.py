@@ -89,7 +89,7 @@ class PetListCreateView(BaseListCreateView):
             queryset = self.filter_queryset(queryset, request)
             
             # Используем PetSerializer для полного вывода данных
-            serializer = PetSerializer(queryset, many=True)
+            serializer = PetSerializer(queryset, many=True, context={'request': request})
             return Response({
                 'pets': serializer.data,
                 'count': len(serializer.data)
@@ -148,6 +148,14 @@ class PetListCreateView(BaseListCreateView):
                        f"date_of_birth={pet.date_of_birth}, is_neutered={pet.is_neutered}, "
                        f"owner={request.user.email}")
             
+            # Формируем URL фото если оно есть
+            photo_url = None
+            if pet.photo:
+                try:
+                    photo_url = request.build_absolute_uri(pet.photo.url)
+                except (ValueError, AttributeError):
+                    pass
+            
             # Возвращаем полные данные питомца с ID
             return Response({
                 'message': 'Питомец успешно создан',
@@ -167,6 +175,7 @@ class PetListCreateView(BaseListCreateView):
                     'profile_completeness': pet.profile_completeness,
                     'is_draft': pet.is_draft,
                     'draft_step': pet.draft_step,
+                    'photo': photo_url,
                 }
             }, status=status.HTTP_201_CREATED)
             

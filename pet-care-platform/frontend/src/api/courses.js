@@ -168,7 +168,9 @@ export const getCourseLessons = async (courseId, petId = null) => {
  */
 export const getLesson = async (lessonId, petId = null) => {
   const params = petId ? `?pet_id=${petId}` : ''
-  return await api.get(`/courses/lessons/${lessonId}/${params}`)
+  const url = `/courses/lessons/${lessonId}/${params}`
+  const response = await api.get(url)
+  return response
 }
 
 /**

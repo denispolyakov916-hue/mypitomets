@@ -947,19 +947,90 @@ class LessonDetailView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, lesson_id):
+        # #region agent log
+        import json
+        import os
+        log_path = '/home/dmitry/PycharmProjects/Pet_dev2/pet-care-platform/.cursor/debug.log'
+        try:
+            with open(log_path, 'a', encoding='utf-8') as f:
+                f.write(json.dumps({
+                    'sessionId': 'debug-session',
+                    'runId': 'run1',
+                    'hypothesisId': 'A',
+                    'location': 'views.py:949',
+                    'message': 'LessonDetailView called',
+                    'data': {'lesson_id': lesson_id, 'user_id': request.user.id if request.user.is_authenticated else None},
+                    'timestamp': int(__import__('time').time() * 1000)
+                }, ensure_ascii=False) + '\n')
+        except: pass
+        # #endregion agent log
+        
         try:
             lesson = Lesson.objects.select_related('course').get(id=lesson_id, is_active=True)
+            # #region agent log
+            try:
+                with open(log_path, 'a', encoding='utf-8') as f:
+                    f.write(json.dumps({
+                        'sessionId': 'debug-session',
+                        'runId': 'run1',
+                        'hypothesisId': 'A',
+                        'location': 'views.py:952',
+                        'message': 'Lesson found',
+                        'data': {
+                            'lesson_id': lesson.id,
+                            'course_id': lesson.course.id,
+                            'title': lesson.title,
+                            'content_type': lesson.content_type,
+                            'has_content': lesson.content is not None,
+                            'content_type_python': str(type(lesson.content)),
+                            'content_keys': list(lesson.content.keys()) if isinstance(lesson.content, dict) else None,
+                            'content_empty': lesson.content == {} or lesson.content == None or (isinstance(lesson.content, dict) and len(lesson.content) == 0)
+                        },
+                        'timestamp': int(__import__('time').time() * 1000)
+                    }, ensure_ascii=False) + '\n')
+            except: pass
+            # #endregion agent log
         except Lesson.DoesNotExist:
+            # #region agent log
+            try:
+                with open(log_path, 'a', encoding='utf-8') as f:
+                    f.write(json.dumps({
+                        'sessionId': 'debug-session',
+                        'runId': 'run1',
+                        'hypothesisId': 'A',
+                        'location': 'views.py:952',
+                        'message': 'Lesson not found',
+                        'data': {'lesson_id': lesson_id, 'error': 'Lesson.DoesNotExist'},
+                        'timestamp': int(__import__('time').time() * 1000)
+                    }, ensure_ascii=False) + '\n')
+            except: pass
+            # #endregion agent log
             return Response(
                 {'error': 'Урок не найден'},
                 status=status.HTTP_404_NOT_FOUND
             )
 
         # Проверка доступа к курсу
-        if not UserCourse.objects.filter(
+        has_access = UserCourse.objects.filter(
             user=request.user,
             course=lesson.course
-        ).exists():
+        ).exists()
+        # #region agent log
+        try:
+            with open(log_path, 'a', encoding='utf-8') as f:
+                f.write(json.dumps({
+                    'sessionId': 'debug-session',
+                    'runId': 'run1',
+                    'hypothesisId': 'C',
+                    'location': 'views.py:959',
+                    'message': 'Access check result',
+                    'data': {'has_access': has_access, 'user_id': request.user.id, 'course_id': lesson.course.id},
+                    'timestamp': int(__import__('time').time() * 1000)
+                }, ensure_ascii=False) + '\n')
+        except: pass
+        # #endregion agent log
+        
+        if not has_access:
             return Response(
                 {'error': 'У вас нет доступа к этому уроку'},
                 status=status.HTTP_403_FORBIDDEN
@@ -977,6 +1048,26 @@ class LessonDetailView(APIView):
             'is_required': lesson.is_required,
             'additional_materials': lesson.additional_materials,
         }
+        # #region agent log
+        try:
+            with open(log_path, 'a', encoding='utf-8') as f:
+                f.write(json.dumps({
+                    'sessionId': 'debug-session',
+                    'runId': 'run1',
+                    'hypothesisId': 'B',
+                    'location': 'views.py:968',
+                    'message': 'Lesson data prepared',
+                    'data': {
+                        'lesson_id': lesson_data['id'],
+                        'has_content': lesson_data['content'] is not None,
+                        'content_type': lesson_data['content_type'],
+                        'content_keys': list(lesson_data['content'].keys()) if isinstance(lesson_data['content'], dict) else None,
+                        'content_empty': lesson_data['content'] == {} or lesson_data['content'] == None or (isinstance(lesson_data['content'], dict) and len(lesson_data['content']) == 0)
+                    },
+                    'timestamp': int(__import__('time').time() * 1000)
+                }, ensure_ascii=False) + '\n')
+        except: pass
+        # #endregion agent log
 
         # Прогресс пользователя по уроку
         pet_id = request.query_params.get('pet_id')
@@ -1006,6 +1097,30 @@ class LessonDetailView(APIView):
                 lesson_data['progress'] = None
         except UserCourseProgress.DoesNotExist:
             lesson_data['progress'] = None
+
+        # #region agent log
+        try:
+            import json
+            log_path = '/home/dmitry/PycharmProjects/Pet_dev2/pet-care-platform/.cursor/debug.log'
+            with open(log_path, 'a', encoding='utf-8') as f:
+                f.write(json.dumps({
+                    'sessionId': 'debug-session',
+                    'runId': 'run1',
+                    'hypothesisId': 'E',
+                    'location': 'views.py:1010',
+                    'message': 'Response sent',
+                    'data': {
+                        'lesson_id': lesson_data['id'],
+                        'has_lesson': True,
+                        'has_content': lesson_data['content'] is not None,
+                        'content_type': lesson_data['content_type'],
+                        'response_keys': ['lesson'],
+                        'lesson_keys': list(lesson_data.keys())
+                    },
+                    'timestamp': int(__import__('time').time() * 1000)
+                }, ensure_ascii=False) + '\n')
+        except: pass
+        # #endregion agent log
 
         return Response({'lesson': lesson_data}, status=status.HTTP_200_OK)
 

@@ -958,3 +958,27 @@ button {
     grid-template-columns: repeat(4, 1fr);
   }
 }
+
+/* Стили для изображений в уроках - гарантируем отображение */
+.lesson-content img,
+.prose img,
+[class*="lesson-images"] img {
+  display: block !important;
+  max-width: 100% !important;
+  height: auto !important;
+  margin: 20px 0 !important;
+  border-radius: 8px !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+.lesson-content .lesson-images,
+.prose .lesson-images {
+  display: block !important;
+  margin: 20px 0 !important;
+}
+
+.lesson-content .lesson-images img {
+  margin: 10px 0 !important;
+}

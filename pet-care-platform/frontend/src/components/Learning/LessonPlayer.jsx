@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { Button } from '../ui'
 import { Card } from '../ui'
 import { Progress } from '../ui'
@@ -50,7 +50,7 @@ const LessonPlayer = ({
 
   // Загрузка урока
   useEffect(() => {
-    if (lessonId && petId) {
+    if (lessonId) {
       loadLesson()
     }
   }, [lessonId, petId])
@@ -70,9 +70,15 @@ const LessonPlayer = ({
     try {
       setLoading(true)
       const response = await getLesson(lessonId, petId)
+      
       // API клиент возвращает response.data напрямую
-      setLesson(response.lesson)
-      setProgress(response.progress)
+      if (response.lesson) {
+        setLesson(response.lesson)
+      } else {
+        console.error('LessonPlayer: No lesson in response', response)
+      }
+      
+      setProgress(response.progress || null)
 
       // Устанавливаем начальное время из прогресса
       if (response.progress?.time_spent) {
@@ -80,6 +86,7 @@ const LessonPlayer = ({
       }
     } catch (error) {
       console.error('Error loading lesson:', error)
+      setLesson(null)
     } finally {
       setLoading(false)
     }
@@ -90,13 +97,13 @@ const LessonPlayer = ({
 
     try {
       await updateLessonProgress(lessonId, petId, {
-        status: progress.status,
+        status: progress?.status || 'in_progress',
         time_spent: timeSpent,
         ...updates
       })
 
       if (onProgress) {
-        onProgress(lessonId, progress.status, timeSpent)
+        onProgress(lessonId, progress?.status || 'in_progress', timeSpent)
       }
     } catch (error) {
       console.error('Error saving progress:', error)
@@ -129,11 +136,11 @@ const LessonPlayer = ({
     }
   }
 
-  const updateProgressStatus = (status) => {
+  const updateProgressStatus = useCallback((status) => {
     setProgress(prev => ({
-      ...prev,
+      ...(prev || {}),
       status: status,
-      started_at: prev.started_at || new Date().toISOString()
+      started_at: prev?.started_at || new Date().toISOString()
     }))
 
     // Управляем таймером в зависимости от статуса
@@ -142,7 +149,8 @@ const LessonPlayer = ({
     } else if (status === 'paused') {
       pauseTimer()
     }
-  }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   if (loading) {
     return (
@@ -167,6 +175,19 @@ const LessonPlayer = ({
   }
 
   const renderContent = () => {
+    if (!lesson || !lesson.content) {
+      console.warn('LessonPlayer: lesson or content is missing', { lesson })
+      return <div className="text-center text-gray-500 p-4">Контент урока не загружен</div>
+    }
+    
+    console.log('LessonPlayer: Rendering content', { 
+      content_type: lesson.content_type, 
+      content_keys: Object.keys(lesson.content || {}),
+      has_html: !!lesson.content?.html_content,
+      has_text: !!lesson.content?.text,
+      has_images: !!lesson.content?.images
+    })
+    
     switch (lesson.content_type) {
       case 'video':
         return <VideoLesson content={lesson.content} onProgress={updateProgressStatus} />
@@ -181,7 +202,7 @@ const LessonPlayer = ({
       case 'workshop':
         return <WorkshopLesson content={lesson.content} onProgress={updateProgressStatus} />
       default:
-        return <div className="text-center text-gray-500">Неподдерживаемый тип контента</div>
+        return <div className="text-center text-gray-500">Неподдерживаемый тип контента: {lesson.content_type}</div>
     }
   }
 
@@ -245,7 +266,16 @@ const LessonPlayer = ({
 
       {/* Контент урока */}
       <div className="p-6">
-        {renderContent()}
+        {lesson && lesson.content ? (
+          renderContent()
+        ) : (
+          <div className="text-center text-gray-500 p-8">
+            <p className="mb-2">Контент урока не загружен</p>
+            <p className="text-sm">Lesson: {lesson ? 'exists' : 'null'}</p>
+            <p className="text-sm">Content: {lesson?.content ? 'exists' : 'null'}</p>
+            <p className="text-sm">Content keys: {lesson?.content ? Object.keys(lesson.content).join(', ') : 'none'}</p>
+          </div>
+        )}
       </div>
 
       {/* Дополнительные материалы */}
@@ -369,10 +399,15 @@ const VideoLesson = ({ content, onProgress }) => {
  */
 const TextLesson = ({ content, onProgress }) => {
   const [scrollProgress, setScrollProgress] = useState(0)
+  const progressCalledRef = useRef(false)
 
+  // Вызываем onProgress только один раз при монтировании
   useEffect(() => {
-    onProgress('in_progress')
-  }, [onProgress])
+    if (!progressCalledRef.current && onProgress) {
+      progressCalledRef.current = true
+      onProgress('in_progress')
+    }
+  }, []) // Пустой массив зависимостей - выполняется только при монтировании
 
   const handleScroll = (e) => {
     const element = e.target
@@ -382,13 +417,128 @@ const TextLesson = ({ content, onProgress }) => {
     setScrollProgress(progress)
   }
 
+  // Формируем HTML контент с изображениями
+  // Используем простую функцию без useMemo, чтобы избежать проблем с зависимостями
+  const getHtmlContent = () => {
+    if (!content) {
+      return '<p>Контент урока не загружен</p>'
+    }
+    
+    let html = content.html_content || content.text_content || content.text || ''
+    
+    // Если HTML контент пустой, но есть текстовый, используем его
+    if (!html && content.text_content) {
+      html = content.text_content.replace(/\n/g, '<br>')
+    }
+    
+    // Если есть изображения, проверяем и исправляем их URL в HTML
+    if (content.images && Array.isArray(content.images) && content.images.length > 0) {
+      // Проверяем, есть ли уже изображения в HTML
+      const htmlHasImages = html.includes('<img') || html.includes('<IMG')
+      
+      if (htmlHasImages) {
+        // Изображения уже есть в HTML - исправляем их URL и добавляем необходимые атрибуты
+        html = html.replace(/<img\s+([^>]*)>/gi, (match, attrs) => {
+          const srcMatch = attrs.match(/src=["']([^"']+)["']/i)
+          if (!srcMatch) return match
+          
+          let fullUrl = srcMatch[1]
+          if (!fullUrl.startsWith('http://') && !fullUrl.startsWith('https://') && !fullUrl.startsWith('/media/')) {
+            if (fullUrl.includes('unsplash.com') || fullUrl.includes('http')) {
+              fullUrl = fullUrl
+            } else {
+              fullUrl = `http://localhost:8077/media/${fullUrl}`
+            }
+          } else if (fullUrl.startsWith('/media/')) {
+            fullUrl = `http://localhost:8077${fullUrl}`
+          }
+          
+          let newAttrs = attrs
+            .replace(/crossorigin=["'][^"']*["']/gi, '')
+            .replace(/referrerpolicy=["'][^"']*["']/gi, '')
+            .replace(/loading=["'][^"']*["']/gi, '')
+            .trim()
+          
+          newAttrs = newAttrs.replace(/src=["'][^"']+["']/i, `src="${fullUrl}"`)
+          
+          if (!newAttrs.includes('style=')) {
+            newAttrs += ' style="max-width: 100%; height: auto; margin: 20px 0; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);"'
+          }
+          
+          if (!newAttrs.includes('crossorigin')) {
+            newAttrs += ' crossorigin="anonymous"'
+          }
+          if (!newAttrs.includes('referrerpolicy')) {
+            newAttrs += ' referrerpolicy="no-referrer"'
+          }
+          if (!newAttrs.includes('loading')) {
+            newAttrs += ' loading="lazy"'
+          }
+          
+          return `<img ${newAttrs}>`
+        })
+      } else {
+        // Если изображений нет в HTML, добавляем их
+        const getImageUrl = (imgUrl) => {
+          if (!imgUrl) return ''
+          if (imgUrl.startsWith('http://') || imgUrl.startsWith('https://')) {
+            return imgUrl
+          }
+          if (imgUrl.startsWith('/media/')) {
+            return `http://localhost:8077${imgUrl}`
+          }
+          if (!imgUrl.startsWith('/')) {
+            return `http://localhost:8077/media/${imgUrl}`
+          }
+          return imgUrl
+        }
+        
+        const imagesHtml = content.images.map((imgUrl, index) => {
+          const fullUrl = getImageUrl(imgUrl)
+          return `<img src="${fullUrl}" alt="Изображение ${index + 1}" style="max-width: 100%; height: auto; margin: 20px 0; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);" loading="lazy" crossorigin="anonymous" referrerpolicy="no-referrer" />`
+        }).join('')
+        
+        const h1Match = html.match(/<\/h1>/i)
+        const h2Match = html.match(/<\/h2>/i)
+        
+        if (h1Match) {
+          html = html.replace(/<\/h1>/i, '</h1>' + imagesHtml)
+        } else if (h2Match) {
+          html = html.replace(/<\/h2>/i, '</h2>' + imagesHtml)
+        } else {
+          html = imagesHtml + html
+        }
+      }
+    }
+    
+    if (!html || html.trim().length === 0) {
+      return '<p>Контент урока пуст</p>'
+    }
+    
+    return html
+  }
+
+  const htmlContent = getHtmlContent()
+
   return (
     <div className="space-y-4">
       <div
-        className="prose max-w-none h-96 overflow-y-auto border rounded-lg p-4"
+        className="prose max-w-none overflow-y-auto border rounded-lg p-6 bg-white"
+        style={{ maxHeight: '600px', minHeight: '200px' }}
         onScroll={handleScroll}
       >
-        <div dangerouslySetInnerHTML={{ __html: content.html_content || content.text }} />
+        {htmlContent ? (
+          <div 
+            dangerouslySetInnerHTML={{ __html: htmlContent }}
+            style={{ color: '#1f2937' }}
+            className="lesson-content"
+          />
+        ) : (
+          <div className="text-center text-gray-500 p-8">
+            <p>Контент не найден</p>
+            <p className="text-xs mt-2">Content keys: {content ? Object.keys(content).join(', ') : 'none'}</p>
+          </div>
+        )}
       </div>
 
       <div className="text-sm text-gray-500 text-center">
