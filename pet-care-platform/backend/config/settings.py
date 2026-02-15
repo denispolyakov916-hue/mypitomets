@@ -121,6 +121,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework_simplejwt',
     'corsheaders',
+    'storages',
 
     # Приложения проекта
     'core',
@@ -236,6 +237,59 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
+
+# =============================================================================
+# YANDEX CLOUD S3 STORAGE (Object Storage)
+# =============================================================================
+# S3-совместимое хранилище для медиа-файлов (видео, изображения, документы)
+# Два бакета: публичный (аватары, обложки) и приватный (видео курсов)
+
+YANDEX_S3_ACCESS_KEY_ID = os.getenv('YANDEX_S3_ACCESS_KEY_ID', '')
+YANDEX_S3_SECRET_ACCESS_KEY = os.getenv('YANDEX_S3_SECRET_ACCESS_KEY', '')
+YANDEX_S3_BUCKET_PUBLIC = os.getenv('YANDEX_S3_BUCKET_PUBLIC', 'petplus-media-public')
+YANDEX_S3_BUCKET_PRIVATE = os.getenv('YANDEX_S3_BUCKET_PRIVATE', 'petplus-media-private')
+YANDEX_S3_ENDPOINT_URL = os.getenv('YANDEX_S3_ENDPOINT_URL', 'https://storage.yandexcloud.net')
+YANDEX_S3_REGION = os.getenv('YANDEX_S3_REGION', 'ru-central1')
+
+# Включить S3-хранилище если заданы ключи доступа
+USE_S3_STORAGE = bool(YANDEX_S3_ACCESS_KEY_ID and YANDEX_S3_SECRET_ACCESS_KEY)
+
+if USE_S3_STORAGE:
+    # Django 5.1+ STORAGES конфигурация
+    STORAGES = {
+        'default': {
+            'BACKEND': 'core.storage_backends.PrivateYandexS3Storage',
+        },
+        'public': {
+            'BACKEND': 'core.storage_backends.PublicYandexS3Storage',
+        },
+        'staticfiles': {
+            'BACKEND': 'django.contrib.staticfiles.storage.StaticFilesStorage',
+        },
+    }
+    print('[STORAGE] Yandex Cloud S3 storage enabled')
+else:
+    print('[STORAGE] Local file storage (S3 keys not configured)')
+
+# Ограничения на размер загружаемых файлов
+FILE_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024  # 10 MB в памяти
+DATA_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024   # 10 MB для данных запроса
+
+# Допустимые типы файлов для загрузки
+ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
+ALLOWED_VIDEO_TYPES = ['video/mp4', 'video/webm', 'video/quicktime']
+ALLOWED_FILE_TYPES = [
+    'application/pdf',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/zip',
+    'text/plain',
+]
+
+# Максимальные размеры файлов (в байтах)
+MAX_IMAGE_SIZE = 10 * 1024 * 1024       # 10 MB
+MAX_VIDEO_SIZE = 2 * 1024 * 1024 * 1024  # 2 GB
+MAX_FILE_SIZE = 100 * 1024 * 1024        # 100 MB
 
 # =============================================================================
 # ПЕРВИЧНЫЙ КЛЮЧ

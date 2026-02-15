@@ -12,8 +12,8 @@
  *   /cart             - Корзина покупок
  *   /checkout         - Единый checkout (товары + курсы)
  *   /courses          - Каталог курсов
- *   /training/courses/:id/learn - Страница обучения курсу
- *   /training/lessons/:id - Страница урока
+ *   /training/courses/:id/learn - Страница обучения курсу (Stepik-стиль)
+ *   /training/courses/:id/learn/pages/:pageId - Конкретная страница урока
  *   /profile          - Профиль пользователя
  *   /admin-panel/*    - React админ-панель (для staff пользователей)
  * 
@@ -37,7 +37,7 @@ import AdminRoute from './components/AdminRoute'
 import Error404 from './pages/Errors/Error404'
 
 // Скелетоны для ленивой загрузки
-import { CourseLearningPageSkeleton, LessonPageSkeleton } from './components/Skeletons'
+import { LessonPageSkeleton } from './components/Skeletons'
 import Loader from './components/Loader'
 
 // Компоненты страниц (синхронные - критичные для первой загрузки)
@@ -72,9 +72,7 @@ const PetEditPage = lazy(() => import('./pages/PetId/PetEditPage'))
 const FoodRecommendationPage = lazy(() => import('./pages/FoodRecommendation/FoodRecommendationPage'))
 
 // Ленивая загрузка тяжёлых страниц обучения
-const CourseLearningPage = lazy(() => import('./pages/Training/Learning/CourseLearningPage'))
 const CoursePageLearning = lazy(() => import('./pages/Training/Learning/CoursePageLearning'))
-const LessonPage = lazy(() => import('./pages/Training/Learning/LessonPage'))
 const CourseBuilderPage = lazy(() => import('./pages/CourseBuilder/CourseBuilderPage'))
 
 // Ленивая загрузка React админ-панели
@@ -289,18 +287,9 @@ function App() {
                   }
                 />
 
-                {/* Система обучения (ленивая загрузка) */}
+                {/* Система обучения — единственный маршрут (Stepik-стиль) */}
                 <Route
                   path="/training/courses/:courseId/learn"
-                  element={
-                    <Suspense fallback={<CourseLearningPageSkeleton />}>
-                      <CourseLearningPage />
-                    </Suspense>
-                  }
-                />
-                {/* Новая система обучения с архитектурой страниц */}
-                <Route
-                  path="/training/courses/:courseId/learn/pages/:pageId"
                   element={
                     <Suspense fallback={<LessonPageSkeleton />}>
                       <CoursePageLearning />
@@ -308,10 +297,10 @@ function App() {
                   }
                 />
                 <Route
-                  path="/training/lessons/:lessonId"
+                  path="/training/courses/:courseId/learn/pages/:pageId"
                   element={
                     <Suspense fallback={<LessonPageSkeleton />}>
-                      <LessonPage />
+                      <CoursePageLearning />
                     </Suspense>
                   }
                 />

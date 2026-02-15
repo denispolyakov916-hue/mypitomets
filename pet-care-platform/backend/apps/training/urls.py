@@ -61,8 +61,14 @@ from .views import (
     CourseBuilderView,
     CoursePageViewSet,
     ContentBlockViewSet,
-    BlockTemplateViewSet
+    BlockTemplateViewSet,
 )
+from .views.lesson_views import (
+    CoursePageLearningView,
+    CoursePageListLearningView,
+    CoursePageCompleteView,
+)
+from .views.module_views import CourseModuleViewSet, CourseStructureView
 
 
 urlpatterns = [
@@ -156,29 +162,65 @@ urlpatterns = [
 
     # Отзывы курсов теперь обрабатываются в reviews app (/api/reviews/courses/...)
 
+    # ===== МАРШРУТЫ МОДУЛЕЙ И СТРУКТУРЫ КУРСА =====
+
+    # Структура курса для обучения (с прогрессом)
+    # GET /api/courses/{course_id}/structure/
+    path('<int:course_id>/structure/', CourseStructureView.as_view(), name='course-structure'),
+
+    # Управление модулями курса
+    # GET /api/courses/{course_id}/modules/
+    # POST /api/courses/{course_id}/modules/
+    path('<int:course_id>/modules/', CourseModuleViewSet.as_view({
+        'get': 'list',
+        'post': 'create',
+    }), name='course-modules'),
+
+    # Управление конкретным модулем
+    # GET /api/modules/{module_id}/
+    # PUT /api/modules/{module_id}/
+    # DELETE /api/modules/{module_id}/
+    path('modules/<int:pk>/', CourseModuleViewSet.as_view({
+        'get': 'retrieve',
+        'put': 'update',
+        'patch': 'partial_update',
+        'delete': 'destroy',
+    }), name='course-module-detail'),
+
+    # ===== МАРШРУТЫ ОБУЧЕНИЯ: СТРАНИЦЫ КУРСА =====
+
+    # Список страниц курса для обучения (авторизованный пользователь)
+    # GET /api/courses/{course_id}/pages/
+    path('<int:course_id>/pages/', CoursePageListLearningView.as_view(), name='course-pages-learning'),
+
+    # Получение страницы курса для обучения (авторизованный пользователь)
+    # GET /api/courses/{course_id}/pages/{page_id}/
+    path('<int:course_id>/pages/<int:page_id>/', CoursePageLearningView.as_view(), name='course-page-learning'),
+
+    # Завершение страницы курса
+    # POST /api/courses/pages/{page_id}/complete/
+    path('pages/<int:page_id>/complete/', CoursePageCompleteView.as_view(), name='course-page-complete'),
+
     # ===== МАРШРУТЫ КОНСТРУКТОРА КУРСОВ =====
 
     # Структура курса для конструктора
     # GET /api/courses/{course_id}/builder/
     path('<int:course_id>/builder/', CourseBuilderView.as_view(), name='course-builder'),
 
-    # Управление страницами курса
-    # GET /api/courses/{course_id}/pages/
-    # POST /api/courses/{course_id}/pages/
-    path('<int:course_id>/pages/', CoursePageViewSet.as_view({
-        'get': 'list',
+    # Управление страницами курса (ADMIN: создание)
+    # POST /api/courses/{course_id}/builder/pages/
+    path('<int:course_id>/builder/pages/', CoursePageViewSet.as_view({
         'post': 'create'
-    }), name='course-pages'),
+    }), name='course-pages-builder'),
 
-    # Управление конкретной страницей
-    # GET /api/pages/{page_id}/
-    # PUT /api/pages/{page_id}/
-    # DELETE /api/pages/{page_id}/
+    # Управление конкретной страницей (ADMIN)
+    # PUT /api/courses/pages/{page_id}/
+    # DELETE /api/courses/pages/{page_id}/
     path('pages/<int:pk>/', CoursePageViewSet.as_view({
         'get': 'retrieve',
         'put': 'update',
         'delete': 'destroy'
-    }), name='course-page-detail'),
+    }), name='course-page-detail-short'),
 
     # Управление блоками страницы
     # GET /api/pages/{page_id}/blocks/

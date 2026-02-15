@@ -173,3 +173,23 @@ export const getRecentPurchasesForReview = async () => {
   return await api.get('/reviews/recent-purchases/')
 }
 
+/**
+ * Поставить лайк на отзыв
+ */
+export const likeReview = async (reviewId) => {
+  return await api.post(`/reviews/${reviewId}/like/`)
+}
+
+/**
+ * Поставить дизлайк на отзыв
+ */
+export const dislikeReview = async (reviewId) => {
+  return await api.post(`/reviews/${reviewId}/dislike/`)
+}
+
+/**
+ * Убрать реакцию с отзыва
+ */
+export const removeReviewReaction = async (reviewId) => {
+  return await api.delete(`/reviews/${reviewId}/reaction/`)
+}

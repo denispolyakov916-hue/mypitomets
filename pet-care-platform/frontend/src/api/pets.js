@@ -767,11 +767,39 @@ export const getFoodStatistics = async (species = 'dog') => {
 }
 
 /**
+ * Соотношение сухой/влажный при мультипитании (по видам).
+ * Активно только при food_type === 'multi'.
+ */
+export const MULTI_RATIO_PRESET_OPTIONS = {
+  dog: [
+    { value: 'more_dry', label: 'Больше сухого (70% / 30%)' },
+    { value: 'balanced', label: 'Сбалансировано (60% / 40%)' },
+    { value: 'more_wet', label: 'Больше влажного (50% / 50%)' },
+  ],
+  cat: [
+    { value: 'more_wet', label: 'Больше влажного (40% / 60%)' },
+    { value: 'balanced', label: 'Сбалансировано (50% / 50%)' },
+    { value: 'more_dry', label: 'Больше сухого (60% / 40%)' },
+  ],
+}
+
+/**
+ * Опции соотношения для выбранного вида питомца
+ * @param {string} species - 'dog' | 'cat'
+ * @returns {Array<{value: string, label: string}>}
+ */
+export const getMultiRatioPresetOptions = (species) => {
+  const key = (species || 'dog').toLowerCase()
+  return MULTI_RATIO_PRESET_OPTIONS[key] || MULTI_RATIO_PRESET_OPTIONS.dog
+}
+
+/**
  * Получение полного плана питания для питомца
  * 
  * @param {string} petId - UUID питомца
  * @param {Object} params - Параметры плана
  * @param {string} [params.food_type='multi'] - Тип питания (dry, wet, multi)
+ * @param {string} [params.multi_ratio_preset] - При multi: more_dry, balanced, more_wet
  * @param {string} [params.variant='basic'] - Вариант набора (basic, advanced)
  * @param {number} [params.period_days=30] - Период подбора в днях
  * @param {Array} [params.preferred_brands] - Предпочтительные бренды
@@ -827,7 +855,7 @@ export const calculateActiveDayCalories = async (petId, activities) => {
 export const FEEDING_TYPE_OPTIONS = [
   { value: 'dry', label: 'Сухой', description: 'Только сухой корм', icon: '🥫' },
   { value: 'wet', label: 'Влажный', description: 'Только влажный корм', icon: '🍖' },
-  { value: 'multi', label: 'Мультипитание', description: '60% сухой + 30% влажный + 10% лакомства', icon: '🍽️' },
+  { value: 'multi', label: 'Мультипитание', description: 'Сухой + влажный корм (соотношение настраивается)', icon: '🍽️' },
 ]
 
 /**

@@ -20,7 +20,8 @@ import {
   getFoodAlternatives,
   FEEDING_TYPE_OPTIONS,
   PLAN_VARIANT_OPTIONS,
-  FEEDING_PERIOD_OPTIONS 
+  FEEDING_PERIOD_OPTIONS,
+  getMultiRatioPresetOptions,
 } from '../../api/pets';
 import { addToCart, getCategories, getProductsV2 } from '../../api/shop';
 
@@ -713,19 +714,36 @@ const RationComponentCard = ({
   onProductClick,
   labelOverride,
   showRemove,
-  onRemove
+  onRemove,
+  calorieDistribution,
+  dailyCalories,
 }) => {
   const navigate = useNavigate();
   
   // Если нет компонента - не рендерим
   if (!component) return null;
   
+  // Безопасное определение типа компонента (нужно раньше для расчёта подписи)
+  const baseType = componentType?.startsWith('supplement_') 
+    ? 'supplement' 
+    : (componentType || component?.product_type || 'dry_food');
+  
+  // Процент по фактическим калориям этого компонента (совпадает с порцией)
+  const totalKcal = Number(dailyCalories) || 0;
+  const componentKcal = Number(component?.daily_kcal) || 0;
+  const actualPct = totalKcal > 0 && componentKcal > 0
+    ? Math.round((componentKcal / totalKcal) * 100)
+    : null;
+  const fallbackDry = Math.round((calorieDistribution?.dry_food ?? 0.6) * 100);
+  const fallbackWet = Math.round((calorieDistribution?.wet_food ?? 0.4) * 100);
+  const displayPct = actualPct ?? (baseType === 'dry_food_multi' ? fallbackDry : baseType === 'wet_food_multi' ? fallbackWet : 0);
+  
   const typeLabels = {
     'dry_food': 'Сухой корм',
-    'dry_food_multi': 'Сухой корм (60%)',
+    'dry_food_multi': `Сухой корм (${baseType === 'dry_food_multi' ? displayPct : fallbackDry}%)`,
     'wet_food': 'Влажный корм',
-    'wet_food_multi': 'Влажный корм (30%)',
-    'treat': 'Лакомства (10%)',
+    'wet_food_multi': `Влажный корм (${baseType === 'wet_food_multi' ? displayPct : fallbackWet}%)`,
+    'treat': 'Лакомства',
     'supplement': labelOverride || 'Добавка',
   };
   
@@ -737,11 +755,6 @@ const RationComponentCard = ({
     'treat': '🦴',
     'supplement': '💊',
   };
-  
-  // Безопасное определение типа компонента
-  const baseType = componentType?.startsWith('supplement_') 
-    ? 'supplement' 
-    : (componentType || component?.product_type || 'dry_food');
   
   const totalItems = alternatives?.length || 0;
   const canNavigate = totalItems > 1;
@@ -1474,6 +1487,7 @@ export default function FoodRecommendationPage() {
   
   // Настройки плана
   const [feedingType, setFeedingType] = useState('multi');
+  const [multiRatioPreset, setMultiRatioPreset] = useState('balanced');
   const [planVariant, setPlanVariant] = useState('basic');
   const [period, setPeriod] = useState(14);
   
@@ -1509,6 +1523,7 @@ export default function FoodRecommendationPage() {
               parsedDietState = JSON.parse(stored);
               setRestoreState(parsedDietState);
               if (parsedDietState?.feedingType) setFeedingType(parsedDietState.feedingType);
+              if (parsedDietState?.multiRatioPreset) setMultiRatioPreset(parsedDietState.multiRatioPreset);
               if (parsedDietState?.planVariant) setPlanVariant(parsedDietState.planVariant);
               if (parsedDietState?.period) setPeriod(parsedDietState.period);
             } catch (e) {
@@ -1558,11 +1573,15 @@ export default function FoodRecommendationPage() {
         setIsPlanLoading(true);
         setError(null);
         
-        const response = await getFeedingPlan(selectedPet.id, {
+        const params = {
           food_type: feedingType,
           variant: planVariant,
           period_days: period,
-        });
+        };
+        if (feedingType === 'multi' && multiRatioPreset) {
+          params.multi_ratio_preset = multiRatioPreset;
+        }
+        const response = await getFeedingPlan(selectedPet.id, params);
         
         const plan = response.data || response;
         setFeedingPlan(plan);
@@ -1604,7 +1623,7 @@ export default function FoodRecommendationPage() {
     };
     
     loadFeedingPlan();
-  }, [selectedPet, feedingType, planVariant, period]);
+  }, [selectedPet, feedingType, multiRatioPreset, planVariant, period]);
 
   useEffect(() => {
     if (feedingPlan?.regular_day?.treats?.frequency_days) {
@@ -1894,6 +1913,7 @@ export default function FoodRecommendationPage() {
     const payload = {
       selectedPetId: selectedPet?.id || null,
       feedingType,
+      multiRatioPreset: feedingType === 'multi' ? multiRatioPreset : undefined,
       planVariant,
       period,
       componentSelections,
@@ -1901,7 +1921,7 @@ export default function FoodRecommendationPage() {
 
     sessionStorage.setItem(`diet_state:${token}`, JSON.stringify(payload));
     return token;
-  }, [componentStates, selectedPet, feedingType, planVariant, period]);
+  }, [componentStates, selectedPet, feedingType, multiRatioPreset, planVariant, period]);
 
   const buildReturnTo = useCallback(() => {
     const params = new URLSearchParams(location.search);
@@ -1959,23 +1979,15 @@ export default function FoodRecommendationPage() {
   
   return (
     <div className="page-container animate-fadeIn pb-8">
-      {/* Хедер */}
-      <div className="flex items-center gap-4 mb-6">
+      {/* Кнопка назад — компактно над контентом */}
+      <div className="mb-4">
         <button
           onClick={() => navigate(-1)}
           className="p-2 hover:bg-gray-100 rounded-xl transition-colors"
+          aria-label="Назад"
         >
           <ArrowLeft className="w-5 h-5 text-gray-600" />
         </button>
-        <div>
-          <h1 className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-orange-500 bg-clip-text text-transparent flex items-center gap-2">
-            <UtensilsCrossed className="w-6 h-6 text-purple-600" />
-            Подбор корма
-          </h1>
-          <p className="text-gray-500 text-sm">
-            Персональные рекомендации на основе профиля питомца
-          </p>
-        </div>
       </div>
       
       {/* Ошибка */}
@@ -2023,30 +2035,53 @@ export default function FoodRecommendationPage() {
       <div className="grid lg:grid-cols-3 gap-6">
         {/* Левая колонка */}
         <div className="lg:col-span-2 space-y-6">
-          {/* Настройки */}
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-            <div className="grid sm:grid-cols-2 gap-4 mb-4">
-              <PetDropdown 
-                pets={pets} 
-                selectedPet={selectedPet} 
-                onSelect={setSelectedPet}
-                isLoading={isPlanLoading}
-              />
-              
-              <SelectDropdown
-                label="Тип питания"
-                options={FEEDING_TYPE_OPTIONS}
-                value={feedingType}
-                onChange={setFeedingType}
-                disabled={isPlanLoading}
-              />
+          {/* Параметры расчёта — заголовок страницы и настройки в одном блоке (overflow-visible чтобы выпадающие списки не обрезались) */}
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100">
+            <div className="bg-gradient-to-r from-purple-50 to-orange-50/50 border-b border-gray-100 rounded-t-2xl px-6 py-5">
+              <h1 className="text-xl sm:text-2xl font-bold text-gray-800 flex items-center gap-2">
+                <UtensilsCrossed className="w-6 h-6 text-purple-600 flex-shrink-0" />
+                Подбор корма
+              </h1>
+              <p className="text-gray-500 text-sm mt-1">
+                Персональные рекомендации на основе профиля питомца
+              </p>
             </div>
-            
-            <PeriodInput
-              value={period}
-              onChange={setPeriod}
-              disabled={isPlanLoading}
-            />
+            <div className="p-6 sm:p-7 overflow-visible">
+              <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4">
+                Параметры расчёта
+              </h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 overflow-visible">
+                <PetDropdown 
+                  pets={pets} 
+                  selectedPet={selectedPet} 
+                  onSelect={setSelectedPet}
+                  isLoading={isPlanLoading}
+                />
+                <SelectDropdown
+                  label="Тип питания"
+                  options={FEEDING_TYPE_OPTIONS}
+                  value={feedingType}
+                  onChange={setFeedingType}
+                  disabled={isPlanLoading}
+                />
+                <PeriodInput
+                  value={period}
+                  onChange={setPeriod}
+                  disabled={isPlanLoading}
+                />
+                {feedingType === 'multi' && selectedPet ? (
+                  <SelectDropdown
+                    label="Соотношение сухой / влажный корм"
+                    options={getMultiRatioPresetOptions(selectedPet.species)}
+                    value={multiRatioPreset}
+                    onChange={setMultiRatioPreset}
+                    disabled={isPlanLoading}
+                  />
+                ) : (
+                  <div aria-hidden="true" />
+                )}
+              </div>
+            </div>
           </div>
           
           {/* Конструктор рациона */}
@@ -2101,6 +2136,8 @@ export default function FoodRecommendationPage() {
                             isLoading={isPlanLoading}
                             componentType={type}
                             onProductClick={handleOpenProduct}
+                            calorieDistribution={feedingPlan?.calorie_distribution}
+                            dailyCalories={feedingPlan?.daily_calories}
                           />
                         ))}
 
@@ -2124,6 +2161,8 @@ export default function FoodRecommendationPage() {
                                   labelOverride={getSupplementLabel(component)}
                                   showRemove={idx > 0}
                                   onRemove={() => handleRemoveSupplement(type)}
+                                  calorieDistribution={feedingPlan?.calorie_distribution}
+                                  dailyCalories={feedingPlan?.daily_calories}
                                 />
                               ))}
                             </div>
