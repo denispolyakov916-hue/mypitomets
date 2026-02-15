@@ -1,0 +1,178 @@
+"""
+Views для модулей курсов и структуры курса.
+"""
+
+import logging
+from rest_framework import status
+from rest_framework.permissions import IsAuthenticated, IsAdminUser
+from rest_framework.response import Response
+from rest_framework.views import APIView
+from rest_framework.viewsets import ModelViewSet
+
+from apps.training.models import (
+    Course, CourseModule, CoursePage, UserCourse, UserCourseProgress,
+)
+from apps.training.serializers import (
+    CourseModuleSerializer,
+    CourseStructureSerializer,
+    CourseStructureModuleSerializer,
+    CourseStructurePageSerializer,
+)
+
+logger = logging.getLogger(__name__)
+
+
+class CourseModuleViewSet(ModelViewSet):
+    """
+    CRUD для модулей курса (только для администраторов).
+    """
+    serializer_class = CourseModuleSerializer
+    permission_classes = [IsAdminUser]
+
+    def get_queryset(self):
+        course_id = self.kwargs.get('course_id')
+        return CourseModule.objects.filter(
+            course_id=course_id,
+            is_active=True,
+        ).order_by('order_number')
+
+    def perform_create(self, serializer):
+        course_id = self.kwargs.get('course_id')
+        course = Course.objects.get(id=course_id)
+
+        # Автоинкремент order_number
+        last_module = CourseModule.objects.filter(
+            course=course
+        ).order_by('-order_number').first()
+        next_order = (last_module.order_number + 1) if last_module else 1
+
+        serializer.save(
+            course=course,
+            order_number=serializer.validated_data.get('order_number', next_order),
+        )
+
+    def perform_destroy(self, instance):
+        """Мягкое удаление."""
+        instance.is_active = False
+        instance.save(update_fields=['is_active'])
+
+
+class CourseStructureView(APIView):
+    """
+    Получение полной структуры курса с прогрессом пользователя.
+    Используется на странице обучения (Stepik-стиль).
+
+    GET /api/courses/<course_id>/structure/?pet_id=<pet_id>
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, course_id):
+        try:
+            course = Course.objects.get(id=course_id)
+        except Course.DoesNotExist:
+            return Response(
+                {'error': 'Курс не найден'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        pet_id = request.query_params.get('pet_id')
+
+        # Загружаем модули с вложенными страницами
+        modules = CourseModule.objects.filter(
+            course=course, is_active=True,
+        ).prefetch_related('pages__blocks').order_by('order_number')
+
+        # Загружаем прогресс пользователя
+        completed_page_ids = set()
+        completed_pages = 0
+        total_pages = 0
+
+        # Получаем прогресс по курсу
+        progress_filter = {'user': request.user, 'course': course}
+        if pet_id:
+            progress_filter['pet_id'] = pet_id
+
+        course_progress = UserCourseProgress.objects.filter(**progress_filter).first()
+
+        if course_progress:
+            # Получаем список завершённых страниц из JSON-поля
+            completed_page_ids = set(course_progress.completed_pages_ids or [])
+
+        # Формируем структуру с прогрессом
+        modules_data = []
+        for module in modules:
+            pages = module.pages.filter(is_active=True).order_by('order_number')
+            pages_data = []
+            module_completed = 0
+            module_total = 0
+
+            for page in pages:
+                total_pages += 1
+                module_total += 1
+                page_status = 'completed' if page.id in completed_page_ids else 'not_started'
+                if page_status == 'completed':
+                    completed_pages += 1
+                    module_completed += 1
+
+                pages_data.append({
+                    'id': page.id,
+                    'title': page.title,
+                    'order_number': page.order_number,
+                    'page_type': page.page_type,
+                    'blocks_count': page.blocks.filter(is_active=True).count(),
+                    'status': page_status,
+                })
+
+            module_progress = (module_completed / module_total * 100) if module_total > 0 else 0
+
+            modules_data.append({
+                'id': module.id,
+                'title': module.title,
+                'description': module.description,
+                'order_number': module.order_number,
+                'pages': pages_data,
+                'progress_percent': round(module_progress, 1),
+            })
+
+        # Также добавляем orphan-страницы (без модуля)
+        orphan_pages = CoursePage.objects.filter(
+            course_id=course.id, module__isnull=True, is_active=True,
+        ).order_by('order_number')
+
+        if orphan_pages.exists():
+            orphan_pages_data = []
+            for page in orphan_pages:
+                total_pages += 1
+                page_status = 'completed' if page.id in completed_page_ids else 'not_started'
+                if page_status == 'completed':
+                    completed_pages += 1
+
+                orphan_pages_data.append({
+                    'id': page.id,
+                    'title': page.title,
+                    'order_number': page.order_number,
+                    'page_type': page.page_type,
+                    'blocks_count': page.blocks.filter(is_active=True).count(),
+                    'status': page_status,
+                })
+
+            # Добавляем orphan-страницы как псевдо-модуль
+            modules_data.insert(0, {
+                'id': None,
+                'title': 'Основной',
+                'description': '',
+                'order_number': 0,
+                'pages': orphan_pages_data,
+                'progress_percent': 0,
+            })
+
+        overall_progress = (completed_pages / total_pages * 100) if total_pages > 0 else 0
+
+        return Response({
+            'course_id': course.id,
+            'course_title': course.title,
+            'modules': modules_data,
+            'progress_percent': round(overall_progress, 1),
+            'completed_pages': completed_pages,
+            'total_pages': total_pages,
+        })

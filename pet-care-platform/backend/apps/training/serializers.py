@@ -15,7 +15,7 @@
 from rest_framework import serializers
 from .models import (
     Course, Lesson, UserCourse, UserCourseProgress, UserLessonProgress,
-    Comment, CommentLike, CoursePage, ContentBlock, BlockTemplate
+    Comment, CommentLike, CourseModule, CoursePage, ContentBlock, BlockTemplate
 )
 
 
@@ -207,6 +207,41 @@ class CommentLikeSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'user', 'created_at']
 
 
+# ===== СЕРИАЛИЗАТОРЫ ДЛЯ МОДУЛЕЙ КУРСОВ =====
+
+
+class CourseModuleSerializer(serializers.ModelSerializer):
+    """
+    Сериализатор для модулей (разделов) курса.
+    """
+    pages_count = serializers.SerializerMethodField()
+
+    class Meta:
+        model = CourseModule
+        fields = [
+            'id', 'course', 'title', 'description', 'order_number',
+            'is_active', 'created_at', 'updated_at', 'pages_count',
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at']
+
+    def get_pages_count(self, obj):
+        return obj.pages.filter(is_active=True).count()
+
+
+class CourseModuleListSerializer(serializers.ModelSerializer):
+    """
+    Краткий сериализатор модуля для списков (например, оглавление).
+    """
+    pages_count = serializers.SerializerMethodField()
+
+    class Meta:
+        model = CourseModule
+        fields = ['id', 'title', 'description', 'order_number', 'pages_count']
+
+    def get_pages_count(self, obj):
+        return obj.pages.filter(is_active=True).count()
+
+
 # ===== СЕРИАЛИЗАТОРЫ ДЛЯ КОНСТРУКТОРА КУРСОВ =====
 
 class CoursePageSerializer(serializers.ModelSerializer):
@@ -214,14 +249,14 @@ class CoursePageSerializer(serializers.ModelSerializer):
     Сериализатор для страниц курсов.
     """
     blocks_count = serializers.SerializerMethodField()
-    course_title = serializers.CharField(source='course.title', read_only=True)
+    module_title = serializers.CharField(source='module.title', read_only=True, default=None)
 
     class Meta:
         model = CoursePage
         fields = [
-            'id', 'course', 'course_title', 'title', 'order_number',
+            'id', 'course_id', 'module', 'module_title', 'title', 'order_number',
             'page_type', 'settings', 'is_active', 'created_at', 'updated_at',
-            'blocks_count'
+            'blocks_count',
         ]
         read_only_fields = ['id', 'created_at', 'updated_at', 'blocks_count']
 
@@ -254,8 +289,12 @@ class ContentBlockSerializer(serializers.ModelSerializer):
         if block_type == 'rich_text' and 'html' not in content:
             raise serializers.ValidationError("Rich text блок должен содержать поле 'html'")
 
-        if block_type == 'video_player' and 'video_url' not in content:
-            raise serializers.ValidationError("Video блок должен содержать поле 'video_url'")
+        if block_type == 'video_player':
+            # Принимаем либо video_url (внешняя ссылка), либо video_key (S3)
+            if 'video_url' not in content and 'video_key' not in content:
+                raise serializers.ValidationError(
+                    "Video блок должен содержать поле 'video_url' или 'video_key'"
+                )
 
         return data
 
@@ -282,24 +321,90 @@ class CourseBuilderPageSerializer(serializers.ModelSerializer):
     Расширенный сериализатор страницы с блоками для конструктора.
     """
     blocks = ContentBlockSerializer(many=True, read_only=True)
-    course_title = serializers.CharField(source='course.title', read_only=True)
+    module_title = serializers.CharField(source='module.title', read_only=True, default=None)
 
     class Meta:
         model = CoursePage
         fields = [
-            'id', 'course', 'course_title', 'title', 'order_number',
-            'page_type', 'settings', 'is_active', 'blocks'
+            'id', 'course_id', 'module', 'module_title', 'title', 'order_number',
+            'page_type', 'settings', 'is_active', 'blocks',
+        ]
+
+
+class CourseBuilderModuleSerializer(serializers.ModelSerializer):
+    """
+    Сериализатор модуля с вложенными страницами для конструктора.
+    """
+    pages = CourseBuilderPageSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = CourseModule
+        fields = [
+            'id', 'title', 'description', 'order_number', 'is_active', 'pages',
         ]
 
 
 class CourseBuilderSerializer(serializers.ModelSerializer):
     """
-    Сериализатор курса с страницами и блоками для конструктора.
+    Сериализатор курса с модулями, страницами и блоками для конструктора.
     """
-    pages = CourseBuilderPageSerializer(many=True, read_only=True)
+    modules = CourseBuilderModuleSerializer(many=True, read_only=True)
+    # Страницы без модуля (для обратной совместимости)
+    orphan_pages = serializers.SerializerMethodField()
 
     class Meta:
         model = Course
         fields = [
-            'id', 'title', 'description', 'pages'
+            'id', 'title', 'description', 'modules', 'orphan_pages',
         ]
+
+    def get_orphan_pages(self, obj):
+        """Страницы, не привязанные к модулю."""
+        pages = CoursePage.objects.filter(
+            course_id=obj.id, module__isnull=True, is_active=True
+        ).order_by('order_number').prefetch_related('blocks')
+        return CourseBuilderPageSerializer(pages, many=True).data
+
+
+class CourseStructurePageSerializer(serializers.ModelSerializer):
+    """
+    Сериализатор страницы для отображения структуры курса (обучение).
+    Включает статус прогресса пользователя.
+    """
+    blocks_count = serializers.SerializerMethodField()
+    status = serializers.CharField(default='not_started', read_only=True)
+
+    class Meta:
+        model = CoursePage
+        fields = [
+            'id', 'title', 'order_number', 'page_type', 'blocks_count', 'status',
+        ]
+
+    def get_blocks_count(self, obj):
+        return obj.blocks.filter(is_active=True).count()
+
+
+class CourseStructureModuleSerializer(serializers.ModelSerializer):
+    """
+    Сериализатор модуля для отображения структуры курса (обучение).
+    """
+    pages = CourseStructurePageSerializer(many=True, read_only=True)
+    progress_percent = serializers.FloatField(default=0, read_only=True)
+
+    class Meta:
+        model = CourseModule
+        fields = [
+            'id', 'title', 'description', 'order_number', 'pages', 'progress_percent',
+        ]
+
+
+class CourseStructureSerializer(serializers.Serializer):
+    """
+    Полная структура курса для страницы обучения.
+    """
+    course_id = serializers.IntegerField()
+    course_title = serializers.CharField()
+    modules = CourseStructureModuleSerializer(many=True)
+    progress_percent = serializers.FloatField(default=0)
+    completed_pages = serializers.IntegerField(default=0)
+    total_pages = serializers.IntegerField(default=0)

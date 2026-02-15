@@ -13,6 +13,9 @@ from .views import (
     DeleteCourseReviewView,
     CourseReviewEligibilityView,
     RecentPurchasesForReviewView,
+    ReviewLikeView,
+    ReviewDislikeView,
+    ReviewRemoveReactionView,
 )
 
 urlpatterns = [
@@ -42,5 +45,10 @@ urlpatterns = [
     # Недавно приобретенные товары и курсы для отзывов
     # GET /api/reviews/recent-purchases/
     path('recent-purchases/', RecentPurchasesForReviewView.as_view(), name='recent-purchases-for-review'),
+
+    # Реакции на отзывы (лайки/дизлайки)
+    path('<int:review_id>/like/', ReviewLikeView.as_view(), name='review-like'),
+    path('<int:review_id>/dislike/', ReviewDislikeView.as_view(), name='review-dislike'),
+    path('<int:review_id>/reaction/', ReviewRemoveReactionView.as_view(), name='review-remove-reaction'),
 ]
 

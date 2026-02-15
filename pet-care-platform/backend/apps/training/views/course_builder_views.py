@@ -13,11 +13,9 @@ Views для конструктора курсов.
     - ContentBlockViewSet: CRUD операций с блоками контента
     - BlockTemplateViewSet: Управление шаблонами блоков
 
-Особенности:
-    - Автоматическая нумерация порядка страниц и блоков
-    - Поддержка дублирования блоков
-    - Фильтрация шаблонов по типу и категории
-    - Проверка прав доступа (TODO: реализовать)
+Permissions:
+    - CourseBuilderView, CoursePageViewSet, ContentBlockViewSet — только is_staff
+    - BlockTemplateViewSet — is_staff для создания, IsAuthenticated для чтения публичных
 """
 
 import logging
@@ -26,7 +24,7 @@ from django.shortcuts import get_object_or_404
 from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from rest_framework.viewsets import ModelViewSet
 from rest_framework.decorators import action
 
@@ -43,9 +41,10 @@ class CourseBuilderView(APIView):
     """
     View для получения полной структуры курса с страницами и блоками.
     Используется в конструкторе курсов.
+    Доступ: только администраторы (is_staff).
     """
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAdminUser]
 
     def get(self, request, course_id):
         """Получить структуру курса для конструктора."""
@@ -55,8 +54,6 @@ class CourseBuilderView(APIView):
             from core.exceptions import ApiError
             raise ApiError.not_found('Курс не найден', error_code='COURSE_NOT_FOUND')
 
-        # TODO: Добавить проверку прав доступа (админ или владелец курса)
-
         serializer = CourseBuilderSerializer(course)
         return Response(serializer.data)
 
@@ -64,9 +61,10 @@ class CourseBuilderView(APIView):
 class CoursePageViewSet(ModelViewSet):
     """
     ViewSet для управления страницами курсов.
+    Доступ: только администраторы (is_staff).
     """
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAdminUser]
     serializer_class = CoursePageSerializer
 
     def get_queryset(self):
@@ -77,32 +75,31 @@ class CoursePageViewSet(ModelViewSet):
         course_id = self.kwargs.get('course_id')
         course = get_object_or_404(Course, id=course_id)
 
-        # TODO: Добавить проверку прав доступа
-
         # Автоматически устанавливаем order_number
-        max_order = CoursePage.objects.filter(course=course).aggregate(
+        max_order = CoursePage.objects.filter(course_id=course.id).aggregate(
             max_order=models.Max('order_number')
         )['max_order'] or 0
-        serializer.save(course=course, order_number=max_order + 1)
+        serializer.save(course_id=course.id, order_number=max_order + 1)
 
 
 class ContentBlockViewSet(ModelViewSet):
     """
     ViewSet для управления блоками контента.
+    Доступ: только администраторы (is_staff).
     """
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAdminUser]
     serializer_class = ContentBlockSerializer
 
     def get_queryset(self):
         page_id = self.kwargs.get('page_id')
-        return ContentBlock.objects.filter(page_id=page_id, is_active=True)
+        if page_id:
+            return ContentBlock.objects.filter(page_id=page_id, is_active=True)
+        return ContentBlock.objects.filter(is_active=True)
 
     def perform_create(self, serializer):
         page_id = self.kwargs.get('page_id')
         page = get_object_or_404(CoursePage, id=page_id)
-
-        # TODO: Добавить проверку прав доступа
 
         # Автоматически устанавливаем order
         max_order = ContentBlock.objects.filter(page=page).aggregate(
@@ -115,8 +112,6 @@ class ContentBlockViewSet(ModelViewSet):
         """Дублировать блок."""
         block = self.get_object()
         page = block.page
-
-        # TODO: Добавить проверку прав доступа
 
         # Создаем копию блока
         max_order = ContentBlock.objects.filter(page=page).aggregate(
@@ -138,19 +133,28 @@ class ContentBlockViewSet(ModelViewSet):
 class BlockTemplateViewSet(ModelViewSet):
     """
     ViewSet для управления шаблонами блоков.
+
+    Permissions:
+    - Чтение (list, retrieve): IsAuthenticated — видит публичные + свои
+    - Создание/обновление/удаление: IsAdminUser — только администраторы
     """
 
-    permission_classes = [IsAuthenticated]
     serializer_class = BlockTemplateSerializer
+
+    def get_permissions(self):
+        if self.action in ['list', 'retrieve', 'use_template']:
+            return [IsAuthenticated()]
+        return [IsAdminUser()]
 
     def get_queryset(self):
         queryset = BlockTemplate.objects.filter(is_active=True)
 
         # Фильтр по публичным шаблонам и шаблонам пользователя
         user = self.request.user
-        queryset = queryset.filter(
-            models.Q(is_public=True) | models.Q(created_by=user)
-        )
+        if not user.is_staff:
+            queryset = queryset.filter(
+                models.Q(is_public=True) | models.Q(created_by=user)
+            )
 
         # Фильтр по типу блока
         block_type = self.request.query_params.get('block_type')
@@ -187,7 +191,12 @@ class BlockTemplateViewSet(ModelViewSet):
                 status=status.HTTP_404_NOT_FOUND
             )
 
-        # TODO: Добавить проверку прав доступа
+        # Проверка прав: для создания блока нужно быть администратором
+        if not request.user.is_staff:
+            return Response(
+                {'error': 'Недостаточно прав'},
+                status=status.HTTP_403_FORBIDDEN
+            )
 
         # Создаем блок из шаблона
         block = template.create_block_from_template(page)

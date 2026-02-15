@@ -20,6 +20,11 @@ class ReviewCreateSerializer(serializers.Serializer):
         max_length=2000,
         help_text="Комментарий (10-2000 символов)"
     )
+    parent_id = serializers.IntegerField(
+        required=False,
+        allow_null=True,
+        help_text="ID родительского отзыва (для ответов)"
+    )
     
     def validate_comment(self, value):
         """Валидация комментария."""

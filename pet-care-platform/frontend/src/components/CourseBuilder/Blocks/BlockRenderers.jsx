@@ -5,10 +5,11 @@
  * блоков контента пользователям (в отличие от редактирования в конструкторе).
  */
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import ReactPlayer from 'react-player'
 import { Button } from '../../ui'
 import { CheckCircle, Circle, Clock, Download, Star, MessageCircle } from 'lucide-react'
+import { getVideoPlaybackUrl } from '../../../api/upload'
 
 /**
  * RichTextRenderer - Отображение форматированного текста
@@ -26,9 +27,58 @@ export function RichTextRenderer({ block, mode = 'view', onComplete, onProgress 
 
 /**
  * VideoPlayerRenderer - Воспроизведение видео
+ *
+ * Поддерживает:
+ * - Прямые URL (YouTube, Vimeo, внешние ссылки)
+ * - S3 presigned URLs через video_key (Yandex Cloud)
+ * - Защита от скачивания (nodownload)
+ * - Блокировка контекстного меню
  */
 export function VideoPlayerRenderer({ block, mode = 'view', onComplete, onProgress }) {
   const [watched, setWatched] = useState(false)
+  const [videoUrl, setVideoUrl] = useState(block.content?.video_url || '')
+  const [urlLoading, setUrlLoading] = useState(false)
+  const urlCacheRef = useRef({ url: null, expiry: 0 })
+
+  // Если есть video_key (S3), получаем presigned URL
+  useEffect(() => {
+    const videoKey = block.content?.video_key
+    if (!videoKey) {
+      setVideoUrl(block.content?.video_url || '')
+      return
+    }
+
+    // Проверяем кеш (1.5 часа из 2-часового TTL)
+    const now = Date.now()
+    if (urlCacheRef.current.url && urlCacheRef.current.expiry > now) {
+      setVideoUrl(urlCacheRef.current.url)
+      return
+    }
+
+    const fetchPresignedUrl = async () => {
+      try {
+        setUrlLoading(true)
+        const courseId = block.content?.course_id
+        const result = await getVideoPlaybackUrl(videoKey, courseId)
+        const presignedUrl = result.url
+        setVideoUrl(presignedUrl)
+
+        // Кешируем на 1.5 часа
+        urlCacheRef.current = {
+          url: presignedUrl,
+          expiry: now + 90 * 60 * 1000,
+        }
+      } catch (err) {
+        console.error('Failed to get video playback URL:', err)
+        // Fallback на video_url если presigned не сработал
+        setVideoUrl(block.content?.video_url || '')
+      } finally {
+        setUrlLoading(false)
+      }
+    }
+
+    fetchPresignedUrl()
+  }, [block.content?.video_key, block.content?.video_url, block.content?.course_id])
 
   const handleVideoEnd = () => {
     setWatched(true)
@@ -41,22 +91,37 @@ export function VideoPlayerRenderer({ block, mode = 'view', onComplete, onProgre
 
   return (
     <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-      <div className="aspect-video">
-        <ReactPlayer
-          url={block.content?.video_url}
-          width="100%"
-          height="100%"
-          controls
-          onEnded={handleVideoEnd}
-          onProgress={handleProgress}
-          config={{
-            file: {
-              attributes: {
-                controlsList: 'nodownload'
+      <div className="aspect-video relative" onContextMenu={(e) => e.preventDefault()}>
+        {urlLoading ? (
+          <div className="w-full h-full bg-gray-900 flex items-center justify-center">
+            <div className="text-white text-sm">Загрузка видео...</div>
+          </div>
+        ) : videoUrl ? (
+          <ReactPlayer
+            url={videoUrl}
+            width="100%"
+            height="100%"
+            controls
+            onEnded={handleVideoEnd}
+            onProgress={handleProgress}
+            config={{
+              file: {
+                attributes: {
+                  controlsList: 'nodownload',
+                  disablePictureInPicture: true,
+                  onContextMenu: (e) => e.preventDefault(),
+                }
               }
-            }
-          }}
-        />
+            }}
+          />
+        ) : (
+          <div className="w-full h-full bg-gray-200 flex items-center justify-center">
+            <div className="text-gray-500 text-center">
+              <div className="text-4xl mb-2">🎥</div>
+              <p>Видео не загружено</p>
+            </div>
+          </div>
+        )}
       </div>
 
       {block.content?.title && (
@@ -81,7 +146,14 @@ export function VideoPlayerRenderer({ block, mode = 'view', onComplete, onProgre
 }
 
 /**
- * QuizRenderer - Отображение теста/викторины
+ * QuizRenderer - Полнофункциональный тест/викторина
+ *
+ * Поддерживает типы вопросов:
+ * - single_choice: один правильный ответ (радиокнопки)
+ * - multi_choice: несколько правильных (чекбоксы)
+ * - text_input: текстовый ввод
+ * - true_false: верно/неверно
+ * - matching: сопоставление пар
  */
 export function QuizRenderer({ block, mode = 'view', onComplete, onProgress }) {
   const [answers, setAnswers] = useState({})
@@ -90,33 +162,85 @@ export function QuizRenderer({ block, mode = 'view', onComplete, onProgress }) {
 
   const questions = block.content?.questions || []
 
-  const handleAnswerSelect = (questionIndex, answerIndex) => {
-    setAnswers(prev => ({
-      ...prev,
-      [questionIndex]: answerIndex
-    }))
+  /* ─── Обработчики ─── */
+  const handleSingleSelect = (qi, value) => {
+    if (submitted) return
+    setAnswers(prev => ({ ...prev, [qi]: value }))
+  }
+
+  const handleMultiToggle = (qi, value) => {
+    if (submitted) return
+    setAnswers(prev => {
+      const current = Array.isArray(prev[qi]) ? [...prev[qi]] : []
+      const idx = current.indexOf(value)
+      if (idx >= 0) current.splice(idx, 1)
+      else current.push(value)
+      return { ...prev, [qi]: current }
+    })
+  }
+
+  const handleTextInput = (qi, value) => {
+    if (submitted) return
+    setAnswers(prev => ({ ...prev, [qi]: value }))
+  }
+
+  const handleMatchSelect = (qi, leftIdx, rightIdx) => {
+    if (submitted) return
+    setAnswers(prev => {
+      const current = { ...(prev[qi] || {}) }
+      current[leftIdx] = rightIdx
+      return { ...prev, [qi]: current }
+    })
+  }
+
+  const checkAnswer = (question, answer) => {
+    const type = question.type || 'single_choice'
+    switch (type) {
+      case 'single_choice':
+      case 'true_false':
+        return answer === question.correct_answer || answer === question.correct
+      case 'multi_choice': {
+        const correct = question.correct_answer || question.correct || []
+        const userArr = Array.isArray(answer) ? answer.sort() : []
+        const correctArr = [...correct].sort()
+        return JSON.stringify(userArr) === JSON.stringify(correctArr)
+      }
+      case 'text_input': {
+        const correctText = (question.correct_answer || question.correct || '').toString().toLowerCase().trim()
+        const userText = (answer || '').toString().toLowerCase().trim()
+        return userText === correctText
+      }
+      case 'matching': {
+        const correctPairs = question.correct_answer || question.correct || {}
+        const userPairs = answer || {}
+        return Object.keys(correctPairs).every(k => userPairs[k] === correctPairs[k])
+      }
+      default:
+        return answer === question.correct_answer
+    }
   }
 
   const handleSubmit = () => {
-    let correctAnswers = 0
-    questions.forEach((question, index) => {
-      const userAnswer = answers[index]
-      const correctAnswer = question.correct_answer
-      if (userAnswer === correctAnswer) {
-        correctAnswers++
-      }
-    })
-
-    const finalScore = Math.round((correctAnswers / questions.length) * 100)
+    let correct = 0
+    questions.forEach((q, i) => { if (checkAnswer(q, answers[i])) correct++ })
+    const finalScore = Math.round((correct / questions.length) * 100)
     setScore(finalScore)
     setSubmitted(true)
-
-    onComplete && onComplete(block.id, {
-      completed: true,
-      score: finalScore,
-      answers
-    })
+    onComplete?.(block.id, { completed: true, score: finalScore, answers })
   }
+
+  const handleRetry = () => {
+    setAnswers({})
+    setSubmitted(false)
+    setScore(0)
+  }
+
+  const isAllAnswered = questions.every((q, i) => {
+    const a = answers[i]
+    if (a === undefined || a === null || a === '') return false
+    if (Array.isArray(a) && a.length === 0) return false
+    return true
+  })
 
   if (!questions.length) {
     return (
@@ -126,79 +250,192 @@ export function QuizRenderer({ block, mode = 'view', onComplete, onProgress }) {
     )
   }
 
-  return (
-    <div className="bg-white border border-gray-200 rounded-lg p-6">
-      <h3 className="text-lg font-semibold text-gray-900 mb-6">
-        {block.content?.title || 'Тест'}
-      </h3>
+  /* ─── Рендер вопроса ─── */
+  const renderQuestion = (question, qi) => {
+    const type = question.type || 'single_choice'
+    const isCorrectQ = submitted && checkAnswer(question, answers[qi])
 
-      <div className="space-y-6">
-        {questions.map((question, questionIndex) => (
-          <div key={questionIndex} className="border-b border-gray-100 pb-4">
-            <h4 className="font-medium text-gray-900 mb-3">
-              {questionIndex + 1}. {question.question}
-            </h4>
+    return (
+      <div key={qi} className={`pb-5 ${qi < questions.length - 1 ? 'border-b border-gray-100 mb-5' : ''}`}>
+        <div className="flex items-start gap-3 mb-3">
+          <span className="flex-shrink-0 w-7 h-7 rounded-full bg-purple-100 text-purple-700 flex items-center justify-center text-sm font-bold">
+            {qi + 1}
+          </span>
+          <h4 className="font-medium text-gray-900 pt-0.5">{question.question}</h4>
+        </div>
 
+        {/* Подсказка о типе */}
+        {type === 'multi_choice' && !submitted && (
+          <p className="text-xs text-gray-400 ml-10 mb-2">Выберите все правильные ответы</p>
+        )}
+
+        <div className="ml-10">
+          {/* Single choice / True-False */}
+          {(type === 'single_choice' || type === 'true_false') && (
             <div className="space-y-2">
-              {question.options?.map((option, optionIndex) => {
-                const isSelected = answers[questionIndex] === optionIndex
-                const isCorrect = submitted && optionIndex === question.correct_answer
-                const isWrong = submitted && isSelected && optionIndex !== question.correct_answer
-
+              {(question.options || (type === 'true_false' ? ['Верно', 'Неверно'] : [])).map((opt, oi) => {
+                const isSelected = answers[qi] === oi
+                const correctIdx = question.correct_answer ?? question.correct
+                const isCorrectOpt = submitted && oi === correctIdx
+                const isWrongOpt = submitted && isSelected && oi !== correctIdx
                 return (
-                  <button
-                    key={optionIndex}
-                    onClick={() => !submitted && handleAnswerSelect(questionIndex, optionIndex)}
-                    disabled={submitted}
+                  <button key={oi} onClick={() => handleSingleSelect(qi, oi)} disabled={submitted}
                     className={`w-full text-left p-3 rounded-lg border transition-colors ${
-                      isCorrect
-                        ? 'bg-green-100 border-green-300 text-green-800'
-                        : isWrong
-                        ? 'bg-red-100 border-red-300 text-red-800'
-                        : isSelected
-                        ? 'bg-blue-100 border-blue-300 text-blue-800'
-                        : 'border-gray-200 hover:border-blue-300 hover:bg-blue-50'
-                    }`}
-                  >
-                    <div className="flex items-center space-x-3">
-                      <div className={`w-4 h-4 rounded-full border-2 ${
-                        isSelected ? 'bg-blue-600 border-blue-600' : 'border-gray-300'
+                      isCorrectOpt ? 'bg-green-100 border-green-300 text-green-800'
+                      : isWrongOpt ? 'bg-red-100 border-red-300 text-red-800'
+                      : isSelected ? 'bg-blue-50 border-blue-300'
+                      : 'border-gray-200 hover:border-blue-300 hover:bg-blue-50'
+                    }`}>
+                    <div className="flex items-center gap-3">
+                      <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                        isSelected ? 'border-blue-600 bg-blue-600' : 'border-gray-300'
                       }`}>
-                        {isSelected && <div className="w-2 h-2 bg-white rounded-full mx-auto" />}
+                        {isSelected && <div className="w-1.5 h-1.5 bg-white rounded-full" />}
                       </div>
-                      <span>{option}</span>
+                      <span className="text-sm">{opt}</span>
                     </div>
                   </button>
                 )
               })}
             </div>
-          </div>
-        ))}
+          )}
+
+          {/* Multi choice */}
+          {type === 'multi_choice' && (
+            <div className="space-y-2">
+              {(question.options || []).map((opt, oi) => {
+                const selected = Array.isArray(answers[qi]) && answers[qi].includes(oi)
+                const correctArr = question.correct_answer || question.correct || []
+                const isCorrectOpt = submitted && correctArr.includes(oi)
+                const isWrongOpt = submitted && selected && !correctArr.includes(oi)
+                return (
+                  <button key={oi} onClick={() => handleMultiToggle(qi, oi)} disabled={submitted}
+                    className={`w-full text-left p-3 rounded-lg border transition-colors ${
+                      isCorrectOpt ? 'bg-green-100 border-green-300 text-green-800'
+                      : isWrongOpt ? 'bg-red-100 border-red-300 text-red-800'
+                      : selected ? 'bg-blue-50 border-blue-300'
+                      : 'border-gray-200 hover:border-blue-300 hover:bg-blue-50'
+                    }`}>
+                    <div className="flex items-center gap-3">
+                      <div className={`w-4 h-4 rounded border ${
+                        selected ? 'border-blue-600 bg-blue-600' : 'border-gray-300'
+                      } flex items-center justify-center`}>
+                        {selected && (
+                          <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                          </svg>
+                        )}
+                      </div>
+                      <span className="text-sm">{opt}</span>
+                    </div>
+                  </button>
+                )
+              })}
+            </div>
+          )}
+
+          {/* Text input */}
+          {type === 'text_input' && (
+            <div>
+              <input
+                type="text"
+                value={answers[qi] || ''}
+                onChange={(e) => handleTextInput(qi, e.target.value)}
+                disabled={submitted}
+                placeholder="Введите ваш ответ..."
+                className={`w-full p-3 rounded-lg border text-sm ${
+                  submitted
+                    ? isCorrectQ ? 'bg-green-100 border-green-300' : 'bg-red-100 border-red-300'
+                    : 'border-gray-200 focus:border-blue-400 focus:ring-2 focus:ring-blue-100'
+                }`}
+              />
+              {submitted && !isCorrectQ && (
+                <p className="text-sm text-green-600 mt-1">Правильный ответ: {question.correct_answer || question.correct}</p>
+              )}
+            </div>
+          )}
+
+          {/* Matching */}
+          {type === 'matching' && (
+            <div className="space-y-3">
+              {(question.left_items || []).map((left, li) => {
+                const rightItems = question.right_items || []
+                const userMatch = (answers[qi] || {})[li]
+                const correctMatch = (question.correct_answer || question.correct || {})[li]
+                const isMatchCorrect = submitted && userMatch === correctMatch
+                const isMatchWrong = submitted && userMatch !== undefined && userMatch !== correctMatch
+                return (
+                  <div key={li} className="flex items-center gap-3">
+                    <span className="text-sm font-medium text-gray-700 w-1/3 text-right">{left}</span>
+                    <span className="text-gray-400">→</span>
+                    <select
+                      value={userMatch ?? ''}
+                      onChange={(e) => handleMatchSelect(qi, li, parseInt(e.target.value))}
+                      disabled={submitted}
+                      className={`flex-1 p-2 rounded-lg border text-sm ${
+                        isMatchCorrect ? 'bg-green-100 border-green-300'
+                        : isMatchWrong ? 'bg-red-100 border-red-300'
+                        : 'border-gray-200'
+                      }`}
+                    >
+                      <option value="">Выберите...</option>
+                      {rightItems.map((right, ri) => (
+                        <option key={ri} value={ri}>{right}</option>
+                      ))}
+                    </select>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+
+          {/* Объяснение после ответа */}
+          {submitted && question.explanation && (
+            <div className={`mt-3 p-3 rounded-lg text-sm ${isCorrectQ ? 'bg-green-50 text-green-700' : 'bg-amber-50 text-amber-700'}`}>
+              <span className="font-medium">Пояснение:</span> {question.explanation}
+            </div>
+          )}
+        </div>
       </div>
+    )
+  }
+
+  return (
+    <div className="bg-white border border-purple-200 rounded-xl p-6">
+      <div className="flex items-center gap-3 mb-6">
+        <span className="text-2xl">❓</span>
+        <h3 className="text-lg font-semibold text-gray-900">{block.content?.title || 'Тест'}</h3>
+      </div>
+
+      {questions.map((q, qi) => renderQuestion(q, qi))}
 
       {!submitted ? (
         <div className="mt-6 flex justify-center">
-          <Button
+          <button
             onClick={handleSubmit}
-            disabled={Object.keys(answers).length < questions.length}
-            className="px-8"
+            disabled={!isAllAnswered}
+            className="px-8 py-3 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Проверить ответы
-          </Button>
+          </button>
         </div>
       ) : (
-        <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+        <div className={`mt-6 p-5 rounded-xl ${score >= 70 ? 'bg-green-50 border border-green-200' : 'bg-amber-50 border border-amber-200'}`}>
           <div className="text-center">
-            <h4 className="text-lg font-semibold text-blue-900 mb-2">
-              Результат: {score}%
-            </h4>
-            <p className="text-blue-700">
-              Правильных ответов: {Math.round((score / 100) * questions.length)} из {questions.length}
+            <div className="text-3xl mb-2">{score >= 70 ? '🎉' : '💪'}</div>
+            <h4 className="text-xl font-bold mb-1">{score}%</h4>
+            <p className="text-sm text-gray-600 mb-3">
+              Правильных: {Math.round((score / 100) * questions.length)} из {questions.length}
             </p>
             {score >= 70 ? (
-              <p className="text-green-600 font-medium mt-2">Отлично! Вы успешно прошли тест.</p>
+              <p className="text-green-700 font-medium">Отлично! Тест пройден.</p>
             ) : (
-              <p className="text-orange-600 font-medium mt-2">Попробуйте пройти тест еще раз.</p>
+              <div>
+                <p className="text-amber-700 font-medium mb-3">Попробуйте ещё раз.</p>
+                <button onClick={handleRetry} className="px-6 py-2 bg-white border border-gray-300 rounded-lg text-sm hover:bg-gray-50">
+                  Пройти заново
+                </button>
+              </div>
             )}
           </div>
         </div>
@@ -208,34 +445,50 @@ export function QuizRenderer({ block, mode = 'view', onComplete, onProgress }) {
 }
 
 /**
- * PetActionRenderer - Действия с питомцем
+ * PetActionRenderer - Пошаговое упражнение с питомцем
+ *
+ * Формат контента:
+ * {
+ *   title: "Название упражнения",
+ *   instructions: "Общее описание",
+ *   steps: [{ text: "Шаг 1...", tip: "Совет", media_placeholder: "[Фото: ...]" }],
+ *   timer_enabled: true/false,
+ *   timer_duration: 300 (в секундах)
+ * }
  */
 export function PetActionRenderer({ block, mode = 'view', onComplete, onProgress }) {
+  const steps = block.content?.steps || []
+  const [checkedSteps, setCheckedSteps] = useState({})
   const [completed, setCompleted] = useState(false)
   const [timeSpent, setTimeSpent] = useState(0)
   const [timerActive, setTimerActive] = useState(false)
+  const [started, setStarted] = useState(false)
 
   useEffect(() => {
     let interval
     if (timerActive) {
-      interval = setInterval(() => {
-        setTimeSpent(prev => prev + 1)
-      }, 1000)
+      interval = setInterval(() => setTimeSpent(prev => prev + 1), 1000)
     }
     return () => clearInterval(interval)
   }, [timerActive])
 
+  const toggleStep = (idx) => {
+    if (completed) return
+    setCheckedSteps(prev => ({ ...prev, [idx]: !prev[idx] }))
+  }
+
+  const allStepsChecked = steps.length > 0 && steps.every((_, i) => checkedSteps[i])
+  const checkedCount = Object.values(checkedSteps).filter(Boolean).length
+
   const handleStart = () => {
-    setTimerActive(true)
+    setStarted(true)
+    if (block.content?.timer_enabled) setTimerActive(true)
   }
 
   const handleComplete = () => {
     setCompleted(true)
     setTimerActive(false)
-    onComplete && onComplete(block.id, {
-      completed: true,
-      time_spent: timeSpent
-    })
+    onComplete?.(block.id, { completed: true, time_spent: timeSpent })
   }
 
   const formatTime = (seconds) => {
@@ -244,58 +497,131 @@ export function PetActionRenderer({ block, mode = 'view', onComplete, onProgress
     return `${mins}:${secs.toString().padStart(2, '0')}`
   }
 
+  // Fallback если шаги не заданы — старый формат (просто instructions)
+  const hasSteps = steps.length > 0
+
   return (
-    <div className="bg-white border border-gray-200 rounded-lg p-6">
-      <div className="flex items-start space-x-4">
-        <div className="p-3 bg-blue-100 rounded-lg">
-          <span className="text-2xl">🎯</span>
-        </div>
+    <div className="bg-white border-2 border-green-200 rounded-xl overflow-hidden">
+      {/* Заголовок */}
+      <div className="bg-green-50 px-6 py-4 flex items-center gap-3">
+        <span className="text-2xl">🐾</span>
         <div className="flex-1">
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">
+          <h3 className="text-lg font-semibold text-gray-900">
             {block.content?.title || 'Упражнение с питомцем'}
           </h3>
-
           {block.content?.instructions && (
-            <p className="text-gray-700 mb-4 whitespace-pre-line">
-              {block.content.instructions}
-            </p>
-          )}
-
-          {/* Таймер */}
-          {block.content?.timer_enabled && (
-            <div className="bg-gray-50 p-4 rounded-lg mb-4">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium text-gray-700">Время выполнения:</span>
-                <div className="flex items-center space-x-2">
-                  <Clock size={16} className="text-gray-500" />
-                  <span className="font-mono text-lg">{formatTime(timeSpent)}</span>
-                </div>
-              </div>
-
-              {!timerActive && !completed && (
-                <Button onClick={handleStart} variant="outline" size="sm">
-                  Начать упражнение
-                </Button>
-              )}
-            </div>
-          )}
-
-          {/* Кнопка завершения */}
-          {!completed ? (
-            <Button
-              onClick={handleComplete}
-              disabled={block.content?.timer_enabled && !timerActive}
-              className="w-full"
-            >
-              Отметить как выполненное
-            </Button>
-          ) : (
-            <div className="flex items-center space-x-2 text-green-700 bg-green-50 p-3 rounded-lg">
-              <CheckCircle size={20} />
-              <span className="font-medium">Упражнение выполнено!</span>
-            </div>
+            <p className="text-sm text-gray-600 mt-1">{block.content.instructions}</p>
           )}
         </div>
+        {/* Прогресс */}
+        {hasSteps && started && !completed && (
+          <div className="text-right">
+            <span className="text-sm font-medium text-green-700">{checkedCount}/{steps.length}</span>
+            <div className="w-16 h-1.5 bg-green-200 rounded-full mt-1">
+              <div
+                className="h-1.5 bg-green-500 rounded-full transition-all"
+                style={{ width: `${steps.length > 0 ? (checkedCount / steps.length) * 100 : 0}%` }}
+              />
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="px-6 py-5">
+        {/* Таймер */}
+        {block.content?.timer_enabled && started && (
+          <div className="flex items-center justify-center gap-2 mb-5 p-3 bg-gray-50 rounded-lg">
+            <Clock size={18} className="text-gray-500" />
+            <span className="font-mono text-xl font-medium">{formatTime(timeSpent)}</span>
+            {block.content?.timer_duration && (
+              <span className="text-sm text-gray-400">/ {formatTime(block.content.timer_duration)}</span>
+            )}
+          </div>
+        )}
+
+        {!started && !completed ? (
+          /* Кнопка начать */
+          <div className="text-center py-4">
+            <p className="text-gray-500 mb-4">Приготовьте питомца и нажмите «Начать»</p>
+            <button
+              onClick={handleStart}
+              className="px-8 py-3 bg-green-600 hover:bg-green-700 text-white font-medium rounded-xl transition-colors"
+            >
+              🐾 Начать упражнение
+            </button>
+          </div>
+        ) : completed ? (
+          /* Завершено */
+          <div className="text-center py-6">
+            <div className="text-4xl mb-3">🎉</div>
+            <p className="text-lg font-semibold text-green-700 mb-1">Упражнение выполнено!</p>
+            <p className="text-sm text-gray-500">Время: {formatTime(timeSpent)}</p>
+          </div>
+        ) : hasSteps ? (
+          /* Пошаговые инструкции */
+          <div className="space-y-3">
+            {steps.map((step, i) => (
+              <div
+                key={i}
+                onClick={() => toggleStep(i)}
+                className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-all ${
+                  checkedSteps[i]
+                    ? 'bg-green-50 border-green-200'
+                    : 'bg-white border-gray-200 hover:border-green-300'
+                }`}
+              >
+                {/* Чекбокс */}
+                <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-0.5 transition-colors ${
+                  checkedSteps[i] ? 'bg-green-500 border-green-500' : 'border-gray-300'
+                }`}>
+                  {checkedSteps[i] && (
+                    <svg className="w-3.5 h-3.5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                  )}
+                </div>
+
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-green-600 bg-green-100 px-2 py-0.5 rounded">Шаг {i + 1}</span>
+                  </div>
+                  <p className={`text-sm mt-1 ${checkedSteps[i] ? 'text-gray-400 line-through' : 'text-gray-800'}`}>
+                    {step.text}
+                  </p>
+                  {step.tip && (
+                    <p className="text-xs text-amber-600 mt-1 flex items-center gap-1">
+                      <span>💡</span> {step.tip}
+                    </p>
+                  )}
+                  {step.media_placeholder && (
+                    <div className="mt-2 p-2 bg-gray-100 rounded text-xs text-gray-500 italic">
+                      {step.media_placeholder}
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          /* Fallback: нет шагов */
+          <p className="text-gray-600 whitespace-pre-line">{block.content?.instructions || 'Выполните упражнение с питомцем.'}</p>
+        )}
+
+        {/* Кнопка завершения */}
+        {started && !completed && (
+          <div className="mt-5 text-center">
+            <button
+              onClick={handleComplete}
+              disabled={hasSteps && !allStepsChecked}
+              className="px-8 py-3 bg-green-600 hover:bg-green-700 text-white font-medium rounded-xl transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              ✓ Выполнено
+            </button>
+            {hasSteps && !allStepsChecked && (
+              <p className="text-xs text-gray-400 mt-2">Отметьте все шаги, чтобы завершить</p>
+            )}
+          </div>
+        )}
       </div>
     </div>
   )
@@ -576,26 +902,95 @@ export function TimerRenderer({ block, mode = 'view', onComplete, onProgress }) 
 
 /**
  * ProgressTrackerRenderer - Отслеживание прогресса
+ *
+ * Отображает прогресс курса. Данные прогресса передаются через content блока
+ * или через контекст курса.
  */
 export function ProgressTrackerRenderer({ block, mode = 'view', onComplete, onProgress }) {
-  // Этот компонент может показывать общий прогресс курса
+  const progressPercent = block.content?.progress_percent || 0
+  const completedLessons = block.content?.completed_lessons || 0
+  const totalLessons = block.content?.total_lessons || 0
+  const milestones = block.content?.milestones || []
+
   return (
     <div className="bg-white border border-gray-200 rounded-lg p-6">
       <h3 className="text-lg font-semibold text-gray-900 mb-4">
         {block.content?.title || 'Прогресс обучения'}
       </h3>
-      <div className="text-center text-gray-500">
-        <p>Отображение прогресса курса</p>
-        {/* Здесь можно интегрировать компонент прогресса */}
+
+      {/* Общий прогресс */}
+      <div className="mb-6">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-sm text-gray-600">Общий прогресс</span>
+          <span className="text-lg font-bold text-blue-600">{Math.round(progressPercent)}%</span>
+        </div>
+        <div className="w-full h-3 bg-gray-200 rounded-full overflow-hidden">
+          <div
+            className="h-full bg-gradient-to-r from-blue-500 to-green-500 rounded-full transition-all duration-500"
+            style={{ width: `${progressPercent}%` }}
+          />
+        </div>
+        {totalLessons > 0 && (
+          <p className="text-sm text-gray-500 mt-1">
+            Завершено {completedLessons} из {totalLessons} уроков
+          </p>
+        )}
       </div>
+
+      {/* Вехи */}
+      {milestones.length > 0 && (
+        <div className="space-y-2">
+          <h4 className="text-sm font-medium text-gray-700 mb-2">Достижения</h4>
+          {milestones.map((milestone, index) => (
+            <div
+              key={index}
+              className={`flex items-center space-x-3 p-2 rounded-lg ${
+                milestone.completed ? 'bg-green-50' : 'bg-gray-50'
+              }`}
+            >
+              {milestone.completed ? (
+                <CheckCircle size={18} className="text-green-500" />
+              ) : (
+                <Circle size={18} className="text-gray-300" />
+              )}
+              <span className={`text-sm ${milestone.completed ? 'text-green-700' : 'text-gray-600'}`}>
+                {milestone.title}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {totalLessons === 0 && milestones.length === 0 && (
+        <p className="text-center text-gray-400 text-sm">
+          Прогресс обучения будет отображаться здесь
+        </p>
+      )}
     </div>
   )
 }
 
 /**
  * CommentSectionRenderer - Секция комментариев
+ *
+ * Интегрирует существующий CommentsSection для отображения
+ * комментариев к курсу/уроку.
  */
 export function CommentSectionRenderer({ block, mode = 'view', onComplete, onProgress }) {
+  // Ленивая загрузка CommentsSection для избежания циклических зависимостей
+  const [CommentsComponent, setCommentsComponent] = useState(null)
+
+  useEffect(() => {
+    import('../../Learning/CommentsSection').then(module => {
+      setCommentsComponent(() => module.default)
+    }).catch(() => {
+      // CommentsSection не найден — оставляем заглушку
+    })
+  }, [])
+
+  const courseId = block.content?.course_id
+  const lessonId = block.content?.lesson_id
+
   return (
     <div className="bg-white border border-gray-200 rounded-lg p-6">
       <div className="flex items-center space-x-3 mb-4">
@@ -604,10 +999,18 @@ export function CommentSectionRenderer({ block, mode = 'view', onComplete, onPro
           {block.content?.title || 'Обсуждение'}
         </h3>
       </div>
-      <div className="text-center text-gray-500">
-        <p>Комментарии и обсуждение</p>
-        {/* Здесь можно интегрировать компонент комментариев */}
-      </div>
+
+      {CommentsComponent && (courseId || lessonId) ? (
+        <CommentsComponent
+          courseId={courseId}
+          lessonId={lessonId}
+        />
+      ) : (
+        <div className="text-center text-gray-400 py-4">
+          <MessageCircle size={32} className="mx-auto mb-2 opacity-50" />
+          <p className="text-sm">Комментарии и обсуждение доступны после настройки</p>
+        </div>
+      )}
     </div>
   )
 }

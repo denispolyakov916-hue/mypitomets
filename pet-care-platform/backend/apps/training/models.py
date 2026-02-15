@@ -934,6 +934,14 @@ class UserCourseProgress(models.Model):
         verbose_name='Завершённых уроков'
     )
 
+    # Список ID завершённых страниц (для page-based курсов)
+    completed_pages_ids = models.JSONField(
+        default=list,
+        blank=True,
+        verbose_name='ID завершённых страниц',
+        help_text='Список ID завершённых CoursePage для отслеживания прогресса'
+    )
+
     # Настройки пользователя
     notifications_enabled = models.BooleanField(
         default=True,
@@ -1379,6 +1387,54 @@ class CommentLike(models.Model):
 
 # ===== НОВЫЕ МОДЕЛИ ДЛЯ КОНСТРУКТОРА КУРСОВ =====
 
+
+class CourseModule(models.Model):
+    """
+    Модуль (раздел) курса — группирует страницы/уроки.
+    Реализует трёхуровневую структуру: Курс → Модуль → Страница (Урок).
+    Аналог "Секции" на Stepik.
+    """
+    course = models.ForeignKey(
+        Course,
+        on_delete=models.CASCADE,
+        related_name='modules',
+        verbose_name='Курс',
+    )
+    title = models.CharField(
+        max_length=200,
+        verbose_name='Название модуля',
+    )
+    description = models.TextField(
+        blank=True,
+        default='',
+        verbose_name='Описание модуля',
+    )
+    order_number = models.PositiveIntegerField(
+        default=1,
+        verbose_name='Порядковый номер',
+    )
+    is_active = models.BooleanField(
+        default=True,
+        verbose_name='Активен',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'course_modules'
+        verbose_name = 'Модуль курса'
+        verbose_name_plural = 'Модули курсов'
+        ordering = ['course', 'order_number']
+        unique_together = ['course', 'order_number']
+
+    def __str__(self):
+        return f"{self.course.title} — Модуль {self.order_number}: {self.title}"
+
+    def get_pages_ordered(self):
+        """Получить страницы модуля в правильном порядке."""
+        return self.pages.filter(is_active=True).order_by('order_number')
+
+
 class CoursePage(models.Model):
     """
     Страница курса - контейнер для блоков контента.
@@ -1386,9 +1442,18 @@ class CoursePage(models.Model):
     """
 
     course_id = models.PositiveIntegerField(
-    verbose_name='ID курса',  # Временно без ForeignKey
-    null=True,
-    blank=True
+        verbose_name='ID курса',
+        null=True,
+        blank=True,
+    )
+
+    module = models.ForeignKey(
+        CourseModule,
+        on_delete=models.CASCADE,
+        related_name='pages',
+        null=True,
+        blank=True,
+        verbose_name='Модуль',
     )
 
     title = models.CharField(

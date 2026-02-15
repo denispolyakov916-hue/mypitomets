@@ -10,7 +10,7 @@ from rest_framework import status
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from django.db.models import Avg
 
-from .models import Review
+from .models import Review, ReviewLike
 from .serializers import ReviewCreateSerializer, ReviewUpdateSerializer
 from .utils import can_user_review_product, can_user_review_course
 
@@ -35,11 +35,14 @@ class ProductReviewsView(APIView):
                 status=status.HTTP_404_NOT_FOUND
             )
         
-        # Получаем одобренные отзывы
+        # Получаем одобренные отзывы (только корневые)
         reviews = Review.objects.filter(
             product=product,
-            is_approved=True
-        ).select_related('user').order_by('-created_at')
+            is_approved=True,
+            parent__isnull=True,
+        ).select_related('user').prefetch_related(
+            'replies__user', 'replies__replies',
+        ).order_by('-created_at')
         
         # Пагинация
         page = int(request.query_params.get('page', 1))
@@ -53,7 +56,8 @@ class ProductReviewsView(APIView):
             try:
                 user_review_obj = Review.objects.get(
                     product=product,
-                    user=request.user
+                    user=request.user,
+                    parent__isnull=True,
                 )
                 user_review = user_review_obj.to_dict()
             except Review.DoesNotExist:
@@ -61,17 +65,35 @@ class ProductReviewsView(APIView):
         
         # Распределение рейтингов
         rating_distribution = {}
+        all_root_reviews = Review.objects.filter(product=product, is_approved=True, parent__isnull=True)
         for rating_value in [5, 4, 3, 2, 1]:
-            rating_distribution[str(rating_value)] = reviews.filter(
-                rating=rating_value
-            ).count()
+            rating_distribution[str(rating_value)] = all_root_reviews.filter(rating=rating_value).count()
         
-        # Получаем средний рейтинг и количество отзывов
-        avg_rating = reviews.aggregate(Avg('rating'))['rating__avg'] or 0.0
-        reviews_count = reviews.count()
+        avg_rating = all_root_reviews.aggregate(Avg('rating'))['rating__avg'] or 0.0
+        reviews_count = all_root_reviews.count()
+
+        # Получаем реакции текущего пользователя
+        user_reactions = {}
+        if request.user.is_authenticated:
+            review_ids = [r.id for r in page_obj]
+            for reply_set in [r.replies.all() for r in page_obj]:
+                review_ids.extend([rr.id for rr in reply_set])
+            likes = ReviewLike.objects.filter(review_id__in=review_ids, user=request.user)
+            for like in likes:
+                user_reactions[like.review_id] = 'like' if like.is_like else 'dislike'
+        
+        def serialize_review_with_replies(review_obj):
+            d = review_obj.to_dict()
+            d['user_reaction'] = user_reactions.get(review_obj.id)
+            d['replies'] = []
+            for reply in review_obj.replies.filter(is_approved=True).order_by('created_at'):
+                rd = reply.to_dict()
+                rd['user_reaction'] = user_reactions.get(reply.id)
+                d['replies'].append(rd)
+            return d
         
         return Response({
-            'reviews': [review.to_dict() for review in page_obj],
+            'reviews': [serialize_review_with_replies(r) for r in page_obj],
             'rating': round(avg_rating, 1),
             'reviews_count': reviews_count,
             'rating_distribution': rating_distribution,
@@ -127,6 +149,15 @@ class ProductReviewsView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
         
+        # Родительский отзыв (для ответов)
+        parent = None
+        parent_id = serializer.validated_data.get('parent_id')
+        if parent_id:
+            try:
+                parent = Review.objects.get(id=parent_id, product=product)
+            except Review.DoesNotExist:
+                return Response({'error': 'Родительский отзыв не найден'}, status=status.HTTP_400_BAD_REQUEST)
+
         # Создание отзыва
         review = Review.objects.create(
             product=product,
@@ -134,7 +165,8 @@ class ProductReviewsView(APIView):
             rating=serializer.validated_data['rating'],
             comment=serializer.validated_data.get('comment'),
             is_verified_purchase=True,
-            review_type='product'
+            review_type='product',
+            parent=parent,
         )
         
         return Response({
@@ -332,11 +364,14 @@ class CourseReviewsView(APIView):
                 status=status.HTTP_404_NOT_FOUND
             )
         
-        # Получаем одобренные отзывы
+        # Получаем одобренные отзывы (только корневые)
         reviews = Review.objects.filter(
             course=course,
-            is_approved=True
-        ).select_related('user').order_by('-created_at')
+            is_approved=True,
+            parent__isnull=True,
+        ).select_related('user').prefetch_related(
+            'replies__user', 'replies__replies',
+        ).order_by('-created_at')
         
         # Пагинация
         page = int(request.query_params.get('page', 1))
@@ -350,7 +385,8 @@ class CourseReviewsView(APIView):
             try:
                 user_review_obj = Review.objects.get(
                     course=course,
-                    user=request.user
+                    user=request.user,
+                    parent__isnull=True,
                 )
                 user_review = user_review_obj.to_dict()
             except Review.DoesNotExist:
@@ -358,17 +394,35 @@ class CourseReviewsView(APIView):
         
         # Распределение рейтингов
         rating_distribution = {}
+        all_root_reviews = Review.objects.filter(course=course, is_approved=True, parent__isnull=True)
         for rating_value in [5, 4, 3, 2, 1]:
-            rating_distribution[str(rating_value)] = reviews.filter(
-                rating=rating_value
-            ).count()
+            rating_distribution[str(rating_value)] = all_root_reviews.filter(rating=rating_value).count()
         
-        # Получаем средний рейтинг и количество отзывов
-        avg_rating = reviews.aggregate(Avg('rating'))['rating__avg'] or 0.0
-        reviews_count = reviews.count()
+        avg_rating = all_root_reviews.aggregate(Avg('rating'))['rating__avg'] or 0.0
+        reviews_count = all_root_reviews.count()
+
+        # Получаем реакции текущего пользователя
+        user_reactions = {}
+        if request.user.is_authenticated:
+            review_ids = [r.id for r in page_obj]
+            for reply_set in [r.replies.all() for r in page_obj]:
+                review_ids.extend([rr.id for rr in reply_set])
+            likes = ReviewLike.objects.filter(review_id__in=review_ids, user=request.user)
+            for like in likes:
+                user_reactions[like.review_id] = 'like' if like.is_like else 'dislike'
+        
+        def serialize_review_with_replies(review_obj):
+            d = review_obj.to_dict()
+            d['user_reaction'] = user_reactions.get(review_obj.id)
+            d['replies'] = []
+            for reply in review_obj.replies.filter(is_approved=True).order_by('created_at'):
+                rd = reply.to_dict()
+                rd['user_reaction'] = user_reactions.get(reply.id)
+                d['replies'].append(rd)
+            return d
         
         return Response({
-            'reviews': [review.to_dict() for review in page_obj],
+            'reviews': [serialize_review_with_replies(r) for r in page_obj],
             'rating': round(avg_rating, 1),
             'reviews_count': reviews_count,
             'rating_distribution': rating_distribution,
@@ -424,6 +478,15 @@ class CourseReviewsView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
         
+        # Родительский отзыв (для ответов)
+        parent = None
+        parent_id = serializer.validated_data.get('parent_id')
+        if parent_id:
+            try:
+                parent = Review.objects.get(id=parent_id, course=course)
+            except Review.DoesNotExist:
+                return Response({'error': 'Родительский отзыв не найден'}, status=status.HTTP_400_BAD_REQUEST)
+
         # Создание отзыва
         review = Review.objects.create(
             course=course,
@@ -431,7 +494,8 @@ class CourseReviewsView(APIView):
             rating=serializer.validated_data['rating'],
             comment=serializer.validated_data.get('comment'),
             is_verified_purchase=True,
-            review_type='course'
+            review_type='course',
+            parent=parent,
         )
         
         return Response({
@@ -732,4 +796,84 @@ class RecentPurchasesForReviewView(APIView):
             'courses_count': len(recent_courses),
             'total_count': len(all_items)
         }, status=status.HTTP_200_OK)
+
+
+class ReviewReactionView(APIView):
+    """
+    Лайк/дизлайк на отзыв.
+
+    POST   /api/reviews/{review_id}/like/     — поставить лайк
+    POST   /api/reviews/{review_id}/dislike/  — поставить дизлайк
+    DELETE /api/reviews/{review_id}/reaction/  — убрать реакцию
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def _toggle(self, request, review_id, is_like):
+        try:
+            review = Review.objects.get(id=review_id)
+        except Review.DoesNotExist:
+            return Response({'error': 'Отзыв не найден'}, status=status.HTTP_404_NOT_FOUND)
+
+        existing = ReviewLike.objects.filter(review=review, user=request.user).first()
+
+        if existing:
+            if existing.is_like == is_like:
+                # Повторный клик — убираем реакцию
+                existing.delete()
+                self._update_counts(review)
+                return Response({'message': 'Реакция убрана', 'user_reaction': None, **self._counts(review)})
+            else:
+                # Смена реакции
+                existing.is_like = is_like
+                existing.save()
+                self._update_counts(review)
+                return Response({
+                    'message': 'Реакция обновлена',
+                    'user_reaction': 'like' if is_like else 'dislike',
+                    **self._counts(review),
+                })
+        else:
+            ReviewLike.objects.create(review=review, user=request.user, is_like=is_like)
+            self._update_counts(review)
+            return Response({
+                'message': 'Реакция добавлена',
+                'user_reaction': 'like' if is_like else 'dislike',
+                **self._counts(review),
+            }, status=status.HTTP_201_CREATED)
+
+    def _update_counts(self, review):
+        review.likes_count = review.reactions.filter(is_like=True).count()
+        review.dislikes_count = review.reactions.filter(is_like=False).count()
+        review.save(update_fields=['likes_count', 'dislikes_count'])
+
+    def _counts(self, review):
+        return {'likes_count': review.likes_count, 'dislikes_count': review.dislikes_count}
+
+
+class ReviewLikeView(ReviewReactionView):
+    """POST /api/reviews/{review_id}/like/"""
+    def post(self, request, review_id):
+        return self._toggle(request, review_id, is_like=True)
+
+
+class ReviewDislikeView(ReviewReactionView):
+    """POST /api/reviews/{review_id}/dislike/"""
+    def post(self, request, review_id):
+        return self._toggle(request, review_id, is_like=False)
+
+
+class ReviewRemoveReactionView(ReviewReactionView):
+    """DELETE /api/reviews/{review_id}/reaction/"""
+    def delete(self, request, review_id):
+        try:
+            review = Review.objects.get(id=review_id)
+        except Review.DoesNotExist:
+            return Response({'error': 'Отзыв не найден'}, status=status.HTTP_404_NOT_FOUND)
+
+        deleted, _ = ReviewLike.objects.filter(review=review, user=request.user).delete()
+        if deleted:
+            self._update_counts(review)
+            return Response({'message': 'Реакция убрана', 'user_reaction': None, **self._counts(review)})
+        return Response({'message': 'Реакции не было', **self._counts(review)})
 

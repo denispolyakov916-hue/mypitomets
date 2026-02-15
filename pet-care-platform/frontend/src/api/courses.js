@@ -477,6 +477,62 @@ export const previewCourse = async (courseId) => {
   return await api.get(`/courses/${courseId}/preview/`)
 }
 
+// ===== ФУНКЦИИ ДЛЯ МОДУЛЕЙ И СТРУКТУРЫ КУРСА =====
+
+/**
+ * Получение полной структуры курса с прогрессом (Stepik-стиль)
+ *
+ * @param {number} courseId - ID курса
+ * @param {string} [petId] - ID питомца для прогресса
+ * @returns {Promise<Object>} Структура курса: модули -> страницы с прогрессом
+ */
+export const getCourseStructure = async (courseId, petId = null) => {
+  const params = petId ? `?pet_id=${petId}` : ''
+  return await api.get(`/courses/${courseId}/structure/${params}`)
+}
+
+/**
+ * Получение модулей курса
+ *
+ * @param {number} courseId - ID курса
+ * @returns {Promise<Array>} Список модулей
+ */
+export const getCourseModules = async (courseId) => {
+  return await api.get(`/courses/${courseId}/modules/`)
+}
+
+/**
+ * Создание модуля курса
+ *
+ * @param {number} courseId - ID курса
+ * @param {Object} moduleData - Данные модуля { title, description }
+ * @returns {Promise<Object>} Созданный модуль
+ */
+export const createCourseModule = async (courseId, moduleData) => {
+  return await api.post(`/courses/${courseId}/modules/`, moduleData)
+}
+
+/**
+ * Обновление модуля курса
+ *
+ * @param {number} moduleId - ID модуля
+ * @param {Object} moduleData - Данные модуля
+ * @returns {Promise<Object>} Обновленный модуль
+ */
+export const updateCourseModule = async (moduleId, moduleData) => {
+  return await api.put(`/courses/modules/${moduleId}/`, moduleData)
+}
+
+/**
+ * Удаление модуля курса
+ *
+ * @param {number} moduleId - ID модуля
+ * @returns {Promise<Object>} Результат удаления
+ */
+export const deleteCourseModule = async (moduleId) => {
+  return await api.delete(`/courses/modules/${moduleId}/`)
+}
+
 // ===== ДОПОЛНИТЕЛЬНЫЕ ФУНКЦИИ КОНСТРУКТОРА =====
 
 /**

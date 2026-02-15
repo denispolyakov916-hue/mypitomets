@@ -142,6 +142,20 @@ class Review(models.Model):
         
         super().save(*args, **kwargs)
     
+    # Ответ (reply) на другой отзыв
+    parent = models.ForeignKey(
+        'self',
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='replies',
+        verbose_name='Родительский отзыв',
+    )
+
+    # Счётчики лайков/дизлайков
+    likes_count = models.PositiveIntegerField(default=0, verbose_name='Лайки')
+    dislikes_count = models.PositiveIntegerField(default=0, verbose_name='Дизлайки')
+
     def to_dict(self):
         """Сериализация для API."""
         return {
@@ -151,7 +165,40 @@ class Review(models.Model):
             'comment': self.comment,
             'is_verified_purchase': self.is_verified_purchase,
             'is_edited': self.is_edited,
+            'likes_count': self.likes_count,
+            'dislikes_count': self.dislikes_count,
+            'parent_id': self.parent_id,
             'created_at': self.created_at.isoformat(),
-            'updated_at': self.updated_at.isoformat()
+            'updated_at': self.updated_at.isoformat(),
         }
+
+
+class ReviewLike(models.Model):
+    """
+    Лайк/дизлайк на отзыв.
+    Один пользователь — одна реакция на отзыв.
+    """
+    review = models.ForeignKey(
+        Review,
+        on_delete=models.CASCADE,
+        related_name='reactions',
+        verbose_name='Отзыв',
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='review_reactions',
+        verbose_name='Пользователь',
+    )
+    is_like = models.BooleanField(verbose_name='Лайк (True) / Дизлайк (False)')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'review_likes'
+        verbose_name = 'Реакция на отзыв'
+        verbose_name_plural = 'Реакции на отзывы'
+        unique_together = ['review', 'user']
+
+    def __str__(self):
+        return f"{'Like' if self.is_like else 'Dislike'} от {self.user.email} на отзыв #{self.review_id}"
 

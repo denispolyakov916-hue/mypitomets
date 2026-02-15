@@ -23,6 +23,7 @@ Views для работы с уроками курсов и прогрессом
 
 import logging
 from django.utils import timezone
+from django.shortcuts import get_object_or_404
 from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -30,7 +31,7 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 
 from ..models import (
     Course, Lesson, UserCourse, UserCourseProgress, UserLessonProgress,
-    Comment
+    Comment, CoursePage, ContentBlock
 )
 from apps.pets.models import Pet
 
@@ -605,3 +606,225 @@ class LessonCommentsView(APIView):
         }
 
         return Response(comment_data, status=status.HTTP_201_CREATED)
+
+
+class CoursePageLearningView(APIView):
+    """
+    Получение страницы курса для обучения.
+
+    GET /api/courses/{course_id}/pages/{page_id}/
+    Возвращает данные страницы с блоками для авторизованных пользователей,
+    имеющих доступ к курсу.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, course_id, page_id):
+        try:
+            course = Course.objects.get(id=course_id, is_active=True)
+        except Course.DoesNotExist:
+            return Response(
+                {'error': 'Курс не найден'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        # Проверка доступа к курсу
+        if not UserCourse.objects.filter(
+            user=request.user,
+            course=course
+        ).exists():
+            return Response(
+                {'error': 'У вас нет доступа к этому курсу'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        try:
+            page = CoursePage.objects.get(
+                id=page_id,
+                course_id=course_id,
+                is_active=True
+            )
+        except CoursePage.DoesNotExist:
+            return Response(
+                {'error': 'Страница не найдена'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        # Получаем блоки страницы
+        blocks = page.get_blocks_ordered()
+        blocks_data = []
+        for block in blocks:
+            blocks_data.append({
+                'id': block.id,
+                'block_type': block.block_type,
+                'content': block.content,
+                'order': block.order,
+                'settings': block.settings if hasattr(block, 'settings') else {},
+            })
+
+        page_data = {
+            'id': page.id,
+            'title': page.title,
+            'page_type': page.page_type,
+            'order_number': page.order_number,
+            'course_id': page.course_id,
+            'module_id': page.module_id,
+            'settings': page.settings,
+            'blocks': blocks_data,
+        }
+
+        return Response({'page': page_data}, status=status.HTTP_200_OK)
+
+
+class CoursePageListLearningView(APIView):
+    """
+    Получение списка страниц курса для обучения.
+
+    GET /api/courses/{course_id}/pages/
+    Возвращает список страниц курса для авторизованных пользователей.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, course_id):
+        try:
+            course = Course.objects.get(id=course_id, is_active=True)
+        except Course.DoesNotExist:
+            return Response(
+                {'error': 'Курс не найден'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        # Проверка доступа к курсу
+        if not UserCourse.objects.filter(
+            user=request.user,
+            course=course
+        ).exists():
+            return Response(
+                {'error': 'У вас нет доступа к этому курсу'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        pages = CoursePage.objects.filter(
+            course_id=course_id,
+            is_active=True
+        ).order_by('module__order_number', 'order_number')
+
+        pages_data = []
+        for page in pages:
+            pages_data.append({
+                'id': page.id,
+                'title': page.title,
+                'page_type': page.page_type,
+                'order_number': page.order_number,
+                'module_id': page.module_id,
+                'blocks_count': page.blocks.filter(is_active=True).count(),
+            })
+
+        return Response({
+            'pages': pages_data,
+            'count': len(pages_data),
+        }, status=status.HTTP_200_OK)
+
+
+class CoursePageCompleteView(APIView):
+    """
+    Завершение страницы курса.
+
+    POST /api/courses/pages/{page_id}/complete/
+    Отмечает страницу как завершённую и обновляет прогресс курса.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, page_id):
+        try:
+            page = CoursePage.objects.get(id=page_id, is_active=True)
+        except CoursePage.DoesNotExist:
+            return Response(
+                {'error': 'Страница не найдена'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        course_id = page.course_id
+        try:
+            course = Course.objects.get(id=course_id, is_active=True)
+        except Course.DoesNotExist:
+            return Response(
+                {'error': 'Курс не найден'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        # Проверка доступа к курсу
+        if not UserCourse.objects.filter(
+            user=request.user,
+            course=course
+        ).exists():
+            return Response(
+                {'error': 'У вас нет доступа к этому курсу'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        pet_id = request.data.get('pet_id')
+
+        # Получаем или создаём прогресс по курсу
+        progress_filter = {
+            'user': request.user,
+            'course': course,
+        }
+        if pet_id:
+            progress_filter['pet_id'] = pet_id
+        else:
+            progress_filter['pet__isnull'] = True
+
+        course_progress = UserCourseProgress.objects.filter(**progress_filter).first()
+
+        if not course_progress:
+            course_progress = UserCourseProgress.objects.create(
+                user=request.user,
+                course=course,
+                pet_id=pet_id,
+                status='in_progress',
+                started_at=timezone.now(),
+            )
+
+        if course_progress.status == 'not_started':
+            course_progress.status = 'in_progress'
+            course_progress.started_at = timezone.now()
+
+        # Сохраняем ID завершённых страниц в JSON
+        completed_ids = course_progress.completed_pages_ids or []
+        if not isinstance(completed_ids, list):
+            completed_ids = []
+
+        page_id_int = int(page_id)
+        if page_id_int not in completed_ids:
+            completed_ids.append(page_id_int)
+            course_progress.completed_pages_ids = completed_ids
+            course_progress.completed_lessons_count = len(completed_ids)
+
+            # Пересчитываем прогресс
+            total_pages = CoursePage.objects.filter(
+                course_id=course_id,
+                is_active=True
+            ).count()
+
+            if total_pages > 0:
+                course_progress.progress_percent = round(
+                    (len(completed_ids) / total_pages) * 100
+                )
+
+            if course_progress.progress_percent >= 100:
+                course_progress.status = 'completed'
+                course_progress.completed_at = timezone.now()
+
+            course_progress.save()
+
+        return Response({
+            'message': 'Страница успешно завершена',
+            'course_progress': {
+                'progress_percent': course_progress.progress_percent,
+                'status': course_progress.status,
+                'completed_pages': len(completed_ids),
+            }
+        }, status=status.HTTP_200_OK)

@@ -12,7 +12,7 @@ import { useToastStore } from '../../store/toastStore'
 import CourseBuilder from '../../components/CourseBuilder/CourseBuilder'
 import CoursePreview from '../../components/CourseBuilder/CoursePreview'
 import { PageLoader } from '../../components/Loader'
-import { getCourseBuilder, getCourse } from '../../api/courses'
+import { getCourseBuilder, getCourse, saveCourseBuilder, publishCourse } from '../../api/courses'
 
 /**
  * CourseBuilderPage - Страница конструктора курсов
@@ -60,7 +60,7 @@ function CourseBuilderPage() {
   const handleSave = useCallback(async (courseData) => {
     try {
       setSaving(true)
-      // TODO: Реализовать сохранение через API
+      await saveCourseBuilder(courseId, courseData)
       showToast('Курс сохранен успешно', 'success')
     } catch (error) {
       console.error('Error saving course:', error)
@@ -68,7 +68,7 @@ function CourseBuilderPage() {
     } finally {
       setSaving(false)
     }
-  }, [showToast])
+  }, [courseId, showToast])
 
   /**
    * Публикация курса
@@ -76,7 +76,7 @@ function CourseBuilderPage() {
   const handlePublish = useCallback(async () => {
     try {
       setSaving(true)
-      // TODO: Реализовать публикацию через API
+      await publishCourse(courseId)
       showToast('Курс опубликован', 'success')
       navigate('/admin/courses')
     } catch (error) {
@@ -85,7 +85,7 @@ function CourseBuilderPage() {
     } finally {
       setSaving(false)
     }
-  }, [showToast, navigate])
+  }, [courseId, showToast, navigate])
 
   /**
    * Предпросмотр курса

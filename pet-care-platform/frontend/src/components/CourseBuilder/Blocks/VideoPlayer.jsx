@@ -8,6 +8,7 @@
 import { useState, useRef } from 'react'
 import ReactPlayer from 'react-player'
 import { Play, Pause, Volume2, VolumeX, Maximize, Upload, Link as LinkIcon } from 'lucide-react'
+import FileUploader from '../FileUploader'
 
 /**
  * VideoPlayer - Компонент видео плеера
@@ -96,21 +97,20 @@ function VideoPlayer({ content, settings, onChange, mode = 'edit' }) {
     }
   }
 
+  const [showUploader, setShowUploader] = useState(false)
+
   /**
-   * Обработка загрузки файла
+   * Обработка загрузки видео файла через S3
    */
-  const handleFileUpload = (event) => {
-    const file = event.target.files[0]
-    if (file) {
-      // В реальном приложении здесь была бы загрузка на сервер
-      const url = URL.createObjectURL(file)
-      onChange({
-        ...content,
-        video_url: url,
-        title: file.name,
-        is_local: true
-      })
-    }
+  const handleVideoUploaded = (result) => {
+    onChange({
+      ...content,
+      video_key: result.key,
+      video_url: result.url || '',
+      title: title || result.filename || 'Видео',
+      is_s3: true,
+    })
+    setShowUploader(false)
   }
 
   /**
@@ -175,16 +175,13 @@ function VideoPlayer({ content, settings, onChange, mode = 'edit' }) {
             <span>URL</span>
           </button>
 
-          <label className="flex items-center space-x-1 px-3 py-1 bg-green-100 text-green-700 rounded hover:bg-green-200 cursor-pointer text-sm">
+          <button
+            onClick={() => setShowUploader(!showUploader)}
+            className="flex items-center space-x-1 px-3 py-1 bg-green-100 text-green-700 rounded hover:bg-green-200 text-sm"
+          >
             <Upload size={14} />
-            <span>Файл</span>
-            <input
-              type="file"
-              accept="video/*"
-              onChange={handleFileUpload}
-              className="hidden"
-            />
-          </label>
+            <span>Загрузить</span>
+          </button>
         </div>
       </div>
 
@@ -205,6 +202,15 @@ function VideoPlayer({ content, settings, onChange, mode = 'edit' }) {
             Добавить
           </button>
         </div>
+      )}
+
+      {/* Загрузка видео файла */}
+      {showUploader && (
+        <FileUploader
+          type="video"
+          onUpload={handleVideoUploaded}
+          currentKey={content?.video_key}
+        />
       )}
 
       {/* Предпросмотр видео */}
