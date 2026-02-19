@@ -1,105 +1,133 @@
 /**
- * DroppablePage - Страница курса с возможностью размещения блоков
+ * DroppablePage - Course page with sortable blocks and 12-column grid layout.
  *
- * Представляет собой страницу курса, на которую можно перетаскивать блоки.
- * Отображает заголовок страницы и сетку блоков.
+ * Accepts blocks from toolbox via useDroppable.
+ * Uses SortableContext for within-page block reordering.
+ * Renders blocks in a 12-column CSS Grid for alignment.
  */
 
 import { useDroppable } from '@dnd-kit/core'
+import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import ContentBlock from './ContentBlock'
 
-/**
- * DroppablePage - Страница для размещения блоков
- */
 function DroppablePage({
   page,
   isSelected,
   selectedElement,
+  showGrid,
+  blockIds,
   onElementSelect,
   onPageSelect,
+  onPageUpdate,
   onBlockUpdate,
-  onBlockDelete
+  onBlockDelete,
 }) {
   const { setNodeRef, isOver } = useDroppable({
     id: `page-${page.id}`,
-    data: {
-      type: 'page',
-      pageId: page.id
-    }
+    data: { type: 'page', pageId: page.id },
   })
+
+  const blocks = page.blocks || []
 
   return (
     <div
       ref={setNodeRef}
       onClick={onPageSelect}
       className={`
-        relative min-h-[400px] p-6 border-b border-gray-200 cursor-pointer transition-colors
-        ${isSelected ? 'bg-blue-50 border-blue-300' : 'bg-white'}
-        ${isOver ? 'bg-blue-25 border-blue-400 border-dashed' : ''}
+        relative bg-white rounded-xl shadow-sm border min-h-[400px] transition-all
+        ${isSelected ? 'border-blue-300' : 'border-gray-200'}
+        ${isOver ? 'ring-2 ring-blue-300 ring-offset-2' : ''}
       `}
     >
-      {/* Заголовок страницы */}
-      <div className="mb-6">
-        <div className="flex items-center space-x-3">
+      {/* Page header */}
+      <div className="px-6 pt-5 pb-3 border-b border-gray-100">
+        <div className="flex items-center gap-3">
           <input
             type="text"
             value={page.title || ''}
-            onChange={(e) => onBlockUpdate(null, {
-              type: 'update_page',
-              pageId: page.id,
-              data: { title: e.target.value }
-            })}
+            onChange={(e) => onPageUpdate(page.id, { title: e.target.value })}
             onClick={(e) => e.stopPropagation()}
-            placeholder={`Название страницы ${page.order_number || 1}`}
-            className="text-xl font-bold text-gray-900 bg-transparent border-none outline-none focus:ring-2 focus:ring-blue-500 rounded px-2 py-1"
+            placeholder="Название страницы"
+            className="text-lg font-semibold text-gray-900 bg-transparent border-none outline-none focus:ring-2 focus:ring-blue-400 rounded px-1.5 py-0.5 flex-1"
           />
-
-          <span className="text-sm text-gray-500 bg-gray-100 px-2 py-1 rounded">
-            {page.page_type_display || 'Текстовая'}
+          <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded">
+            {page.page_type || 'text'}
           </span>
         </div>
-
-        <p className="text-gray-600 mt-2">
-          Перетащите блоки из панели инструментов на эту страницу
-        </p>
       </div>
 
-      {/* Область для блоков */}
-      <div className="space-y-4">
-        {page.blocks && page.blocks.length > 0 ? (
-          page.blocks.map((block) => (
-            <ContentBlock
-              key={block.id}
-              block={block}
-              isSelected={selectedElement?.id === block.id && selectedElement?.type === 'block'}
-              onSelect={() => onElementSelect({ ...block, type: 'block' })}
-              onUpdate={(data) => onBlockUpdate(block.id, data)}
-              onDelete={() => onBlockDelete(block.id)}
-            />
-          ))
-        ) : (
-          <div className={`
-            border-2 border-dashed rounded-lg p-8 text-center transition-colors
-            ${isOver ? 'border-blue-400 bg-blue-25' : 'border-gray-300 bg-gray-25'}
-          `}>
-            <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-            <h3 className="mt-2 text-sm font-medium text-gray-900">Нет блоков</h3>
-            <p className="mt-1 text-sm text-gray-500">
-              Перетащите блоки из панели инструментов
-            </p>
+      {/* 12-column grid area */}
+      <div className="px-6 py-4 relative">
+        {/* Grid guide lines */}
+        {showGrid && (
+          <div
+            className="absolute inset-x-6 top-0 bottom-0 pointer-events-none z-0"
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(12, 1fr)',
+              gap: '0',
+            }}
+          >
+            {Array.from({ length: 12 }).map((_, i) => (
+              <div
+                key={i}
+                className="border-l border-dashed border-blue-100 h-full"
+                style={i === 11 ? { borderRight: '1px dashed rgb(219 234 254)' } : {}}
+              />
+            ))}
           </div>
         )}
-      </div>
 
-      {/* Индикатор выбора страницы */}
-      {isSelected && (
-        <div className="absolute top-2 right-2 w-3 h-3 bg-blue-500 rounded-full"></div>
-      )}
+        {/* Sortable blocks */}
+        <SortableContext items={blockIds} strategy={verticalListSortingStrategy}>
+          {blocks.length > 0 ? (
+            <div
+              className="relative z-10"
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(12, 1fr)',
+                gap: '12px',
+              }}
+            >
+              {blocks.map((block) => {
+                const span = block.settings?.layout?.span || 12
+                const offset = block.settings?.layout?.offset || 0
+                return (
+                  <div
+                    key={block.id}
+                    style={{
+                      gridColumn: offset > 0
+                        ? `${offset + 1} / span ${span}`
+                        : `span ${span} / span ${span}`,
+                    }}
+                  >
+                    <ContentBlock
+                      block={block}
+                      isSelected={selectedElement?.id === block.id && selectedElement?.type === 'block'}
+                      onSelect={() => onElementSelect({ ...block, type: 'block' })}
+                      onUpdate={(data) => onBlockUpdate(block.id, data)}
+                      onDelete={() => onBlockDelete(block.id)}
+                    />
+                  </div>
+                )
+              })}
+            </div>
+          ) : (
+            <div className={`
+              border-2 border-dashed rounded-lg p-10 text-center transition-colors relative z-10
+              ${isOver ? 'border-blue-400 bg-blue-50' : 'border-gray-200 bg-gray-50/50'}
+            `}>
+              <div className="text-3xl mb-2 text-gray-300">📦</div>
+              <h3 className="text-sm font-medium text-gray-500">Нет блоков</h3>
+              <p className="text-xs text-gray-400 mt-1">
+                Перетащите блоки из панели инструментов
+              </p>
+            </div>
+          )}
+        </SortableContext>
+      </div>
     </div>
   )
 }
 
 export default DroppablePage
-

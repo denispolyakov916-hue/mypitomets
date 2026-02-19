@@ -14,4 +14,4 @@ from .course_views import *
 from .user_course_views import *
 from .lesson_views import *
 from .comment_views import *
-from .course_builder_views import *
+from .course_builder_views import *  # noqa: includes CoursePublishView, BlockReorderView

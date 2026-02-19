@@ -1,16 +1,13 @@
 /**
- * CourseBuilder - Основной компонент конструктора курсов
+ * CourseBuilder - Main course constructor component.
  *
- * Реализует drag-and-drop интерфейс для создания курсов из блоков.
- * Состоит из трех основных областей:
- * - Панель инструментов (библиотека блоков)
- * - Рабочая область (страницы и блоки)
- * - Панель свойств (настройки выбранного элемента)
- *
- * Все обработчики подключены к реальному API.
+ * 3-panel layout: Toolbox (left) | Canvas (center) | Properties (right)
+ * DndContext wraps all three panels so toolbox draggables can drop onto canvas.
  */
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useMemo } from 'react'
+import { DndContext, closestCenter } from '@dnd-kit/core'
+import { arrayMove } from '@dnd-kit/sortable'
 import ToolboxPanel from './ToolboxPanel'
 import CanvasArea from './CanvasArea'
 import PropertiesPanel from './PropertiesPanel'
@@ -22,70 +19,60 @@ import {
   updateContentBlock,
   deleteContentBlock,
   createCourseModule,
-  updateCourseModule,
-  deleteCourseModule,
 } from '../../api/courses'
 import { useToastStore } from '../../store/toastStore'
 
-/**
- * CourseBuilder - Конструктор курсов
- *
- * @param {Object} course - Данные курса (с modules/pages/blocks)
- * @param {Function} onSave - Callback сохранения
- * @param {Function} onPublish - Callback публикации
- * @param {boolean} saving - Флаг сохранения
- */
 function CourseBuilder({ course, onSave, onPublish, saving }) {
   const [selectedElement, setSelectedElement] = useState(null)
   const [currentPageId, setCurrentPageId] = useState(null)
   const [courseData, setCourseData] = useState(course)
   const { success, error: showError } = useToastStore()
 
-  // Собираем все страницы из модулей + orphan_pages
-  const allPages = [
-    ...(courseData?.modules?.flatMap(m => m.pages || []) || []),
-    ...(courseData?.orphan_pages || []),
-    ...(courseData?.pages || []),
-  ]
+  const allPages = useMemo(() => {
+    const pages = []
+    const seen = new Set()
+    const addPage = (p) => { if (p && !seen.has(p.id)) { seen.add(p.id); pages.push(p) } }
+    courseData?.modules?.forEach(m => (m.pages || []).forEach(addPage))
+    ;(courseData?.orphan_pages || []).forEach(addPage)
+    ;(courseData?.pages || []).forEach(addPage)
+    return pages
+  }, [courseData])
 
-  // Получаем текущую страницу
-  const currentPage = allPages.find(page => page.id === currentPageId)
+  const currentPage = useMemo(
+    () => allPages.find(p => p.id === currentPageId),
+    [allPages, currentPageId]
+  )
 
-  /**
-   * Обновить локальное состояние курса
-   */
+  const sortedBlocks = useMemo(() => {
+    if (!currentPage?.blocks) return []
+    return [...currentPage.blocks].sort((a, b) => (a.order || 0) - (b.order || 0))
+  }, [currentPage?.blocks])
+
+  const blockIds = useMemo(() => sortedBlocks.map(b => `block-${b.id}`), [sortedBlocks])
+
   const refreshCourseData = useCallback((updater) => {
-    setCourseData(prev => {
-      if (typeof updater === 'function') return updater(prev)
-      return { ...prev, ...updater }
-    })
+    setCourseData(prev => typeof updater === 'function' ? updater(prev) : { ...prev, ...updater })
   }, [])
 
-  /**
-   * Обработка выбора элемента (страницы или блока)
-   */
-  const handleElementSelect = useCallback((element) => {
-    setSelectedElement(element)
-  }, [])
+  const updatePagesInState = useCallback((updater) => {
+    refreshCourseData(prev => ({
+      ...prev,
+      modules: prev.modules?.map(m => ({ ...m, pages: updater(m.pages) })),
+      orphan_pages: updater(prev.orphan_pages),
+      pages: updater(prev.pages),
+    }))
+  }, [refreshCourseData])
 
-  /**
-   * Обработка изменения страницы
-   */
+  const handleElementSelect = useCallback((element) => setSelectedElement(element), [])
   const handlePageChange = useCallback((pageId) => {
     setCurrentPageId(pageId)
     setSelectedElement(null)
   }, [])
 
-  /**
-   * Добавление блока на страницу через API
-   */
+  /* ─── Block CRUD ─── */
   const handleBlockAdd = useCallback(async (blockType, pageId, templateData) => {
     const targetPageId = pageId || currentPageId
-    if (!targetPageId) {
-      showError('Сначала выберите или создайте страницу')
-      return
-    }
-
+    if (!targetPageId) { showError('Сначала выберите или создайте страницу'); return }
     try {
       const blockData = {
         block_type: blockType,
@@ -93,126 +80,87 @@ function CourseBuilder({ course, onSave, onPublish, saving }) {
         settings: templateData?.settings || {},
         page: targetPageId,
       }
-
       const result = await createContentBlock(targetPageId, blockData)
-
-      // Добавляем блок в локальное состояние
-      refreshCourseData(prev => {
-        const updatePages = (pages) =>
-          pages?.map(p =>
-            p.id === targetPageId
-              ? { ...p, blocks: [...(p.blocks || []), result] }
-              : p
-          )
-
-        return {
-          ...prev,
-          modules: prev.modules?.map(m => ({
-            ...m,
-            pages: updatePages(m.pages),
-          })),
-          orphan_pages: updatePages(prev.orphan_pages),
-          pages: updatePages(prev.pages),
-        }
-      })
-
+      updatePagesInState(pages =>
+        pages?.map(p => p.id === targetPageId
+          ? { ...p, blocks: [...(p.blocks || []), result] }
+          : p
+        )
+      )
       success('Блок добавлен')
     } catch (err) {
       console.error('Error adding block:', err)
       showError('Не удалось добавить блок')
     }
-  }, [currentPageId, refreshCourseData, success, showError])
+  }, [currentPageId, updatePagesInState, success, showError])
 
-  /**
-   * Обновление блока через API
-   */
   const handleBlockUpdate = useCallback(async (blockId, data) => {
+    if (!blockId) return
     try {
-      const result = await updateContentBlock(blockId, data)
-
-      refreshCourseData(prev => {
-        const updateBlocks = (blocks) =>
-          blocks?.map(b => b.id === blockId ? { ...b, ...result } : b)
-        const updatePages = (pages) =>
-          pages?.map(p => ({ ...p, blocks: updateBlocks(p.blocks) }))
-
-        return {
-          ...prev,
-          modules: prev.modules?.map(m => ({
-            ...m,
-            pages: updatePages(m.pages),
-          })),
-          orphan_pages: updatePages(prev.orphan_pages),
-          pages: updatePages(prev.pages),
-        }
-      })
+      await updateContentBlock(blockId, data)
+      updatePagesInState(pages =>
+        pages?.map(p => ({
+          ...p,
+          blocks: p.blocks?.map(b => b.id === blockId ? { ...b, ...data } : b),
+        }))
+      )
     } catch (err) {
       console.error('Error updating block:', err)
       showError('Не удалось обновить блок')
     }
-  }, [refreshCourseData, showError])
+  }, [updatePagesInState, showError])
 
-  /**
-   * Удаление блока через API
-   */
   const handleBlockDelete = useCallback(async (blockId) => {
     try {
       await deleteContentBlock(blockId)
-
-      refreshCourseData(prev => {
-        const removeBlock = (blocks) => blocks?.filter(b => b.id !== blockId)
-        const updatePages = (pages) =>
-          pages?.map(p => ({ ...p, blocks: removeBlock(p.blocks) }))
-
-        return {
-          ...prev,
-          modules: prev.modules?.map(m => ({
-            ...m,
-            pages: updatePages(m.pages),
-          })),
-          orphan_pages: updatePages(prev.orphan_pages),
-          pages: updatePages(prev.pages),
-        }
-      })
-
+      updatePagesInState(pages =>
+        pages?.map(p => ({ ...p, blocks: p.blocks?.filter(b => b.id !== blockId) }))
+      )
+      if (selectedElement?.id === blockId) setSelectedElement(null)
       success('Блок удалён')
     } catch (err) {
       console.error('Error deleting block:', err)
       showError('Не удалось удалить блок')
     }
-  }, [refreshCourseData, success, showError])
+  }, [updatePagesInState, success, showError, selectedElement])
 
-  /**
-   * Добавление страницы через API
-   */
+  const handleBlockReorder = useCallback(async (pageId, orderedBlockIds) => {
+    updatePagesInState(pages =>
+      pages?.map(p => {
+        if (p.id !== pageId) return p
+        const blockMap = Object.fromEntries((p.blocks || []).map(b => [b.id, b]))
+        const reordered = orderedBlockIds
+          .map((id, i) => blockMap[id] ? { ...blockMap[id], order: i + 1 } : null)
+          .filter(Boolean)
+        return { ...p, blocks: reordered }
+      })
+    )
+    try {
+      const { default: api } = await import('../../api/client')
+      await api.patch(`/courses/pages/${pageId}/blocks/reorder/`, { block_ids: orderedBlockIds })
+    } catch (err) {
+      console.error('Error reordering blocks:', err)
+    }
+  }, [updatePagesInState])
+
+  /* ─── Page CRUD ─── */
   const handlePageAdd = useCallback(async (moduleId = null) => {
     try {
-      const pageData = {
-        title: 'Новая страница',
-        course_id: courseData?.id,
-        module: moduleId,
-      }
-
+      const pageData = { title: 'Новая страница', course_id: courseData?.id, module: moduleId }
       const result = await createCoursePage(courseData?.id, pageData)
-
-      refreshCourseData(prev => {
-        if (moduleId) {
-          return {
-            ...prev,
-            modules: prev.modules?.map(m =>
-              m.id === moduleId
-                ? { ...m, pages: [...(m.pages || []), result] }
-                : m
-            ),
-          }
-        }
-        return {
+      if (moduleId) {
+        refreshCourseData(prev => ({
           ...prev,
-          orphan_pages: [...(prev.orphan_pages || []), result],
-          pages: [...(prev.pages || []), result],
-        }
-      })
-
+          modules: prev.modules?.map(m =>
+            m.id === moduleId ? { ...m, pages: [...(m.pages || []), { ...result, blocks: [] }] } : m
+          ),
+        }))
+      } else {
+        refreshCourseData(prev => ({
+          ...prev,
+          orphan_pages: [...(prev.orphan_pages || []), { ...result, blocks: [] }],
+        }))
+      }
       setCurrentPageId(result.id)
       success('Страница создана')
     } catch (err) {
@@ -221,80 +169,40 @@ function CourseBuilder({ course, onSave, onPublish, saving }) {
     }
   }, [courseData?.id, refreshCourseData, success, showError])
 
-  /**
-   * Обновление страницы через API
-   */
   const handlePageUpdate = useCallback(async (pageId, data) => {
     try {
       await updateCoursePage(courseData?.id, pageId, data)
-
-      refreshCourseData(prev => {
-        const updatePages = (pages) =>
-          pages?.map(p => p.id === pageId ? { ...p, ...data } : p)
-
-        return {
-          ...prev,
-          modules: prev.modules?.map(m => ({
-            ...m,
-            pages: updatePages(m.pages),
-          })),
-          orphan_pages: updatePages(prev.orphan_pages),
-          pages: updatePages(prev.pages),
-        }
-      })
+      updatePagesInState(pages => pages?.map(p => p.id === pageId ? { ...p, ...data } : p))
     } catch (err) {
       console.error('Error updating page:', err)
       showError('Не удалось обновить страницу')
     }
-  }, [courseData?.id, refreshCourseData, showError])
+  }, [courseData?.id, updatePagesInState, showError])
 
-  /**
-   * Удаление страницы через API
-   */
   const handlePageDelete = useCallback(async (pageId) => {
     try {
       await deleteCoursePage(courseData?.id, pageId)
-
-      refreshCourseData(prev => {
-        const removeFromPages = (pages) => pages?.filter(p => p.id !== pageId)
-
-        return {
-          ...prev,
-          modules: prev.modules?.map(m => ({
-            ...m,
-            pages: removeFromPages(m.pages),
-          })),
-          orphan_pages: removeFromPages(prev.orphan_pages),
-          pages: removeFromPages(prev.pages),
-        }
-      })
-
-      if (currentPageId === pageId) {
-        setCurrentPageId(null)
-      }
-
+      updatePagesInState(pages => pages?.filter(p => p.id !== pageId))
+      if (currentPageId === pageId) setCurrentPageId(null)
+      if (selectedElement?.id === pageId) setSelectedElement(null)
       success('Страница удалена')
     } catch (err) {
       console.error('Error deleting page:', err)
       showError('Не удалось удалить страницу')
     }
-  }, [courseData?.id, currentPageId, refreshCourseData, success, showError])
+  }, [courseData?.id, currentPageId, updatePagesInState, success, showError, selectedElement])
 
-  /**
-   * Добавление модуля через API
-   */
+  /* ─── Module CRUD ─── */
   const handleModuleAdd = useCallback(async () => {
     try {
       const result = await createCourseModule(courseData?.id, {
         title: 'Новый модуль',
         course: courseData?.id,
       })
-
       refreshCourseData(prev => ({
         ...prev,
         modules: [...(prev.modules || []), { ...result, pages: [] }],
       }))
-
       success('Модуль создан')
     } catch (err) {
       console.error('Error adding module:', err)
@@ -302,56 +210,75 @@ function CourseBuilder({ course, onSave, onPublish, saving }) {
     }
   }, [courseData?.id, refreshCourseData, success, showError])
 
+  /* ─── DnD handler (shared context for toolbox + canvas) ─── */
+  const handleDragEnd = useCallback((event) => {
+    const { active, over } = event
+    if (!over) return
+
+    const dragData = active.data.current
+
+    // Toolbox block dropped onto the page
+    if (dragData?.source === 'toolbox' && currentPageId) {
+      handleBlockAdd(dragData.blockType, currentPageId)
+      return
+    }
+
+    // Sortable reorder within the same page
+    if (dragData?.sortable) {
+      const overData = over.data.current
+      if (overData?.sortable) {
+        const oldIndex = blockIds.indexOf(active.id)
+        const newIndex = blockIds.indexOf(over.id)
+        if (oldIndex !== -1 && newIndex !== -1 && oldIndex !== newIndex) {
+          const newOrder = arrayMove(blockIds, oldIndex, newIndex).map(id =>
+            parseInt(id.replace('block-', ''))
+          )
+          handleBlockReorder(currentPageId, newOrder)
+        }
+      }
+    }
+  }, [currentPageId, blockIds, handleBlockAdd, handleBlockReorder])
+
   return (
-    <div className="flex h-screen bg-gray-100">
-      {/* Панель инструментов (библиотека блоков) */}
-      <div className="w-80 bg-white border-r border-gray-200 flex flex-col">
+    <DndContext onDragEnd={handleDragEnd} collisionDetection={closestCenter}>
+      <div className="flex h-full bg-gray-100">
+        {/* Toolbox */}
         <ToolboxPanel
-          course={courseData}
-          currentPage={currentPage}
-          onBlockAdd={handleBlockAdd}
-          onTemplateUse={(template) => {
-            if (currentPageId) {
-              handleBlockAdd(template.block_type, currentPageId, {
-                content: template.content,
-                settings: template.settings,
-              })
-            }
-          }}
-          onPageTemplateUse={(template) => {
-            console.log('Using page template:', template)
-          }}
-          onImportSuccess={(importedCourse) => {
-            setCourseData(importedCourse)
-          }}
-        />
-      </div>
-
-      {/* Рабочая область (страницы и блоки) */}
-      <div className="flex-1 flex flex-col">
-        <CanvasArea
-          course={courseData}
           currentPageId={currentPageId}
-          selectedElement={selectedElement}
-          onElementSelect={handleElementSelect}
-          onPageChange={handlePageChange}
-          onPageAdd={handlePageAdd}
-          onPageUpdate={handlePageUpdate}
-          onPageDelete={handlePageDelete}
-          onBlockUpdate={handleBlockUpdate}
-          onBlockDelete={handleBlockDelete}
-          onModuleAdd={handleModuleAdd}
+          onBlockAdd={handleBlockAdd}
         />
-      </div>
 
-      {/* Панель свойств (настройки выбранного элемента) */}
-      <div className="w-80 bg-white border-l border-gray-200 flex flex-col">
-        <PropertiesPanel
-          selectedElement={selectedElement}
-          onUpdate={handleElementSelect}
-        />
+        {/* Canvas */}
+        <div className="flex-1 flex flex-col min-w-0">
+          <CanvasArea
+            course={courseData}
+            allPages={allPages}
+            currentPageId={currentPageId}
+            currentPage={currentPage}
+            sortedBlocks={sortedBlocks}
+            blockIds={blockIds}
+            selectedElement={selectedElement}
+            onElementSelect={handleElementSelect}
+            onPageChange={handlePageChange}
+            onPageAdd={handlePageAdd}
+            onPageUpdate={handlePageUpdate}
+            onPageDelete={handlePageDelete}
+            onBlockUpdate={handleBlockUpdate}
+            onBlockDelete={handleBlockDelete}
+            onModuleAdd={handleModuleAdd}
+          />
+        </div>
+
+        {/* Properties */}
+        <div className="w-72 bg-white border-l border-gray-200 flex flex-col flex-shrink-0">
+          <PropertiesPanel
+            selectedElement={selectedElement}
+            onBlockUpdate={handleBlockUpdate}
+            onPageUpdate={handlePageUpdate}
+          />
+        </div>
       </div>
-    </div>
+    </DndContext>
   )
 }
 

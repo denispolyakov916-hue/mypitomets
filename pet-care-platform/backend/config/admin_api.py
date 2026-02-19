@@ -1583,19 +1583,25 @@ class AdminCourseViewSet(viewsets.ModelViewSet):
             'id': str(course.id),
             'title': course.title,
             'description': course.description or '',
+            'detailed_description': course.detailed_description or '',
+            'what_you_will_learn': course.what_you_will_learn or '',
             'category': course.category or '',
+            'subcategory': course.subcategory or '',
             'level': course.level or '',
             'price': float(course.price) if course.price else 0,
             'is_active': course.is_active,
             'is_free': course.is_free,
+            'status': course.status,
             'pet_type': getattr(course, 'pet_type', None),
             'duration': course.duration,
             'format_type': course.format_type,
-            'instructor_name': course.instructor_name,
-            'instructor_bio': course.instructor_bio,
+            'completion_time': course.completion_time or '',
+            'instructor_name': course.instructor_name or '',
+            'instructor_bio': course.instructor_bio or '',
             'lessons': lessons,
             'lessons_count': len(lessons),
             'created_at': course.created_at.isoformat(),
+            'updated_at': course.updated_at.isoformat(),
         }
 
     def get_queryset(self):
@@ -1638,43 +1644,23 @@ class AdminCourseViewSet(viewsets.ModelViewSet):
         return Response(data)
 
     def create(self, request):
-        """Создать новый курс."""
-        from apps.training.models import Lesson
-
+        """Создать новый курс (черновик)."""
         try:
-            # Валидация данных
             data = request.data.copy()
-
-            # Создание курса
             course = Course.objects.create(
-                title=data.get('title'),
+                title=data.get('title', 'Новый курс'),
                 description=data.get('description', ''),
-                duration=data.get('duration', 60),  # Длительность в минутах по умолчанию
+                duration=int(data.get('duration', 60)),
                 category=data.get('category', 'basics'),
                 level=data.get('level', 'beginner'),
                 pet_type=data.get('pet_type', 'all'),
                 format_type=data.get('format_type', 'video'),
-                price=data.get('price', 0),
-                is_active=data.get('is_active', True),
+                price=Decimal(str(data.get('price', 0))) if data.get('price') else Decimal('0'),
+                is_active=False,
+                status=data.get('status', 'draft'),
                 instructor_name=data.get('instructor_name', ''),
                 instructor_bio=data.get('instructor_bio', ''),
             )
-
-            # Создание уроков, если они переданы
-            lessons_data = data.get('lessons', [])
-            for lesson_data in lessons_data:
-                Lesson.objects.create(
-                    course=course,
-                    title=lesson_data.get('title'),
-                    content_type=lesson_data.get('content_type', 'video'),
-                    content=lesson_data.get('content', {}),
-                    duration=lesson_data.get('duration', 30),
-                    order=lesson_data.get('order', 1),
-                    is_required=lesson_data.get('is_required', True),
-                    additional_materials=lesson_data.get('additional_materials', []),
-                    is_active=lesson_data.get('is_active', True),
-                )
-
             return Response(self._serialize_course(course), status=status.HTTP_201_CREATED)
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
@@ -1682,69 +1668,45 @@ class AdminCourseViewSet(viewsets.ModelViewSet):
     def retrieve(self, request, pk=None):
         """Получить один курс."""
         try:
-            course = self.get_queryset().get(pk=pk)
+            course = Course.objects.get(id=pk)
             return Response(self._serialize_course(course))
         except Course.DoesNotExist:
             return Response({'error': 'Курс не найден'}, status=status.HTTP_404_NOT_FOUND)
 
-    def update(self, request, pk=None, partial=False):
-        """Обновить курс."""
+    def update(self, request, pk=None):
+        """Обновить курс (PUT)."""
+        return self._do_update(request, pk)
+
+    def partial_update(self, request, pk=None):
+        """Частичное обновление курса (PATCH)."""
+        return self._do_update(request, pk)
+
+    def _do_update(self, request, pk):
         try:
-            course = self.get_queryset().get(pk=pk)
-
-            # Обновляем поля
+            course = Course.objects.get(id=pk)
             allowed_fields = [
-                'title', 'description', 'category', 'level', 'pet_type',
-                'format_type', 'price', 'is_active', 'instructor_name', 'instructor_bio'
+                'title', 'description', 'detailed_description', 'what_you_will_learn',
+                'category', 'subcategory', 'level', 'pet_type', 'format_type',
+                'price', 'duration', 'completion_time',
+                'is_active', 'status',
+                'instructor_name', 'instructor_bio',
             ]
-
             for field in allowed_fields:
                 if field in request.data:
-                    setattr(course, field, request.data[field])
-
+                    value = request.data[field]
+                    if field == 'price':
+                        value = Decimal(str(value)) if value else Decimal('0')
+                    elif field == 'duration':
+                        value = int(value) if value else 60
+                    elif field == 'is_active':
+                        value = bool(value)
+                    setattr(course, field, value)
             course.save()
             return Response(self._serialize_course(course))
         except Course.DoesNotExist:
             return Response({'error': 'Курс не найден'}, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
-
-    def partial_update(self, request, pk=None):
-        """Частичное обновление курса."""
-        return self.update(request, pk, partial=True)
-
-    def retrieve(self, request, pk=None):
-        """Получить один курс."""
-        try:
-            course = Course.objects.get(id=pk)
-            return Response(self._serialize_course(course))
-        except Course.DoesNotExist:
-            return Response(
-                {'error': 'Курс не найден'},
-                status=status.HTTP_404_NOT_FOUND
-            )
-
-    def update(self, request, pk=None):
-        """Обновить курс."""
-        try:
-            course = Course.objects.get(id=pk)
-            # Обновляем разрешенные поля
-            allowed_fields = ['title', 'description', 'category', 'level', 'price', 'is_active', 'is_free']
-            for field in allowed_fields:
-                if field in request.data:
-                    value = request.data[field]
-                    if field == 'price':
-                        value = Decimal(str(value)) if value else Decimal('0')
-                    elif field in ['is_active', 'is_free']:
-                        value = bool(value)
-                    setattr(course, field, value)
-            course.save()
-            return Response(self._serialize_course(course))
-        except Course.DoesNotExist:
-            return Response(
-                {'error': 'Курс не найден'},
-                status=status.HTTP_404_NOT_FOUND
-            )
 
     def destroy(self, request, pk=None):
         """Удалить курс."""

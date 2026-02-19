@@ -1,11 +1,13 @@
 /**
- * ContentBlock - Блок контента на странице
+ * ContentBlock - Sortable content block with inline editing and floating toolbar.
  *
- * Представляет собой отдельный блок контента с возможностью редактирования.
- * Поддерживает различные типы блоков (текст, изображение, видео и т.д.)
+ * Uses @dnd-kit/sortable for within-page reordering.
+ * Renders block content by type with edit capabilities.
  */
 
-import { useDraggable } from '@dnd-kit/core'
+import { useState } from 'react'
+import { useSortable } from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 import RichTextEditor from './Blocks/RichTextEditor'
 import VideoPlayer from './Blocks/VideoPlayer'
 import QuizBuilder from './Blocks/QuizBuilder'
@@ -13,224 +15,144 @@ import PetActionBlock from './Blocks/PetActionBlock'
 import GalleryBlock from './Blocks/GalleryBlock'
 import FileDownloadBlock from './Blocks/FileDownloadBlock'
 
-/**
- * ContentBlock - Перетаскиваемый блок контента
- */
+const blockIcons = {
+  rich_text: '📄', image: '🖼️', gallery: '🎴', file_download: '📎',
+  video_player: '🎥', audio_player: '🎵', embed: '🔗', quiz: '❓',
+  poll: '📊', checklist: '✅', timer: '⏱️', pet_action: '🎯',
+  progress_tracker: '📈', comment_section: '💬', rating: '⭐',
+}
+
+const blockLabels = {
+  rich_text: 'Текст', image: 'Изображение', gallery: 'Галерея', file_download: 'Файл',
+  video_player: 'Видео', audio_player: 'Аудио', embed: 'Embed', quiz: 'Тест',
+  poll: 'Опрос', checklist: 'Чек-лист', timer: 'Таймер', pet_action: 'Упражнение',
+  progress_tracker: 'Прогресс', comment_section: 'Комментарии', rating: 'Оценка',
+}
+
 function ContentBlock({ block, isSelected, onSelect, onUpdate, onDelete }) {
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+  const [showToolbar, setShowToolbar] = useState(false)
+
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({
     id: `block-${block.id}`,
-    data: {
-      type: 'block',
-      id: block.id,
-      pageId: block.page_id,
-      blockType: block.block_type
-    }
+    data: { type: 'block', id: block.id, pageId: block.page || block.page_id },
   })
 
-  const style = transform ? {
-    transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
-  } : undefined
-
-  /**
-   * Получение иконки для типа блока
-   */
-  const getBlockIcon = (blockType) => {
-    const icons = {
-      rich_text: '📄',
-      image: '🖼️',
-      gallery: '🎴',
-      file_download: '📎',
-      video_player: '🎥',
-      audio_player: '🎵',
-      embed: '🔗',
-      quiz: '❓',
-      poll: '📊',
-      checklist: '✅',
-      timer: '⏱️',
-      pet_action: '🎯',
-      progress_tracker: '📈',
-      comment_section: '💬',
-      rating: '⭐'
-    }
-    return icons[blockType] || '📦'
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.4 : 1,
   }
 
-  /**
-   * Рендеринг содержимого блока в зависимости от типа
-   */
-  const renderBlockContent = () => {
-    const { block_type, content } = block
+  const renderContent = () => {
+    const { block_type, content, settings } = block
 
     switch (block_type) {
       case 'rich_text':
         return (
           <RichTextEditor
             content={content?.html || ''}
-            onChange={(html) => onUpdate({
-              ...block,
-              content: { ...content, html }
-            })}
+            onChange={(html) => onUpdate({ ...block, content: { ...content, html } })}
             placeholder="Введите текст..."
           />
         )
-
       case 'image':
         return (
           <div className="text-center">
             {content?.url ? (
-              <img
-                src={content.url}
-                alt={content.alt || ''}
-                className="max-w-full h-auto rounded-lg shadow-sm"
-              />
+              <img src={content.url} alt={content.alt || ''} className="max-w-full h-auto rounded-lg shadow-sm" />
             ) : (
-              <div className="w-full h-32 bg-gray-200 rounded-lg flex items-center justify-center">
-                <span className="text-gray-500">Изображение</span>
+              <div className="w-full h-32 bg-gray-100 rounded-lg flex items-center justify-center border-2 border-dashed border-gray-200">
+                <span className="text-gray-400 text-sm">🖼️ Добавьте URL в свойствах</span>
               </div>
             )}
-            {content?.caption && (
-              <p className="text-sm text-gray-600 mt-2">{content.caption}</p>
-            )}
+            {content?.caption && <p className="text-sm text-gray-500 mt-2">{content.caption}</p>}
           </div>
         )
-
       case 'video_player':
-        return (
-          <VideoPlayer
-            content={content}
-            settings={block.settings}
-            onChange={(newContent) => onUpdate({
-              ...block,
-              content: newContent
-            })}
-            mode="edit"
-          />
-        )
-
+        return <VideoPlayer content={content} settings={settings} onChange={(c) => onUpdate({ ...block, content: c })} mode="edit" />
       case 'quiz':
-        return (
-          <QuizBuilder
-            content={content}
-            settings={block.settings}
-            onChange={(newContent) => onUpdate({
-              ...block,
-              content: newContent
-            })}
-            mode="edit"
-          />
-        )
-
+        return <QuizBuilder content={content} settings={settings} onChange={(c) => onUpdate({ ...block, content: c })} mode="edit" />
       case 'pet_action':
-        return (
-          <PetActionBlock
-            content={content}
-            settings={block.settings}
-            onChange={(newContent) => onUpdate({
-              ...block,
-              content: newContent
-            })}
-            mode="edit"
-          />
-        )
-
+        return <PetActionBlock content={content} settings={settings} onChange={(c) => onUpdate({ ...block, content: c })} mode="edit" />
       case 'gallery':
-        return (
-          <GalleryBlock
-            content={content}
-            settings={block.settings}
-            onChange={(newContent) => onUpdate({
-              ...block,
-              content: newContent
-            })}
-            mode="edit"
-          />
-        )
-
+        return <GalleryBlock content={content} settings={settings} onChange={(c) => onUpdate({ ...block, content: c })} mode="edit" />
       case 'file_download':
-        return (
-          <FileDownloadBlock
-            content={content}
-            settings={block.settings}
-            onChange={(newContent) => onUpdate({
-              ...block,
-              content: newContent
-            })}
-            mode="edit"
-          />
-        )
-
+        return <FileDownloadBlock content={content} settings={settings} onChange={(c) => onUpdate({ ...block, content: c })} mode="edit" />
       default:
         return (
-          <div className="text-center py-8 text-gray-500">
-            <span className="text-3xl mb-2 block">{getBlockIcon(block_type)}</span>
-            <p>{block.block_type_display || block_type}</p>
+          <div className="text-center py-6 text-gray-400">
+            <span className="text-2xl block mb-1">{blockIcons[block_type] || '📦'}</span>
+            <p className="text-xs">{blockLabels[block_type] || block_type}</p>
           </div>
         )
     }
   }
+
+  const span = block.settings?.layout?.span || 12
 
   return (
     <div
       ref={setNodeRef}
       style={style}
       className={`
-        relative bg-white border rounded-lg p-4 cursor-pointer transition-all
-        ${isSelected ? 'border-blue-500 shadow-lg' : 'border-gray-300 hover:border-gray-400'}
-        ${isDragging ? 'opacity-50 shadow-xl' : ''}
+        relative group bg-white border rounded-lg transition-all
+        ${isSelected ? 'border-blue-500 shadow-md ring-1 ring-blue-200' : 'border-gray-200 hover:border-gray-300'}
+        ${isDragging ? 'shadow-xl z-50' : ''}
       `}
-      onClick={onSelect}
+      onClick={(e) => { e.stopPropagation(); onSelect() }}
+      onMouseEnter={() => setShowToolbar(true)}
+      onMouseLeave={() => setShowToolbar(false)}
     >
-      {/* Заголовок блока */}
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center space-x-2">
-          <span className="text-lg">{getBlockIcon(block.block_type)}</span>
-          <span className="text-sm font-medium text-gray-900">
-            {block.block_type_display || block.block_type}
-          </span>
-        </div>
+      {/* Block type badge */}
+      <div className="absolute -top-2.5 left-3 z-10">
+        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-white border border-gray-200 rounded text-[10px] text-gray-500 shadow-sm">
+          {blockIcons[block.block_type] || '📦'}
+          {blockLabels[block.block_type] || block.block_type}
+          {span < 12 && <span className="text-blue-500 ml-0.5">{span}/12</span>}
+        </span>
+      </div>
 
-        <div className="flex items-center space-x-1">
-          {/* Кнопка перетаскивания */}
+      {/* Floating toolbar */}
+      {(showToolbar || isSelected) && (
+        <div className="absolute -top-3 right-2 z-20 flex items-center gap-0.5 bg-white border border-gray-200 rounded-md shadow-sm px-1 py-0.5">
+          {/* Drag handle */}
           <button
             {...listeners}
             {...attributes}
-            className="p-1 text-gray-400 hover:text-gray-600 cursor-grab"
-            title="Перетащить блок"
+            className="p-1 text-gray-400 hover:text-gray-600 cursor-grab active:cursor-grabbing"
+            title="Перетащить"
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8h16M4 16h16" />
+            <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
+              <circle cx="9" cy="6" r="1.5"/><circle cx="15" cy="6" r="1.5"/>
+              <circle cx="9" cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/>
+              <circle cx="9" cy="18" r="1.5"/><circle cx="15" cy="18" r="1.5"/>
             </svg>
           </button>
 
-          {/* Кнопка удаления */}
+          {/* Delete */}
           <button
-            onClick={(e) => {
-              e.stopPropagation()
-              onDelete()
-            }}
-            className="p-1 text-gray-400 hover:text-red-600"
+            onClick={(e) => { e.stopPropagation(); onDelete() }}
+            className="p-1 text-gray-400 hover:text-red-500"
             title="Удалить блок"
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
             </svg>
           </button>
         </div>
-      </div>
-
-      {/* Содержимое блока */}
-      <div className="min-h-[60px]">
-        {renderBlockContent()}
-      </div>
-
-      {/* Индикатор выбора */}
-      {isSelected && (
-        <div className="absolute -top-1 -right-1 w-4 h-4 bg-blue-500 rounded-full flex items-center justify-center">
-          <svg className="w-2 h-2 text-white" fill="currentColor" viewBox="0 0 20 20">
-            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-          </svg>
-        </div>
       )}
+
+      {/* Block content */}
+      <div className="p-4 pt-5 min-h-[50px]">
+        {renderContent()}
+      </div>
     </div>
   )
 }

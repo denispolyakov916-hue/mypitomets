@@ -313,6 +313,19 @@ class Course(models.Model):
     )
 
     is_active = models.BooleanField(default=True, verbose_name='Активен')
+
+    STATUS_CHOICES = [
+        ('draft', 'Черновик'),
+        ('published', 'Опубликован'),
+        ('archived', 'Архив'),
+    ]
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default='draft',
+        db_index=True,
+        verbose_name='Статус',
+    )
     
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -1584,7 +1597,6 @@ class ContentBlock(models.Model):
         verbose_name = 'Блок контента'
         verbose_name_plural = 'Блоки контента'
         ordering = ['page', 'order']
-        unique_together = [['page', 'order']]
         indexes = [
             models.Index(fields=['page', 'order']),
             models.Index(fields=['block_type']),

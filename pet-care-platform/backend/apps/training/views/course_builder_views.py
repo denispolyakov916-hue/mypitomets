@@ -57,6 +57,73 @@ class CourseBuilderView(APIView):
         serializer = CourseBuilderSerializer(course)
         return Response(serializer.data)
 
+    def put(self, request, course_id):
+        """Сохранить структуру курса (bulk update)."""
+        try:
+            course = Course.objects.get(id=course_id)
+        except Course.DoesNotExist:
+            from core.exceptions import ApiError
+            raise ApiError.not_found('Курс не найден', error_code='COURSE_NOT_FOUND')
+
+        data = request.data
+        if 'title' in data:
+            course.title = data['title']
+        if 'description' in data:
+            course.description = data['description']
+        course.save()
+
+        serializer = CourseBuilderSerializer(course)
+        return Response(serializer.data)
+
+
+class CoursePublishView(APIView):
+    """Публикация курса."""
+    permission_classes = [IsAdminUser]
+
+    def post(self, request, course_id):
+        try:
+            course = Course.objects.get(id=course_id)
+        except Course.DoesNotExist:
+            return Response({'error': 'Курс не найден'}, status=status.HTTP_404_NOT_FOUND)
+
+        pages_count = CoursePage.objects.filter(course_id=course.id, is_active=True).count()
+        if pages_count == 0:
+            return Response(
+                {'error': 'Нельзя опубликовать курс без страниц'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        course.is_active = True
+        course.status = 'published'
+        course.lessons_count = pages_count
+        course.save(update_fields=['is_active', 'status', 'lessons_count'])
+
+        return Response({
+            'message': 'Курс успешно опубликован',
+            'course_id': course.id,
+            'pages_count': pages_count,
+        })
+
+
+class BlockReorderView(APIView):
+    """Reorder blocks within a page."""
+    permission_classes = [IsAdminUser]
+
+    def patch(self, request, page_id):
+        block_ids = request.data.get('block_ids', [])
+        if not block_ids:
+            return Response({'error': 'block_ids обязателен'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            page = CoursePage.objects.get(id=page_id)
+        except CoursePage.DoesNotExist:
+            return Response({'error': 'Страница не найдена'}, status=status.HTTP_404_NOT_FOUND)
+
+        for i, block_id in enumerate(block_ids, start=1):
+            ContentBlock.objects.filter(id=block_id, page=page).update(order=i)
+
+        return Response({'message': 'Порядок обновлён', 'count': len(block_ids)})
+
 
 class CoursePageViewSet(ModelViewSet):
     """

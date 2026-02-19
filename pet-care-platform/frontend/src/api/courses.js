@@ -289,7 +289,7 @@ export const getCourseBuilder = async (courseId) => {
  * @returns {Promise<Object>} Созданная страница
  */
 export const createCoursePage = async (courseId, pageData) => {
-  return await api.post(`/courses/${courseId}/pages/`, pageData)
+  return await api.post(`/courses/${courseId}/builder/pages/`, pageData)
 }
 
 /**
@@ -301,7 +301,7 @@ export const createCoursePage = async (courseId, pageData) => {
  * @returns {Promise<Object>} Обновленная страница
  */
 export const updateCoursePage = async (courseId, pageId, pageData) => {
-  return await api.put(`/courses/${courseId}/pages/${pageId}/`, pageData)
+  return await api.put(`/courses/pages/${pageId}/`, pageData)
 }
 
 /**
@@ -312,7 +312,7 @@ export const updateCoursePage = async (courseId, pageId, pageData) => {
  * @returns {Promise<Object>} Результат удаления
  */
 export const deleteCoursePage = async (courseId, pageId) => {
-  return await api.delete(`/courses/${courseId}/pages/${pageId}/`)
+  return await api.delete(`/courses/pages/${pageId}/`)
 }
 
 /**

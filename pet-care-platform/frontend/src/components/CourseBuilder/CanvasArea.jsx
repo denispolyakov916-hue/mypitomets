@@ -1,21 +1,120 @@
 /**
- * CanvasArea - Рабочая область конструктора
+ * CanvasArea - Main editing workspace for the course builder.
  *
- * Отображает страницы курса и позволяет размещать блоки на них.
- * Поддерживает drag-and-drop для блоков.
+ * Single-page view with module/page tree sidebar on the left.
+ * DndContext is in the parent (CourseBuilder) -- this component just renders.
  */
 
 import { useState } from 'react'
-import { DndContext, useDroppable } from '@dnd-kit/core'
-import PageNavigation from './PageNavigation'
 import DroppablePage from './DroppablePage'
 
-/**
- * CanvasArea - Рабочая область с страницами
- */
+function ModuleTree({ course, currentPageId, onPageChange, onPageAdd, onModuleAdd }) {
+  const [expandedModules, setExpandedModules] = useState(() => {
+    const init = {}
+    course?.modules?.forEach(m => { init[m.id] = true })
+    return init
+  })
+
+  const toggleModule = (id) => setExpandedModules(prev => ({ ...prev, [id]: !prev[id] }))
+
+  const pageTypeIcon = (type) => {
+    const icons = { text: '📖', video: '▶️', quiz: '❓', interactive: '🐾', assignment: '✏️', webinar: '📡' }
+    return icons[type] || '📄'
+  }
+
+  const modules = course?.modules || []
+  const orphanPages = (course?.orphan_pages || []).filter(p =>
+    !modules.some(m => m.pages?.some(mp => mp.id === p.id))
+  )
+
+  return (
+    <div className="w-52 border-r border-gray-200 bg-white flex flex-col flex-shrink-0 h-full">
+      <div className="px-3 py-2.5 border-b border-gray-200 flex items-center justify-between">
+        <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Структура</span>
+        <button
+          onClick={onModuleAdd}
+          className="text-[11px] px-1.5 py-0.5 bg-blue-50 text-blue-600 rounded hover:bg-blue-100 font-medium"
+        >+ Модуль</button>
+      </div>
+
+      <div className="flex-1 overflow-y-auto px-2 py-2 space-y-0.5">
+        {modules.map((module) => (
+          <div key={module.id}>
+            <button
+              onClick={() => toggleModule(module.id)}
+              className="w-full flex items-center gap-1.5 px-2 py-1.5 text-left text-xs font-medium text-gray-700 hover:bg-gray-50 rounded"
+            >
+              <span className="text-[10px] text-gray-400">{expandedModules[module.id] ? '▼' : '▶'}</span>
+              <span className="truncate flex-1">{module.title}</span>
+              <span className="text-[10px] text-gray-400">{(module.pages || []).length}</span>
+            </button>
+
+            {expandedModules[module.id] && (
+              <div className="ml-4 space-y-px">
+                {(module.pages || []).map((page) => (
+                  <button
+                    key={page.id}
+                    onClick={() => onPageChange(page.id)}
+                    className={`w-full flex items-center gap-1.5 px-2 py-1 text-left text-[11px] rounded transition-colors ${
+                      currentPageId === page.id
+                        ? 'bg-blue-100 text-blue-700 font-medium'
+                        : 'text-gray-600 hover:bg-gray-50'
+                    }`}
+                  >
+                    <span className="text-[10px]">{pageTypeIcon(page.page_type)}</span>
+                    <span className="truncate">{page.title || 'Без названия'}</span>
+                  </button>
+                ))}
+                <button
+                  onClick={() => onPageAdd(module.id)}
+                  className="w-full flex items-center gap-1 px-2 py-1 text-[11px] text-green-600 hover:bg-green-50 rounded font-medium"
+                >+ Страница</button>
+              </div>
+            )}
+          </div>
+        ))}
+
+        {orphanPages.length > 0 && (
+          <div>
+            <div className="px-2 py-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Без модуля</div>
+            {orphanPages.map((page) => (
+              <button
+                key={page.id}
+                onClick={() => onPageChange(page.id)}
+                className={`w-full flex items-center gap-1.5 px-2 py-1 text-left text-[11px] rounded transition-colors ${
+                  currentPageId === page.id
+                    ? 'bg-blue-100 text-blue-700 font-medium'
+                    : 'text-gray-600 hover:bg-gray-50'
+                }`}
+              >
+                <span className="text-[10px]">{pageTypeIcon(page.page_type)}</span>
+                <span className="truncate">{page.title || 'Без названия'}</span>
+              </button>
+            ))}
+          </div>
+        )}
+
+        {modules.length === 0 && orphanPages.length === 0 && (
+          <div className="text-center py-6 px-2">
+            <p className="text-[11px] text-gray-400 mb-2">Начните с создания модуля</p>
+            <button
+              onClick={onModuleAdd}
+              className="text-[11px] text-blue-600 hover:underline font-medium"
+            >+ Добавить модуль</button>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 function CanvasArea({
   course,
+  allPages,
   currentPageId,
+  currentPage,
+  sortedBlocks,
+  blockIds,
   selectedElement,
   onElementSelect,
   onPageChange,
@@ -23,157 +122,88 @@ function CanvasArea({
   onPageUpdate,
   onPageDelete,
   onBlockUpdate,
-  onBlockDelete
+  onBlockDelete,
+  onModuleAdd,
 }) {
   const [zoom, setZoom] = useState(100)
+  const [showGrid, setShowGrid] = useState(false)
 
-  /**
-   * Обработка drag-and-drop событий
-   */
-  const handleDragEnd = (event) => {
-    const { active, over } = event
+  const handleZoomChange = (delta) => setZoom(prev => Math.max(50, Math.min(200, prev + delta)))
 
-    if (!over) return
-
-    const draggedItem = active.data.current
-    const dropTarget = over.data.current
-
-    // Если перетаскиваем блок из панели инструментов
-    if (draggedItem?.source === 'toolbox' && dropTarget?.type === 'page') {
-      // Добавляем новый блок на страницу
-      onBlockUpdate(null, {
-        type: 'add',
-        blockType: draggedItem.blockType,
-        pageId: dropTarget.pageId
-      })
-    }
-
-    // Если перетаскиваем существующий блок
-    if (draggedItem?.type === 'block' && dropTarget?.type === 'page') {
-      // Перемещаем блок на другую страницу
-      if (draggedItem.pageId !== dropTarget.pageId) {
-        onBlockUpdate(draggedItem.id, {
-          type: 'move',
-          newPageId: dropTarget.pageId
-        })
-      }
-    }
-  }
-
-  /**
-   * Изменение масштаба
-   */
-  const handleZoomChange = (newZoom) => {
-    setZoom(Math.max(50, Math.min(200, newZoom)))
-  }
+  const pageCount = allPages?.length || 0
 
   return (
-    <div className="flex flex-col h-full bg-gray-50">
-      {/* Панель управления рабочей областью */}
-      <div className="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between">
-        <div className="flex items-center space-x-4">
-          <h2 className="text-lg font-semibold text-gray-900">
-            Рабочая область
-          </h2>
-          <div className="text-sm text-gray-600">
-            {course?.pages?.length || 0} страниц
-          </div>
-        </div>
-
-        <div className="flex items-center space-x-2">
-          {/* Управление масштабом */}
-          <div className="flex items-center space-x-1">
-            <button
-              onClick={() => handleZoomChange(zoom - 25)}
-              className="p-1 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded"
-              title="Уменьшить"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
-              </svg>
-            </button>
-
-            <span className="text-sm text-gray-600 min-w-[3rem] text-center">
-              {zoom}%
-            </span>
-
-            <button
-              onClick={() => handleZoomChange(zoom + 25)}
-              className="p-1 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded"
-              title="Увеличить"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Навигация по страницам */}
-      <PageNavigation
-        pages={course?.pages || []}
+    <div className="flex h-full bg-gray-50">
+      <ModuleTree
+        course={course}
         currentPageId={currentPageId}
         onPageChange={onPageChange}
         onPageAdd={onPageAdd}
         onPageDelete={onPageDelete}
+        onModuleAdd={onModuleAdd}
       />
 
-      {/* Рабочая область с drag-and-drop */}
-      <div className="flex-1 overflow-auto p-6">
-        <DndContext onDragEnd={handleDragEnd}>
+      <div className="flex-1 flex flex-col min-w-0">
+        {/* Toolbar */}
+        <div className="bg-white border-b border-gray-200 px-4 py-1.5 flex items-center justify-between flex-shrink-0">
+          <div className="flex items-center gap-2">
+            <h2 className="text-xs font-semibold text-gray-600">
+              {currentPage ? currentPage.title || 'Без названия' : 'Выберите страницу'}
+            </h2>
+            <span className="text-[10px] text-gray-400">{pageCount} стр.</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <label className="flex items-center gap-1 text-[10px] text-gray-500 cursor-pointer">
+              <input type="checkbox" checked={showGrid} onChange={(e) => setShowGrid(e.target.checked)} className="rounded text-blue-500 w-3 h-3" />
+              Сетка
+            </label>
+            <div className="flex items-center gap-0.5">
+              <button onClick={() => handleZoomChange(-25)} className="px-1.5 py-0.5 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded text-[11px]">-</button>
+              <span className="text-[10px] text-gray-500 w-8 text-center">{zoom}%</span>
+              <button onClick={() => handleZoomChange(25)} className="px-1.5 py-0.5 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded text-[11px]">+</button>
+            </div>
+          </div>
+        </div>
+
+        {/* Canvas content */}
+        <div className="flex-1 overflow-auto p-4">
           <div
-            className="mx-auto bg-white rounded-lg shadow-sm border border-gray-200 min-h-[600px]"
-            style={{
-              width: `${zoom}%`,
-              maxWidth: 'none',
-              transform: `scale(${zoom / 100})`,
-              transformOrigin: 'top center'
-            }}
+            className="mx-auto max-w-4xl"
+            style={{ transform: `scale(${zoom / 100})`, transformOrigin: 'top center' }}
           >
-            {course?.pages && course.pages.length > 0 ? (
-              course.pages.map((page) => (
-                <DroppablePage
-                  key={page.id}
-                  page={page}
-                  isSelected={currentPageId === page.id}
-                  selectedElement={selectedElement}
-                  onElementSelect={onElementSelect}
-                  onPageSelect={() => onPageChange(page.id)}
-                  onBlockUpdate={onBlockUpdate}
-                  onBlockDelete={onBlockDelete}
-                />
-              ))
+            {currentPage ? (
+              <DroppablePage
+                page={{ ...currentPage, blocks: sortedBlocks }}
+                isSelected={true}
+                selectedElement={selectedElement}
+                showGrid={showGrid}
+                blockIds={blockIds}
+                onElementSelect={onElementSelect}
+                onPageSelect={() => {}}
+                onPageUpdate={onPageUpdate}
+                onBlockUpdate={onBlockUpdate}
+                onBlockDelete={onBlockDelete}
+              />
             ) : (
-              <div className="flex items-center justify-center h-64 text-gray-500">
-                <div className="text-center">
-                  <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
-                  <h3 className="mt-2 text-sm font-medium text-gray-900">Нет страниц</h3>
-                  <p className="mt-1 text-sm text-gray-500">
-                    Добавьте первую страницу курса
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 flex items-center justify-center h-80">
+                <div className="text-center px-6">
+                  <div className="text-3xl mb-2 text-gray-300">📄</div>
+                  <h3 className="text-sm font-medium text-gray-600">Выберите страницу</h3>
+                  <p className="text-xs text-gray-400 mt-1">
+                    Выберите страницу из дерева структуры слева или создайте новый модуль
                   </p>
-                  <div className="mt-6">
-                    <button
-                      onClick={onPageAdd}
-                      className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
-                    >
-                      <svg className="-ml-1 mr-2 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                      </svg>
-                      Добавить страницу
-                    </button>
-                  </div>
+                  <button
+                    onClick={onModuleAdd}
+                    className="mt-3 inline-flex items-center px-3 py-1.5 bg-blue-600 text-white text-xs rounded-lg hover:bg-blue-700"
+                  >+ Создать модуль</button>
                 </div>
               </div>
             )}
           </div>
-        </DndContext>
+        </div>
       </div>
     </div>
   )
 }
 
 export default CanvasArea
-

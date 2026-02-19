@@ -1,12 +1,16 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 // Components
 import DataTable from './DataTable';
+import CreateCourseModal from '../Courses/CreateCourseModal';
 
 // Hooks
 import { adminAPI } from '../../utils/api';
 
 const CoursesTable = () => {
+  const navigate = useNavigate();
+  const [showCreateModal, setShowCreateModal] = useState(false);
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -65,14 +69,16 @@ const CoursesTable = () => {
 
   const handleAction = (action, course) => {
     if (action === 'edit') {
-      // Переходим на страницу редактирования
-      window.location.href = `/admin-panel/courses/${course.id}/edit`;
+      navigate(`/admin-panel/courses/${course.id}/edit`);
     }
   };
 
   const handleCreate = () => {
-    // Переходим на страницу создания курса
-    window.location.href = '/admin-panel/courses/create';
+    setShowCreateModal(true);
+  };
+
+  const handleCourseCreated = (courseId) => {
+    navigate(`/admin-panel/courses/${courseId}/edit`);
   };
 
 
@@ -207,16 +213,22 @@ const CoursesTable = () => {
       )
     },
     {
-      key: 'is_active',
+      key: 'status',
       label: 'Статус',
       sortable: true,
-      render: (value) => (
-        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-          value ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
-        }`}>
-          {value ? 'Активен' : 'Неактивен'}
-        </span>
-      )
+      render: (value) => {
+        const cfg = {
+          draft: { label: 'Черновик', cls: 'bg-yellow-100 text-yellow-800' },
+          published: { label: 'Опубликован', cls: 'bg-green-100 text-green-800' },
+          archived: { label: 'Архив', cls: 'bg-gray-100 text-gray-600' },
+        }
+        const c = cfg[value] || cfg.draft
+        return (
+          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${c.cls}`}>
+            {c.label}
+          </span>
+        )
+      }
     },
     {
       key: 'duration',
@@ -398,6 +410,11 @@ const CoursesTable = () => {
       model="courses"
     />
 
+    <CreateCourseModal
+      isOpen={showCreateModal}
+      onClose={() => setShowCreateModal(false)}
+      onCreated={handleCourseCreated}
+    />
     </>
   );
 };

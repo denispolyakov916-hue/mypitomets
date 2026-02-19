@@ -1,521 +1,450 @@
 /**
- * PropertiesPanel - Панель свойств выбранного элемента
+ * PropertiesPanel - Right sidebar for editing selected element properties.
  *
- * Отображает настройки для выбранной страницы или блока.
- * Позволяет редактировать свойства элементов.
+ * Calls onBlockUpdate / onPageUpdate to persist changes via API.
+ * Includes 12-column grid layout controls.
  */
 
-/**
- * PropertiesPanel - Панель для настройки элементов
- */
-function PropertiesPanel({ selectedElement, onUpdate }) {
-  /**
-   * Рендеринг настроек для страницы
-   */
-  const renderPageProperties = (page) => (
-    <div className="space-y-6">
-      <div>
-        <h3 className="text-lg font-medium text-gray-900 mb-4">
-          Настройки страницы
-        </h3>
+import { useState, useCallback, useRef, useEffect } from 'react'
 
-        <div className="space-y-4">
-          {/* Название страницы */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Название страницы
-            </label>
-            <input
-              type="text"
-              value={page.title || ''}
-              onChange={(e) => onUpdate({
-                ...page,
-                title: e.target.value
-              })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-            />
-          </div>
+const blockIcons = {
+  rich_text: '📄', image: '🖼️', gallery: '🎴', file_download: '📎',
+  video_player: '🎥', audio_player: '🎵', embed: '🔗', quiz: '❓',
+  poll: '📊', checklist: '✅', timer: '⏱️', pet_action: '🎯',
+}
 
-          {/* Тип страницы */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Тип страницы
-            </label>
-            <select
-              value={page.page_type || ''}
-              onChange={(e) => onUpdate({
-                ...page,
-                page_type: e.target.value
-              })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-            >
-              <option value="">По умолчанию</option>
-              <option value="text">Текстовая</option>
-              <option value="video">Видео</option>
-              <option value="interactive">Интерактивная</option>
-              <option value="quiz">Тест</option>
-              <option value="webinar">Вебинар</option>
-              <option value="assignment">Задание</option>
-            </select>
-          </div>
+const SPAN_PRESETS = [
+  { label: '1/4', value: 3 },
+  { label: '1/3', value: 4 },
+  { label: '1/2', value: 6 },
+  { label: '2/3', value: 8 },
+  { label: 'Полная', value: 12 },
+]
 
-          {/* Настройки страницы */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Настройки
-            </label>
-            <div className="space-y-2">
-              <label className="flex items-center">
-                <input
-                  type="checkbox"
-                  checked={page.settings?.required_completion || false}
-                  onChange={(e) => onUpdate({
-                    ...page,
-                    settings: {
-                      ...page.settings,
-                      required_completion: e.target.checked
-                    }
-                  })}
-                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                />
-                <span className="ml-2 text-sm text-gray-700">Обязательное завершение</span>
-              </label>
+function PropertiesPanel({ selectedElement, onBlockUpdate, onPageUpdate }) {
+  const [localElement, setLocalElement] = useState(null)
+  const debounceRef = useRef(null)
 
-              <label className="flex items-center">
-                <input
-                  type="checkbox"
-                  checked={page.settings?.timer_enabled || false}
-                  onChange={(e) => onUpdate({
-                    ...page,
-                    settings: {
-                      ...page.settings,
-                      timer_enabled: e.target.checked
-                    }
-                  })}
-                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                />
-                <span className="ml-2 text-sm text-gray-700">Включить таймер</span>
-              </label>
+  useEffect(() => {
+    setLocalElement(selectedElement ? { ...selectedElement } : null)
+  }, [selectedElement])
 
-              <label className="flex items-center">
-                <input
-                  type="checkbox"
-                  checked={page.settings?.allow_skipping || true}
-                  onChange={(e) => onUpdate({
-                    ...page,
-                    settings: {
-                      ...page.settings,
-                      allow_skipping: e.target.checked
-                    }
-                  })}
-                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                />
-                <span className="ml-2 text-sm text-gray-700">Разрешить пропуск</span>
-              </label>
-            </div>
+  const debouncedUpdate = useCallback((element) => {
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    debounceRef.current = setTimeout(() => {
+      if (!element) return
+      if (element.type === 'page') {
+        const { type, ...pageData } = element
+        onPageUpdate(element.id, pageData)
+      } else if (element.type === 'block') {
+        const { type, ...blockData } = element
+        onBlockUpdate(element.id, blockData)
+      }
+    }, 400)
+  }, [onBlockUpdate, onPageUpdate])
+
+  const updateLocal = useCallback((updater) => {
+    setLocalElement(prev => {
+      if (!prev) return prev
+      const next = typeof updater === 'function' ? updater(prev) : { ...prev, ...updater }
+      debouncedUpdate(next)
+      return next
+    })
+  }, [debouncedUpdate])
+
+  if (!localElement) {
+    return (
+      <div className="flex flex-col h-full">
+        <div className="p-4 border-b border-gray-200">
+          <h3 className="text-sm font-semibold text-gray-700">Свойства</h3>
+        </div>
+        <div className="flex-1 flex items-center justify-center p-4">
+          <div className="text-center text-gray-400">
+            <div className="text-3xl mb-2">⚙️</div>
+            <p className="text-xs">Выберите элемент для настройки</p>
           </div>
         </div>
       </div>
-    </div>
-  )
-
-  /**
-   * Рендеринг настроек для блока
-   */
-  const renderBlockProperties = (block) => (
-    <div className="space-y-6">
-      <div>
-        <h3 className="text-lg font-medium text-gray-900 mb-4">
-          Настройки блока
-        </h3>
-
-        <div className="space-y-4">
-          {/* Тип блока */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Тип блока
-            </label>
-            <div className="flex items-center space-x-2 p-2 bg-gray-50 rounded-md">
-              <span className="text-lg">{getBlockIcon(block.block_type)}</span>
-              <span className="text-sm text-gray-900">
-                {block.block_type_display || block.block_type}
-              </span>
-            </div>
-          </div>
-
-          {/* Специфические настройки в зависимости от типа блока */}
-          {renderBlockSpecificProperties(block)}
-        </div>
-      </div>
-    </div>
-  )
-
-  /**
-   * Рендеринг специфических настроек для разных типов блоков
-   */
-  const renderBlockSpecificProperties = (block) => {
-    const { block_type, content, settings } = block
-
-    switch (block_type) {
-      case 'rich_text':
-        return (
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              HTML контент
-            </label>
-            <textarea
-              value={content?.html || ''}
-              onChange={(e) => onUpdate({
-                ...block,
-                content: { ...content, html: e.target.value }
-              })}
-              rows={6}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 font-mono text-sm"
-              placeholder="Введите HTML контент..."
-            />
-          </div>
-        )
-
-      case 'image':
-        return (
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                URL изображения
-              </label>
-              <input
-                type="url"
-                value={content?.url || ''}
-                onChange={(e) => onUpdate({
-                  ...block,
-                  content: { ...content, url: e.target.value }
-                })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                placeholder="https://example.com/image.jpg"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Alt текст
-              </label>
-              <input
-                type="text"
-                value={content?.alt || ''}
-                onChange={(e) => onUpdate({
-                  ...block,
-                  content: { ...content, alt: e.target.value }
-                })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                placeholder="Описание изображения"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Подпись
-              </label>
-              <input
-                type="text"
-                value={content?.caption || ''}
-                onChange={(e) => onUpdate({
-                  ...block,
-                  content: { ...content, caption: e.target.value }
-                })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                placeholder="Подпись под изображением"
-              />
-            </div>
-          </div>
-        )
-
-      case 'video_player':
-        return (
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                URL видео
-              </label>
-              <input
-                type="url"
-                value={content?.video_url || ''}
-                onChange={(e) => onUpdate({
-                  ...block,
-                  content: { ...content, video_url: e.target.value }
-                })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                placeholder="https://example.com/video.mp4"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Название видео
-              </label>
-              <input
-                type="text"
-                value={content?.title || ''}
-                onChange={(e) => onUpdate({
-                  ...block,
-                  content: { ...content, title: e.target.value }
-                })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                placeholder="Название видео"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Длительность (секунды)
-              </label>
-              <input
-                type="number"
-                value={content?.duration || ''}
-                onChange={(e) => onUpdate({
-                  ...block,
-                  content: { ...content, duration: parseInt(e.target.value) || 0 }
-                })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                placeholder="300"
-              />
-            </div>
-
-            {/* Настройки видео */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Настройки воспроизведения
-              </label>
-              <div className="space-y-2">
-                <label className="flex items-center">
-                  <input
-                    type="checkbox"
-                    checked={settings?.autoplay || false}
-                    onChange={(e) => onUpdate({
-                      ...block,
-                      settings: { ...settings, autoplay: e.target.checked }
-                    })}
-                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                  />
-                  <span className="ml-2 text-sm text-gray-700">Автовоспроизведение</span>
-                </label>
-
-                <label className="flex items-center">
-                  <input
-                    type="checkbox"
-                    checked={settings?.controls || true}
-                    onChange={(e) => onUpdate({
-                      ...block,
-                      settings: { ...settings, controls: e.target.checked }
-                    })}
-                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                  />
-                  <span className="ml-2 text-sm text-gray-700">Показывать контролы</span>
-                </label>
-
-                <label className="flex items-center">
-                  <input
-                    type="checkbox"
-                    checked={settings?.show_subtitles || false}
-                    onChange={(e) => onUpdate({
-                      ...block,
-                      settings: { ...settings, show_subtitles: e.target.checked }
-                    })}
-                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                  />
-                  <span className="ml-2 text-sm text-gray-700">Показывать субтитры</span>
-                </label>
-              </div>
-            </div>
-          </div>
-        )
-
-      case 'pet_action':
-        return (
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Тип действия
-              </label>
-              <select
-                value={content?.action_type || 'command'}
-                onChange={(e) => onUpdate({
-                  ...block,
-                  content: { ...content, action_type: e.target.value }
-                })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-              >
-                <option value="command">Команда</option>
-                <option value="trick">Трюк</option>
-                <option value="exercise">Упражнение</option>
-                <option value="health_check">Проверка здоровья</option>
-                <option value="social_interaction">Социальное взаимодействие</option>
-                <option value="training_session">Тренировочная сессия</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Название действия
-              </label>
-              <input
-                type="text"
-                value={content?.title || ''}
-                onChange={(e) => onUpdate({
-                  ...block,
-                  content: { ...content, title: e.target.value }
-                })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                placeholder="Название действия"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Инструкции
-              </label>
-              <textarea
-                value={content?.instructions || ''}
-                onChange={(e) => onUpdate({
-                  ...block,
-                  content: { ...content, instructions: e.target.value }
-                })}
-                rows={3}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                placeholder="Подробные инструкции для выполнения действия"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Критерии успеха
-              </label>
-              <textarea
-                value={content?.success_criteria || ''}
-                onChange={(e) => onUpdate({
-                  ...block,
-                  content: { ...content, success_criteria: e.target.value }
-                })}
-                rows={2}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                placeholder="Как определить успешное выполнение"
-              />
-            </div>
-
-            {/* Настройки действия */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Настройки действия
-              </label>
-              <div className="space-y-2">
-                <label className="flex items-center">
-                  <input
-                    type="checkbox"
-                    checked={settings?.timer_enabled || false}
-                    onChange={(e) => onUpdate({
-                      ...block,
-                      settings: { ...settings, timer_enabled: e.target.checked }
-                    })}
-                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                  />
-                  <span className="ml-2 text-sm text-gray-700">Включить таймер</span>
-                </label>
-
-                <label className="flex items-center">
-                  <input
-                    type="checkbox"
-                    checked={settings?.show_demonstration || true}
-                    onChange={(e) => onUpdate({
-                      ...block,
-                      settings: { ...settings, show_demonstration: e.target.checked }
-                    })}
-                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                  />
-                  <span className="ml-2 text-sm text-gray-700">Показывать демонстрацию</span>
-                </label>
-
-                <label className="flex items-center">
-                  <input
-                    type="checkbox"
-                    checked={settings?.allow_skip || false}
-                    onChange={(e) => onUpdate({
-                      ...block,
-                      settings: { ...settings, allow_skip: e.target.checked }
-                    })}
-                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                  />
-                  <span className="ml-2 text-sm text-gray-700">Разрешить пропуск</span>
-                </label>
-              </div>
-            </div>
-          </div>
-        )
-
-      default:
-        return (
-          <div className="text-center py-8 text-gray-500">
-            <p>Настройки для этого типа блока пока не реализованы</p>
-          </div>
-        )
-    }
+    )
   }
 
-  /**
-   * Получение иконки для типа блока
-   */
-  const getBlockIcon = (blockType) => {
-    const icons = {
-      rich_text: '📄',
-      image: '🖼️',
-      gallery: '🎴',
-      file_download: '📎',
-      video_player: '🎥',
-      audio_player: '🎵',
-      embed: '🔗',
-      quiz: '❓',
-      poll: '📊',
-      checklist: '✅',
-      timer: '⏱️',
-      pet_action: '🎯',
-      progress_tracker: '📈',
-      comment_section: '💬',
-      rating: '⭐'
-    }
-    return icons[blockType] || '📦'
-  }
+  const isPage = localElement.type === 'page'
+  const isBlock = localElement.type === 'block'
 
   return (
     <div className="flex flex-col h-full">
-      {/* Заголовок панели */}
       <div className="p-4 border-b border-gray-200">
-        <h3 className="text-lg font-semibold text-gray-900">Свойства</h3>
-        {!selectedElement && (
-          <p className="text-sm text-gray-600 mt-1">
-            Выберите элемент для настройки
-          </p>
-        )}
+        <h3 className="text-sm font-semibold text-gray-700">
+          {isPage ? '📄 Страница' : `${blockIcons[localElement.block_type] || '📦'} Блок`}
+        </h3>
       </div>
 
-      {/* Содержимое панели */}
-      <div className="flex-1 overflow-y-auto p-4">
-        {!selectedElement ? (
-          <div className="text-center py-8 text-gray-500">
-            <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
-            </svg>
-            <h3 className="mt-2 text-sm font-medium text-gray-900">Нет выбранного элемента</h3>
-            <p className="mt-1 text-sm text-gray-500">
-              Выберите страницу или блок для настройки свойств
-            </p>
-          </div>
-        ) : selectedElement.type === 'page' ? (
-          renderPageProperties(selectedElement)
-        ) : (
-          renderBlockProperties(selectedElement)
-        )}
+      <div className="flex-1 overflow-y-auto p-4 space-y-5">
+        {isPage && <PageProperties element={localElement} updateLocal={updateLocal} />}
+        {isBlock && <BlockProperties element={localElement} updateLocal={updateLocal} />}
       </div>
     </div>
   )
 }
 
-export default PropertiesPanel
+/* ─── Page Properties ─── */
+function PageProperties({ element, updateLocal }) {
+  return (
+    <>
+      <Field label="Название">
+        <input
+          type="text"
+          value={element.title || ''}
+          onChange={(e) => updateLocal({ title: e.target.value })}
+          className="input-field"
+        />
+      </Field>
 
+      <Field label="Тип страницы">
+        <select
+          value={element.page_type || ''}
+          onChange={(e) => updateLocal({ page_type: e.target.value })}
+          className="input-field"
+        >
+          <option value="">По умолчанию</option>
+          <option value="text">Текстовая</option>
+          <option value="video">Видео</option>
+          <option value="interactive">Интерактивная</option>
+          <option value="quiz">Тест</option>
+          <option value="webinar">Вебинар</option>
+          <option value="assignment">Задание</option>
+        </select>
+      </Field>
+
+      <Field label="Настройки">
+        <div className="space-y-2">
+          <Checkbox
+            label="Обязательное завершение"
+            checked={element.settings?.required_completion || false}
+            onChange={(v) => updateLocal(prev => ({
+              ...prev,
+              settings: { ...prev.settings, required_completion: v },
+            }))}
+          />
+          <Checkbox
+            label="Включить таймер"
+            checked={element.settings?.timer_enabled || false}
+            onChange={(v) => updateLocal(prev => ({
+              ...prev,
+              settings: { ...prev.settings, timer_enabled: v },
+            }))}
+          />
+          <Checkbox
+            label="Разрешить пропуск"
+            checked={element.settings?.allow_skipping ?? true}
+            onChange={(v) => updateLocal(prev => ({
+              ...prev,
+              settings: { ...prev.settings, allow_skipping: v },
+            }))}
+          />
+        </div>
+      </Field>
+    </>
+  )
+}
+
+/* ─── Block Properties ─── */
+function BlockProperties({ element, updateLocal }) {
+  return (
+    <>
+      {/* Block type info */}
+      <div className="flex items-center gap-2 p-2 bg-gray-50 rounded-md">
+        <span className="text-lg">{blockIcons[element.block_type] || '📦'}</span>
+        <span className="text-sm text-gray-700">{element.block_type_display || element.block_type}</span>
+      </div>
+
+      {/* Layout controls */}
+      <LayoutControls element={element} updateLocal={updateLocal} />
+
+      {/* Block-specific properties */}
+      <BlockSpecificProperties element={element} updateLocal={updateLocal} />
+    </>
+  )
+}
+
+/* ─── 12-Column Layout Controls ─── */
+function LayoutControls({ element, updateLocal }) {
+  const layout = element.settings?.layout || { span: 12, offset: 0 }
+
+  const setLayout = (key, value) => {
+    updateLocal(prev => ({
+      ...prev,
+      settings: {
+        ...prev.settings,
+        layout: { ...prev.settings?.layout, span: layout.span, offset: layout.offset, [key]: value },
+      },
+    }))
+  }
+
+  return (
+    <div className="space-y-3">
+      <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide">Размер</label>
+
+      {/* Quick presets */}
+      <div className="flex gap-1">
+        {SPAN_PRESETS.map(({ label, value }) => (
+          <button
+            key={value}
+            onClick={() => setLayout('span', value)}
+            className={`flex-1 py-1 text-xs rounded transition-colors ${
+              layout.span === value
+                ? 'bg-blue-500 text-white'
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            }`}
+          >{label}</button>
+        ))}
+      </div>
+
+      {/* Custom span slider */}
+      <div className="flex items-center gap-2">
+        <span className="text-xs text-gray-400 w-12">Ширина</span>
+        <input
+          type="range"
+          min={1} max={12}
+          value={layout.span}
+          onChange={(e) => setLayout('span', parseInt(e.target.value))}
+          className="flex-1 h-1.5 accent-blue-500"
+        />
+        <span className="text-xs text-gray-600 w-8 text-right">{layout.span}/12</span>
+      </div>
+
+      {/* Offset */}
+      <div className="flex items-center gap-2">
+        <span className="text-xs text-gray-400 w-12">Отступ</span>
+        <input
+          type="range"
+          min={0} max={12 - layout.span}
+          value={Math.min(layout.offset, 12 - layout.span)}
+          onChange={(e) => setLayout('offset', parseInt(e.target.value))}
+          className="flex-1 h-1.5 accent-blue-500"
+        />
+        <span className="text-xs text-gray-600 w-8 text-right">{layout.offset}</span>
+      </div>
+
+      {/* Visual preview */}
+      <div className="grid grid-cols-12 gap-px bg-gray-200 rounded overflow-hidden h-4">
+        {Array.from({ length: 12 }).map((_, i) => (
+          <div
+            key={i}
+            className={
+              i >= layout.offset && i < layout.offset + layout.span
+                ? 'bg-blue-400'
+                : 'bg-gray-100'
+            }
+          />
+        ))}
+      </div>
+    </div>
+  )
+}
+
+/* ─── Block-Specific Properties ─── */
+function BlockSpecificProperties({ element, updateLocal }) {
+  const { block_type, content = {}, settings = {} } = element
+
+  const setContent = (key, value) => {
+    updateLocal(prev => ({ ...prev, content: { ...prev.content, [key]: value } }))
+  }
+
+  const setSettings = (key, value) => {
+    updateLocal(prev => ({ ...prev, settings: { ...prev.settings, [key]: value } }))
+  }
+
+  switch (block_type) {
+    case 'rich_text':
+      return (
+        <Field label="HTML (исходный код)">
+          <textarea
+            value={content.html || ''}
+            onChange={(e) => setContent('html', e.target.value)}
+            rows={5}
+            className="input-field font-mono text-xs"
+            placeholder="HTML..."
+          />
+        </Field>
+      )
+
+    case 'image':
+      return (
+        <>
+          <Field label="URL изображения">
+            <input type="url" value={content.url || ''} onChange={(e) => setContent('url', e.target.value)} className="input-field" placeholder="https://..." />
+          </Field>
+          <Field label="Alt текст">
+            <input type="text" value={content.alt || ''} onChange={(e) => setContent('alt', e.target.value)} className="input-field" placeholder="Описание" />
+          </Field>
+          <Field label="Подпись">
+            <input type="text" value={content.caption || ''} onChange={(e) => setContent('caption', e.target.value)} className="input-field" />
+          </Field>
+        </>
+      )
+
+    case 'video_player':
+      return (
+        <>
+          <Field label="URL видео">
+            <input type="url" value={content.video_url || ''} onChange={(e) => setContent('video_url', e.target.value)} className="input-field" />
+          </Field>
+          <Field label="Название">
+            <input type="text" value={content.title || ''} onChange={(e) => setContent('title', e.target.value)} className="input-field" />
+          </Field>
+          <Field label="Длительность (сек)">
+            <input type="number" value={content.duration || ''} onChange={(e) => setContent('duration', parseInt(e.target.value) || 0)} className="input-field" />
+          </Field>
+          <Field label="Настройки">
+            <div className="space-y-2">
+              <Checkbox label="Автовоспроизведение" checked={settings.autoplay || false} onChange={(v) => setSettings('autoplay', v)} />
+              <Checkbox label="Контролы" checked={settings.controls ?? true} onChange={(v) => setSettings('controls', v)} />
+            </div>
+          </Field>
+        </>
+      )
+
+    case 'quiz':
+      return (
+        <>
+          <Field label="Название теста">
+            <input type="text" value={content.title || ''} onChange={(e) => setContent('title', e.target.value)} className="input-field" />
+          </Field>
+          <Field label="Проходной балл (%)">
+            <input type="number" min={0} max={100} value={content.passing_score || 70} onChange={(e) => setContent('passing_score', parseInt(e.target.value))} className="input-field" />
+          </Field>
+          <Field label="Настройки">
+            <div className="space-y-2">
+              <Checkbox label="Перемешивать" checked={content.shuffle || false} onChange={(v) => setContent('shuffle', v)} />
+              <Checkbox label="Показать результаты" checked={content.show_results ?? true} onChange={(v) => setContent('show_results', v)} />
+              <Checkbox label="Повторная попытка" checked={content.allow_retake ?? true} onChange={(v) => setContent('allow_retake', v)} />
+            </div>
+          </Field>
+        </>
+      )
+
+    case 'pet_action':
+      return (
+        <>
+          <Field label="Тип действия">
+            <select value={content.action_type || 'command'} onChange={(e) => setContent('action_type', e.target.value)} className="input-field">
+              <option value="command">Команда</option>
+              <option value="trick">Трюк</option>
+              <option value="exercise">Упражнение</option>
+              <option value="health_check">Проверка здоровья</option>
+              <option value="training_session">Тренировка</option>
+            </select>
+          </Field>
+          <Field label="Название">
+            <input type="text" value={content.title || ''} onChange={(e) => setContent('title', e.target.value)} className="input-field" />
+          </Field>
+          <Field label="Инструкции">
+            <textarea value={content.instructions || ''} onChange={(e) => setContent('instructions', e.target.value)} rows={3} className="input-field" />
+          </Field>
+          <Field label="Критерии успеха">
+            <textarea value={content.success_criteria || ''} onChange={(e) => setContent('success_criteria', e.target.value)} rows={2} className="input-field" />
+          </Field>
+          <Field label="Настройки">
+            <div className="space-y-2">
+              <Checkbox label="Таймер" checked={settings.timer_enabled || false} onChange={(v) => setSettings('timer_enabled', v)} />
+              <Checkbox label="Демонстрация" checked={settings.show_demonstration ?? true} onChange={(v) => setSettings('show_demonstration', v)} />
+              <Checkbox label="Пропуск" checked={settings.allow_skip || false} onChange={(v) => setSettings('allow_skip', v)} />
+            </div>
+          </Field>
+        </>
+      )
+
+    case 'gallery':
+      return (
+        <Field label="Изображения (JSON)">
+          <textarea
+            value={JSON.stringify(content.images || [], null, 2)}
+            onChange={(e) => { try { setContent('images', JSON.parse(e.target.value)) } catch {} }}
+            rows={5}
+            className="input-field font-mono text-xs"
+            placeholder='[{"url": "...", "caption": "..."}]'
+          />
+        </Field>
+      )
+
+    case 'file_download':
+      return (
+        <>
+          <Field label="URL файла">
+            <input type="url" value={content.file_url || ''} onChange={(e) => setContent('file_url', e.target.value)} className="input-field" />
+          </Field>
+          <Field label="Название файла">
+            <input type="text" value={content.file_name || ''} onChange={(e) => setContent('file_name', e.target.value)} className="input-field" />
+          </Field>
+          <Field label="Описание">
+            <input type="text" value={content.description || ''} onChange={(e) => setContent('description', e.target.value)} className="input-field" />
+          </Field>
+        </>
+      )
+
+    case 'checklist':
+      return (
+        <>
+          <Field label="Заголовок">
+            <input type="text" value={content.title || ''} onChange={(e) => setContent('title', e.target.value)} className="input-field" />
+          </Field>
+          <Field label="Элементы (по одному на строку)">
+            <textarea
+              value={(content.items || []).map(i => typeof i === 'string' ? i : i.text || '').join('\n')}
+              onChange={(e) => setContent('items', e.target.value.split('\n').filter(Boolean).map(text => ({ text, checked: false })))}
+              rows={5}
+              className="input-field"
+              placeholder="Элемент 1&#10;Элемент 2"
+            />
+          </Field>
+        </>
+      )
+
+    case 'timer':
+      return (
+        <>
+          <Field label="Длительность (секунды)">
+            <input type="number" value={content.duration || 60} onChange={(e) => setContent('duration', parseInt(e.target.value) || 60)} className="input-field" />
+          </Field>
+          <Field label="Заголовок">
+            <input type="text" value={content.title || ''} onChange={(e) => setContent('title', e.target.value)} className="input-field" />
+          </Field>
+        </>
+      )
+
+    default:
+      return (
+        <div className="text-center py-4 text-xs text-gray-400">
+          <p>Редактирование через панель свойств</p>
+          <p className="mt-1">пока не реализовано для этого типа</p>
+        </div>
+      )
+  }
+}
+
+/* ─── Utility Components ─── */
+function Field({ label, children }) {
+  return (
+    <div>
+      <label className="block text-xs font-medium text-gray-500 mb-1">{label}</label>
+      {children}
+    </div>
+  )
+}
+
+function Checkbox({ label, checked, onChange }) {
+  return (
+    <label className="flex items-center gap-2 cursor-pointer">
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={(e) => onChange(e.target.checked)}
+        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 w-3.5 h-3.5"
+      />
+      <span className="text-xs text-gray-600">{label}</span>
+    </label>
+  )
+}
+
+export default PropertiesPanel

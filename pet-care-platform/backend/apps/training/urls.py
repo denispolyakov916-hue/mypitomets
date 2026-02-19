@@ -59,6 +59,8 @@ from .views import (
     CommentDetailView,
     # Новые вьюсы для конструктора курсов
     CourseBuilderView,
+    CoursePublishView,
+    BlockReorderView,
     CoursePageViewSet,
     ContentBlockViewSet,
     BlockTemplateViewSet,
@@ -204,8 +206,16 @@ urlpatterns = [
     # ===== МАРШРУТЫ КОНСТРУКТОРА КУРСОВ =====
 
     # Структура курса для конструктора
-    # GET /api/courses/{course_id}/builder/
+    # GET/PUT /api/courses/{course_id}/builder/
     path('<int:course_id>/builder/', CourseBuilderView.as_view(), name='course-builder'),
+
+    # Публикация курса
+    # POST /api/courses/{course_id}/publish/
+    path('<int:course_id>/publish/', CoursePublishView.as_view(), name='course-publish'),
+
+    # Перестановка блоков на странице
+    # PATCH /api/courses/pages/{page_id}/blocks/reorder/
+    path('pages/<int:page_id>/blocks/reorder/', BlockReorderView.as_view(), name='block-reorder'),
 
     # Управление страницами курса (ADMIN: создание)
     # POST /api/courses/{course_id}/builder/pages/
