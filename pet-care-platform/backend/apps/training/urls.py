@@ -57,6 +57,7 @@ from .views import (
     CommentListView,
     CommentCreateView,
     CommentDetailView,
+    PageCommentsView,
     # Новые вьюсы для конструктора курсов
     CourseBuilderView,
     CoursePublishView,
@@ -198,6 +199,11 @@ urlpatterns = [
     # Получение страницы курса для обучения (авторизованный пользователь)
     # GET /api/courses/{course_id}/pages/{page_id}/
     path('<int:course_id>/pages/<int:page_id>/', CoursePageLearningView.as_view(), name='course-page-learning'),
+
+    # Комментарии к странице курса
+    # GET  /api/courses/{course_id}/pages/{page_id}/comments/
+    # POST /api/courses/{course_id}/pages/{page_id}/comments/
+    path('<int:course_id>/pages/<int:page_id>/comments/', PageCommentsView.as_view(), name='page-comments'),
 
     # Завершение страницы курса
     # POST /api/courses/pages/{page_id}/complete/

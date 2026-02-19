@@ -214,19 +214,11 @@ def validate_content_block_content(value):
     """
     Валидация контента блока конструктора курсов.
     
-    Контент должен быть словарем с полями в зависимости от типа блока.
+    Контент должен быть словарем. Структура зависит от block_type модели ContentBlock
+    (тип хранится в поле block_type, а не внутри content).
     """
     if not isinstance(value, dict):
         raise ValidationError(_("Контент блока должен быть словарем"))
-    
-    block_type = value.get('type')
-    
-    if not block_type:
-        raise ValidationError(_("Контент блока должен содержать поле 'type'"))
-    
-    # Базовые проверки - тип должен быть строкой
-    if not isinstance(block_type, str):
-        raise ValidationError(_("Поле 'type' должно быть строкой"))
     
     return value
 

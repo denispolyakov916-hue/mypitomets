@@ -450,8 +450,7 @@ const CoursePageLearning = () => {
                 <Suspense fallback={<div className="text-gray-400 text-sm">Загрузка комментариев...</div>}>
                   <CommentsSection
                     courseId={courseId}
-                    lessonId={currentPage.id}
-                    type="lesson"
+                    pageId={currentPage.id}
                   />
                 </Suspense>
               </div>

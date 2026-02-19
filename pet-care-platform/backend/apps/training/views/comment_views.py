@@ -27,7 +27,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated
 
-from ..models import Course, Lesson, UserCourse, Comment, CommentLike
+from ..models import Course, Lesson, CoursePage, UserCourse, Comment, CommentLike
 from ..serializers import (
     CommentSerializer, CommentCreateSerializer
 )
@@ -62,8 +62,8 @@ class CourseCommentsView(APIView):
             comment_data = {
                 'id': str(comment.id),
                 'user': {
-                    'id': comment.user.id,
-                    'username': comment.user.username,
+                    'id': str(comment.user.id),
+                    'username': comment.user.first_name or comment.user.email.split('@')[0],
                     'email': comment.user.email,
                 },
                 'content': comment.content,
@@ -146,6 +146,129 @@ class CommentLikeView(APIView):
             'likes_count': comment.likes_count,
             'dislikes_count': comment.dislikes_count,
         }, status=status.HTTP_200_OK)
+
+
+class PageCommentsView(APIView):
+    """
+    Комментарии к странице курса (CoursePage).
+
+    GET  /api/courses/{course_id}/pages/{page_id}/comments/
+    POST /api/courses/{course_id}/pages/{page_id}/comments/
+    """
+    permission_classes = [AllowAny]
+
+    def get_permissions(self):
+        if self.request.method == 'GET':
+            return [AllowAny()]
+        return [IsAuthenticated()]
+
+    def get(self, request, course_id, page_id):
+        try:
+            page = CoursePage.objects.select_related('module').get(
+                id=page_id, course_id=course_id, is_active=True
+            )
+        except CoursePage.DoesNotExist:
+            return Response(
+                {'error': 'Страница не найдена'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        comments = Comment.objects.filter(
+            page=page,
+            parent__isnull=True
+        ).select_related('user').prefetch_related('replies__user').order_by('-created_at')
+
+        comments_data = _build_comments_tree(comments, request)
+
+        return Response({
+            'comments': comments_data,
+            'count': len(comments_data),
+            'pagination': None
+        }, status=status.HTTP_200_OK)
+
+    def post(self, request, course_id, page_id):
+        try:
+            page = CoursePage.objects.get(id=page_id, course_id=course_id, is_active=True)
+        except CoursePage.DoesNotExist:
+            return Response(
+                {'error': 'Страница не найдена'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        if not UserCourse.objects.filter(user=request.user, course_id=course_id).exists():
+            return Response(
+                {'error': 'У вас нет доступа к этому курсу'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        data = request.data.copy()
+        data['page'] = page.id
+        # Не передаём course/lesson — комментарий привязан к странице
+        data.pop('course', None)
+        data.pop('lesson', None)
+
+        # Поддержка parent_id для ответов (фронт может слать parent или parent_id)
+        if data.get('parent_id') and not data.get('parent'):
+            data['parent'] = data.pop('parent_id')
+
+        serializer = CommentCreateSerializer(data=data)
+        if serializer.is_valid():
+            comment = serializer.save(user=request.user)
+            comment_data = _serialize_comment(comment, request)
+            return Response(comment_data, status=status.HTTP_201_CREATED)
+
+        logger.warning("Page comment create validation failed: data=%s errors=%s", data, serializer.errors)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+def _get_username(user):
+    """Получить отображаемое имя пользователя."""
+    return user.first_name or user.email.split('@')[0]
+
+
+def _serialize_comment(comment, request):
+    """Сериализовать комментарий с ответами."""
+    user_like = None
+    if request.user.is_authenticated:
+        like = CommentLike.objects.filter(comment=comment, user=request.user).first()
+        if like:
+            user_like = {'is_liked': like.is_like}
+
+    user_reaction = None
+    if request.user.is_authenticated:
+        user_reaction = comment.get_user_reaction(request.user)
+
+    return {
+        'id': str(comment.id),
+        'user': {
+            'id': str(comment.user.id),
+            'username': _get_username(comment.user),
+            'email': comment.user.email,
+        },
+        'content': comment.content,
+        'attachments': comment.attachments or [],
+        'likes_count': comment.likes_count,
+        'dislikes_count': comment.dislikes_count,
+        'replies_count': comment.get_replies().count(),
+        'replies': [
+            _serialize_comment(reply, request)
+            for reply in comment.get_replies().select_related('user')
+        ],
+        'parent': str(comment.parent_id) if comment.parent_id else None,
+        'user_like': user_like,
+        'user_reaction': 'like' if user_reaction == 'like' else 'dislike' if user_reaction == 'dislike' else None,
+        'created_at': comment.created_at.isoformat(),
+        'updated_at': comment.updated_at.isoformat(),
+    }
+
+
+def _build_comments_tree(comments, request):
+    """Построить дерево комментариев с ответами."""
+    result = []
+    for comment in comments:
+        data = _serialize_comment(comment, request)
+        result.append(data)
+    return result
 
 
 class CommentListView(APIView):
@@ -254,6 +377,8 @@ class CommentCreateView(APIView):
 
             data = request.data.copy()
             data['course'] = course.id
+            if data.get('parent_id') and not data.get('parent'):
+                data['parent'] = data.pop('parent_id')
 
         elif lesson_id:
             try:
@@ -273,6 +398,8 @@ class CommentCreateView(APIView):
 
             data = request.data.copy()
             data['lesson'] = lesson.id
+            if data.get('parent_id') and not data.get('parent'):
+                data['parent'] = data.pop('parent_id')
         else:
             return Response(
                 {'error': 'Необходимо указать course_id или lesson_id'},
@@ -325,6 +452,14 @@ class CommentDetailView(APIView):
 
         if comment.lesson and not UserCourse.objects.filter(
             user=request.user, course=comment.lesson.course
+        ).exists():
+            return Response(
+                {'error': 'У вас нет доступа к этому комментарию'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        if comment.page and not UserCourse.objects.filter(
+            user=request.user, course_id=comment.page.course_id
         ).exists():
             return Response(
                 {'error': 'У вас нет доступа к этому комментарию'},
@@ -413,6 +548,14 @@ class CommentReactionView(APIView):
 
         if comment.lesson and not UserCourse.objects.filter(
             user=request.user, course=comment.lesson.course
+        ).exists():
+            return Response(
+                {'error': 'У вас нет доступа к этому комментарию'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        if comment.page and not UserCourse.objects.filter(
+            user=request.user, course_id=comment.page.course_id
         ).exists():
             return Response(
                 {'error': 'У вас нет доступа к этому комментарию'},

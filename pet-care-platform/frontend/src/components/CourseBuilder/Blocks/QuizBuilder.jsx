@@ -302,10 +302,7 @@ function QuizBuilder({ content, settings, onChange, mode = 'edit' }) {
       }
     ]
 
-    onChange({
-      ...content,
-      questions: newQuestions
-    })
+    onChange({ content: { ...content, questions: newQuestions }, settings })
   }
 
   /**
@@ -315,10 +312,7 @@ function QuizBuilder({ content, settings, onChange, mode = 'edit' }) {
     const newQuestions = [...questions]
     newQuestions[index] = questionData
 
-    onChange({
-      ...content,
-      questions: newQuestions
-    })
+    onChange({ content: { ...content, questions: newQuestions }, settings })
   }
 
   /**
@@ -326,10 +320,7 @@ function QuizBuilder({ content, settings, onChange, mode = 'edit' }) {
    */
   const deleteQuestion = (index) => {
     const newQuestions = questions.filter((_, i) => i !== index)
-    onChange({
-      ...content,
-      questions: newQuestions
-    })
+    onChange({ content: { ...content, questions: newQuestions }, settings })
   }
 
   /**
@@ -430,8 +421,8 @@ function QuizBuilder({ content, settings, onChange, mode = 'edit' }) {
             type="text"
             value={content?.title || ''}
             onChange={(e) => onChange({
-              ...content,
-              title: e.target.value
+              content: { ...content, title: e.target.value },
+              settings
             })}
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
             placeholder="Название теста"
@@ -448,8 +439,8 @@ function QuizBuilder({ content, settings, onChange, mode = 'edit' }) {
             max="100"
             value={settings?.passing_score || 70}
             onChange={(e) => onChange({
-              ...settings,
-              passing_score: parseInt(e.target.value) || 70
+              content,
+              settings: { ...settings, passing_score: parseInt(e.target.value) || 70 }
             })}
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
           />
@@ -508,8 +499,8 @@ function QuizBuilder({ content, settings, onChange, mode = 'edit' }) {
               type="checkbox"
               checked={settings?.shuffle_questions || false}
               onChange={(e) => onChange({
-                ...settings,
-                shuffle_questions: e.target.checked
+                content,
+                settings: { ...settings, shuffle_questions: e.target.checked }
               })}
               className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
             />
@@ -521,8 +512,8 @@ function QuizBuilder({ content, settings, onChange, mode = 'edit' }) {
               type="checkbox"
               checked={settings?.show_results || true}
               onChange={(e) => onChange({
-                ...settings,
-                show_results: e.target.checked
+                content,
+                settings: { ...settings, show_results: e.target.checked }
               })}
               className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
             />
@@ -534,8 +525,8 @@ function QuizBuilder({ content, settings, onChange, mode = 'edit' }) {
               type="checkbox"
               checked={settings?.allow_retake || true}
               onChange={(e) => onChange({
-                ...settings,
-                allow_retake: e.target.checked
+                content,
+                settings: { ...settings, allow_retake: e.target.checked }
               })}
               className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
             />
@@ -547,8 +538,8 @@ function QuizBuilder({ content, settings, onChange, mode = 'edit' }) {
               type="checkbox"
               checked={settings?.time_limit_enabled || false}
               onChange={(e) => onChange({
-                ...settings,
-                time_limit_enabled: e.target.checked
+                content,
+                settings: { ...settings, time_limit_enabled: e.target.checked }
               })}
               className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
             />
@@ -567,8 +558,8 @@ function QuizBuilder({ content, settings, onChange, mode = 'edit' }) {
               max="180"
               value={settings?.time_limit || 30}
               onChange={(e) => onChange({
-                ...settings,
-                time_limit: parseInt(e.target.value) || 30
+                content,
+                settings: { ...settings, time_limit: parseInt(e.target.value) || 30 }
               })}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
             />

@@ -21,7 +21,7 @@ const SPAN_PRESETS = [
   { label: 'Полная', value: 12 },
 ]
 
-function PropertiesPanel({ selectedElement, onBlockUpdate, onPageUpdate }) {
+function PropertiesPanel({ selectedElement, onBlockUpdate, onPageUpdate, onModuleUpdate }) {
   const [localElement, setLocalElement] = useState(null)
   const debounceRef = useRef(null)
 
@@ -39,9 +39,12 @@ function PropertiesPanel({ selectedElement, onBlockUpdate, onPageUpdate }) {
       } else if (element.type === 'block') {
         const { type, ...blockData } = element
         onBlockUpdate(element.id, blockData)
+      } else if (element.type === 'module' && onModuleUpdate) {
+        const { type, ...moduleData } = element
+        onModuleUpdate(element.id, moduleData)
       }
     }, 400)
-  }, [onBlockUpdate, onPageUpdate])
+  }, [onBlockUpdate, onPageUpdate, onModuleUpdate])
 
   const updateLocal = useCallback((updater) => {
     setLocalElement(prev => {
@@ -70,20 +73,50 @@ function PropertiesPanel({ selectedElement, onBlockUpdate, onPageUpdate }) {
 
   const isPage = localElement.type === 'page'
   const isBlock = localElement.type === 'block'
+  const isModule = localElement.type === 'module'
 
   return (
     <div className="flex flex-col h-full">
       <div className="p-4 border-b border-gray-200">
         <h3 className="text-sm font-semibold text-gray-700">
-          {isPage ? '📄 Страница' : `${blockIcons[localElement.block_type] || '📦'} Блок`}
+          {isPage && '📄 Страница'}
+          {isBlock && `${blockIcons[localElement.block_type] || '📦'} Блок`}
+          {isModule && '📁 Модуль'}
         </h3>
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 space-y-5">
         {isPage && <PageProperties element={localElement} updateLocal={updateLocal} />}
         {isBlock && <BlockProperties element={localElement} updateLocal={updateLocal} />}
+        {isModule && <ModuleProperties element={localElement} updateLocal={updateLocal} />}
       </div>
     </div>
+  )
+}
+
+/* ─── Module Properties ─── */
+function ModuleProperties({ element, updateLocal }) {
+  return (
+    <>
+      <Field label="Название">
+        <input
+          type="text"
+          value={element.title || ''}
+          onChange={(e) => updateLocal({ title: e.target.value })}
+          className="input-field"
+          placeholder="Название модуля"
+        />
+      </Field>
+      <Field label="Описание">
+        <textarea
+          value={element.description || ''}
+          onChange={(e) => updateLocal({ description: e.target.value })}
+          rows={3}
+          className="input-field"
+          placeholder="Описание модуля"
+        />
+      </Field>
+    </>
   )
 }
 
@@ -392,7 +425,7 @@ function BlockSpecificProperties({ element, updateLocal }) {
           <Field label="Элементы (по одному на строку)">
             <textarea
               value={(content.items || []).map(i => typeof i === 'string' ? i : i.text || '').join('\n')}
-              onChange={(e) => setContent('items', e.target.value.split('\n').filter(Boolean).map(text => ({ text, checked: false })))}
+              onChange={(e) => setContent('items', e.target.value.split('\n').map(text => ({ text: text || '', checked: false })))}
               rows={5}
               className="input-field"
               placeholder="Элемент 1&#10;Элемент 2"

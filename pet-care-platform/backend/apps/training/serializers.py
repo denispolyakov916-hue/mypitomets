@@ -167,29 +167,57 @@ class CommentCreateSerializer(serializers.ModelSerializer):
     """
     Сериализатор для создания комментариев.
     """
+    parent_id = serializers.CharField(required=False, allow_null=True, write_only=True)
+
     class Meta:
         model = Comment
-        fields = ['course', 'lesson', 'content', 'parent', 'attachments']
+        fields = ['course', 'lesson', 'page', 'content', 'parent', 'parent_id', 'attachments']
 
     def validate(self, data):
+        # parent_id → parent для совместимости с разными клиентами
+        parent_id = data.pop('parent_id', None)
+        if parent_id and not data.get('parent'):
+            data['parent'] = parent_id
         """Валидация данных при создании комментария."""
-        # Проверяем, что указан либо курс, либо урок, но не оба
         course = data.get('course')
         lesson = data.get('lesson')
+        page = data.get('page')
 
-        if not course and not lesson:
-            raise serializers.ValidationError("Необходимо указать курс или урок для комментария")
-
-        if course and lesson:
-            raise serializers.ValidationError("Комментарий может относиться только к курсу ИЛИ уроку")
+        provided = sum(1 for x in (course, lesson, page) if x is not None and x != '')
+        if provided == 0:
+            raise serializers.ValidationError("Необходимо указать курс, урок или страницу для комментария")
+        if provided > 1:
+            raise serializers.ValidationError("Комментарий может относиться только к курсу ИЛИ уроку ИЛИ странице")
 
         # Если указан parent, проверяем что он существует и относится к тому же объекту
         parent = data.get('parent')
         if parent:
-            if course and parent.course != course:
-                raise serializers.ValidationError("Родительский комментарий должен относиться к тому же курсу")
-            if lesson and parent.lesson != lesson:
-                raise serializers.ValidationError("Родительский комментарий должен относиться к тому же уроку")
+            def _pk(val):
+                if val is None or val == '':
+                    return None
+                if hasattr(val, 'pk'):
+                    return val.pk
+                try:
+                    return int(val)
+                except (TypeError, ValueError):
+                    return None
+
+            target_id = None
+            if course is not None and course != '':
+                target_id = ('course', _pk(course))
+            elif lesson is not None and lesson != '':
+                target_id = ('lesson', _pk(lesson))
+            elif page is not None and page != '':
+                target_id = ('page', _pk(page))
+
+            if target_id:
+                kind, tid = target_id
+                if kind == 'course' and (not parent.course_id or parent.course_id != tid):
+                    raise serializers.ValidationError("Родительский комментарий должен относиться к тому же курсу")
+                if kind == 'lesson' and (not parent.lesson_id or parent.lesson_id != tid):
+                    raise serializers.ValidationError("Родительский комментарий должен относиться к тому же уроку")
+                if kind == 'page' and (not parent.page_id or parent.page_id != tid):
+                    raise serializers.ValidationError("Родительский комментарий должен относиться к той же странице")
 
         return data
 
@@ -222,7 +250,7 @@ class CourseModuleSerializer(serializers.ModelSerializer):
             'id', 'course', 'title', 'description', 'order_number',
             'is_active', 'created_at', 'updated_at', 'pages_count',
         ]
-        read_only_fields = ['id', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'course', 'created_at', 'updated_at']
 
     def get_pages_count(self, obj):
         return obj.pages.filter(is_active=True).count()
@@ -283,19 +311,16 @@ class ContentBlockSerializer(serializers.ModelSerializer):
     def validate(self, data):
         """Валидация данных блока."""
         block_type = data.get('block_type')
-        content = data.get('content', {})
+        content = data.get('content') or {}
+        content = content.copy() if isinstance(content, dict) else {}
 
-        # Базовая валидация в зависимости от типа блока
+        # При создании пустого блока подставляем минимальную структуру
         if block_type == 'rich_text' and 'html' not in content:
-            raise serializers.ValidationError("Rich text блок должен содержать поле 'html'")
+            content['html'] = ''
+        if block_type == 'video_player' and 'video_url' not in content and 'video_key' not in content:
+            content['video_url'] = ''
 
-        if block_type == 'video_player':
-            # Принимаем либо video_url (внешняя ссылка), либо video_key (S3)
-            if 'video_url' not in content and 'video_key' not in content:
-                raise serializers.ValidationError(
-                    "Video блок должен содержать поле 'video_url' или 'video_key'"
-                )
-
+        data['content'] = content
         return data
 
 

@@ -78,7 +78,18 @@ function ContentBlock({ block, isSelected, onSelect, onUpdate, onDelete }) {
       case 'video_player':
         return <VideoPlayer content={content} settings={settings} onChange={(c) => onUpdate({ ...block, content: c })} mode="edit" />
       case 'quiz':
-        return <QuizBuilder content={content} settings={settings} onChange={(c) => onUpdate({ ...block, content: c })} mode="edit" />
+        return (
+          <QuizBuilder
+            content={content}
+            settings={settings}
+            onChange={(updates) => {
+              const newContent = updates.content !== undefined ? updates.content : content
+              const newSettings = updates.settings !== undefined ? updates.settings : settings
+              onUpdate({ ...block, content: newContent, settings: newSettings })
+            }}
+            mode="edit"
+          />
+        )
       case 'pet_action':
         return <PetActionBlock content={content} settings={settings} onChange={(c) => onUpdate({ ...block, content: c })} mode="edit" />
       case 'gallery':

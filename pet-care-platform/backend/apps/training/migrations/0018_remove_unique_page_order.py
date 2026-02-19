@@ -10,8 +10,16 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.AlterUniqueTogether(
-            name='contentblock',
-            unique_together=set(),
+        # SeparateDatabaseAndState: ограничение unique_together для content_blocks
+        # в БД отсутствует (таблица создана в 0016 через raw SQL без него),
+        # поэтому обновляем только состояние миграций, без операций с БД.
+        migrations.SeparateDatabaseAndState(
+            database_operations=[],  # Ограничения нет — ничего не дропаем
+            state_operations=[
+                migrations.AlterUniqueTogether(
+                    name='contentblock',
+                    unique_together=set(),
+                ),
+            ],
         ),
     ]

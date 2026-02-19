@@ -231,10 +231,40 @@ export const updateLessonProgress = async (lessonId, petId, progressData) => {
  * Получение комментариев к курсу
  *
  * @param {number} courseId - ID курса
+ * @param {Object} [params] - Параметры (page, per_page)
  * @returns {Promise<Object>} Список комментариев
  */
-export const getCourseComments = async (courseId) => {
-  return await api.get(`/courses/${courseId}/comments/`)
+export const getCourseComments = async (courseId, params = {}) => {
+  return await api.get(`/courses/${courseId}/comments/`, { params })
+}
+
+/**
+ * Получение комментариев к странице курса (CoursePage)
+ *
+ * @param {number} courseId - ID курса
+ * @param {number} pageId - ID страницы
+ * @returns {Promise<Object>} Список комментариев с ответами
+ */
+export const getPageComments = async (courseId, pageId) => {
+  return await api.get(`/courses/${courseId}/pages/${pageId}/comments/`)
+}
+
+/**
+ * Добавление комментария к странице курса
+ *
+ * @param {number} courseId - ID курса
+ * @param {number} pageId - ID страницы
+ * @param {string} content - Текст комментария
+ * @param {string} [parentId] - ID родительского комментария
+ * @returns {Promise<Object>} Созданный комментарий
+ */
+export const addPageComment = async (courseId, pageId, content, parentId = null) => {
+  const body = { content }
+  if (parentId) {
+    body.parent = parentId
+    body.parent_id = parentId
+  }
+  return await api.post(`/courses/${courseId}/pages/${pageId}/comments/`, body)
 }
 
 /**
@@ -522,7 +552,7 @@ export const createCourseModule = async (courseId, moduleData) => {
  * @returns {Promise<Object>} Обновленный модуль
  */
 export const updateCourseModule = async (moduleId, moduleData) => {
-  return await api.put(`/courses/modules/${moduleId}/`, moduleData)
+  return await api.patch(`/courses/modules/${moduleId}/`, moduleData)
 }
 
 /**

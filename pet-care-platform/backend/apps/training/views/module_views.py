@@ -3,6 +3,7 @@ Views для модулей курсов и структуры курса.
 """
 
 import logging
+from django.db.models import Max
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from rest_framework.response import Response
@@ -31,25 +32,27 @@ class CourseModuleViewSet(ModelViewSet):
 
     def get_queryset(self):
         course_id = self.kwargs.get('course_id')
-        return CourseModule.objects.filter(
-            course_id=course_id,
-            is_active=True,
-        ).order_by('order_number')
+        if course_id is not None:
+            return CourseModule.objects.filter(
+                course_id=course_id,
+                is_active=True,
+            ).order_by('order_number')
+        return CourseModule.objects.filter(is_active=True).order_by('order_number')
 
     def perform_create(self, serializer):
         course_id = self.kwargs.get('course_id')
         course = Course.objects.get(id=course_id)
 
-        # Автоинкремент order_number
-        last_module = CourseModule.objects.filter(
-            course=course
-        ).order_by('-order_number').first()
-        next_order = (last_module.order_number + 1) if last_module else 1
+        # Автоинкремент order_number (используем _base_manager для учёта soft-deleted)
+        max_order = CourseModule._base_manager.filter(course_id=course_id).aggregate(
+            m=Max('order_number')
+        )['m']
+        next_order = (max_order + 1) if max_order is not None else 1
 
-        serializer.save(
-            course=course,
-            order_number=serializer.validated_data.get('order_number', next_order),
-        )
+        # Обязательно перезаписываем в validated_data, т.к. модель имеет default=1
+        serializer.validated_data['course'] = course
+        serializer.validated_data['order_number'] = next_order
+        serializer.save()
 
     def perform_destroy(self, instance):
         """Мягкое удаление."""

@@ -136,7 +136,9 @@ class CoursePageViewSet(ModelViewSet):
 
     def get_queryset(self):
         course_id = self.kwargs.get('course_id')
-        return CoursePage.objects.filter(course_id=course_id, is_active=True)
+        if course_id is not None:
+            return CoursePage.objects.filter(course_id=course_id, is_active=True)
+        return CoursePage.objects.filter(is_active=True)
 
     def perform_create(self, serializer):
         course_id = self.kwargs.get('course_id')

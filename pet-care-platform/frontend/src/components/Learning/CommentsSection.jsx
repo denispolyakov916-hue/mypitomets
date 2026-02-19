@@ -7,7 +7,7 @@ import {
   updateComment, deleteComment, addCommentReaction
 } from '../../api/comments'
 import {
-  getCourseComments, addCourseComment
+  getCourseComments, addCourseComment, getPageComments, addPageComment
 } from '../../api/courses'
 import { useAuthStore } from '../../store/authStore'
 
@@ -21,6 +21,7 @@ import { useAuthStore } from '../../store/authStore'
 const CommentsSection = ({
   courseId,
   lessonId,
+  pageId,
   className = ''
 }) => {
   const { user } = useAuthStore()
@@ -34,26 +35,27 @@ const CommentsSection = ({
   const [editText, setEditText] = useState('')
   const [pagination, setPagination] = useState(null)
 
-  // Загрузка комментариев
+  // Загрузка комментариев (приоритет: pageId > lessonId > courseId)
   useEffect(() => {
-    if (courseId || lessonId) {
+    if (pageId || lessonId || courseId) {
       loadComments()
     }
-  }, [courseId, lessonId])
+  }, [courseId, lessonId, pageId])
 
   const loadComments = async (page = 1) => {
     try {
       setLoading(true)
       let response
 
-      if (courseId) {
-        response = await getCourseComments(courseId, { page, per_page: 20 })
+      if (pageId && courseId) {
+        response = await getPageComments(courseId, pageId)
       } else if (lessonId) {
         response = await getLessonComments(lessonId)
+      } else if (courseId) {
+        response = await getCourseComments(courseId, { page, per_page: 20 })
       }
 
       if (response) {
-        // API клиент возвращает response.data напрямую
         setComments(response.comments || response)
         setPagination(response.pagination)
       }
@@ -75,10 +77,12 @@ const CommentsSection = ({
       setSubmitting(true)
       let response
 
-      if (courseId) {
-        response = await addCourseComment(courseId, content, replyTo?.id)
+      if (pageId && courseId) {
+        response = await addPageComment(courseId, pageId, content, replyTo?.id)
       } else if (lessonId) {
         response = await addLessonComment(lessonId, content, replyTo?.id)
+      } else if (courseId) {
+        response = await addCourseComment(courseId, content, replyTo?.id)
       }
 
       // Очистка формы
@@ -127,38 +131,11 @@ const CommentsSection = ({
   }
 
   // Обновленная реакция на комментарий
-  const handleReaction = async (commentId, action) => {
+  const handleReaction = async (commentId, isLike) => {
     try {
-      const response = await addCommentReaction(commentId, action)
-
-      // Обновляем локальное состояние
-      setComments(prev => prev.map(comment => {
-        if (comment.id === commentId) {
-          // API клиент возвращает response.data напрямую
-          const newReaction = response.action
-          const wasLike = comment.user_reaction === 'like'
-          const wasDislike = comment.user_reaction === 'dislike'
-
-          let newLikes = comment.likes_count
-          let newDislikes = comment.dislikes_count
-
-          // Убираем предыдущую реакцию
-          if (wasLike) newLikes--
-          if (wasDislike) newDislikes--
-
-          // Добавляем новую реакцию
-          if (newReaction === 'like') newLikes++
-          if (newReaction === 'dislike') newDislikes++
-
-          return {
-            ...comment,
-            likes_count: newLikes,
-            dislikes_count: newDislikes,
-            user_reaction: newReaction === comment.user_reaction ? null : newReaction
-          }
-        }
-        return comment
-      }))
+      const action = isLike ? 'like' : 'dislike'
+      await addCommentReaction(commentId, action)
+      loadComments()
     } catch (error) {
       console.error('Error handling reaction:', error)
     }
@@ -208,7 +185,7 @@ const CommentsSection = ({
             {replyTo && (
               <div className="flex items-center justify-between bg-blue-50 p-2 rounded">
                 <span className="text-sm text-blue-700">
-                  Ответ на комментарий {replyTo.user.username}
+                  Ответ на комментарий {replyTo.user?.username || replyTo.user?.email?.split('@')[0] || 'пользователя'}
                 </span>
                 <Button
                   type="button"
@@ -272,9 +249,11 @@ const CommentsSection = ({
             <CommentItem
               key={comment.id}
               comment={comment}
+              replies={comment.replies}
               onReply={setReplyTo}
               onReaction={handleReaction}
               onRemoveReaction={handleRemoveReaction}
+              isReply={false}
             />
           ))
         )}
@@ -284,9 +263,9 @@ const CommentsSection = ({
 }
 
 /**
- * Компонент отдельного комментария
+ * Компонент отдельного комментария (поддерживает ответы)
  */
-const CommentItem = ({ comment, onReply, onReaction, onRemoveReaction }) => {
+const CommentItem = ({ comment, replies = [], onReply, onReaction, onRemoveReaction, isReply = false }) => {
   const formatDate = (dateString) => {
     return new Date(dateString).toLocaleString('ru-RU', {
       day: 'numeric',
@@ -303,7 +282,7 @@ const CommentItem = ({ comment, onReply, onReaction, onRemoveReaction }) => {
         <div className="flex-shrink-0">
           <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
             <span className="text-white text-sm font-medium">
-              {comment.user.username.charAt(0).toUpperCase()}
+              {(comment.user?.username || comment.user?.email || '?').charAt(0).toUpperCase()}
             </span>
           </div>
         </div>
@@ -312,7 +291,7 @@ const CommentItem = ({ comment, onReply, onReaction, onRemoveReaction }) => {
         <div className="flex-1 min-w-0">
           <div className="flex items-center space-x-2 mb-1">
             <span className="font-medium text-gray-900">
-              {comment.user.username}
+              {comment.user?.username || comment.user?.email?.split('@')[0] || 'Пользователь'}
             </span>
             <span className="text-sm text-gray-500">
               {formatDate(comment.created_at)}
@@ -322,6 +301,23 @@ const CommentItem = ({ comment, onReply, onReaction, onRemoveReaction }) => {
           <p className="text-gray-700 mb-3 whitespace-pre-wrap">
             {comment.content}
           </p>
+
+          {/* Ответы */}
+          {replies && replies.length > 0 && (
+            <div className={`mt-3 space-y-3 ${isReply ? 'ml-4' : 'ml-8 border-l-2 border-gray-200 pl-4'}`}>
+              {replies.map((reply) => (
+                <CommentItem
+                  key={reply.id}
+                  comment={reply}
+                  replies={reply.replies || []}
+                  onReply={onReply}
+                  onReaction={onReaction}
+                  onRemoveReaction={onRemoveReaction}
+                  isReply
+                />
+              ))}
+            </div>
+          )}
 
           {/* Вложения */}
           {comment.attachments && comment.attachments.length > 0 && (
@@ -342,30 +338,30 @@ const CommentItem = ({ comment, onReply, onReaction, onRemoveReaction }) => {
                 <button
                   onClick={() => onReaction(comment.id, true)}
                   className={`flex items-center space-x-1 px-2 py-1 rounded text-sm transition-colors ${
-                    comment.user_like?.is_liked === true
+                    (comment.user_like?.is_liked === true || comment.user_reaction === 'like')
                       ? 'bg-green-100 text-green-700'
                       : 'hover:bg-gray-100 text-gray-600'
                   }`}
-                  disabled={comment.user_like?.is_liked === true}
+                  disabled={comment.user_like?.is_liked === true || comment.user_reaction === 'like'}
                 >
                   <span>👍</span>
-                  <span>{comment.likes_count}</span>
+                  <span>{comment.likes_count ?? 0}</span>
                 </button>
 
                 <button
                   onClick={() => onReaction(comment.id, false)}
                   className={`flex items-center space-x-1 px-2 py-1 rounded text-sm transition-colors ${
-                    comment.user_like?.is_liked === false
+                    (comment.user_like?.is_liked === false || comment.user_reaction === 'dislike')
                       ? 'bg-red-100 text-red-700'
                       : 'hover:bg-gray-100 text-gray-600'
                   }`}
-                  disabled={comment.user_like?.is_liked === false}
+                  disabled={comment.user_like?.is_liked === false || comment.user_reaction === 'dislike'}
                 >
                   <span>👎</span>
-                  <span>{comment.dislikes_count}</span>
+                  <span>{comment.dislikes_count ?? 0}</span>
                 </button>
 
-                {comment.user_like && (
+                {(comment.user_like || comment.user_reaction) && (
                   <button
                     onClick={() => onRemoveReaction(comment.id)}
                     className="text-xs text-gray-500 hover:text-gray-700 ml-2"

@@ -19,6 +19,7 @@ import {
   updateContentBlock,
   deleteContentBlock,
   createCourseModule,
+  updateCourseModule,
 } from '../../api/courses'
 import { useToastStore } from '../../store/toastStore'
 
@@ -193,11 +194,23 @@ function CourseBuilder({ course, onSave, onPublish, saving }) {
   }, [courseData?.id, currentPageId, updatePagesInState, success, showError, selectedElement])
 
   /* ─── Module CRUD ─── */
+  const handleModuleUpdate = useCallback(async (moduleId, data) => {
+    try {
+      await updateCourseModule(moduleId, data)
+      refreshCourseData(prev => ({
+        ...prev,
+        modules: prev.modules?.map(m => m.id === moduleId ? { ...m, ...data } : m),
+      }))
+    } catch (err) {
+      console.error('Error updating module:', err)
+      showError('Не удалось обновить модуль')
+    }
+  }, [refreshCourseData, showError])
+
   const handleModuleAdd = useCallback(async () => {
     try {
       const result = await createCourseModule(courseData?.id, {
         title: 'Новый модуль',
-        course: courseData?.id,
       })
       refreshCourseData(prev => ({
         ...prev,
@@ -266,6 +279,7 @@ function CourseBuilder({ course, onSave, onPublish, saving }) {
             onBlockUpdate={handleBlockUpdate}
             onBlockDelete={handleBlockDelete}
             onModuleAdd={handleModuleAdd}
+            onModuleUpdate={handleModuleUpdate}
           />
         </div>
 
@@ -275,6 +289,7 @@ function CourseBuilder({ course, onSave, onPublish, saving }) {
             selectedElement={selectedElement}
             onBlockUpdate={handleBlockUpdate}
             onPageUpdate={handlePageUpdate}
+            onModuleUpdate={handleModuleUpdate}
           />
         </div>
       </div>

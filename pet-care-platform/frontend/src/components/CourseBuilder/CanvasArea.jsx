@@ -8,14 +8,21 @@
 import { useState } from 'react'
 import DroppablePage from './DroppablePage'
 
-function ModuleTree({ course, currentPageId, onPageChange, onPageAdd, onModuleAdd }) {
+function ModuleTree({ course, currentPageId, selectedElement, onPageChange, onPageAdd, onModuleAdd, onElementSelect }) {
   const [expandedModules, setExpandedModules] = useState(() => {
     const init = {}
     course?.modules?.forEach(m => { init[m.id] = true })
     return init
   })
 
-  const toggleModule = (id) => setExpandedModules(prev => ({ ...prev, [id]: !prev[id] }))
+  const toggleModule = (e, id) => {
+    e.stopPropagation()
+    setExpandedModules(prev => ({ ...prev, [id]: !prev[id] }))
+  }
+
+  const handleModuleClick = (module) => {
+    onElementSelect?.({ type: 'module', id: module.id, title: module.title, description: module.description || '' })
+  }
 
   const pageTypeIcon = (type) => {
     const icons = { text: '📖', video: '▶️', quiz: '❓', interactive: '🐾', assignment: '✏️', webinar: '📡' }
@@ -41,11 +48,20 @@ function ModuleTree({ course, currentPageId, onPageChange, onPageAdd, onModuleAd
         {modules.map((module) => (
           <div key={module.id}>
             <button
-              onClick={() => toggleModule(module.id)}
-              className="w-full flex items-center gap-1.5 px-2 py-1.5 text-left text-xs font-medium text-gray-700 hover:bg-gray-50 rounded"
+              onClick={() => handleModuleClick(module)}
+              className={`w-full flex items-center gap-1.5 px-2 py-1.5 text-left text-xs font-medium rounded ${
+                selectedElement?.type === 'module' && selectedElement?.id === module.id
+                  ? 'bg-blue-100 text-blue-700'
+                  : 'text-gray-700 hover:bg-gray-50'
+              }`}
             >
-              <span className="text-[10px] text-gray-400">{expandedModules[module.id] ? '▼' : '▶'}</span>
-              <span className="truncate flex-1">{module.title}</span>
+              <span
+                className="text-[10px] text-gray-400 cursor-pointer shrink-0"
+                onClick={(e) => toggleModule(e, module.id)}
+              >
+                {expandedModules[module.id] ? '▼' : '▶'}
+              </span>
+              <span className="truncate flex-1">{module.title || 'Без названия'}</span>
               <span className="text-[10px] text-gray-400">{(module.pages || []).length}</span>
             </button>
 
@@ -124,6 +140,7 @@ function CanvasArea({
   onBlockUpdate,
   onBlockDelete,
   onModuleAdd,
+  onModuleUpdate,
 }) {
   const [zoom, setZoom] = useState(100)
   const [showGrid, setShowGrid] = useState(false)
@@ -137,10 +154,11 @@ function CanvasArea({
       <ModuleTree
         course={course}
         currentPageId={currentPageId}
+        selectedElement={selectedElement}
         onPageChange={onPageChange}
         onPageAdd={onPageAdd}
-        onPageDelete={onPageDelete}
         onModuleAdd={onModuleAdd}
+        onElementSelect={onElementSelect}
       />
 
       <div className="flex-1 flex flex-col min-w-0">

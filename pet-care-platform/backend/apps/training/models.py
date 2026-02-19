@@ -1194,6 +1194,16 @@ class Comment(models.Model):
         verbose_name='Урок'
     )
 
+    # Комментарий к странице курса (CoursePage) — для новой архитектуры
+    page = models.ForeignKey(
+        'CoursePage',
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='comments',
+        verbose_name='Страница'
+    )
+
     content = models.TextField(
         verbose_name='Текст комментария'
     )
@@ -1243,12 +1253,20 @@ class Comment(models.Model):
         indexes = [
             models.Index(fields=['course', '-created_at']),
             models.Index(fields=['lesson', '-created_at']),
+            models.Index(fields=['page', '-created_at']),
             models.Index(fields=['parent', '-created_at']),
             models.Index(fields=['user', '-created_at']),
         ]
 
     def __str__(self):
-        target = self.course.title if self.course else self.lesson.title
+        if self.course:
+            target = self.course.title
+        elif self.lesson:
+            target = self.lesson.title
+        elif self.page:
+            target = self.page.title
+        else:
+            target = '—'
         return f"{self.user.email} - {target}"
 
     def get_replies(self):

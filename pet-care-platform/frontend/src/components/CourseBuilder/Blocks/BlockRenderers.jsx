@@ -736,7 +736,7 @@ export function FileDownloadRenderer({ block, mode = 'view', onComplete, onProgr
 export function CheckListRenderer({ block, mode = 'view', onComplete, onProgress }) {
   const [checkedItems, setCheckedItems] = useState(new Set())
 
-  const items = block.content?.items || []
+  const items = (block.content?.items || []).filter(item => (item?.text || '').trim())
 
   const handleItemToggle = (itemId) => {
     setCheckedItems(prev => {
@@ -990,6 +990,7 @@ export function CommentSectionRenderer({ block, mode = 'view', onComplete, onPro
 
   const courseId = block.content?.course_id
   const lessonId = block.content?.lesson_id
+  const pageId = block.content?.page_id
 
   return (
     <div className="bg-white border border-gray-200 rounded-lg p-6">
@@ -1000,10 +1001,11 @@ export function CommentSectionRenderer({ block, mode = 'view', onComplete, onPro
         </h3>
       </div>
 
-      {CommentsComponent && (courseId || lessonId) ? (
+      {CommentsComponent && (courseId || lessonId || pageId) ? (
         <CommentsComponent
           courseId={courseId}
           lessonId={lessonId}
+          pageId={pageId}
         />
       ) : (
         <div className="text-center text-gray-400 py-4">
