@@ -618,14 +618,13 @@ class CoursePageLearningView(APIView):
 
     def get(self, request, course_id, page_id):
         try:
-            course = Course.objects.get(id=course_id, is_active=True)
+            course = Course.objects.get(id=course_id)
         except Course.DoesNotExist:
             return Response(
                 {'error': 'Курс не найден'},
                 status=status.HTTP_404_NOT_FOUND
             )
 
-        # Проверка доступа к курсу
         if not has_course_access(request.user, course):
             return Response(
                 {'error': 'У вас нет доступа к этому курсу'},
@@ -682,14 +681,13 @@ class CoursePageListLearningView(APIView):
 
     def get(self, request, course_id):
         try:
-            course = Course.objects.get(id=course_id, is_active=True)
+            course = Course.objects.get(id=course_id)
         except Course.DoesNotExist:
             return Response(
                 {'error': 'Курс не найден'},
                 status=status.HTTP_404_NOT_FOUND
             )
 
-        # Проверка доступа к курсу
         if not has_course_access(request.user, course):
             return Response(
                 {'error': 'У вас нет доступа к этому курсу'},
@@ -739,14 +737,13 @@ class CoursePageCompleteView(APIView):
 
         course_id = page.course_id
         try:
-            course = Course.objects.get(id=course_id, is_active=True)
+            course = Course.objects.get(id=course_id)
         except Course.DoesNotExist:
             return Response(
                 {'error': 'Курс не найден'},
                 status=status.HTTP_404_NOT_FOUND
             )
 
-        # Проверка доступа к курсу
         if not has_course_access(request.user, course):
             return Response(
                 {'error': 'У вас нет доступа к этому курсу'},

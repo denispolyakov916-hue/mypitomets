@@ -31,7 +31,16 @@ const AdminLoginPage = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   
-  // Получаем URL для редиректа после входа
+  // Получаем URL для редиректа после входа (вычисляется после авторизации)
+  const getRedirectPath = (currentUser) => {
+    const savedPath = location.state?.from?.pathname;
+    if (savedPath && savedPath !== '/admin-panel' && savedPath !== '/admin-panel/') {
+      return savedPath;
+    }
+    return currentUser?.role === 'course_creator'
+      ? '/admin-panel/courses'
+      : '/admin-panel/dashboard';
+  };
   const from = location.state?.from?.pathname || '/admin-panel/dashboard';
   const redirectMessage = location.state?.message || '';
 
@@ -41,12 +50,12 @@ const AdminLoginPage = () => {
     setLocalError('');
   }, [clearError]);
 
-  // Если уже авторизован как админ - редирект
+  // Если уже авторизован как админ/создатель курсов - редирект
   useEffect(() => {
     if (isAuthenticated && (user?.is_staff || user?.role === 'course_creator')) {
-      navigate(from, { replace: true });
+      navigate(getRedirectPath(user), { replace: true });
     }
-  }, [isAuthenticated, user, navigate, from]);
+  }, [isAuthenticated, user, navigate]);
 
   /**
    * Валидация формы
@@ -141,9 +150,9 @@ const AdminLoginPage = () => {
       if (hasAccess) {
         console.log('[AdminLogin] Access granted, redirecting...');
         setShowSuccess(true);
-        // Небольшая задержка для показа success состояния
+        const redirectTo = getRedirectPath(currentUser);
         setTimeout(() => {
-          navigate(from, { replace: true });
+          navigate(redirectTo, { replace: true });
         }, 500);
       } else {
         console.log('[AdminLogin] Admin API access denied');

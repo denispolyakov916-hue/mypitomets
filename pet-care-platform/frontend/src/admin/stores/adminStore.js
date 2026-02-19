@@ -26,7 +26,6 @@ export const useAdminStore = create(
 
       // Проверка аутентификации администратора через API
       checkAuth: async () => {
-        // Берём токен из основного хранилища (localStorage)
         const token = localStorage.getItem('access_token');
         
         if (!token) {
@@ -34,13 +33,25 @@ export const useAdminStore = create(
           return false;
         }
 
+        const { role } = get();
+
+        // Создатели курсов не имеют доступа к stats/summary —
+        // доверяем роли из профиля, она уже установлена через setUser()
+        if (role === 'course_creator') {
+          set({
+            isAuthenticated: true,
+            error: null,
+            loading: false,
+            lastChecked: new Date().toISOString(),
+          });
+          return true;
+        }
+
         set({ loading: true });
 
         try {
-          // Проверяем токен через API (запрос к stats/summary)
-          const response = await adminAPI.stats.summary();
+          await adminAPI.stats.summary();
           
-          // Если запрос прошёл успешно - пользователь авторизован как админ
           set({
             isAuthenticated: true,
             error: null,
@@ -52,7 +63,6 @@ export const useAdminStore = create(
         } catch (error) {
           console.error('Admin auth check failed:', error);
           
-          // Если 403 - пользователь авторизован, но не админ
           if (error.response?.status === 403) {
             set({
               isAuthenticated: false,
@@ -61,7 +71,6 @@ export const useAdminStore = create(
               loading: false,
             });
           } else if (error.response?.status === 401) {
-            // Токен истёк или недействителен
             set({
               isAuthenticated: false,
               error: 'Требуется авторизация',

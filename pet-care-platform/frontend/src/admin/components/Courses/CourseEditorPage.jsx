@@ -17,6 +17,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { adminAPI } from '../../utils/api'
 import { getCourseBuilder, publishCourse } from '../../../api/courses'
+import { useAuthStore } from '../../../store/authStore'
 import CourseFormFields from '../Forms/CourseFormFields'
 import CourseBuilder from '../../../components/CourseBuilder/CourseBuilder'
 import ErrorBoundary from '../../../components/ErrorBoundary'
@@ -31,6 +32,8 @@ const STATUS_COLORS = {
 export default function CourseEditorPage() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const user = useAuthStore(s => s.user)
+  const canPublish = user?.is_staff || user?.is_superuser || user?.role === 'admin'
 
   const [course, setCourse] = useState(null)
   const [builderData, setBuilderData] = useState(null)
@@ -259,6 +262,14 @@ export default function CourseEditorPage() {
 
         <div className="flex items-center gap-2 flex-shrink-0">
           <button
+            onClick={() => window.open(`/training/courses/${id}/learn`, '_blank', 'noopener,noreferrer')}
+            className="px-3 py-1.5 text-xs font-medium border border-blue-300 text-blue-700 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors"
+            title="Предпросмотр курса"
+          >
+            👁 Предпросмотр
+          </button>
+
+          <button
             onClick={saveCourse}
             disabled={saving || !isDirty}
             className="px-3 py-1.5 text-xs font-medium border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-40 text-gray-600 transition-colors"
@@ -266,22 +277,24 @@ export default function CourseEditorPage() {
             Сохранить
           </button>
 
-          {isPublished ? (
-            <button
-              onClick={handleUnpublish}
-              disabled={saving}
-              className="px-3 py-1.5 text-xs font-medium border border-amber-300 text-amber-700 bg-amber-50 rounded-lg hover:bg-amber-100 disabled:opacity-50 transition-colors"
-            >
-              Снять с публикации
-            </button>
-          ) : (
-            <button
-              onClick={handlePublish}
-              disabled={saving}
-              className="px-3 py-1.5 text-xs font-medium bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 transition-colors"
-            >
-              Опубликовать
-            </button>
+          {canPublish && (
+            isPublished ? (
+              <button
+                onClick={handleUnpublish}
+                disabled={saving}
+                className="px-3 py-1.5 text-xs font-medium border border-amber-300 text-amber-700 bg-amber-50 rounded-lg hover:bg-amber-100 disabled:opacity-50 transition-colors"
+              >
+                Снять с публикации
+              </button>
+            ) : (
+              <button
+                onClick={handlePublish}
+                disabled={saving}
+                className="px-3 py-1.5 text-xs font-medium bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 transition-colors"
+              >
+                Опубликовать
+              </button>
+            )
           )}
         </div>
       </div>

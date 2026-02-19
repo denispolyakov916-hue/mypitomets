@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Navigate } from 'react-router-dom';
 
 // Components
 import Dashboard from './Dashboard';
@@ -8,7 +9,11 @@ import AnalyticsDashboard from '../Analytics/AnalyticsDashboard';
 import { useAdminAuth } from '../../hooks/useAdminAuth';
 
 const DashboardSelector = () => {
-  const { user } = useAdminAuth();
+  const { user, isCourseCreator } = useAdminAuth();
+
+  if (isCourseCreator) {
+    return <Navigate to="/admin-panel/courses" replace />;
+  }
   const [dashboardType, setDashboardType] = useState('overview');
 
   // Определяем доступные дашборды в зависимости от роли

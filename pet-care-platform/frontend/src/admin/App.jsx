@@ -43,11 +43,17 @@ import { useAdminStore } from './stores/adminStore';
 import { useAuthStore } from '../store/authStore';
 
 /**
- * AdminApp - Главный компонент админ-панели
- * 
- * Авторизация уже проверена в AdminRoute.
- * Здесь мы синхронизируем adminStore с authStore и рендерим маршруты.
+ * Редирект на страницу по умолчанию в зависимости от роли:
+ * course_creator → /admin-panel/courses, остальные → /admin-panel/dashboard
  */
+const AdminDefaultRedirect = () => {
+  const user = useAuthStore(s => s.user);
+  const target = user?.role === 'course_creator'
+    ? '/admin-panel/courses'
+    : '/admin-panel/dashboard';
+  return <Navigate to={target} replace />;
+};
+
 const AdminApp = () => {
   const { user } = useAuthStore();
   const { setUser, checkAuth } = useAdminStore();
@@ -69,8 +75,8 @@ const AdminApp = () => {
         {/* Страница входа (для прямого доступа по URL) */}
         <Route path="login" element={<AdminLoginPage />} />
         
-        {/* Главный дашборд */}
-        <Route index element={<DashboardSelector />} />
+        {/* Индекс — редирект в зависимости от роли */}
+        <Route index element={<AdminDefaultRedirect />} />
         <Route path="dashboard" element={<DashboardSelector />} />
 
         {/* Аналитика */}
@@ -88,7 +94,7 @@ const AdminApp = () => {
         <Route path="courses/:id/edit" element={<CourseEditorPage />} />
 
         {/* Редирект для неизвестных маршрутов */}
-        <Route path="*" element={<Navigate to="/admin-panel/dashboard" replace />} />
+        <Route path="*" element={<AdminDefaultRedirect />} />
       </Routes>
     </AdminLayout>
   );
