@@ -62,6 +62,8 @@ from .views import (
     CourseBuilderView,
     CoursePublishView,
     BlockReorderView,
+    PagesReorderView,
+    ModulesReorderView,
     CoursePageViewSet,
     ContentBlockViewSet,
     BlockTemplateViewSet,
@@ -223,6 +225,12 @@ urlpatterns = [
     # PATCH /api/courses/pages/{page_id}/blocks/reorder/
     path('pages/<int:page_id>/blocks/reorder/', BlockReorderView.as_view(), name='block-reorder'),
 
+    # Перестановка страниц курса
+    # PATCH /api/courses/{course_id}/builder/pages/reorder/
+    path('<int:course_id>/builder/pages/reorder/', PagesReorderView.as_view(), name='pages-reorder'),
+    # Перестановка модулей курса
+    # PATCH /api/courses/{course_id}/builder/modules/reorder/
+    path('<int:course_id>/builder/modules/reorder/', ModulesReorderView.as_view(), name='modules-reorder'),
     # Управление страницами курса (ADMIN: создание)
     # POST /api/courses/{course_id}/builder/pages/
     path('<int:course_id>/builder/pages/', CoursePageViewSet.as_view({

@@ -19,6 +19,7 @@ import { adminAPI } from '../../utils/api'
 import { getCourseBuilder, publishCourse } from '../../../api/courses'
 import CourseFormFields from '../Forms/CourseFormFields'
 import CourseBuilder from '../../../components/CourseBuilder/CourseBuilder'
+import ErrorBoundary from '../../../components/ErrorBoundary'
 
 const STATUS_LABELS = { draft: 'Черновик', published: 'Опубликован', archived: 'Архив' }
 const STATUS_COLORS = {
@@ -64,9 +65,20 @@ export default function CourseEditorPage() {
 
       try {
         const builder = await getCourseBuilder(id)
-        setBuilderData({ ...courseData, ...builder })
-      } catch {
-        setBuilderData({ ...courseData, modules: [], orphan_pages: [], pages: [] })
+        setBuilderData({
+          ...courseData,
+          ...builder,
+          modules: builder?.modules ?? [],
+          orphan_pages: builder?.orphan_pages ?? [],
+        })
+      } catch (err) {
+        console.warn('Builder load failed, using empty structure:', err)
+        setBuilderData({
+          ...courseData,
+          modules: [],
+          orphan_pages: [],
+          pages: [],
+        })
       }
     } catch (err) {
       console.error('Error loading course:', err)
@@ -300,22 +312,24 @@ export default function CourseEditorPage() {
       {/* ─── Tab content ─── */}
       {/* Both tabs rendered, toggled via display to preserve builder state */}
       <div className="flex-1 overflow-hidden relative">
-        <div className={`absolute inset-0 overflow-y-auto bg-gray-50 ${activeTab === 'settings' ? '' : 'hidden'}`}>
-          <div className="max-w-3xl mx-auto p-5 pb-20">
-            <CourseFormFields values={course} onChange={handleFieldChange} />
+        <ErrorBoundary>
+          <div className={`absolute inset-0 overflow-y-auto bg-gray-50 ${activeTab === 'settings' ? '' : 'hidden'}`}>
+            <div className="max-w-3xl mx-auto p-5 pb-20">
+              <CourseFormFields values={course} onChange={handleFieldChange} />
+            </div>
           </div>
-        </div>
 
-        <div className={`absolute inset-0 ${activeTab === 'builder' ? '' : 'hidden'}`}>
-          {builderData && (
-            <CourseBuilder
-              course={builderData}
-              onSave={() => {}}
-              onPublish={handlePublish}
-              saving={saving}
-            />
-          )}
-        </div>
+          <div className={`absolute inset-0 ${activeTab === 'builder' ? '' : 'hidden'}`}>
+            {builderData && (
+              <CourseBuilder
+                course={builderData}
+                onSave={() => {}}
+                onPublish={handlePublish}
+                saving={saving}
+              />
+            )}
+          </div>
+        </ErrorBoundary>
       </div>
     </div>
   )

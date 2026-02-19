@@ -15,6 +15,7 @@ import {
   createCoursePage,
   updateCoursePage,
   deleteCoursePage,
+  deleteCourseModule,
   createContentBlock,
   updateContentBlock,
   deleteContentBlock,
@@ -67,8 +68,9 @@ function CourseBuilder({ course, onSave, onPublish, saving }) {
   const handleElementSelect = useCallback((element) => setSelectedElement(element), [])
   const handlePageChange = useCallback((pageId) => {
     setCurrentPageId(pageId)
-    setSelectedElement(null)
-  }, [])
+    const page = allPages.find(p => p.id === pageId)
+    setSelectedElement(page ? { ...page, type: 'page' } : null)
+  }, [allPages])
 
   /* ─── Block CRUD ─── */
   const handleBlockAdd = useCallback(async (blockType, pageId, templateData) => {
@@ -223,6 +225,24 @@ function CourseBuilder({ course, onSave, onPublish, saving }) {
     }
   }, [courseData?.id, refreshCourseData, success, showError])
 
+  const handleModuleDelete = useCallback(async (moduleId) => {
+    try {
+      const deletedModule = courseData?.modules?.find(m => m.id === moduleId)
+      const pageIdsInModule = (deletedModule?.pages || []).map(p => p.id)
+      await deleteCourseModule(moduleId)
+      refreshCourseData(prev => ({
+        ...prev,
+        modules: (prev.modules || []).filter(m => m.id !== moduleId),
+      }))
+      if (selectedElement?.type === 'module' && selectedElement?.id === moduleId) setSelectedElement(null)
+      if (pageIdsInModule.includes(currentPageId)) setCurrentPageId(null)
+      success('Модуль удалён')
+    } catch (err) {
+      console.error('Error deleting module:', err)
+      showError('Не удалось удалить модуль')
+    }
+  }, [courseData, refreshCourseData, success, showError, selectedElement, currentPageId])
+
   /* ─── DnD handler (shared context for toolbox + canvas) ─── */
   const handleDragEnd = useCallback((event) => {
     const { active, over } = event
@@ -280,6 +300,7 @@ function CourseBuilder({ course, onSave, onPublish, saving }) {
             onBlockDelete={handleBlockDelete}
             onModuleAdd={handleModuleAdd}
             onModuleUpdate={handleModuleUpdate}
+            onModuleDelete={handleModuleDelete}
           />
         </div>
 
@@ -289,7 +310,9 @@ function CourseBuilder({ course, onSave, onPublish, saving }) {
             selectedElement={selectedElement}
             onBlockUpdate={handleBlockUpdate}
             onPageUpdate={handlePageUpdate}
+            onPageDelete={handlePageDelete}
             onModuleUpdate={handleModuleUpdate}
+            onModuleDelete={handleModuleDelete}
           />
         </div>
       </div>

@@ -346,6 +346,34 @@ export const deleteCoursePage = async (courseId, pageId) => {
 }
 
 /**
+ * Перестановка страниц в модуле или среди orphan-страниц
+ *
+ * @param {number} courseId - ID курса
+ * @param {number|null} moduleId - ID модуля (null для orphan-страниц)
+ * @param {number[]} pageIds - Порядок ID страниц
+ * @returns {Promise<Object>} Результат
+ */
+export const reorderCoursePages = async (courseId, moduleId, pageIds) => {
+  return await api.patch(`/courses/${courseId}/builder/pages/reorder/`, {
+    module_id: moduleId,
+    page_ids: pageIds,
+  })
+}
+
+/**
+ * Перестановка модулей курса
+ *
+ * @param {number} courseId - ID курса
+ * @param {number[]} moduleIds - Порядок ID модулей
+ * @returns {Promise<Object>} Результат
+ */
+export const reorderCourseModules = async (courseId, moduleIds) => {
+  return await api.patch(`/courses/${courseId}/builder/modules/reorder/`, {
+    module_ids: moduleIds,
+  })
+}
+
+/**
  * Создание блока на странице
  *
  * @param {number} pageId - ID страницы

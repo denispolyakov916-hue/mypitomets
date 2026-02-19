@@ -21,7 +21,7 @@ const SPAN_PRESETS = [
   { label: 'Полная', value: 12 },
 ]
 
-function PropertiesPanel({ selectedElement, onBlockUpdate, onPageUpdate, onModuleUpdate }) {
+function PropertiesPanel({ selectedElement, onBlockUpdate, onPageUpdate, onPageDelete, onModuleUpdate, onModuleDelete }) {
   const [localElement, setLocalElement] = useState(null)
   const debounceRef = useRef(null)
 
@@ -86,16 +86,16 @@ function PropertiesPanel({ selectedElement, onBlockUpdate, onPageUpdate, onModul
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 space-y-5">
-        {isPage && <PageProperties element={localElement} updateLocal={updateLocal} />}
+        {isPage && <PageProperties element={localElement} updateLocal={updateLocal} onDelete={onPageDelete} />}
         {isBlock && <BlockProperties element={localElement} updateLocal={updateLocal} />}
-        {isModule && <ModuleProperties element={localElement} updateLocal={updateLocal} />}
+        {isModule && <ModuleProperties element={localElement} updateLocal={updateLocal} onDelete={onModuleDelete} />}
       </div>
     </div>
   )
 }
 
 /* ─── Module Properties ─── */
-function ModuleProperties({ element, updateLocal }) {
+function ModuleProperties({ element, updateLocal, onDelete }) {
   return (
     <>
       <Field label="Название">
@@ -116,12 +116,27 @@ function ModuleProperties({ element, updateLocal }) {
           placeholder="Описание модуля"
         />
       </Field>
+      {onDelete && (
+        <div className="pt-4 mt-4 border-t border-gray-200">
+          <button
+            type="button"
+            onClick={() => {
+              if (window.confirm('Удалить модуль «' + (element.title || 'Без названия') + '» и все страницы в нём?')) {
+                onDelete(element.id)
+              }
+            }}
+            className="w-full py-2 px-3 text-sm font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors"
+          >
+            Удалить модуль
+          </button>
+        </div>
+      )}
     </>
   )
 }
 
 /* ─── Page Properties ─── */
-function PageProperties({ element, updateLocal }) {
+function PageProperties({ element, updateLocal, onDelete }) {
   return (
     <>
       <Field label="Название">
@@ -177,6 +192,22 @@ function PageProperties({ element, updateLocal }) {
           />
         </div>
       </Field>
+
+      {onDelete && (
+        <div className="pt-4 mt-4 border-t border-gray-200">
+          <button
+            type="button"
+            onClick={() => {
+              if (window.confirm('Удалить страницу «' + (element.title || 'Без названия') + '»?')) {
+                onDelete(element.id)
+              }
+            }}
+            className="w-full py-2 px-3 text-sm font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors"
+          >
+            Удалить страницу
+          </button>
+        </div>
+      )}
     </>
   )
 }

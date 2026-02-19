@@ -166,6 +166,8 @@ export {
   createCoursePage,
   updateCoursePage,
   deleteCoursePage,
+  reorderCoursePages,
+  reorderCourseModules,
   completeCoursePage,
   createContentBlock,
   updateContentBlock,

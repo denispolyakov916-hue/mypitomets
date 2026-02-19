@@ -28,7 +28,7 @@ from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from rest_framework.viewsets import ModelViewSet
 from rest_framework.decorators import action
 
-from ..models import Course, CoursePage, ContentBlock, BlockTemplate
+from ..models import Course, CourseModule, CoursePage, ContentBlock, BlockTemplate
 from ..serializers import (
     CourseBuilderSerializer, CoursePageSerializer,
     ContentBlockSerializer, BlockTemplateSerializer
@@ -123,6 +123,58 @@ class BlockReorderView(APIView):
             ContentBlock.objects.filter(id=block_id, page=page).update(order=i)
 
         return Response({'message': 'Порядок обновлён', 'count': len(block_ids)})
+
+
+class PagesReorderView(APIView):
+    """Reorder pages within a module or among orphans."""
+    permission_classes = [IsAdminUser]
+
+    def patch(self, request, course_id):
+        module_id = request.data.get('module_id')
+        page_ids = request.data.get('page_ids', [])
+        if not page_ids:
+            return Response({'error': 'page_ids обязателен'}, status=status.HTTP_400_BAD_REQUEST)
+
+        course = get_object_or_404(Course, id=course_id)
+        if module_id is None:
+            queryset = CoursePage.objects.filter(course_id=course.id, module__isnull=True, is_active=True)
+        else:
+            queryset = CoursePage.objects.filter(course_id=course.id, module_id=module_id, is_active=True)
+
+        existing_ids = set(queryset.values_list('id', flat=True))
+        if set(page_ids) != existing_ids:
+            return Response(
+                {'error': 'page_ids не совпадает с страницами модуля'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        for i, page_id in enumerate(page_ids, start=1):
+            CoursePage.objects.filter(id=page_id).update(order_number=i)
+
+        return Response({'message': 'Порядок страниц обновлён', 'count': len(page_ids)})
+
+
+class ModulesReorderView(APIView):
+    """Reorder modules within a course."""
+    permission_classes = [IsAdminUser]
+
+    def patch(self, request, course_id):
+        module_ids = request.data.get('module_ids', [])
+        if not module_ids:
+            return Response({'error': 'module_ids обязателен'}, status=status.HTTP_400_BAD_REQUEST)
+
+        queryset = CourseModule.objects.filter(course_id=course_id, is_active=True)
+        existing_ids = set(queryset.values_list('id', flat=True))
+        if set(module_ids) != existing_ids:
+            return Response(
+                {'error': 'module_ids не совпадает с модулями курса'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        for i, mod_id in enumerate(module_ids, start=1):
+            CourseModule.objects.filter(id=mod_id).update(order_number=i)
+
+        return Response({'message': 'Порядок модулей обновлён', 'count': len(module_ids)})
 
 
 class CoursePageViewSet(ModelViewSet):

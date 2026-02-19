@@ -1536,6 +1536,7 @@ class CoursePage(models.Model):
         db_table = 'course_pages'
         verbose_name = 'Страница курса'
         verbose_name_plural = 'Страницы курсов'
+        ordering = ['order_number', 'id']
 
     def __str__(self):
         return f"Курс {self.course_id} - Страница {self.order_number}: {self.title}"

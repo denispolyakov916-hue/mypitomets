@@ -8,7 +8,7 @@
 import { useState } from 'react'
 import DroppablePage from './DroppablePage'
 
-function ModuleTree({ course, currentPageId, selectedElement, onPageChange, onPageAdd, onModuleAdd, onElementSelect }) {
+function ModuleTree({ course, currentPageId, selectedElement, onPageChange, onPageAdd, onPageDelete, onModuleAdd, onModuleDelete, onElementSelect }) {
   const [expandedModules, setExpandedModules] = useState(() => {
     const init = {}
     course?.modules?.forEach(m => { init[m.id] = true })
@@ -47,39 +47,87 @@ function ModuleTree({ course, currentPageId, selectedElement, onPageChange, onPa
       <div className="flex-1 overflow-y-auto px-2 py-2 space-y-0.5">
         {modules.map((module) => (
           <div key={module.id}>
-            <button
-              onClick={() => handleModuleClick(module)}
-              className={`w-full flex items-center gap-1.5 px-2 py-1.5 text-left text-xs font-medium rounded ${
+            <div
+              className={`group/module flex items-center gap-1.5 px-2 py-1.5 rounded ${
                 selectedElement?.type === 'module' && selectedElement?.id === module.id
-                  ? 'bg-blue-100 text-blue-700'
-                  : 'text-gray-700 hover:bg-gray-50'
+                  ? 'bg-blue-100'
+                  : 'hover:bg-gray-50'
               }`}
             >
-              <span
-                className="text-[10px] text-gray-400 cursor-pointer shrink-0"
-                onClick={(e) => toggleModule(e, module.id)}
+              <button
+                onClick={() => handleModuleClick(module)}
+                className={`flex-1 flex items-center gap-1.5 text-left text-xs font-medium min-w-0 ${
+                  selectedElement?.type === 'module' && selectedElement?.id === module.id
+                    ? 'text-blue-700'
+                    : 'text-gray-700'
+                }`}
               >
-                {expandedModules[module.id] ? '▼' : '▶'}
-              </span>
-              <span className="truncate flex-1">{module.title || 'Без названия'}</span>
-              <span className="text-[10px] text-gray-400">{(module.pages || []).length}</span>
-            </button>
+                <span
+                  className="text-[10px] text-gray-400 cursor-pointer shrink-0"
+                  onClick={(e) => toggleModule(e, module.id)}
+                >
+                  {expandedModules[module.id] ? '▼' : '▶'}
+                </span>
+                <span className="truncate flex-1">{module.title || 'Без названия'}</span>
+                <span className="text-[10px] text-gray-400">{(module.pages || []).length}</span>
+              </button>
+              {onModuleDelete && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    if (window.confirm('Удалить модуль «' + (module.title || 'Без названия') + '» и все страницы в нём?')) {
+                      onModuleDelete(module.id)
+                    }
+                  }}
+                  className={`shrink-0 p-0.5 text-gray-400 hover:text-red-600 rounded transition-opacity ${
+                    selectedElement?.type === 'module' && selectedElement?.id === module.id ? 'opacity-100' : 'opacity-0 group-hover/module:opacity-100'
+                  }`}
+                  title="Удалить модуль"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                </button>
+              )}
+            </div>
 
             {expandedModules[module.id] && (
               <div className="ml-4 space-y-px">
                 {(module.pages || []).map((page) => (
-                  <button
+                  <div
                     key={page.id}
-                    onClick={() => onPageChange(page.id)}
-                    className={`w-full flex items-center gap-1.5 px-2 py-1 text-left text-[11px] rounded transition-colors ${
-                      currentPageId === page.id
-                        ? 'bg-blue-100 text-blue-700 font-medium'
-                        : 'text-gray-600 hover:bg-gray-50'
+                    className={`group flex items-center gap-1 px-2 py-1 rounded transition-colors ${
+                      currentPageId === page.id ? 'bg-blue-100' : 'hover:bg-gray-50'
                     }`}
                   >
-                    <span className="text-[10px]">{pageTypeIcon(page.page_type)}</span>
-                    <span className="truncate">{page.title || 'Без названия'}</span>
-                  </button>
+                    <button
+                      onClick={() => onPageChange(page.id)}
+                      className={`flex-1 flex items-center gap-1.5 text-left text-[11px] min-w-0 ${
+                        currentPageId === page.id ? 'text-blue-700 font-medium' : 'text-gray-600'
+                      }`}
+                    >
+                      <span className="text-[10px] shrink-0">{pageTypeIcon(page.page_type)}</span>
+                      <span className="truncate">{page.title || 'Без названия'}</span>
+                    </button>
+                    {onPageDelete && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          if (window.confirm('Удалить страницу «' + (page.title || 'Без названия') + '»?')) {
+                            onPageDelete(page.id)
+                          }
+                        }}
+                        className={`shrink-0 p-0.5 text-gray-400 hover:text-red-600 rounded transition-opacity ${
+                          currentPageId === page.id ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+                        }`}
+                        title="Удалить страницу"
+                      >
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      </button>
+                    )}
+                  </div>
                 ))}
                 <button
                   onClick={() => onPageAdd(module.id)}
@@ -94,18 +142,40 @@ function ModuleTree({ course, currentPageId, selectedElement, onPageChange, onPa
           <div>
             <div className="px-2 py-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Без модуля</div>
             {orphanPages.map((page) => (
-              <button
+              <div
                 key={page.id}
-                onClick={() => onPageChange(page.id)}
-                className={`w-full flex items-center gap-1.5 px-2 py-1 text-left text-[11px] rounded transition-colors ${
-                  currentPageId === page.id
-                    ? 'bg-blue-100 text-blue-700 font-medium'
-                    : 'text-gray-600 hover:bg-gray-50'
+                className={`group flex items-center gap-1 px-2 py-1 rounded transition-colors ${
+                  currentPageId === page.id ? 'bg-blue-100' : 'hover:bg-gray-50'
                 }`}
               >
-                <span className="text-[10px]">{pageTypeIcon(page.page_type)}</span>
-                <span className="truncate">{page.title || 'Без названия'}</span>
-              </button>
+                <button
+                  onClick={() => onPageChange(page.id)}
+                  className={`flex-1 flex items-center gap-1.5 text-left text-[11px] min-w-0 ${
+                    currentPageId === page.id ? 'text-blue-700 font-medium' : 'text-gray-600'
+                  }`}
+                >
+                  <span className="text-[10px] shrink-0">{pageTypeIcon(page.page_type)}</span>
+                  <span className="truncate">{page.title || 'Без названия'}</span>
+                </button>
+                {onPageDelete && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      if (window.confirm('Удалить страницу «' + (page.title || 'Без названия') + '»?')) {
+                        onPageDelete(page.id)
+                      }
+                    }}
+                    className={`shrink-0 p-0.5 text-gray-400 hover:text-red-600 rounded transition-opacity ${
+                      currentPageId === page.id ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+                    }`}
+                    title="Удалить страницу"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                  </button>
+                )}
+              </div>
             ))}
           </div>
         )}
@@ -141,6 +211,7 @@ function CanvasArea({
   onBlockDelete,
   onModuleAdd,
   onModuleUpdate,
+  onModuleDelete,
 }) {
   const [zoom, setZoom] = useState(100)
   const [showGrid, setShowGrid] = useState(false)
@@ -157,7 +228,9 @@ function CanvasArea({
         selectedElement={selectedElement}
         onPageChange={onPageChange}
         onPageAdd={onPageAdd}
+        onPageDelete={onPageDelete}
         onModuleAdd={onModuleAdd}
+        onModuleDelete={onModuleDelete}
         onElementSelect={onElementSelect}
       />
 
@@ -197,7 +270,7 @@ function CanvasArea({
                 showGrid={showGrid}
                 blockIds={blockIds}
                 onElementSelect={onElementSelect}
-                onPageSelect={() => {}}
+                onPageSelect={() => onElementSelect(currentPage ? { ...currentPage, type: 'page' } : null)}
                 onPageUpdate={onPageUpdate}
                 onBlockUpdate={onBlockUpdate}
                 onBlockDelete={onBlockDelete}
