@@ -30,6 +30,8 @@ export const useAdminAuth = () => {
     role: adminStore.role,
     
     // Флаги прав
+    isAdmin: authStore.user?.role === 'admin',
+    isCourseCreator: authStore.user?.role === 'course_creator',
     isStaff: authStore.user?.is_staff || false,
     isSuperuser: authStore.user?.is_superuser || false,
     

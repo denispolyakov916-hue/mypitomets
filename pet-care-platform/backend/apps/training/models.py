@@ -123,6 +123,15 @@ class Course(models.Model):
         verbose_name='Цена'
     )
     image_url = models.URLField(blank=True, null=True, verbose_name='URL обложки')
+
+    author = models.ForeignKey(
+        'users.User',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='authored_courses',
+        verbose_name='Автор курса',
+    )
     
     pet_type = models.CharField(
         max_length=10,
@@ -665,6 +674,7 @@ class Course(models.Model):
             'is_free': self.is_free,
             'rating': round(self.get_average_rating(), 1),
             'reviews_count': self.get_reviews_count(),
+            'author_id': str(self.author_id) if self.author_id else None,
         }
         
         if detailed:

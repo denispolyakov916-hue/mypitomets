@@ -32,13 +32,7 @@ const DashboardSelector = () => {
 
     if (!user) return [];
 
-    // Определяем роль пользователя
-    let userRole = 'staff';
-    if (user.is_superuser) {
-      userRole = 'admin';
-    } else if (user.is_staff) {
-      userRole = 'manager';
-    }
+    const userRole = user.role === 'admin' ? 'admin' : (user.role === 'course_creator' ? 'manager' : 'staff');
 
     return dashboards.filter(dashboard => dashboard.roles.includes(userRole));
   };
@@ -106,7 +100,7 @@ const DashboardSelector = () => {
                   {user?.first_name} {user?.last_name}
                 </div>
                 <div className="text-xs text-gray-500">
-                  {user?.is_superuser ? 'Администратор' : user?.is_staff ? 'Менеджер' : 'Сотрудник'}
+                  {user?.role === 'admin' ? 'Администратор' : user?.role === 'course_creator' ? 'Создатель курсов' : 'Пользователь'}
                 </div>
               </div>
             </div>

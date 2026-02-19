@@ -1,16 +1,19 @@
 import React, { useState } from 'react';
 import { useAdminStore } from '../../stores/adminStore';
+import { useAuthStore } from '../../../store/authStore';
 
 // Components
 import NotificationCenter from '../Notifications/NotificationCenter';
 
 const Header = ({ onMenuClick }) => {
   const [notificationsOpen, setNotificationsOpen] = useState(false);
-  const { user, logout } = useAdminStore();
+  const { user, logout: adminLogout } = useAdminStore();
+  const { logout: authLogout } = useAuthStore();
 
   const handleLogout = async () => {
     try {
-      await logout();
+      adminLogout();
+      await authLogout();
       window.location.href = '/admin-panel/login';
     } catch (error) {
       console.error('Logout failed:', error);
@@ -53,7 +56,7 @@ const Header = ({ onMenuClick }) => {
                 {user?.email || 'Администратор'}
               </div>
               <div className="text-xs text-gray-500">
-                {user?.is_superuser ? 'Супервайзер' : 'Администратор'}
+                {user?.role === 'admin' ? 'Администратор' : user?.role === 'course_creator' ? 'Создатель курсов' : 'Пользователь'}
               </div>
             </div>
 

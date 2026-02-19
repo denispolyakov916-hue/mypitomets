@@ -11,7 +11,6 @@ import { useForm } from '../../hooks/useForm';
 // Utils
 import { adminAPI } from '../../utils/api';
 
-// Валидация формы пользователя
 const validateUser = (values) => {
   const errors = {};
 
@@ -19,10 +18,6 @@ const validateUser = (values) => {
     errors.email = 'Email обязателен';
   } else if (!/\S+@\S+\.\S+/.test(values.email)) {
     errors.email = 'Некорректный email';
-  }
-
-  if (!values.first_name && !values.last_name) {
-    errors.first_name = 'Укажите имя или фамилию';
   }
 
   if (values.phone && !/^(\+7|8)?[\s\-]?\(?[0-9]{3}\)?[\s\-]?[0-9]{3}[\s\-]?[0-9]{2}[\s\-]?[0-9]{2}$/.test(values.phone)) {
@@ -57,8 +52,7 @@ const UserForm = ({
       phone: '',
       default_address: '',
       is_active: true,
-      is_staff: false,
-      is_superuser: false
+      role: 'user',
     },
     validateUser
   );
@@ -73,8 +67,7 @@ const UserForm = ({
         phone: '',
         default_address: '',
         is_active: true,
-        is_staff: false,
-        is_superuser: false
+        role: 'user',
       });
     }
   }, [isOpen, user, reset]);
@@ -193,20 +186,16 @@ const UserForm = ({
             />
 
             <FormField
-              label="Администратор"
-              name="is_staff"
-              type="checkbox"
-              value={values.is_staff}
+              label="Роль"
+              name="role"
+              type="select"
+              value={values.role || 'user'}
               onChange={handleChange}
-            />
-
-            <FormField
-              label="Супервайзер"
-              name="is_superuser"
-              type="checkbox"
-              value={values.is_superuser}
-              onChange={handleChange}
-            />
+            >
+              <option value="user">Пользователь</option>
+              <option value="course_creator">Создатель курсов</option>
+              <option value="admin">Администратор</option>
+            </FormField>
           </div>
         </div>
 

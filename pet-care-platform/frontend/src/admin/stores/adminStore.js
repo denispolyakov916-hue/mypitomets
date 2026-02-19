@@ -88,12 +88,12 @@ export const useAdminStore = create(
           return;
         }
 
-        const role = user.is_superuser ? 'superuser' : (user.is_staff ? 'staff' : null);
+        const role = user.role || (user.is_superuser ? 'admin' : (user.is_staff ? 'admin' : null));
         
         set({
           user,
           role,
-          isAuthenticated: !!role, // Только staff и superuser могут быть админами
+          isAuthenticated: !!role && role !== 'user',
           error: null,
         });
       },
@@ -102,31 +102,21 @@ export const useAdminStore = create(
       getRole: () => {
         const { user } = get();
         if (!user) return null;
-        if (user.is_superuser) return 'superuser';
-        if (user.is_staff) return 'staff';
-        return null;
+        return user.role || null;
       },
 
       // Проверка прав на определённое действие
       hasPermission: (permission) => {
         const { role } = get();
         
-        // Superuser имеет все права
-        if (role === 'superuser') return true;
+        if (role === 'admin') return true;
         
-        // Staff имеет ограниченные права
-        if (role === 'staff') {
-          const staffPermissions = [
-            'view_dashboard',
-            'view_analytics',
-            'view_orders',
-            'edit_orders',
-            'view_products',
+        if (role === 'course_creator') {
+          const creatorPermissions = [
             'view_courses',
             'edit_courses',
-            'export_data',
           ];
-          return staffPermissions.includes(permission);
+          return creatorPermissions.includes(permission);
         }
         
         return false;

@@ -24,11 +24,19 @@ from django.shortcuts import get_object_or_404
 from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated, IsAdminUser
+from rest_framework.permissions import IsAuthenticated, IsAdminUser, BasePermission
 from rest_framework.viewsets import ModelViewSet
 from rest_framework.decorators import action
 
 from ..models import Course, CourseModule, CoursePage, ContentBlock, BlockTemplate
+
+
+class IsAdminOrCourseAuthor(BasePermission):
+    """Админ или создатель курса (владелец проверяется в каждом view)."""
+    def has_permission(self, request, view):
+        if not request.user or not request.user.is_authenticated:
+            return False
+        return request.user.is_staff or getattr(request.user, 'role', None) == 'course_creator'
 from ..serializers import (
     CourseBuilderSerializer, CoursePageSerializer,
     ContentBlockSerializer, BlockTemplateSerializer
@@ -41,10 +49,19 @@ class CourseBuilderView(APIView):
     """
     View для получения полной структуры курса с страницами и блоками.
     Используется в конструкторе курсов.
-    Доступ: только администраторы (is_staff).
+    Доступ: администраторы и авторы курса.
     """
 
-    permission_classes = [IsAdminUser]
+    permission_classes = [IsAdminOrCourseAuthor]
+
+    def _check_ownership(self, request, course):
+        """Создатели курсов могут работать только со своими курсами."""
+        if not request.user.is_staff and course.author_id != request.user.id:
+            return Response(
+                {'error': 'Вы можете редактировать только свои курсы'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        return None
 
     def get(self, request, course_id):
         """Получить структуру курса для конструктора."""
@@ -53,6 +70,10 @@ class CourseBuilderView(APIView):
         except Course.DoesNotExist:
             from core.exceptions import ApiError
             raise ApiError.not_found('Курс не найден', error_code='COURSE_NOT_FOUND')
+
+        denied = self._check_ownership(request, course)
+        if denied:
+            return denied
 
         serializer = CourseBuilderSerializer(course)
         return Response(serializer.data)
@@ -64,6 +85,10 @@ class CourseBuilderView(APIView):
         except Course.DoesNotExist:
             from core.exceptions import ApiError
             raise ApiError.not_found('Курс не найден', error_code='COURSE_NOT_FOUND')
+
+        denied = self._check_ownership(request, course)
+        if denied:
+            return denied
 
         data = request.data
         if 'title' in data:
@@ -107,7 +132,7 @@ class CoursePublishView(APIView):
 
 class BlockReorderView(APIView):
     """Reorder blocks within a page."""
-    permission_classes = [IsAdminUser]
+    permission_classes = [IsAdminOrCourseAuthor]
 
     def patch(self, request, page_id):
         block_ids = request.data.get('block_ids', [])
@@ -127,7 +152,7 @@ class BlockReorderView(APIView):
 
 class PagesReorderView(APIView):
     """Reorder pages within a module or among orphans."""
-    permission_classes = [IsAdminUser]
+    permission_classes = [IsAdminOrCourseAuthor]
 
     def patch(self, request, course_id):
         module_id = request.data.get('module_id')
@@ -156,7 +181,7 @@ class PagesReorderView(APIView):
 
 class ModulesReorderView(APIView):
     """Reorder modules within a course."""
-    permission_classes = [IsAdminUser]
+    permission_classes = [IsAdminOrCourseAuthor]
 
     def patch(self, request, course_id):
         module_ids = request.data.get('module_ids', [])
@@ -233,10 +258,10 @@ class PageMoveToModuleView(APIView):
 class CoursePageViewSet(ModelViewSet):
     """
     ViewSet для управления страницами курсов.
-    Доступ: только администраторы (is_staff).
+    Доступ: администраторы и авторы курса.
     """
 
-    permission_classes = [IsAdminUser]
+    permission_classes = [IsAdminOrCourseAuthor]
     serializer_class = CoursePageSerializer
 
     def get_queryset(self):
@@ -259,10 +284,10 @@ class CoursePageViewSet(ModelViewSet):
 class ContentBlockViewSet(ModelViewSet):
     """
     ViewSet для управления блоками контента.
-    Доступ: только администраторы (is_staff).
+    Доступ: администраторы и авторы курса.
     """
 
-    permission_classes = [IsAdminUser]
+    permission_classes = [IsAdminOrCourseAuthor]
     serializer_class = ContentBlockSerializer
 
     def get_queryset(self):

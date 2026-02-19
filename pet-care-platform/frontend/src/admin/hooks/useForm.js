@@ -76,10 +76,9 @@ export const useForm = (initialValues = {}, validate) => {
     setIsSubmitting(true);
 
     try {
-      // Валидация перед отправкой
       if (!validateForm()) {
         setIsSubmitting(false);
-        return { success: false, errors };
+        return { success: false, error: errors };
       }
 
       const result = await onSubmit(values);

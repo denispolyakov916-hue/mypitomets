@@ -57,11 +57,13 @@ const RecentUsers = ({ users }) => {
               </div>
               <div className="flex items-center space-x-2">
                 <span className={`inline-flex px-2 py-1 text-xs rounded-full ${
-                  user.is_staff
-                    ? 'bg-green-100 text-green-800'
+                  user.role === 'admin'
+                    ? 'bg-purple-100 text-purple-800'
+                    : user.role === 'course_creator'
+                    ? 'bg-blue-100 text-blue-800'
                     : 'bg-gray-100 text-gray-800'
                 }`}>
-                  {user.is_staff ? 'Админ' : 'Пользователь'}
+                  {user.role === 'admin' ? 'Админ' : user.role === 'course_creator' ? 'Автор курсов' : 'Пользователь'}
                 </span>
                 <span className="text-xs text-gray-400">
                   #{index + 1}

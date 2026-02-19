@@ -283,14 +283,16 @@ class VideoPlaybackUrlView(APIView):
 
         # Проверка доступа к курсу (если указан course_id)
         if course_id:
-            from apps.training.models import UserCourse
-            has_access = UserCourse.objects.filter(
-                user=request.user,
-                course_id=course_id,
-            ).exists()
-
-            # Администраторы имеют полный доступ
-            if not has_access and not request.user.is_staff:
+            from apps.training.models import Course
+            from apps.training.utils import has_course_access
+            try:
+                course = Course.objects.get(id=course_id)
+            except Course.DoesNotExist:
+                return Response(
+                    {'error': 'Курс не найден'},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
+            if not has_course_access(request.user, course):
                 return Response(
                     {'error': 'У вас нет доступа к этому курсу'},
                     status=status.HTTP_403_FORBIDDEN,

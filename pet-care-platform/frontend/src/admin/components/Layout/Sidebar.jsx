@@ -1,13 +1,17 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import { useAuthStore } from '../../../store/authStore';
 
 const Sidebar = ({ isOpen, onClose, desktop = false }) => {
   const location = useLocation();
+  const user = useAuthStore(s => s.user);
+  const isCourseCreator = user?.role === 'course_creator';
 
   // Группируем навигацию по категориям
-  const navigationGroups = [
+  const allGroups = [
     {
       title: 'Главное',
+      adminOnly: true,
       items: [
         {
           name: 'Дашборд',
@@ -19,6 +23,7 @@ const Sidebar = ({ isOpen, onClose, desktop = false }) => {
     },
     {
       title: 'Аналитика',
+      adminOnly: true,
       items: [
         {
           name: 'Обзор аналитики',
@@ -42,25 +47,29 @@ const Sidebar = ({ isOpen, onClose, desktop = false }) => {
           name: 'Пользователи',
           href: '/admin-panel/users',
           icon: '👥',
-          current: location.pathname === '/admin-panel/users'
+          current: location.pathname === '/admin-panel/users',
+          adminOnly: true,
         },
         {
           name: 'Питомцы',
           href: '/admin-panel/pets',
           icon: '🐾',
-          current: location.pathname === '/admin-panel/pets'
+          current: location.pathname === '/admin-panel/pets',
+          adminOnly: true,
         },
         {
           name: 'Товары',
           href: '/admin-panel/products',
           icon: '📦',
-          current: location.pathname === '/admin-panel/products'
+          current: location.pathname === '/admin-panel/products',
+          adminOnly: true,
         },
         {
           name: 'Заказы',
           href: '/admin-panel/orders',
           icon: '🛒',
-          current: location.pathname.startsWith('/admin-panel/orders')
+          current: location.pathname.startsWith('/admin-panel/orders'),
+          adminOnly: true,
         },
         {
           name: 'Курсы',
@@ -71,6 +80,13 @@ const Sidebar = ({ isOpen, onClose, desktop = false }) => {
       ]
     }
   ];
+
+  const navigationGroups = isCourseCreator
+    ? allGroups
+        .filter(g => !g.adminOnly)
+        .map(g => ({ ...g, items: g.items.filter(i => !i.adminOnly) }))
+        .filter(g => g.items.length > 0)
+    : allGroups;
 
   const renderNavigation = (onClick = null) => (
     <>

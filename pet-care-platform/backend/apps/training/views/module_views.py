@@ -5,7 +5,7 @@ Views для модулей курсов и структуры курса.
 import logging
 from django.db.models import Max
 from rest_framework import status
-from rest_framework.permissions import IsAuthenticated, IsAdminUser
+from rest_framework.permissions import IsAuthenticated, IsAdminUser, BasePermission
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.viewsets import ModelViewSet
@@ -13,6 +13,7 @@ from rest_framework.viewsets import ModelViewSet
 from apps.training.models import (
     Course, CourseModule, CoursePage, UserCourse, UserCourseProgress,
 )
+from apps.training.utils import has_course_access
 from apps.training.serializers import (
     CourseModuleSerializer,
     CourseStructureSerializer,
@@ -23,12 +24,19 @@ from apps.training.serializers import (
 logger = logging.getLogger(__name__)
 
 
+class _IsAdminOrCourseCreator(BasePermission):
+    def has_permission(self, request, view):
+        if not request.user or not request.user.is_authenticated:
+            return False
+        return request.user.is_staff or getattr(request.user, 'role', None) == 'course_creator'
+
+
 class CourseModuleViewSet(ModelViewSet):
     """
-    CRUD для модулей курса (только для администраторов).
+    CRUD для модулей курса (администраторы и авторы курса).
     """
     serializer_class = CourseModuleSerializer
-    permission_classes = [IsAdminUser]
+    permission_classes = [_IsAdminOrCourseCreator]
 
     def get_queryset(self):
         course_id = self.kwargs.get('course_id')
@@ -76,6 +84,12 @@ class CourseStructureView(APIView):
             return Response(
                 {'error': 'Курс не найден'},
                 status=status.HTTP_404_NOT_FOUND,
+            )
+
+        if not has_course_access(request.user, course):
+            return Response(
+                {'error': 'У вас нет доступа к этому курсу'},
+                status=status.HTTP_403_FORBIDDEN,
             )
 
         pet_id = request.query_params.get('pet_id')

@@ -47,7 +47,7 @@ export const useAnalytics = (autoRefresh = false, refreshInterval = 300000) => {
     // Простой график - показываем количество пользователей
     const totalUsers = users.length;
     const activeUsers = users.filter(u => u.is_active !== false).length;
-    const staffUsers = users.filter(u => u.is_staff).length;
+    const staffUsers = users.filter(u => u.role === 'admin').length;
 
     return {
       labels: ['Всего', 'Активных', 'Администраторов'],

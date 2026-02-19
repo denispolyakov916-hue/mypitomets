@@ -17,6 +17,7 @@ export const UserPropTypes = PropTypes.shape({
   phone: PropTypes.string,
   city: PropTypes.string,
   date_of_birth: PropTypes.string,
+  role: PropTypes.oneOf(['user', 'course_creator', 'admin']),
   is_staff: PropTypes.bool,
   is_superuser: PropTypes.bool,
   is_active: PropTypes.bool,

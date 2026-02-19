@@ -15,7 +15,7 @@ const UsersTable = () => {
   const [filters, setFilters] = useState({
     search: '',
     is_active: '',
-    is_staff: '',
+    role: '',
     created_at_after: '',
     created_at_before: ''
   });
@@ -74,7 +74,7 @@ const UsersTable = () => {
       } else if (action === 'deactivate') {
         await adminAPI.management.bulkUpdateUsers({ user_ids: selectedIds, updates: { is_active: false } });
       } else if (action === 'make_staff') {
-        await adminAPI.management.bulkUpdateUsers({ user_ids: selectedIds, updates: { is_staff: true } });
+        await adminAPI.management.bulkUpdateUsers({ user_ids: selectedIds, updates: { role: 'admin' } });
       }
       await loadData(); // Перезагрузка данных
     } catch (err) {
@@ -122,30 +122,22 @@ const UsersTable = () => {
       )
     },
     {
-      key: 'is_staff',
+      key: 'role',
       label: 'Роль',
       sortable: true,
-      render: (value, row) => (
-        <div>
-          {row.is_superuser && (
-            <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-purple-100 text-purple-800 mr-1">
-              Супервайзер
-            </span>
-          )}
-          {value && (
-            <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-              row.is_superuser ? 'bg-blue-100 text-blue-800' : 'bg-blue-100 text-blue-800'
-            }`}>
-              Администратор
-            </span>
-          )}
-          {!value && !row.is_superuser && (
-            <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800">
-              Пользователь
-            </span>
-          )}
-        </div>
-      )
+      render: (value) => {
+        const cfg = {
+          admin: { label: 'Администратор', cls: 'bg-purple-100 text-purple-800' },
+          course_creator: { label: 'Создатель курсов', cls: 'bg-blue-100 text-blue-800' },
+          user: { label: 'Пользователь', cls: 'bg-gray-100 text-gray-800' },
+        };
+        const c = cfg[value] || cfg.user;
+        return (
+          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${c.cls}`}>
+            {c.label}
+          </span>
+        );
+      }
     },
     {
       key: 'pets_count',
@@ -199,13 +191,14 @@ const UsersTable = () => {
       ]
     },
     {
-      key: 'is_staff',
+      key: 'role',
       label: 'Роль',
       type: 'select',
-      value: filters.is_staff,
+      value: filters.role,
       options: [
-        { value: 'true', label: 'Администраторы' },
-        { value: 'false', label: 'Пользователи' }
+        { value: 'admin', label: 'Администраторы' },
+        { value: 'course_creator', label: 'Создатели курсов' },
+        { value: 'user', label: 'Пользователи' }
       ]
     },
     {
@@ -266,7 +259,7 @@ const UsersTable = () => {
     setFilters({
       search: '',
       is_active: '',
-      is_staff: '',
+      role: '',
       created_at_after: '',
       created_at_before: ''
     });

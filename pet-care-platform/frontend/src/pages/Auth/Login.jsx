@@ -52,7 +52,7 @@ function Login() {
       
       if (!redirectPath) {
         // Если нет целевой страницы, редиректим в зависимости от роли
-        if (user.is_staff || user.is_superuser) {
+        if (user.is_staff || user.is_superuser || user.role === 'course_creator') {
           redirectPath = '/admin/dashboard'
         } else {
           redirectPath = '/pet-id'

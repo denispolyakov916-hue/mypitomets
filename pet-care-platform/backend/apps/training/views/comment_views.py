@@ -31,6 +31,7 @@ from ..models import Course, Lesson, CoursePage, UserCourse, Comment, CommentLik
 from ..serializers import (
     CommentSerializer, CommentCreateSerializer
 )
+from ..utils import has_course_access
 from apps.pets.models import Pet
 
 logger = logging.getLogger('apps.training')
@@ -195,7 +196,8 @@ class PageCommentsView(APIView):
                 status=status.HTTP_404_NOT_FOUND
             )
 
-        if not UserCourse.objects.filter(user=request.user, course_id=course_id).exists():
+        course = page.course
+        if not has_course_access(request.user, course):
             return Response(
                 {'error': 'У вас нет доступа к этому курсу'},
                 status=status.HTTP_403_FORBIDDEN
@@ -369,7 +371,7 @@ class CommentCreateView(APIView):
                 )
 
             # Проверяем доступ к курсу
-            if not UserCourse.objects.filter(user=request.user, course=course).exists():
+            if not has_course_access(request.user, course):
                 return Response(
                     {'error': 'У вас нет доступа к этому курсу'},
                     status=status.HTTP_403_FORBIDDEN
@@ -390,7 +392,7 @@ class CommentCreateView(APIView):
                 )
 
             # Проверяем доступ к уроку через курс
-            if not UserCourse.objects.filter(user=request.user, course=lesson.course).exists():
+            if not has_course_access(request.user, lesson.course):
                 return Response(
                     {'error': 'У вас нет доступа к этому уроку'},
                     status=status.HTTP_403_FORBIDDEN
@@ -441,26 +443,12 @@ class CommentDetailView(APIView):
                 status=status.HTTP_404_NOT_FOUND
             )
 
-        # Проверяем доступ к комментарию
-        if comment.course and not UserCourse.objects.filter(
-            user=request.user, course=comment.course
-        ).exists():
-            return Response(
-                {'error': 'У вас нет доступа к этому комментарию'},
-                status=status.HTTP_403_FORBIDDEN
-            )
+        # Проверяем доступ к комментарию через связанный курс
+        related_course = comment.course or (comment.lesson.course if comment.lesson else None)
+        if not related_course and comment.page:
+            related_course = comment.page.course
 
-        if comment.lesson and not UserCourse.objects.filter(
-            user=request.user, course=comment.lesson.course
-        ).exists():
-            return Response(
-                {'error': 'У вас нет доступа к этому комментарию'},
-                status=status.HTTP_403_FORBIDDEN
-            )
-
-        if comment.page and not UserCourse.objects.filter(
-            user=request.user, course_id=comment.page.course_id
-        ).exists():
+        if related_course and not has_course_access(request.user, related_course):
             return Response(
                 {'error': 'У вас нет доступа к этому комментарию'},
                 status=status.HTTP_403_FORBIDDEN
@@ -537,26 +525,12 @@ class CommentReactionView(APIView):
                 status=status.HTTP_404_NOT_FOUND
             )
 
-        # Проверяем доступ к комментарию
-        if comment.course and not UserCourse.objects.filter(
-            user=request.user, course=comment.course
-        ).exists():
-            return Response(
-                {'error': 'У вас нет доступа к этому комментарию'},
-                status=status.HTTP_403_FORBIDDEN
-            )
+        # Проверяем доступ к комментарию через связанный курс
+        related_course = comment.course or (comment.lesson.course if comment.lesson else None)
+        if not related_course and comment.page:
+            related_course = comment.page.course
 
-        if comment.lesson and not UserCourse.objects.filter(
-            user=request.user, course=comment.lesson.course
-        ).exists():
-            return Response(
-                {'error': 'У вас нет доступа к этому комментарию'},
-                status=status.HTTP_403_FORBIDDEN
-            )
-
-        if comment.page and not UserCourse.objects.filter(
-            user=request.user, course_id=comment.page.course_id
-        ).exists():
+        if related_course and not has_course_access(request.user, related_course):
             return Response(
                 {'error': 'У вас нет доступа к этому комментарию'},
                 status=status.HTTP_403_FORBIDDEN

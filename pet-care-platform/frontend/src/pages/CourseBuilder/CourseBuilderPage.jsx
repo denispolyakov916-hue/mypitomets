@@ -99,9 +99,9 @@ function CourseBuilderPage() {
     loadCourseData()
   }, [loadCourseData])
 
-  // Проверка прав доступа (только администраторы)
+  // Проверка прав доступа (администраторы и создатели курсов)
   useEffect(() => {
-    if (user && !user.is_staff) {
+    if (user && !user.is_staff && user.role !== 'course_creator') {
       showToast('Недостаточно прав для доступа к конструктору', 'error')
       navigate('/courses')
     }

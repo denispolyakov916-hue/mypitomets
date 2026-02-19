@@ -20,7 +20,7 @@ from django.http import HttpResponse
 from rest_framework import viewsets, status
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
-from rest_framework.permissions import IsAdminUser
+from rest_framework.permissions import IsAdminUser, BasePermission
 from rest_framework.pagination import PageNumberPagination
 
 # Импорт моделей
@@ -1177,6 +1177,7 @@ class AdminUserViewSet(AdminModelViewSet):
             'first_name': user.first_name or '',
             'last_name': user.last_name or '',
             'phone': user.phone or '',
+            'role': getattr(user, 'role', 'user'),
             'is_active': user.is_active,
             'is_staff': user.is_staff,
             'is_superuser': user.is_superuser,
@@ -1207,12 +1208,11 @@ class AdminUserViewSet(AdminModelViewSet):
                 status=status.HTTP_404_NOT_FOUND
             )
 
-    def update(self, request, pk=None):
-        """Обновить пользователя."""
+    def update(self, request, pk=None, **kwargs):
+        """Обновить пользователя (PUT и PATCH)."""
         try:
             user = User.objects.get(id=pk)
-            # Обновляем только разрешенные поля
-            allowed_fields = ['email', 'first_name', 'last_name', 'phone', 'is_active', 'is_staff', 'is_superuser']
+            allowed_fields = ['email', 'first_name', 'last_name', 'phone', 'is_active', 'role']
             for field in allowed_fields:
                 if field in request.data:
                     setattr(user, field, request.data[field])
@@ -1248,8 +1248,8 @@ class AdminPetViewSet(AdminModelViewSet):
             'id': str(pet.id),
             'name': pet.name,
             'species': pet.species,
-            'breed': pet.breed or '',
-            'gender': pet.gender,
+            'breed': pet.breed.name if pet.breed else '',
+            'gender': pet.sex,
             'date_of_birth': pet.date_of_birth.isoformat() if pet.date_of_birth else None,
             'weight': float(pet.weight) if pet.weight else None,
             'owner_email': pet.owner.email if pet.owner else '',
@@ -1291,11 +1291,10 @@ class AdminPetViewSet(AdminModelViewSet):
                 status=status.HTTP_404_NOT_FOUND
             )
 
-    def update(self, request, pk=None):
+    def update(self, request, pk=None, **kwargs):
         """Обновить питомца."""
         try:
             pet = Pet.objects.get(id=pk)
-            # Обновляем разрешенные поля
             allowed_fields = ['name', 'species', 'breed', 'gender', 'date_of_birth', 'weight']
             for field in allowed_fields:
                 if field in request.data:
@@ -1397,11 +1396,10 @@ class AdminProductViewSet(AdminModelViewSet):
                 status=status.HTTP_404_NOT_FOUND
             )
 
-    def update(self, request, id=None):
+    def update(self, request, id=None, **kwargs):
         """Обновить товар."""
         try:
             product = Product.objects.get(kotmatros_product_id=id)
-            # Обновляем разрешенные поля
             allowed_fields = [
                 'name', 'description', 'price', 'compare_price', 'is_available',
                 'product_group', 'animal_type', 'brand_id', 'category_id'
@@ -1522,11 +1520,10 @@ class AdminOrderViewSet(AdminModelViewSet):
                 status=status.HTTP_404_NOT_FOUND
             )
 
-    def update(self, request, pk=None):
+    def update(self, request, pk=None, **kwargs):
         """Обновить заказ."""
         try:
             order = Order.objects.get(id=pk)
-            # Обновляем разрешенные поля
             allowed_fields = ['status', 'delivery_method', 'delivery_address', 'total_amount']
             for field in allowed_fields:
                 if field in request.data:
@@ -1555,10 +1552,18 @@ class AdminOrderViewSet(AdminModelViewSet):
             )
 
 
+class IsAdminOrCourseCreator(BasePermission):
+    """Доступ для администраторов и создателей курсов."""
+    def has_permission(self, request, view):
+        if not request.user or not request.user.is_authenticated:
+            return False
+        return request.user.is_staff or getattr(request.user, 'role', None) == 'course_creator'
+
+
 class AdminCourseViewSet(viewsets.ModelViewSet):
     """ViewSet для управления курсами."""
     queryset = Course.objects.all().order_by('-created_at')
-    permission_classes = [IsAdminUser]
+    permission_classes = [IsAdminOrCourseCreator]
     pagination_class = AdminPagination
 
     def _serialize_course(self, course):
@@ -1600,14 +1605,22 @@ class AdminCourseViewSet(viewsets.ModelViewSet):
             'instructor_bio': course.instructor_bio or '',
             'lessons': lessons,
             'lessons_count': len(lessons),
+            'author_id': str(course.author_id) if course.author_id else None,
             'created_at': course.created_at.isoformat(),
             'updated_at': course.updated_at.isoformat(),
         }
+
+    def _is_course_creator(self):
+        return getattr(self.request.user, 'role', None) == 'course_creator'
 
     def get_queryset(self):
         """Получить queryset с фильтрами."""
         # Оптимизация: предзагружаем уроки для избежания N+1
         queryset = Course.objects.prefetch_related('lessons').all()
+
+        # Создатели курсов видят только свои курсы
+        if self._is_course_creator():
+            queryset = queryset.filter(author=self.request.user)
 
         # Поиск
         search = self.request.query_params.get('search', '')
@@ -1657,9 +1670,10 @@ class AdminCourseViewSet(viewsets.ModelViewSet):
                 format_type=data.get('format_type', 'video'),
                 price=Decimal(str(data.get('price', 0))) if data.get('price') else Decimal('0'),
                 is_active=False,
-                status=data.get('status', 'draft'),
+                status='draft',
                 instructor_name=data.get('instructor_name', ''),
                 instructor_bio=data.get('instructor_bio', ''),
+                author=request.user,
             )
             return Response(self._serialize_course(course), status=status.HTTP_201_CREATED)
         except Exception as e:
@@ -1684,6 +1698,14 @@ class AdminCourseViewSet(viewsets.ModelViewSet):
     def _do_update(self, request, pk):
         try:
             course = Course.objects.get(id=pk)
+
+            # Создатели курсов могут редактировать только свои курсы
+            if self._is_course_creator() and course.author_id != request.user.id:
+                return Response(
+                    {'error': 'Вы можете редактировать только свои курсы'},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+
             allowed_fields = [
                 'title', 'description', 'detailed_description', 'what_you_will_learn',
                 'category', 'subcategory', 'level', 'pet_type', 'format_type',
@@ -1691,6 +1713,11 @@ class AdminCourseViewSet(viewsets.ModelViewSet):
                 'is_active', 'status',
                 'instructor_name', 'instructor_bio',
             ]
+
+            # Создатели курсов не могут менять статус и is_active
+            if self._is_course_creator():
+                allowed_fields = [f for f in allowed_fields if f not in ('status', 'is_active')]
+
             for field in allowed_fields:
                 if field in request.data:
                     value = request.data[field]
@@ -1709,7 +1736,12 @@ class AdminCourseViewSet(viewsets.ModelViewSet):
             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
     def destroy(self, request, pk=None):
-        """Удалить курс."""
+        """Удалить курс. Только для администраторов."""
+        if self._is_course_creator():
+            return Response(
+                {'error': 'Создатели курсов не могут удалять курсы'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
         try:
             course = Course.objects.get(id=pk)
             course.delete()

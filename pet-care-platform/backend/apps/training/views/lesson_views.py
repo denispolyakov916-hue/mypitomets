@@ -33,6 +33,7 @@ from ..models import (
     Course, Lesson, UserCourse, UserCourseProgress, UserLessonProgress,
     Comment, CommentLike, CoursePage, ContentBlock
 )
+from ..utils import has_course_access
 from apps.pets.models import Pet
 
 logger = logging.getLogger('apps.training')
@@ -159,11 +160,7 @@ class LessonDetailView(APIView):
                     {'error': 'Требуется авторизация для доступа к платному курсу'},
                     status=status.HTTP_401_UNAUTHORIZED
                 )
-            has_access = UserCourse.objects.filter(
-                user=request.user,
-                course=lesson.course
-            ).exists()
-            if not has_access:
+            if not has_course_access(request.user, lesson.course):
                 return Response(
                     {'error': 'У вас нет доступа к этому уроку. Необходимо приобрести курс.'},
                     status=status.HTTP_403_FORBIDDEN
@@ -234,10 +231,7 @@ class LessonCompleteView(APIView):
             )
 
         # Проверка доступа к курсу
-        if not UserCourse.objects.filter(
-            user=request.user,
-            course=lesson.course
-        ).exists():
+        if not has_course_access(request.user, lesson.course):
             return Response(
                 {'error': 'У вас нет доступа к этому уроку'},
                 status=status.HTTP_403_FORBIDDEN
@@ -303,10 +297,7 @@ class UserCourseProgressView(APIView):
             raise ApiError.not_found('Курс не найден', error_code='COURSE_NOT_FOUND')
 
         # Проверка доступа к курсу
-        if not UserCourse.objects.filter(
-            user=request.user,
-            course=course
-        ).exists():
+        if not has_course_access(request.user, course):
             return Response(
                 {'error': 'У вас нет доступа к этому курсу'},
                 status=status.HTTP_403_FORBIDDEN
@@ -403,10 +394,7 @@ class LessonProgressView(APIView):
             )
 
         # Проверка доступа к курсу
-        if not UserCourse.objects.filter(
-            user=request.user,
-            course=lesson.course
-        ).exists():
+        if not has_course_access(request.user, lesson.course):
             return Response(
                 {'error': 'У вас нет доступа к этому уроку'},
                 status=status.HTTP_403_FORBIDDEN
@@ -495,10 +483,7 @@ class LessonCommentsView(APIView):
         # Для платных курсов проверяем доступ
         has_access = True
         if lesson.course.price > 0:
-            has_access = UserCourse.objects.filter(
-                user=request.user,
-                course=lesson.course
-            ).exists() if request.user.is_authenticated else False
+            has_access = has_course_access(request.user, lesson.course) if request.user.is_authenticated else False
 
         # Получаем только промодерированные комментарии
         comments = Comment.objects.filter(
@@ -560,10 +545,7 @@ class LessonCommentsView(APIView):
             )
 
         # Проверяем доступ к курсу
-        if not UserCourse.objects.filter(
-            user=request.user,
-            course=lesson.course
-        ).exists():
+        if not has_course_access(request.user, lesson.course):
             return Response(
                 {'error': 'У вас нет доступа к этому уроку'},
                 status=status.HTTP_403_FORBIDDEN
@@ -644,10 +626,7 @@ class CoursePageLearningView(APIView):
             )
 
         # Проверка доступа к курсу
-        if not UserCourse.objects.filter(
-            user=request.user,
-            course=course
-        ).exists():
+        if not has_course_access(request.user, course):
             return Response(
                 {'error': 'У вас нет доступа к этому курсу'},
                 status=status.HTTP_403_FORBIDDEN
@@ -711,10 +690,7 @@ class CoursePageListLearningView(APIView):
             )
 
         # Проверка доступа к курсу
-        if not UserCourse.objects.filter(
-            user=request.user,
-            course=course
-        ).exists():
+        if not has_course_access(request.user, course):
             return Response(
                 {'error': 'У вас нет доступа к этому курсу'},
                 status=status.HTTP_403_FORBIDDEN
@@ -771,10 +747,7 @@ class CoursePageCompleteView(APIView):
             )
 
         # Проверка доступа к курсу
-        if not UserCourse.objects.filter(
-            user=request.user,
-            course=course
-        ).exists():
+        if not has_course_access(request.user, course):
             return Response(
                 {'error': 'У вас нет доступа к этому курсу'},
                 status=status.HTTP_403_FORBIDDEN

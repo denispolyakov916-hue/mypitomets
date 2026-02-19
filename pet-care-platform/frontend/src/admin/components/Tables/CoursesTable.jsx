@@ -8,8 +8,11 @@ import ConfirmModal from '../Forms/ConfirmModal';
 
 // Hooks
 import { adminAPI } from '../../utils/api';
+import { useAuthStore } from '../../../store/authStore';
 
 const CoursesTable = () => {
+  const user = useAuthStore(s => s.user);
+  const isCourseCreator = user?.role === 'course_creator';
   const navigate = useNavigate();
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [courseToDelete, setCourseToDelete] = useState(null);
@@ -76,7 +79,7 @@ const CoursesTable = () => {
       return;
     }
     if (action === 'preview') {
-      const url = `${window.location.origin}/courses/${course.id}`;
+      const url = `${window.location.origin}/training/courses/${course.id}/learn`;
       window.open(url, '_blank', 'noopener,noreferrer');
       return;
     }
@@ -444,16 +447,21 @@ const CoursesTable = () => {
   ], []);
 
   const getDropdownActions = useCallback((row) => {
-    const statusAction = row.status === 'published'
-      ? { key: 'unpublish', label: 'Снять с публикации', icon: '📤', variant: 'warning' }
-      : { key: 'publish', label: 'Опубликовать', icon: '✅', variant: 'success' };
-    return [
+    const actions = [
       { key: 'preview', label: 'Предпросмотр', icon: '👁', variant: 'primary' },
       { key: 'duplicate', label: 'Дублировать', icon: '📋', variant: 'primary' },
-      statusAction,
-      { key: 'delete', label: 'Удалить', icon: '🗑', variant: 'danger' }
     ];
-  }, []);
+
+    if (!isCourseCreator) {
+      const statusAction = row.status === 'published'
+        ? { key: 'unpublish', label: 'Снять с публикации', icon: '📤', variant: 'warning' }
+        : { key: 'publish', label: 'Опубликовать', icon: '✅', variant: 'success' };
+      actions.push(statusAction);
+      actions.push({ key: 'delete', label: 'Удалить', icon: '🗑', variant: 'danger' });
+    }
+
+    return actions;
+  }, [isCourseCreator]);
 
   // Обработчик сброса фильтров
   const handleResetFilters = () => {

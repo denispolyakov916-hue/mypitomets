@@ -107,8 +107,9 @@ const AdminRoute = ({ children }) => {
     );
   }
 
-  // Проверяем права администратора (is_staff или is_superuser)
-  if (!user.is_staff && !user.is_superuser) {
+  // Проверяем права: администратор или создатель курсов
+  const hasAdminAccess = user.is_staff || user.is_superuser || user.role === 'course_creator';
+  if (!hasAdminAccess) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-red-900 to-slate-800">
         {/* Декоративные элементы */}
@@ -131,9 +132,8 @@ const AdminRoute = ({ children }) => {
             У вас нет прав администратора для доступа к этой панели.
           </p>
           
-          <p className="text-red-300/70 text-sm mb-8">
-            Для получения доступа обратитесь к администратору системы. 
-            Требуется статус <span className="font-mono bg-white/10 px-2 py-0.5 rounded">is_staff=True</span>
+            <p className="text-red-300/70 text-sm mb-8">
+            Для получения доступа обратитесь к администратору системы.
           </p>
 
           {/* Информация о пользователе */}
@@ -141,7 +141,7 @@ const AdminRoute = ({ children }) => {
             <p className="text-red-200/60 text-xs uppercase tracking-wider mb-2">Текущий аккаунт</p>
             <p className="text-white font-medium">{user.email}</p>
             <p className="text-red-300/60 text-sm mt-1">
-              Роль: {user.is_superuser ? 'Суперпользователь' : user.is_staff ? 'Администратор' : 'Пользователь'}
+              Роль: {user.role === 'admin' ? 'Администратор' : user.role === 'course_creator' ? 'Создатель курсов' : 'Пользователь'}
             </p>
           </div>
 

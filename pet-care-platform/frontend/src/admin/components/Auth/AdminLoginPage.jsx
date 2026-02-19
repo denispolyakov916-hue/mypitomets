@@ -43,7 +43,7 @@ const AdminLoginPage = () => {
 
   // Если уже авторизован как админ - редирект
   useEffect(() => {
-    if (isAuthenticated && user?.is_staff) {
+    if (isAuthenticated && (user?.is_staff || user?.role === 'course_creator')) {
       navigate(from, { replace: true });
     }
   }, [isAuthenticated, user, navigate, from]);
@@ -119,8 +119,8 @@ const AdminLoginPage = () => {
         return;
       }
       
-      // Проверяем права staff
-      if (!currentUser.is_staff && !currentUser.is_superuser) {
+      // Проверяем права: администратор или создатель курсов
+      if (!currentUser.is_staff && !currentUser.is_superuser && currentUser.role !== 'course_creator') {
         console.log('[AdminLogin] User is not staff');
         setLocalError('У вас нет прав для доступа к админ-панели. Обратитесь к администратору системы.');
         // Выходим, так как обычный пользователь не должен оставаться залогиненным в админке
