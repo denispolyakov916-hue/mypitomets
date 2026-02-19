@@ -39,12 +39,12 @@ class CourseQuerySet(models.QuerySet):
     
     def active(self):
         """
-        Фильтрует только активные курсы.
+        Фильтрует только активные опубликованные курсы.
         
         Returns:
             QuerySet: Отфильтрованный QuerySet
         """
-        return self.filter(is_active=True)
+        return self.filter(is_active=True, status='published')
     
     def for_pet_type(self, pet_type):
         """

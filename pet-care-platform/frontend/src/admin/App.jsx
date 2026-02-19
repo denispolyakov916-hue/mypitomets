@@ -35,9 +35,8 @@ import ProductsTable from './components/Tables/ProductsTable';
 import OrdersTable from './components/Tables/OrdersTable';
 import CoursesTable from './components/Tables/CoursesTable';
 
-// Course creation and building
-import CourseCreatePage from './components/Courses/CourseCreatePage';
-import CourseBuilderPage from '../pages/CourseBuilder/CourseBuilderPage';
+// Course creation and editing
+import CourseEditorPage from './components/Courses/CourseEditorPage';
 
 // Stores
 import { useAdminStore } from './stores/adminStore';
@@ -85,10 +84,8 @@ const AdminApp = () => {
         <Route path="orders" element={<OrdersTable />} />
         <Route path="courses" element={<CoursesTable />} />
 
-        {/* Создание и редактирование курса */}
-        <Route path="courses/create" element={<CourseCreatePage />} />
-        <Route path="courses/:id/builder" element={<CourseBuilderPage />} />
-        <Route path="courses/:id/edit" element={<CourseCreatePage />} />
+        {/* Редактирование курса (единый редактор) */}
+        <Route path="courses/:id/edit" element={<CourseEditorPage />} />
 
         {/* Редирект для неизвестных маршрутов */}
         <Route path="*" element={<Navigate to="/admin-panel/dashboard" replace />} />

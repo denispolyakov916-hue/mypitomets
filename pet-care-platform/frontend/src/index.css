@@ -151,6 +151,12 @@ button {
   .input-error {
     @apply border-red-500 focus:ring-red-500 focus:border-red-500;
   }
+
+  /* Компактное поле ввода для панели свойств */
+  .input-field {
+    @apply w-full px-2.5 py-1.5 text-sm border border-gray-300 rounded-md
+           focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all;
+  }
   
   /* Метка поля */
   .label {

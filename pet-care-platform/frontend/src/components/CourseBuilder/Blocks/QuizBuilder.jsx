@@ -14,7 +14,7 @@ import { Plus, Trash2, GripVertical, CheckCircle, Circle } from 'lucide-react'
 function QuestionTypeSelector({ value, onChange }) {
   const questionTypes = [
     { value: 'single_choice', label: 'Один правильный ответ', icon: '🔘' },
-    { value: 'multiple_choice', label: 'Несколько правильных ответов', icon: '☑️' },
+    { value: 'multi_choice', label: 'Несколько правильных ответов', icon: '☑️' },
     { value: 'text_input', label: 'Текстовый ответ', icon: '📝' },
     { value: 'true_false', label: 'Верно/Неверно', icon: '✓✗' }
   ]
@@ -64,7 +64,7 @@ function QuestionEditor({ question, index, onUpdate, onDelete }) {
   const toggleCorrectAnswer = (optionIndex) => {
     if (question.type === 'single_choice') {
       updateQuestion('correct_answer', optionIndex)
-    } else if (question.type === 'multiple_choice') {
+    } else if (question.type === 'multi_choice') {
       const correctAnswers = new Set(question.correct_answers || [])
       if (correctAnswers.has(optionIndex)) {
         correctAnswers.delete(optionIndex)
@@ -89,7 +89,7 @@ function QuestionEditor({ question, index, onUpdate, onDelete }) {
           </span>
           <span className="text-sm text-gray-600">
             {question.type === 'single_choice' && '🔘 Один ответ'}
-            {question.type === 'multiple_choice' && '☑️ Несколько ответов'}
+            {question.type === 'multi_choice' && '☑️ Несколько ответов'}
             {question.type === 'text_input' && '📝 Текст'}
             {question.type === 'true_false' && '✓✗ Верно/Неверно'}
           </span>
@@ -156,7 +156,7 @@ function QuestionEditor({ question, index, onUpdate, onDelete }) {
           </div>
 
           {/* Варианты ответов */}
-          {(question.type === 'single_choice' || question.type === 'multiple_choice') && (
+          {(question.type === 'single_choice' || question.type === 'multi_choice') && (
             <div>
               <div className="flex items-center justify-between mb-2">
                 <label className="block text-sm font-medium text-gray-700">
@@ -363,7 +363,7 @@ function QuizBuilder({ content, settings, onChange, mode = 'edit' }) {
               </div>
             )}
 
-            {question.type === 'multiple_choice' && (
+            {question.type === 'multi_choice' && (
               <div className="space-y-2">
                 {question.options?.map((option, optionIndex) => (
                   <label key={optionIndex} className="flex items-center">
