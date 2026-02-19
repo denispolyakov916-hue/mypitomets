@@ -1,8 +1,13 @@
 /**
  * PropertiesPanel - Right sidebar for editing selected element properties.
  *
- * Calls onBlockUpdate / onPageUpdate to persist changes via API.
- * Includes 12-column grid layout controls.
+ * Features:
+ * - Module/Page/Block property editing
+ * - Arrow buttons for reordering modules, pages, blocks
+ * - 4-direction block arrows (up/down for order, left/right for grid offset)
+ * - Module dropdown for moving pages between modules
+ * - Position indicators ("2 из 5")
+ * - 12-column grid layout controls for blocks
  */
 
 import { useState, useCallback, useRef, useEffect } from 'react'
@@ -21,7 +26,82 @@ const SPAN_PRESETS = [
   { label: 'Полная', value: 12 },
 ]
 
-function PropertiesPanel({ selectedElement, onBlockUpdate, onPageUpdate, onPageDelete, onModuleUpdate, onModuleDelete }) {
+/* ─── Reusable UI components ─── */
+
+function ArrowButton({ direction, disabled, onClick, title }) {
+  const paths = {
+    up: 'M5 15l7-7 7 7',
+    down: 'M19 9l-7 7-7-7',
+    left: 'M15 19l-7-7 7-7',
+    right: 'M9 5l7 7-7 7',
+  }
+  return (
+    <button
+      onClick={(e) => { e.stopPropagation(); onClick?.() }}
+      disabled={disabled}
+      title={title}
+      className={`p-1 rounded transition-colors ${
+        disabled
+          ? 'text-gray-300 cursor-not-allowed'
+          : 'text-gray-500 hover:text-blue-600 hover:bg-blue-50 active:bg-blue-100'
+      }`}
+    >
+      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d={paths[direction]} />
+      </svg>
+    </button>
+  )
+}
+
+function PositionBadge({ index, total }) {
+  if (total <= 1) return null
+  return (
+    <span className="text-[10px] text-gray-400 tabular-nums whitespace-nowrap">
+      {index + 1} из {total}
+    </span>
+  )
+}
+
+function Field({ label, children }) {
+  return (
+    <div>
+      <label className="block text-xs font-medium text-gray-500 mb-1">{label}</label>
+      {children}
+    </div>
+  )
+}
+
+function Checkbox({ label, checked, onChange }) {
+  return (
+    <label className="flex items-center gap-2 cursor-pointer">
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={(e) => onChange(e.target.checked)}
+        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 w-3.5 h-3.5"
+      />
+      <span className="text-xs text-gray-600">{label}</span>
+    </label>
+  )
+}
+
+/* ─── Main Panel ─── */
+
+function PropertiesPanel({
+  selectedElement,
+  courseData,
+  currentPageId,
+  sortedBlocks,
+  onBlockUpdate,
+  onPageUpdate,
+  onPageDelete,
+  onModuleUpdate,
+  onModuleDelete,
+  onModuleReorder,
+  onPageReorder,
+  onPageMove,
+  onBlockMove,
+}) {
   const [localElement, setLocalElement] = useState(null)
   const debounceRef = useRef(null)
 
@@ -75,20 +155,113 @@ function PropertiesPanel({ selectedElement, onBlockUpdate, onPageUpdate, onPageD
   const isBlock = localElement.type === 'block'
   const isModule = localElement.type === 'module'
 
+  const modules = courseData?.modules || []
+  const orphanPages = courseData?.orphan_pages || []
+
+  // Module context
+  const moduleIndex = isModule ? modules.findIndex(m => m.id === localElement.id) : -1
+
+  // Page context
+  let pageModule = null
+  let pagesInContext = []
+  if (isPage) {
+    for (const m of modules) {
+      if ((m.pages || []).some(p => p.id === localElement.id)) {
+        pageModule = m
+        pagesInContext = m.pages || []
+        break
+      }
+    }
+    if (!pageModule && orphanPages.some(p => p.id === localElement.id)) {
+      pagesInContext = orphanPages
+    }
+  }
+  const pageIndex = isPage ? pagesInContext.findIndex(p => p.id === localElement.id) : -1
+
+  // Block context
+  const blockIndex = isBlock ? sortedBlocks.findIndex(b => b.id === localElement.id) : -1
+
   return (
     <div className="flex flex-col h-full">
+      {/* Header with type label and arrows */}
       <div className="p-4 border-b border-gray-200">
-        <h3 className="text-sm font-semibold text-gray-700">
-          {isPage && '📄 Страница'}
-          {isBlock && `${blockIcons[localElement.block_type] || '📦'} Блок`}
-          {isModule && '📁 Модуль'}
-        </h3>
+        <div className="flex items-center justify-between gap-2">
+          <h3 className="text-sm font-semibold text-gray-700 truncate">
+            {isPage && '📄 Страница'}
+            {isBlock && `${blockIcons[localElement.block_type] || '📦'} Блок`}
+            {isModule && '📁 Модуль'}
+          </h3>
+
+          {/* Module arrows */}
+          {isModule && modules.length > 1 && (
+            <div className="flex items-center gap-1 shrink-0">
+              <PositionBadge index={moduleIndex} total={modules.length} />
+              <ArrowButton
+                direction="up"
+                disabled={moduleIndex <= 0}
+                onClick={() => onModuleReorder?.(localElement.id, 'up')}
+                title="Переместить выше"
+              />
+              <ArrowButton
+                direction="down"
+                disabled={moduleIndex >= modules.length - 1}
+                onClick={() => onModuleReorder?.(localElement.id, 'down')}
+                title="Переместить ниже"
+              />
+            </div>
+          )}
+
+          {/* Page arrows */}
+          {isPage && pagesInContext.length > 1 && (
+            <div className="flex items-center gap-1 shrink-0">
+              <PositionBadge index={pageIndex} total={pagesInContext.length} />
+              <ArrowButton
+                direction="up"
+                disabled={pageIndex <= 0}
+                onClick={() => onPageReorder?.(localElement.id, 'up')}
+                title="Переместить выше"
+              />
+              <ArrowButton
+                direction="down"
+                disabled={pageIndex >= pagesInContext.length - 1}
+                onClick={() => onPageReorder?.(localElement.id, 'down')}
+                title="Переместить ниже"
+              />
+            </div>
+          )}
+
+          {/* Block position badge (arrows are in BlockProperties body) */}
+          {isBlock && sortedBlocks.length > 1 && (
+            <div className="flex items-center gap-1 shrink-0">
+              <PositionBadge index={blockIndex} total={sortedBlocks.length} />
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 space-y-5">
-        {isPage && <PageProperties element={localElement} updateLocal={updateLocal} onDelete={onPageDelete} />}
-        {isBlock && <BlockProperties element={localElement} updateLocal={updateLocal} />}
-        {isModule && <ModuleProperties element={localElement} updateLocal={updateLocal} onDelete={onModuleDelete} />}
+        {isModule && (
+          <ModuleProperties element={localElement} updateLocal={updateLocal} onDelete={onModuleDelete} />
+        )}
+        {isPage && (
+          <PageProperties
+            element={localElement}
+            updateLocal={updateLocal}
+            onDelete={onPageDelete}
+            modules={modules}
+            pageModuleId={pageModule?.id || null}
+            onPageMove={onPageMove}
+          />
+        )}
+        {isBlock && (
+          <BlockProperties
+            element={localElement}
+            updateLocal={updateLocal}
+            onBlockMove={onBlockMove}
+            blockIndex={blockIndex}
+            sortedBlocks={sortedBlocks}
+          />
+        )}
       </div>
     </div>
   )
@@ -136,7 +309,7 @@ function ModuleProperties({ element, updateLocal, onDelete }) {
 }
 
 /* ─── Page Properties ─── */
-function PageProperties({ element, updateLocal, onDelete }) {
+function PageProperties({ element, updateLocal, onDelete, modules, pageModuleId, onPageMove }) {
   return (
     <>
       <Field label="Название">
@@ -147,6 +320,27 @@ function PageProperties({ element, updateLocal, onDelete }) {
           className="input-field"
         />
       </Field>
+
+      {/* Module selector — move page between modules */}
+      {(modules.length > 0) && (
+        <Field label="Модуль">
+          <select
+            value={pageModuleId ?? ''}
+            onChange={(e) => {
+              const targetId = e.target.value ? parseInt(e.target.value) : null
+              if (targetId !== pageModuleId) {
+                onPageMove?.(element.id, targetId)
+              }
+            }}
+            className="input-field"
+          >
+            <option value="">Без модуля</option>
+            {modules.map(m => (
+              <option key={m.id} value={m.id}>{m.title || 'Без названия'}</option>
+            ))}
+          </select>
+        </Field>
+      )}
 
       <Field label="Тип страницы">
         <select
@@ -213,13 +407,68 @@ function PageProperties({ element, updateLocal, onDelete }) {
 }
 
 /* ─── Block Properties ─── */
-function BlockProperties({ element, updateLocal }) {
+function BlockProperties({ element, updateLocal, onBlockMove, blockIndex, sortedBlocks }) {
+  const layout = element.settings?.layout || { span: 12, offset: 0 }
+  const canMoveLeft = layout.offset > 0
+  const canMoveRight = layout.offset + layout.span < 12
+  const canMoveUp = blockIndex > 0
+  const canMoveDown = blockIndex < sortedBlocks.length - 1
+
+  const handleOffsetChange = (direction) => {
+    const newOffset = direction === 'left'
+      ? Math.max(0, layout.offset - 1)
+      : Math.min(12 - layout.span, layout.offset + 1)
+    if (newOffset === layout.offset) return
+    updateLocal(prev => ({
+      ...prev,
+      settings: {
+        ...prev.settings,
+        layout: { ...prev.settings?.layout, span: layout.span, offset: newOffset },
+      },
+    }))
+  }
+
   return (
     <>
       {/* Block type info */}
       <div className="flex items-center gap-2 p-2 bg-gray-50 rounded-md">
         <span className="text-lg">{blockIcons[element.block_type] || '📦'}</span>
         <span className="text-sm text-gray-700">{element.block_type_display || element.block_type}</span>
+      </div>
+
+      {/* 4-direction arrows for block positioning */}
+      <div className="space-y-1.5">
+        <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide">Позиция</label>
+        <div className="flex items-center justify-center">
+          <div className="inline-flex items-center gap-0.5 bg-gray-50 rounded-lg p-1.5">
+            <ArrowButton
+              direction="left"
+              disabled={!canMoveLeft}
+              onClick={() => handleOffsetChange('left')}
+              title="Сдвинуть влево"
+            />
+            <div className="flex flex-col gap-0.5">
+              <ArrowButton
+                direction="up"
+                disabled={!canMoveUp}
+                onClick={() => onBlockMove?.(element.id, 'up')}
+                title="Переместить выше"
+              />
+              <ArrowButton
+                direction="down"
+                disabled={!canMoveDown}
+                onClick={() => onBlockMove?.(element.id, 'down')}
+                title="Переместить ниже"
+              />
+            </div>
+            <ArrowButton
+              direction="right"
+              disabled={!canMoveRight}
+              onClick={() => handleOffsetChange('right')}
+              title="Сдвинуть вправо"
+            />
+          </div>
+        </div>
       </div>
 
       {/* Layout controls */}
@@ -485,30 +734,6 @@ function BlockSpecificProperties({ element, updateLocal }) {
         </div>
       )
   }
-}
-
-/* ─── Utility Components ─── */
-function Field({ label, children }) {
-  return (
-    <div>
-      <label className="block text-xs font-medium text-gray-500 mb-1">{label}</label>
-      {children}
-    </div>
-  )
-}
-
-function Checkbox({ label, checked, onChange }) {
-  return (
-    <label className="flex items-center gap-2 cursor-pointer">
-      <input
-        type="checkbox"
-        checked={checked}
-        onChange={(e) => onChange(e.target.checked)}
-        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 w-3.5 h-3.5"
-      />
-      <span className="text-xs text-gray-600">{label}</span>
-    </label>
-  )
 }
 
 export default PropertiesPanel

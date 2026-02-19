@@ -374,6 +374,19 @@ export const reorderCourseModules = async (courseId, moduleIds) => {
 }
 
 /**
+ * Перемещение страницы в другой модуль (или в orphan)
+ *
+ * @param {number} pageId - ID страницы
+ * @param {number|null} targetModuleId - ID целевого модуля (null = без модуля)
+ * @returns {Promise<Object>} Обновлённая страница
+ */
+export const movePageToModule = async (pageId, targetModuleId) => {
+  return await api.patch(`/courses/pages/${pageId}/move/`, {
+    target_module_id: targetModuleId,
+  })
+}
+
+/**
  * Создание блока на странице
  *
  * @param {number} pageId - ID страницы

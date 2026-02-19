@@ -76,7 +76,7 @@ const colors = {
 /**
  * Компонент одного Toast уведомления
  */
-function Toast({ message, type = TOAST_TYPES.INFO, onClose, duration = 5000 }) {
+function Toast({ message, type = TOAST_TYPES.INFO, onClose, duration = 5000, action, actionLabel }) {
   const [isVisible, setIsVisible] = useState(true)
   const [isExiting, setIsExiting] = useState(false)
   
@@ -120,11 +120,19 @@ function Toast({ message, type = TOAST_TYPES.INFO, onClose, duration = 5000 }) {
         {icon}
       </div>
       
-      {/* Сообщение */}
+      {/* Сообщение и действие */}
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium break-words">
           {message}
         </p>
+        {action && (
+          <button
+            onClick={() => { action(); handleClose(); }}
+            className="mt-1.5 text-xs font-semibold underline underline-offset-2 hover:opacity-70 transition-opacity"
+          >
+            {actionLabel || 'Отменить'}
+          </button>
+        )}
       </div>
       
       {/* Кнопка закрытия */}
@@ -164,6 +172,8 @@ export function ToastContainer({ toasts, removeToast }) {
           type={toast.type}
           onClose={() => removeToast(toast.id)}
           duration={toast.duration}
+          action={toast.action}
+          actionLabel={toast.actionLabel}
         />
       ))}
     </div>

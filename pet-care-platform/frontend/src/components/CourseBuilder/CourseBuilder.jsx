@@ -21,6 +21,9 @@ import {
   deleteContentBlock,
   createCourseModule,
   updateCourseModule,
+  reorderCourseModules,
+  reorderCoursePages,
+  movePageToModule,
 } from '../../api/courses'
 import { useToastStore } from '../../store/toastStore'
 
@@ -243,23 +246,221 @@ function CourseBuilder({ course, onSave, onPublish, saving }) {
     }
   }, [courseData, refreshCourseData, success, showError, selectedElement, currentPageId])
 
-  /* ─── DnD handler (shared context for toolbox + canvas) ─── */
+  /* ─── Reorder / Move handlers ─── */
+  const handleModuleReorder = useCallback(async (moduleId, direction) => {
+    const modules = courseData?.modules || []
+    const idx = modules.findIndex(m => m.id === moduleId)
+    if (idx === -1) return
+
+    const targetIdx = direction === 'up' ? idx - 1 : idx + 1
+    if (targetIdx < 0 || targetIdx >= modules.length) return
+
+    const prevModuleIds = modules.map(m => m.id)
+    const newModules = [...modules]
+    ;[newModules[idx], newModules[targetIdx]] = [newModules[targetIdx], newModules[idx]]
+    const newModuleIds = newModules.map(m => m.id)
+
+    refreshCourseData(prev => ({ ...prev, modules: newModules }))
+
+    try {
+      await reorderCourseModules(courseData.id, newModuleIds)
+      success('Модуль перемещён', {
+        action: async () => {
+          refreshCourseData(prev => ({
+            ...prev,
+            modules: prevModuleIds.map(id => prev.modules.find(m => m.id === id)).filter(Boolean),
+          }))
+          reorderCourseModules(courseData.id, prevModuleIds).catch(console.error)
+        },
+        actionLabel: 'Отменить',
+        duration: 6000,
+      })
+    } catch (err) {
+      refreshCourseData(prev => ({ ...prev, modules }))
+      showError('Не удалось переместить модуль')
+    }
+  }, [courseData, refreshCourseData, success, showError])
+
+  const handlePageReorder = useCallback(async (pageId, direction) => {
+    const modules = courseData?.modules || []
+    const orphanPages = courseData?.orphan_pages || []
+
+    let moduleId = null
+    let pages = []
+
+    for (const m of modules) {
+      const found = (m.pages || []).find(p => p.id === pageId)
+      if (found) { moduleId = m.id; pages = m.pages || []; break }
+    }
+    if (!moduleId && orphanPages.find(p => p.id === pageId)) {
+      pages = orphanPages
+    }
+
+    const idx = pages.findIndex(p => p.id === pageId)
+    if (idx === -1) return
+
+    const targetIdx = direction === 'up' ? idx - 1 : idx + 1
+    if (targetIdx < 0 || targetIdx >= pages.length) return
+
+    const prevPageIds = pages.map(p => p.id)
+    const newPages = [...pages]
+    ;[newPages[idx], newPages[targetIdx]] = [newPages[targetIdx], newPages[idx]]
+    const newPageIds = newPages.map(p => p.id)
+
+    if (moduleId) {
+      refreshCourseData(prev => ({
+        ...prev,
+        modules: prev.modules?.map(m => m.id === moduleId ? { ...m, pages: newPages } : m),
+      }))
+    } else {
+      refreshCourseData(prev => ({ ...prev, orphan_pages: newPages }))
+    }
+
+    try {
+      await reorderCoursePages(courseData.id, moduleId, newPageIds)
+      success('Страница перемещена', {
+        action: async () => {
+          if (moduleId) {
+            refreshCourseData(prev => ({
+              ...prev,
+              modules: prev.modules?.map(m =>
+                m.id === moduleId
+                  ? { ...m, pages: prevPageIds.map(id => m.pages.find(p => p.id === id)).filter(Boolean) }
+                  : m
+              ),
+            }))
+          } else {
+            refreshCourseData(prev => ({
+              ...prev,
+              orphan_pages: prevPageIds.map(id => prev.orphan_pages.find(p => p.id === id)).filter(Boolean),
+            }))
+          }
+          reorderCoursePages(courseData.id, moduleId, prevPageIds).catch(console.error)
+        },
+        actionLabel: 'Отменить',
+        duration: 6000,
+      })
+    } catch (err) {
+      if (moduleId) {
+        refreshCourseData(prev => ({
+          ...prev,
+          modules: prev.modules?.map(m => m.id === moduleId ? { ...m, pages } : m),
+        }))
+      } else {
+        refreshCourseData(prev => ({ ...prev, orphan_pages: pages }))
+      }
+      showError('Не удалось переместить страницу')
+    }
+  }, [courseData, refreshCourseData, success, showError])
+
+  const handlePageMove = useCallback(async (pageId, targetModuleId) => {
+    const modules = courseData?.modules || []
+
+    let sourceModuleId = null
+    let sourcePage = null
+
+    for (const m of modules) {
+      const found = (m.pages || []).find(p => p.id === pageId)
+      if (found) { sourceModuleId = m.id; sourcePage = found; break }
+    }
+    if (!sourcePage) {
+      sourcePage = (courseData?.orphan_pages || []).find(p => p.id === pageId)
+    }
+    if (!sourcePage) return
+    if (sourceModuleId === targetModuleId) return
+
+    // Optimistic: remove from source, add to target
+    refreshCourseData(prev => {
+      const page = sourcePage
+      let newData = { ...prev }
+
+      if (sourceModuleId) {
+        newData.modules = prev.modules?.map(m =>
+          m.id === sourceModuleId ? { ...m, pages: m.pages.filter(p => p.id !== pageId) } : m
+        )
+      } else {
+        newData.orphan_pages = (prev.orphan_pages || []).filter(p => p.id !== pageId)
+      }
+
+      if (targetModuleId) {
+        newData.modules = (newData.modules || prev.modules)?.map(m =>
+          m.id === targetModuleId ? { ...m, pages: [...(m.pages || []), page] } : m
+        )
+      } else {
+        newData.orphan_pages = [...(newData.orphan_pages || []), page]
+      }
+
+      return newData
+    })
+
+    try {
+      await movePageToModule(pageId, targetModuleId)
+      const targetName = targetModuleId
+        ? modules.find(m => m.id === targetModuleId)?.title || 'модуль'
+        : 'Без модуля'
+      success(`Страница перенесена в «${targetName}»`)
+    } catch (err) {
+      // Revert
+      refreshCourseData(prev => {
+        let newData = { ...prev }
+        if (targetModuleId) {
+          newData.modules = prev.modules?.map(m =>
+            m.id === targetModuleId ? { ...m, pages: m.pages.filter(p => p.id !== pageId) } : m
+          )
+        } else {
+          newData.orphan_pages = (prev.orphan_pages || []).filter(p => p.id !== pageId)
+        }
+        if (sourceModuleId) {
+          newData.modules = (newData.modules || prev.modules)?.map(m =>
+            m.id === sourceModuleId ? { ...m, pages: [...(m.pages || []), sourcePage] } : m
+          )
+        } else {
+          newData.orphan_pages = [...(newData.orphan_pages || []), sourcePage]
+        }
+        return newData
+      })
+      showError('Не удалось переместить страницу')
+    }
+  }, [courseData, refreshCourseData, success, showError])
+
+  const handleBlockMove = useCallback(async (blockId, direction) => {
+    const idx = sortedBlocks.findIndex(b => b.id === blockId)
+    if (idx === -1) return
+    const targetIdx = direction === 'up' ? idx - 1 : idx + 1
+    if (targetIdx < 0 || targetIdx >= sortedBlocks.length) return
+
+    const prevOrder = sortedBlocks.map(b => b.id)
+    const newOrder = [...prevOrder]
+    ;[newOrder[idx], newOrder[targetIdx]] = [newOrder[targetIdx], newOrder[idx]]
+
+    handleBlockReorder(currentPageId, newOrder)
+
+    success('Блок перемещён', {
+      action: () => {
+        handleBlockReorder(currentPageId, prevOrder)
+      },
+      actionLabel: 'Отменить',
+      duration: 6000,
+    })
+  }, [sortedBlocks, currentPageId, handleBlockReorder, success])
+
+  /* ─── DnD handler (shared context for toolbox + canvas + structure tree) ─── */
   const handleDragEnd = useCallback((event) => {
     const { active, over } = event
-    if (!over) return
+    if (!over || active.id === over.id) return
 
     const dragData = active.data.current
+    const overData = over.data.current
 
-    // Toolbox block dropped onto the page
+    // 1. Toolbox block dropped onto the page
     if (dragData?.source === 'toolbox' && currentPageId) {
       handleBlockAdd(dragData.blockType, currentPageId)
       return
     }
 
-    // Sortable reorder within the same page
-    if (dragData?.sortable) {
-      const overData = over.data.current
-      if (overData?.sortable) {
+    // 2. Block sortable reorder within the same page
+    if (dragData?.sortable && String(active.id).startsWith('block-')) {
+      if (overData?.sortable && String(over.id).startsWith('block-')) {
         const oldIndex = blockIds.indexOf(active.id)
         const newIndex = blockIds.indexOf(over.id)
         if (oldIndex !== -1 && newIndex !== -1 && oldIndex !== newIndex) {
@@ -269,8 +470,128 @@ function CourseBuilder({ course, onSave, onPublish, saving }) {
           handleBlockReorder(currentPageId, newOrder)
         }
       }
+      return
     }
-  }, [currentPageId, blockIds, handleBlockAdd, handleBlockReorder])
+
+    // 3. Module DnD reorder
+    if (dragData?.source === 'structure-module' && overData?.source === 'structure-module') {
+      const modules = courseData?.modules || []
+      const modSortIds = modules.map(m => `structure-module-${m.id}`)
+      const oldIndex = modSortIds.indexOf(active.id)
+      const newIndex = modSortIds.indexOf(over.id)
+      if (oldIndex !== -1 && newIndex !== -1 && oldIndex !== newIndex) {
+        const newModules = arrayMove([...modules], oldIndex, newIndex)
+        const newModuleIds = newModules.map(m => m.id)
+        const prevModuleIds = modules.map(m => m.id)
+
+        refreshCourseData(prev => ({ ...prev, modules: newModules }))
+
+        reorderCourseModules(courseData.id, newModuleIds)
+          .then(() => {
+            success('Модуль перемещён', {
+              action: () => {
+                refreshCourseData(prev => ({
+                  ...prev,
+                  modules: prevModuleIds.map(id => prev.modules.find(m => m.id === id)).filter(Boolean),
+                }))
+                reorderCourseModules(courseData.id, prevModuleIds).catch(console.error)
+              },
+              actionLabel: 'Отменить',
+              duration: 6000,
+            })
+          })
+          .catch(() => {
+            refreshCourseData(prev => ({
+              ...prev,
+              modules: prevModuleIds.map(id => prev.modules.find(m => m.id === id)).filter(Boolean),
+            }))
+            showError('Не удалось переместить модуль')
+          })
+      }
+      return
+    }
+
+    // 4. Page DnD — reorder within module or move between modules
+    if (dragData?.source === 'structure-page') {
+      const sourceModuleId = dragData.moduleId ?? null
+
+      let targetModuleId = sourceModuleId
+      if (overData?.source === 'structure-page') {
+        targetModuleId = overData.moduleId ?? null
+      } else if (overData?.source === 'structure-module') {
+        targetModuleId = overData.moduleId ?? null
+      } else if (overData?.source === 'module-droppable') {
+        targetModuleId = overData.moduleId ?? null
+      } else {
+        return
+      }
+
+      if (sourceModuleId === targetModuleId && overData?.source === 'structure-page') {
+        // Same module: reorder pages
+        const module = sourceModuleId ? courseData.modules?.find(m => m.id === sourceModuleId) : null
+        const pages = sourceModuleId ? (module?.pages || []) : (courseData?.orphan_pages || [])
+        const pageSortIds = pages.map(p => `structure-page-${p.id}`)
+        const oldIndex = pageSortIds.indexOf(active.id)
+        const newIndex = pageSortIds.indexOf(over.id)
+
+        if (oldIndex !== -1 && newIndex !== -1 && oldIndex !== newIndex) {
+          const newPages = arrayMove([...pages], oldIndex, newIndex)
+          const newPageIds = newPages.map(p => p.id)
+          const prevPageIds = pages.map(p => p.id)
+
+          if (sourceModuleId) {
+            refreshCourseData(prev => ({
+              ...prev,
+              modules: prev.modules?.map(m => m.id === sourceModuleId ? { ...m, pages: newPages } : m),
+            }))
+          } else {
+            refreshCourseData(prev => ({ ...prev, orphan_pages: newPages }))
+          }
+
+          reorderCoursePages(courseData.id, sourceModuleId, newPageIds)
+            .then(() => {
+              success('Страница перемещена', {
+                action: () => {
+                  if (sourceModuleId) {
+                    refreshCourseData(prev => ({
+                      ...prev,
+                      modules: prev.modules?.map(m =>
+                        m.id === sourceModuleId
+                          ? { ...m, pages: prevPageIds.map(id => m.pages.find(p => p.id === id)).filter(Boolean) }
+                          : m
+                      ),
+                    }))
+                  } else {
+                    refreshCourseData(prev => ({
+                      ...prev,
+                      orphan_pages: prevPageIds.map(id => prev.orphan_pages.find(p => p.id === id)).filter(Boolean),
+                    }))
+                  }
+                  reorderCoursePages(courseData.id, sourceModuleId, prevPageIds).catch(console.error)
+                },
+                actionLabel: 'Отменить',
+                duration: 6000,
+              })
+            })
+            .catch(() => {
+              if (sourceModuleId) {
+                refreshCourseData(prev => ({
+                  ...prev,
+                  modules: prev.modules?.map(m => m.id === sourceModuleId ? { ...m, pages } : m),
+                }))
+              } else {
+                refreshCourseData(prev => ({ ...prev, orphan_pages: pages }))
+              }
+              showError('Не удалось переместить страницу')
+            })
+        }
+      } else if (sourceModuleId !== targetModuleId) {
+        // Cross-module: move page via existing handler
+        handlePageMove(dragData.pageId, targetModuleId)
+      }
+      return
+    }
+  }, [courseData, currentPageId, blockIds, handleBlockAdd, handleBlockReorder, handlePageMove, refreshCourseData, success, showError])
 
   return (
     <DndContext onDragEnd={handleDragEnd} collisionDetection={closestCenter}>
@@ -308,11 +629,18 @@ function CourseBuilder({ course, onSave, onPublish, saving }) {
         <div className="w-72 bg-white border-l border-gray-200 flex flex-col flex-shrink-0">
           <PropertiesPanel
             selectedElement={selectedElement}
+            courseData={courseData}
+            currentPageId={currentPageId}
+            sortedBlocks={sortedBlocks}
             onBlockUpdate={handleBlockUpdate}
             onPageUpdate={handlePageUpdate}
             onPageDelete={handlePageDelete}
             onModuleUpdate={handleModuleUpdate}
             onModuleDelete={handleModuleDelete}
+            onModuleReorder={handleModuleReorder}
+            onPageReorder={handlePageReorder}
+            onPageMove={handlePageMove}
+            onBlockMove={handleBlockMove}
           />
         </div>
       </div>

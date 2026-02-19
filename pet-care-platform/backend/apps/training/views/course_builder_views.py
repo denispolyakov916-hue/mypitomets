@@ -19,7 +19,7 @@ Permissions:
 """
 
 import logging
-from django.db import models
+from django.db import models, transaction
 from django.shortcuts import get_object_or_404
 from rest_framework import status
 from rest_framework.views import APIView
@@ -171,10 +171,63 @@ class ModulesReorderView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        for i, mod_id in enumerate(module_ids, start=1):
-            CourseModule.objects.filter(id=mod_id).update(order_number=i)
+        with transaction.atomic():
+            # Two-pass: temporary high values to avoid unique_together violation
+            offset = 10000
+            for i, mod_id in enumerate(module_ids):
+                CourseModule.objects.filter(id=mod_id).update(order_number=offset + i)
+            for i, mod_id in enumerate(module_ids, start=1):
+                CourseModule.objects.filter(id=mod_id).update(order_number=i)
 
         return Response({'message': 'Порядок модулей обновлён', 'count': len(module_ids)})
+
+
+class PageMoveToModuleView(APIView):
+    """Move a page to a different module (or to orphan). Atomic operation."""
+    permission_classes = [IsAdminUser]
+
+    def patch(self, request, page_id):
+        target_module_id = request.data.get('target_module_id')
+
+        page = get_object_or_404(CoursePage, id=page_id, is_active=True)
+        source_module_id = page.module_id
+
+        if source_module_id == target_module_id:
+            return Response({'message': 'Страница уже в этом модуле'})
+
+        if target_module_id is not None:
+            target_module = get_object_or_404(CourseModule, id=target_module_id)
+            page.module = target_module
+        else:
+            page.module = None
+
+        target_filter = {'course_id': page.course_id, 'is_active': True}
+        if target_module_id is not None:
+            target_filter['module_id'] = target_module_id
+        else:
+            target_filter['module__isnull'] = True
+
+        max_order = CoursePage.objects.filter(**target_filter).exclude(
+            id=page.id
+        ).aggregate(max=models.Max('order_number'))['max'] or 0
+
+        page.order_number = max_order + 1
+        page.save(update_fields=['module', 'order_number'])
+
+        source_filter = {'course_id': page.course_id, 'is_active': True}
+        if source_module_id is not None:
+            source_filter['module_id'] = source_module_id
+        else:
+            source_filter['module__isnull'] = True
+
+        for i, p in enumerate(
+            CoursePage.objects.filter(**source_filter).order_by('order_number'), start=1
+        ):
+            if p.order_number != i:
+                CoursePage.objects.filter(id=p.id).update(order_number=i)
+
+        serializer = CoursePageSerializer(page)
+        return Response(serializer.data)
 
 
 class CoursePageViewSet(ModelViewSet):

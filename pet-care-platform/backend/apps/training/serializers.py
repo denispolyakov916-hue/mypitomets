@@ -250,7 +250,7 @@ class CourseModuleSerializer(serializers.ModelSerializer):
             'id', 'course', 'title', 'description', 'order_number',
             'is_active', 'created_at', 'updated_at', 'pages_count',
         ]
-        read_only_fields = ['id', 'course', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'course', 'order_number', 'created_at', 'updated_at']
 
     def get_pages_count(self, obj):
         return obj.pages.filter(is_active=True).count()
@@ -286,7 +286,7 @@ class CoursePageSerializer(serializers.ModelSerializer):
             'page_type', 'settings', 'is_active', 'created_at', 'updated_at',
             'blocks_count',
         ]
-        read_only_fields = ['id', 'created_at', 'updated_at', 'blocks_count']
+        read_only_fields = ['id', 'order_number', 'created_at', 'updated_at', 'blocks_count']
 
     def get_blocks_count(self, obj):
         """Количество активных блоков на странице."""
@@ -306,7 +306,7 @@ class ContentBlockSerializer(serializers.ModelSerializer):
             'id', 'page', 'page_title', 'block_type', 'block_type_display',
             'content', 'settings', 'order', 'is_active', 'created_at', 'updated_at'
         ]
-        read_only_fields = ['id', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'order', 'created_at', 'updated_at']
 
     def validate(self, data):
         """Валидация данных блока."""

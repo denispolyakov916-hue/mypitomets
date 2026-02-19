@@ -26,12 +26,19 @@ export const useToastStore = create((set) => ({
    * 
    * @param {string} message - Текст уведомления
    * @param {string} type - Тип уведомления (success, error, warning, info)
-   * @param {number} duration - Длительность показа в мс (0 = не исчезает)
+   * @param {number|Object} optionsOrDuration - Длительность в мс или объект опций
+   * @param {number} [optionsOrDuration.duration=5000] - Длительность показа
+   * @param {Function} [optionsOrDuration.action] - Callback для кнопки действия (например, undo)
+   * @param {string} [optionsOrDuration.actionLabel] - Текст кнопки действия
    * @returns {number} ID уведомления
    */
-  showToast: (message, type = TOAST_TYPES.INFO, duration = 5000) => {
+  showToast: (message, type = TOAST_TYPES.INFO, optionsOrDuration = 5000) => {
+    const options = typeof optionsOrDuration === 'number'
+      ? { duration: optionsOrDuration }
+      : (optionsOrDuration || {})
+    const { duration = 5000, action, actionLabel } = options
     const id = ++toastIdCounter
-    const newToast = { id, message, type, duration }
+    const newToast = { id, message, type, duration, action, actionLabel }
     
     set((state) => ({
       toasts: [...state.toasts, newToast]
@@ -54,20 +61,20 @@ export const useToastStore = create((set) => ({
   /**
    * Удобные методы для разных типов уведомлений
    */
-  success: (message, duration) => {
-    return useToastStore.getState().showToast(message, TOAST_TYPES.SUCCESS, duration)
+  success: (message, optionsOrDuration) => {
+    return useToastStore.getState().showToast(message, TOAST_TYPES.SUCCESS, optionsOrDuration)
   },
   
-  error: (message, duration) => {
-    return useToastStore.getState().showToast(message, TOAST_TYPES.ERROR, duration)
+  error: (message, optionsOrDuration) => {
+    return useToastStore.getState().showToast(message, TOAST_TYPES.ERROR, optionsOrDuration)
   },
   
-  warning: (message, duration) => {
-    return useToastStore.getState().showToast(message, TOAST_TYPES.WARNING, duration)
+  warning: (message, optionsOrDuration) => {
+    return useToastStore.getState().showToast(message, TOAST_TYPES.WARNING, optionsOrDuration)
   },
   
-  info: (message, duration) => {
-    return useToastStore.getState().showToast(message, TOAST_TYPES.INFO, duration)
+  info: (message, optionsOrDuration) => {
+    return useToastStore.getState().showToast(message, TOAST_TYPES.INFO, optionsOrDuration)
   }
 }))
 
