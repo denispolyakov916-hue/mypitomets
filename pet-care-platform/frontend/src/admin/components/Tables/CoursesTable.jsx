@@ -1,9 +1,10 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 // Components
 import DataTable from './DataTable';
 import CreateCourseModal from '../Courses/CreateCourseModal';
+import ConfirmModal from '../Forms/ConfirmModal';
 
 // Hooks
 import { adminAPI } from '../../utils/api';
@@ -11,6 +12,8 @@ import { adminAPI } from '../../utils/api';
 const CoursesTable = () => {
   const navigate = useNavigate();
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [courseToDelete, setCourseToDelete] = useState(null);
+  const [actionLoading, setActionLoading] = useState(false);
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -67,11 +70,78 @@ const CoursesTable = () => {
   };
   const handlePageChange = (page) => loadData({ page });
 
-  const handleAction = (action, course) => {
+  const handleAction = useCallback(async (action, course) => {
     if (action === 'edit') {
       navigate(`/admin-panel/courses/${course.id}/edit`);
+      return;
     }
-  };
+    if (action === 'preview') {
+      const url = `${window.location.origin}/courses/${course.id}`;
+      window.open(url, '_blank', 'noopener,noreferrer');
+      return;
+    }
+    if (action === 'duplicate') {
+      try {
+        setActionLoading(true);
+        const { data: courseData } = await adminAPI.courses.retrieve(course.id);
+        const copyPayload = {
+          title: (courseData.title || 'Копия') + ' (копия)',
+          description: courseData.description || '',
+          duration: courseData.duration || 60,
+          category: courseData.category || 'basics',
+          level: courseData.level || 'beginner',
+          pet_type: courseData.pet_type || 'all',
+          format_type: courseData.format_type || 'video',
+          price: courseData.price ?? 0,
+          instructor_name: courseData.instructor_name || '',
+          instructor_bio: courseData.instructor_bio || '',
+          status: 'draft'
+        };
+        const { data: newCourse } = await adminAPI.courses.create(copyPayload);
+        await loadData();
+        navigate(`/admin-panel/courses/${newCourse.id}/edit`);
+      } catch (err) {
+        console.error('[CoursesTable] Duplicate error:', err);
+        setError(err.response?.data?.error || 'Ошибка дублирования курса');
+      } finally {
+        setActionLoading(false);
+      }
+      return;
+    }
+    if (action === 'publish') {
+      try {
+        setActionLoading(true);
+        await adminAPI.courses.publish(course.id);
+        await loadData();
+      } catch (err) {
+        console.error('[CoursesTable] Publish error:', err);
+        setError(err.response?.data?.error || 'Ошибка публикации');
+      } finally {
+        setActionLoading(false);
+      }
+      return;
+    }
+    if (action === 'unpublish') {
+      try {
+        setActionLoading(true);
+        await adminAPI.courses.update(course.id, {
+          status: 'draft',
+          is_active: false
+        });
+        await loadData();
+      } catch (err) {
+        console.error('[CoursesTable] Unpublish error:', err);
+        setError(err.response?.data?.error || 'Ошибка снятия с публикации');
+      } finally {
+        setActionLoading(false);
+      }
+      return;
+    }
+    if (action === 'delete') {
+      setCourseToDelete(course);
+      return;
+    }
+  }, [navigate]);
 
   const handleCreate = () => {
     setShowCreateModal(true);
@@ -80,6 +150,21 @@ const CoursesTable = () => {
   const handleCourseCreated = (courseId) => {
     navigate(`/admin-panel/courses/${courseId}/edit`);
   };
+
+  const handleDeleteConfirm = useCallback(async () => {
+    if (!courseToDelete) return;
+    try {
+      setActionLoading(true);
+      await adminAPI.courses.delete(courseToDelete.id);
+      setCourseToDelete(null);
+      await loadData();
+    } catch (err) {
+      console.error('[CoursesTable] Delete error:', err);
+      setError(err.response?.data?.error || 'Ошибка удаления курса');
+    } finally {
+      setActionLoading(false);
+    }
+  }, [courseToDelete]);
 
 
 
@@ -353,15 +438,22 @@ const CoursesTable = () => {
     }
   ], []);
 
-  // Конфигурация действий с записями
+  // Конфигурация действий: primaryActionKey + getDropdownActions
   const rowActions = useMemo(() => [
-    {
-      key: 'edit',
-      label: 'Редактировать',
-      icon: '✏️',
-      variant: 'primary'
-    }
+    { key: 'edit', label: 'Редактировать', icon: '✏️', variant: 'primary' }
   ], []);
+
+  const getDropdownActions = useCallback((row) => {
+    const statusAction = row.status === 'published'
+      ? { key: 'unpublish', label: 'Снять с публикации', icon: '📤', variant: 'warning' }
+      : { key: 'publish', label: 'Опубликовать', icon: '✅', variant: 'success' };
+    return [
+      { key: 'preview', label: 'Предпросмотр', icon: '👁', variant: 'primary' },
+      { key: 'duplicate', label: 'Дублировать', icon: '📋', variant: 'primary' },
+      statusAction,
+      { key: 'delete', label: 'Удалить', icon: '🗑', variant: 'danger' }
+    ];
+  }, []);
 
   // Обработчик сброса фильтров
   const handleResetFilters = () => {
@@ -395,6 +487,8 @@ const CoursesTable = () => {
       filters={filterConfig}
       bulkActions={bulkActions}
       actions={rowActions}
+      primaryActionKey="edit"
+      getDropdownActions={getDropdownActions}
       onRefresh={handleRefresh}
       onFilterChange={handleFilterChange}
       onSortChange={handleSortChange}
@@ -414,6 +508,19 @@ const CoursesTable = () => {
       isOpen={showCreateModal}
       onClose={() => setShowCreateModal(false)}
       onCreated={handleCourseCreated}
+    />
+
+    <ConfirmModal
+      isOpen={!!courseToDelete}
+      onClose={() => setCourseToDelete(null)}
+      title="Удалить курс?"
+      message={courseToDelete
+        ? `Курс «${courseToDelete.title}» будет удалён. Это действие нельзя отменить.`
+        : ''}
+      confirmLabel="Удалить"
+      cancelLabel="Отмена"
+      onConfirm={handleDeleteConfirm}
+      variant="danger"
     />
     </>
   );

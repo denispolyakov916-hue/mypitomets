@@ -89,7 +89,7 @@ class CoursePublishView(APIView):
         pages_count = CoursePage.objects.filter(course_id=course.id, is_active=True).count()
         if pages_count == 0:
             return Response(
-                {'error': 'Нельзя опубликовать курс без страниц'},
+                {'error': 'Нельзя опубликовать курс без страниц. Добавьте уроки в конструкторе.'},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 

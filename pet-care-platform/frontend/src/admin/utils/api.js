@@ -173,6 +173,7 @@ export const adminAPI = {
     retrieve: (id) => adminApi.get(`admin/courses/${id}/`),
     update: (id, data) => adminApi.patch(`admin/courses/${id}/`, data),
     delete: (id) => adminApi.delete(`admin/courses/${id}/`),
+    publish: (id) => adminApi.post(`courses/${id}/publish/`),
   },
 
   // Быстрая статистика

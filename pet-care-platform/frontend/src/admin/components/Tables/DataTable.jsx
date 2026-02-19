@@ -7,6 +7,7 @@ import TablePagination from './TablePagination';
 import BulkActions from './BulkActions';
 import ExportButton from '../Export/ExportButton';
 import ExportModal from '../Export/ExportModal';
+import RowActionsDropdown from './RowActionsDropdown';
 
 // API
 import { adminAPI } from '../../utils/api';
@@ -20,7 +21,9 @@ const DataTable = ({
   pagination,
   filters,
   bulkActions,
-  actions, // Новое свойство для действий с записями
+  actions, // Действия с записями
+  primaryActionKey, // Ключ действия для прямой кнопки (напр. 'edit')
+  getDropdownActions, // (row) => [...] — действия для меню ⋮ (по статусу и т.п.)
   model, // Модель для экспорта
   onRefresh,
   onFilterChange,
@@ -38,6 +41,7 @@ const DataTable = ({
   const [selectedRows, setSelectedRows] = useState([]);
   const [sortConfig, setSortConfig] = useState({ key: null, direction: null });
   const [exportModalOpen, setExportModalOpen] = useState(false);
+  const [openActionsRowId, setOpenActionsRowId] = useState(null);
 
   // Обработка сортировки
   const handleSort = (key) => {
@@ -173,43 +177,36 @@ const DataTable = ({
   // Вычисляемые значения
   const hasSelection = selectedRows.length > 0;
   const hasBulkActions = bulkActions && bulkActions.length > 0;
-  const hasActions = actions && actions.length > 0;
+  const hasActions = (actions && actions.length > 0) || getDropdownActions;
+  const primaryAction = primaryActionKey && actions
+    ? actions.find(a => a.key === primaryActionKey)
+    : null;
+  const hasDropdown = getDropdownActions || (actions && actions.filter(a => a.key !== primaryActionKey).length > 0);
 
-  // Добавляем колонку действий если actions переданы
+  // Колонка действий: ✏️ + ⋮ — всегда видна без прокрутки (вариант C)
   const tableColumns = useMemo(() => {
     const cols = [...columns];
 
-    if (hasActions) {
-      cols.push({
-        key: 'actions',
-        label: 'Действия',
+    if (primaryAction || hasDropdown) {
+      cols.unshift({
+        key: '_row_actions',
+        label: '',
         sortable: false,
-        render: (value, row) => (
-          <div className="flex items-center space-x-2">
-            {actions.map((action, index) => (
-              <button
-                key={index}
-                onClick={() => onAction?.(action.key, row)}
-                className={`inline-flex items-center px-2 py-1 text-xs font-medium rounded ${
-                  action.variant === 'danger'
-                    ? 'text-red-700 bg-red-100 hover:bg-red-200'
-                    : action.variant === 'warning'
-                    ? 'text-yellow-700 bg-yellow-100 hover:bg-yellow-200'
-                    : 'text-blue-700 bg-blue-100 hover:bg-blue-200'
-                }`}
-                title={action.label}
-              >
-                {action.icon && <span className="mr-1">{action.icon}</span>}
-                {action.label}
-              </button>
-            ))}
-          </div>
+        render: (_, row) => (
+          <RowActionsDropdown
+            row={row}
+            primaryAction={primaryAction}
+            dropdownActions={getDropdownActions || (() => (actions || []).filter(a => a.key !== primaryActionKey))}
+            onAction={onAction}
+            isOpen={openActionsRowId === (row.id ?? row.pk)}
+            onOpenChange={setOpenActionsRowId}
+          />
         )
       });
     }
 
     return cols;
-  }, [columns, actions, hasActions, onAction]);
+  }, [columns, actions, primaryAction, primaryActionKey, getDropdownActions, hasDropdown, onAction, openActionsRowId]);
 
   if (loading) {
     return (
@@ -310,9 +307,9 @@ const DataTable = ({
         />
       )}
 
-      {/* Таблица */}
-      <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200">
+      {/* Таблица — min-w-0 для flex, overflow-x-auto для горизонтальной прокрутки */}
+      <div className="overflow-x-auto min-w-0">
+        <table className="min-w-full divide-y divide-gray-200" style={{ minWidth: 'max-content' }}>
           <thead className="bg-gray-50">
             <tr>
               {/* Чекбокс для выбора всех */}
@@ -334,7 +331,7 @@ const DataTable = ({
                   scope="col"
                   className={`px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider ${
                     column.sortable ? 'cursor-pointer hover:bg-gray-100' : ''
-                  }`}
+                  } ${column.key === '_row_actions' ? 'w-12 text-center' : ''}`}
                   onClick={() => column.sortable && handleSort(column.key)}
                 >
                   <div className="flex items-center space-x-1">
@@ -363,7 +360,7 @@ const DataTable = ({
               </tr>
             ) : (
               data.map((row, index) => (
-                <tr key={row.id || index} className="hover:bg-gray-50">
+                <tr key={row.id ?? row.pk ?? index} className="hover:bg-gray-50">
                   {/* Чекбокс для выбора строки */}
                   {hasBulkActions && (
                     <td className="relative w-12 px-6 sm:w-16 sm:px-8">
@@ -378,7 +375,12 @@ const DataTable = ({
 
                   {/* Данные строки */}
                   {tableColumns.map((column) => (
-                    <td key={column.key} className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <td
+                      key={column.key}
+                      className={`px-6 py-4 whitespace-nowrap text-sm text-gray-900 ${
+                        column.key === '_row_actions' ? 'w-12 text-center' : ''
+                      }`}
+                    >
                       {column.render ? column.render(row[column.key], row) : row[column.key]}
                     </td>
                   ))}
