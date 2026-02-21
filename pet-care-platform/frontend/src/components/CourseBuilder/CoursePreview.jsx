@@ -284,10 +284,21 @@ function CoursePreview({ course, isOpen, onClose }) {
                     </div>
 
                     {/* Блоки контента */}
-                    <div className="space-y-6">
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(12, 1fr)', gap: '12px' }}>
                       {currentPage.blocks && currentPage.blocks.length > 0 ? (
-                        currentPage.blocks.map((block) => (
-                          <div key={block.id} className="border border-gray-200 rounded-lg p-4">
+                        currentPage.blocks.map((block) => {
+                          const span = block.settings?.layout?.span || 12
+                          const offset = block.settings?.layout?.offset || 0
+                          return (
+                          <div
+                            key={block.id}
+                            className="border border-gray-200 rounded-lg p-4"
+                            style={{
+                              gridColumn: offset > 0
+                                ? `${offset + 1} / span ${span}`
+                                : `span ${span} / span ${span}`,
+                            }}
+                          >
                             <div className="text-sm text-gray-600 mb-2">
                               {block.block_type_display || block.block_type}
                             </div>
@@ -353,7 +364,8 @@ function CoursePreview({ course, isOpen, onClose }) {
                               </div>
                             )}
                           </div>
-                        ))
+                          )
+                        })
                       ) : (
                         <div className="text-center py-12 text-gray-500">
                           <div className="text-4xl mb-4">📄</div>

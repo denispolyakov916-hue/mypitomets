@@ -200,10 +200,15 @@ export function QuizRenderer({ block, mode = 'view', onComplete, onProgress }) {
       case 'true_false':
         return answer === question.correct_answer || answer === question.correct
       case 'multi_choice': {
-        const correct = question.correct_answer || question.correct || []
-        const userArr = Array.isArray(answer) ? answer.sort() : []
-        const correctArr = [...correct].sort()
-        return JSON.stringify(userArr) === JSON.stringify(correctArr)
+        // Только correct_answers — correct_answer это число для single_choice
+        const correct = question.correct_answers ?? question.correct ?? []
+        const correctArr = (Array.isArray(correct) ? correct : []).map(Number).filter(n => !isNaN(n)).sort((a, b) => a - b)
+        const userArr = (Array.isArray(answer) ? answer : []).map(Number).filter(n => !isNaN(n)).sort((a, b) => a - b)
+        const userSet = new Set(userArr)
+        const correctSet = new Set(correctArr)
+        // Должны быть выбраны все правильные и не выбрано ни одного лишнего
+        if (userSet.size !== correctSet.size) return false
+        return correctArr.every(idx => userSet.has(idx))
       }
       case 'text_input': {
         const correctText = (question.correct_answer || question.correct || '').toString().toLowerCase().trim()
@@ -261,7 +266,7 @@ export function QuizRenderer({ block, mode = 'view', onComplete, onProgress }) {
           <span className="flex-shrink-0 w-7 h-7 rounded-full bg-purple-100 text-purple-700 flex items-center justify-center text-sm font-bold">
             {qi + 1}
           </span>
-          <h4 className="font-medium text-gray-900 pt-0.5">{question.question}</h4>
+          <h4 className="font-medium text-gray-900 pt-0.5">{question.question || question.text}</h4>
         </div>
 
         {/* Подсказка о типе */}
@@ -276,7 +281,7 @@ export function QuizRenderer({ block, mode = 'view', onComplete, onProgress }) {
               {(question.options || (type === 'true_false' ? ['Верно', 'Неверно'] : [])).map((opt, oi) => {
                 const isSelected = answers[qi] === oi
                 const correctIdx = question.correct_answer ?? question.correct
-                const isCorrectOpt = submitted && oi === correctIdx
+                const isCorrectOpt = submitted && isCorrectQ && oi === correctIdx
                 const isWrongOpt = submitted && isSelected && oi !== correctIdx
                 return (
                   <button key={oi} onClick={() => handleSingleSelect(qi, oi)} disabled={submitted}
@@ -305,8 +310,8 @@ export function QuizRenderer({ block, mode = 'view', onComplete, onProgress }) {
             <div className="space-y-2">
               {(question.options || []).map((opt, oi) => {
                 const selected = Array.isArray(answers[qi]) && answers[qi].includes(oi)
-                const correctArr = question.correct_answer || question.correct || []
-                const isCorrectOpt = submitted && correctArr.includes(oi)
+                const correctArr = question.correct_answers ?? question.correct ?? []
+                const isCorrectOpt = submitted && isCorrectQ && correctArr.includes(oi)
                 const isWrongOpt = submitted && selected && !correctArr.includes(oi)
                 return (
                   <button key={oi} onClick={() => handleMultiToggle(qi, oi)} disabled={submitted}
@@ -349,9 +354,6 @@ export function QuizRenderer({ block, mode = 'view', onComplete, onProgress }) {
                     : 'border-gray-200 focus:border-blue-400 focus:ring-2 focus:ring-blue-100'
                 }`}
               />
-              {submitted && !isCorrectQ && (
-                <p className="text-sm text-green-600 mt-1">Правильный ответ: {question.correct_answer || question.correct}</p>
-              )}
             </div>
           )}
 

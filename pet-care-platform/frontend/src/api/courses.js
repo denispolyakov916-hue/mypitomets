@@ -623,6 +623,19 @@ export const completeCoursePage = async (pageId, petId, progressData = {}) => {
   })
 }
 
+/**
+ * Сброс прогресса по курсу
+ *
+ * @param {number} courseId - ID курса
+ * @param {string} [petId] - ID питомца (опционально)
+ * @returns {Promise<Object>} Результат сброса
+ */
+export const resetCourseProgress = async (courseId, petId = null) => {
+  return await api.post(`/courses/${courseId}/progress/reset/`, {
+    pet_id: petId || undefined
+  })
+}
+
 // Примечание: шаблоны страниц (page-templates) не реализованы на бекенде.
 // При необходимости они могут быть добавлены аналогично block-templates.
 

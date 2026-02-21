@@ -73,6 +73,7 @@ from .views.lesson_views import (
     CoursePageLearningView,
     CoursePageListLearningView,
     CoursePageCompleteView,
+    CourseProgressResetView,
 )
 from .views.module_views import CourseModuleViewSet, CourseStructureView
 
@@ -111,6 +112,9 @@ urlpatterns = [
     # Прогресс по курсу
     # GET /api/courses/{course_id}/progress/
     path('<int:course_id>/progress/', UserCourseProgressView.as_view(), name='course-progress'),
+    # Сброс прогресса по курсу
+    # POST /api/courses/{course_id}/progress/reset/
+    path('<int:course_id>/progress/reset/', CourseProgressResetView.as_view(), name='course-progress-reset'),
 
     # Комментарии к курсу
     # GET /api/courses/{course_id}/comments/

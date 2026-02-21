@@ -13,7 +13,7 @@
 import React, { useState, useEffect, useCallback, useMemo, lazy, Suspense } from 'react'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { Button } from '../../../components/ui'
-import { getCourseStructure, getCoursePage, completeCoursePage } from '../../../api/courses'
+import { getCourseStructure, getCoursePage, completeCoursePage, resetCourseProgress } from '../../../api/courses'
 import { useAuthStore } from '../../../store/authStore'
 import { usePets } from '../../../hooks/usePets'
 import { useToastStore } from '../../../store/toastStore'
@@ -98,6 +98,7 @@ const CoursePageLearning = () => {
   const [loadingPage, setLoadingPage] = useState(false)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [petId, setPetId] = useState(searchParams.get('pet_id') || '')
+  const [completedQuizzes, setCompletedQuizzes] = useState({})
 
   /* ─── Загрузка структуры ─── */
 
@@ -148,6 +149,11 @@ const CoursePageLearning = () => {
 
   useEffect(() => { loadCourseStructure() }, [loadCourseStructure])
 
+  // Сброс результатов тестов при смене страницы
+  useEffect(() => {
+    setCompletedQuizzes({})
+  }, [currentPage?.id])
+
   useEffect(() => {
     if (pageId && currentPage && pageId !== currentPage.id?.toString()) {
       loadPage(pageId)
@@ -195,9 +201,12 @@ const CoursePageLearning = () => {
     navigate(`/training/courses/${courseId}/learn/pages/${targetPageId}${params}`)
   }, [courseId, petId, navigate])
 
-  const handleBlockComplete = useCallback(async (blockId, data) => {
-    console.log('Block completed:', blockId, data)
-  }, [])
+  const handleBlockComplete = useCallback((blockId, data) => {
+    const block = currentPage?.blocks?.find(b => b.id === blockId)
+    if (block?.block_type === 'quiz' && data?.score !== undefined) {
+      setCompletedQuizzes(prev => ({ ...prev, [blockId]: data.score }))
+    }
+  }, [currentPage?.blocks])
 
   const handleBlockProgress = useCallback((blockId, progress) => {
     console.log('Block progress:', blockId, progress)
@@ -232,6 +241,39 @@ const CoursePageLearning = () => {
       showError('Не удалось завершить страницу')
     }
   }, [currentPage, petId, navigation, handlePageSelect, success, showError])
+
+  const mandatoryQuizzes = useMemo(() => {
+    return (currentPage?.blocks || []).filter(
+      b => b.block_type === 'quiz' && b.content?.mandatory_testing
+    )
+  }, [currentPage?.blocks])
+
+  const canCompletePage = useMemo(() => {
+    if (mandatoryQuizzes.length === 0) return true
+    const passingScore = (b) => b.content?.passing_score ?? 70
+    return mandatoryQuizzes.every(b => {
+      const score = completedQuizzes[b.id]
+      return score !== undefined && score >= passingScore(b)
+    })
+  }, [mandatoryQuizzes, completedQuizzes])
+
+  const [isResetting, setIsResetting] = useState(false)
+
+  const handleResetProgress = useCallback(async () => {
+    if (!courseId || !window.confirm('Начать курс заново? Весь прогресс будет сброшен.')) return
+    try {
+      setIsResetting(true)
+      await resetCourseProgress(courseId, petId || undefined)
+      success('Прогресс сброшен. Курс начат заново.')
+      await loadCourseStructure()
+      if (currentPage?.id) await loadPage(currentPage.id)
+    } catch (err) {
+      console.error('Error resetting progress:', err)
+      showError('Не удалось сбросить прогресс')
+    } finally {
+      setIsResetting(false)
+    }
+  }, [courseId, petId, loadCourseStructure, currentPage?.id, loadPage, success, showError])
 
   const handlePetChange = useCallback((newPetId) => {
     setPetId(newPetId)
@@ -318,14 +360,26 @@ const CoursePageLearning = () => {
               </select>
             )}
 
-            <div className="flex items-center space-x-2">
-              <div className="w-24 h-2 bg-gray-200 rounded-full">
-                <div
-                  className="h-2 bg-green-500 rounded-full transition-all duration-500"
-                  style={{ width: `${realProgress.percent}%` }}
-                />
+            <div className="flex items-center space-x-3">
+              <div className="flex items-center space-x-2">
+                <div className="w-24 h-2 bg-gray-200 rounded-full">
+                  <div
+                    className="h-2 bg-green-500 rounded-full transition-all duration-500"
+                    style={{ width: `${realProgress.percent}%` }}
+                  />
+                </div>
+                <span className="text-sm font-medium text-gray-600">{Math.round(realProgress.percent)}%</span>
               </div>
-              <span className="text-sm font-medium text-gray-600">{Math.round(realProgress.percent)}%</span>
+              {realProgress.percent > 0 && (
+                <button
+                  onClick={handleResetProgress}
+                  disabled={isResetting}
+                  className="text-xs text-gray-500 hover:text-amber-600 transition-colors disabled:opacity-50"
+                  title="Начать курс заново"
+                >
+                  {isResetting ? 'Сброс...' : '🔄 Начать заново'}
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -371,17 +425,29 @@ const CoursePageLearning = () => {
                 </div>
 
                 {/* Блоки контента */}
-                <div className="space-y-6">
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(12, 1fr)', gap: '12px' }}>
                   {currentPage.blocks?.length > 0 ? (
-                    currentPage.blocks.map((block) => (
-                      <BlockRenderer
-                        key={block.id}
-                        block={block}
-                        mode="view"
-                        onComplete={handleBlockComplete}
-                        onProgress={handleBlockProgress}
-                      />
-                    ))
+                    currentPage.blocks.map((block) => {
+                      const span = block.settings?.layout?.span || 12
+                      const offset = block.settings?.layout?.offset || 0
+                      return (
+                        <div
+                          key={block.id}
+                          style={{
+                            gridColumn: offset > 0
+                              ? `${offset + 1} / span ${span}`
+                              : `span ${span} / span ${span}`,
+                          }}
+                        >
+                          <BlockRenderer
+                            block={block}
+                            mode="view"
+                            onComplete={handleBlockComplete}
+                            onProgress={handleBlockProgress}
+                          />
+                        </div>
+                      )
+                    })
                   ) : (
                     <div className="text-center py-12 text-gray-500">
                       <div className="text-4xl mb-4">📄</div>
@@ -417,12 +483,21 @@ const CoursePageLearning = () => {
                   )}
                 </div>
 
-                <Button
-                  onClick={handlePageComplete}
-                  className="px-8 bg-green-600 hover:bg-green-700 text-white"
-                >
-                  Завершить и продолжить
-                </Button>
+                <div className="flex flex-col items-center">
+                  <Button
+                    onClick={handlePageComplete}
+                    disabled={!canCompletePage}
+                    title={!canCompletePage && mandatoryQuizzes.length > 0 ? 'Сначала пройдите обязательный тест' : undefined}
+                    className="px-8 bg-green-600 hover:bg-green-700 text-white disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-green-600"
+                  >
+                    Завершить и продолжить
+                  </Button>
+                  {mandatoryQuizzes.length > 0 && !canCompletePage && (
+                    <p className="text-xs text-amber-600 mt-1 text-center max-w-xs">
+                      Пройдите обязательный тест для завершения страницы
+                    </p>
+                  )}
+                </div>
 
                 <div>
                   {navigation.nextPage && (

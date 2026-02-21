@@ -13,7 +13,7 @@
 
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate, Link, useSearchParams } from 'react-router-dom'
-import { getCourse, enrollFreeCourse, getCourseStructure } from '../../api/courses'
+import { getCourse, enrollFreeCourse, getCourseStructure, resetCourseProgress } from '../../api/courses'
 import { useAuthStore } from '../../store/authStore'
 import { useCartStore } from '../../store/cartStore'
 import { useToastStore } from '../../store/toastStore'
@@ -86,6 +86,7 @@ function CourseDetail() {
   // Структура курса
   const [courseStructure, setCourseStructure] = useState(null)
   const [expandedModules, setExpandedModules] = useState({})
+  const [isResetting, setIsResetting] = useState(false)
 
   /* ─── Загрузка данных ─── */
 
@@ -133,6 +134,21 @@ function CourseDetail() {
   useEffect(() => { setImageError(false) }, [course?.image_url])
 
   /* ─── Обработчики ─── */
+
+  const handleResetProgress = async () => {
+    if (!course || !window.confirm('Начать курс заново? Весь прогресс будет сброшен.')) return
+    try {
+      setIsResetting(true)
+      await resetCourseProgress(course.id, null)
+      success('Прогресс сброшен.')
+      const structure = await getCourseStructure(id)
+      setCourseStructure(structure)
+    } catch (err) {
+      showError(err.response?.data?.error || err.message || 'Не удалось сбросить прогресс')
+    } finally {
+      setIsResetting(false)
+    }
+  }
 
   const handleAddToCart = async () => {
     if (!isAuthenticated) return navigate('/login', { state: { from: `/courses/${id}` } })
@@ -427,13 +443,25 @@ function CourseDetail() {
               <div className="space-y-3">
                 <div className="p-3 bg-green-50 border border-green-200 rounded-lg text-center">
                   <p className="text-sm text-green-700 font-medium">✓ Курс доступен</p>
+                  {courseStructure?.progress_percent > 0 && (
+                    <p className="text-xs text-green-600 mt-1">Прогресс: {Math.round(courseStructure.progress_percent)}%</p>
+                  )}
                 </div>
                 <button
                   onClick={() => navigate(`/training/courses/${course.id}/learn`)}
                   className="w-full py-3 px-4 rounded-xl font-medium bg-primary-600 hover:bg-primary-700 text-white transition-colors flex items-center justify-center gap-2"
                 >
-                  🎓 Начать обучение
+                  🎓 {courseStructure?.progress_percent > 0 ? 'Продолжить обучение' : 'Начать обучение'}
                 </button>
+                {courseStructure?.progress_percent > 0 && (
+                  <button
+                    onClick={handleResetProgress}
+                    disabled={isResetting}
+                    className="w-full py-2 px-4 rounded-lg text-sm text-gray-600 hover:text-amber-600 hover:bg-amber-50 border border-gray-200 transition-colors disabled:opacity-50"
+                  >
+                    {isResetting ? 'Сброс...' : '🔄 Начать курс заново'}
+                  </button>
+                )}
               </div>
             ) : course.price > 0 ? (
               <div className="space-y-3">

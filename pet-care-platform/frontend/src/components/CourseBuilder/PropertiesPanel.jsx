@@ -629,6 +629,7 @@ function BlockSpecificProperties({ element, updateLocal }) {
           </Field>
           <Field label="Настройки">
             <div className="space-y-2">
+              <Checkbox label="Обязательное тестирование" checked={content.mandatory_testing || false} onChange={(v) => setContent('mandatory_testing', v)} />
               <Checkbox label="Перемешивать" checked={content.shuffle || false} onChange={(v) => setContent('shuffle', v)} />
               <Checkbox label="Показать результаты" checked={content.show_results ?? true} onChange={(v) => setContent('show_results', v)} />
               <Checkbox label="Повторная попытка" checked={content.allow_retake ?? true} onChange={(v) => setContent('allow_retake', v)} />

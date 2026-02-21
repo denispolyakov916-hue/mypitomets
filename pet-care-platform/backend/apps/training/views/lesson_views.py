@@ -813,3 +813,71 @@ class CoursePageCompleteView(APIView):
                 'completed_pages': len(completed_ids),
             }
         }, status=status.HTTP_200_OK)
+
+
+class CourseProgressResetView(APIView):
+    """
+    Сброс прогресса по курсу.
+
+    POST /api/courses/{course_id}/progress/reset/
+    Сбрасывает прогресс пользователя по курсу (завершённые страницы, статус).
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, course_id):
+        try:
+            course = Course.objects.get(id=course_id)
+        except Course.DoesNotExist:
+            return Response(
+                {'error': 'Курс не найден'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        if not has_course_access(request.user, course):
+            return Response(
+                {'error': 'У вас нет доступа к этому курсу'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        pet_id = request.data.get('pet_id')
+
+        progress_filter = {
+            'user': request.user,
+            'course': course,
+        }
+        if pet_id:
+            progress_filter['pet_id'] = pet_id
+        else:
+            progress_filter['pet__isnull'] = True
+
+        course_progress = UserCourseProgress.objects.filter(**progress_filter).first()
+
+        if not course_progress:
+            return Response({
+                'message': 'Прогресс уже пуст',
+                'course_progress': {
+                    'progress_percent': 0,
+                    'status': 'not_started',
+                    'completed_pages': 0,
+                }
+            }, status=status.HTTP_200_OK)
+
+        course_progress.status = 'not_started'
+        course_progress.progress_percent = 0
+        course_progress.completed_at = None
+        course_progress.completed_lessons_count = 0
+        course_progress.completed_pages_ids = []
+        course_progress.total_time_spent = 0
+        course_progress.save()
+
+        course_progress.lesson_progress.all().delete()
+
+        return Response({
+            'message': 'Прогресс успешно сброшен',
+            'course_progress': {
+                'progress_percent': 0,
+                'status': 'not_started',
+                'completed_pages': 0,
+            }
+        }, status=status.HTTP_200_OK)
