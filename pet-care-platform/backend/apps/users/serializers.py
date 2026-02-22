@@ -16,17 +16,8 @@
 """
 
 from rest_framework import serializers
-import re
 
-# Список распространённых паролей для проверки
-COMMON_PASSWORDS = {
-    'password', 'password1', 'password123', '123456', '12345678', '123456789',
-    'qwerty', 'qwerty123', 'abc123', 'monkey', 'letmein', 'trustno1',
-    'dragon', 'baseball', 'iloveyou', 'master', 'sunshine', 'ashley',
-    'football', 'shadow', 'passw0rd', '1234567', '1234567890', 'welcome',
-    'admin', 'admin123', 'login', 'princess', 'solo', 'qwertyuiop',
-    'пароль', 'пароль123', '123456а', 'qwerty1', 'йцукен', 'привет'
-}
+from core.validators import validate_password_strength, COMMON_PASSWORDS
 
 
 class UserRegistrationSerializer(serializers.Serializer):
@@ -119,50 +110,10 @@ class UserRegistrationSerializer(serializers.Serializer):
         return value.lower().strip()
     
     def validate_password(self, value):
-        """
-        Валидация сложности пароля.
-        
-        Проверяет:
-        - Минимум 8 символов
-        - Наличие хотя бы одной буквы
-        - Наличие хотя бы одной цифры
-        - Наличие хотя бы одного специального символа
-        - Отсутствие в списке распространённых паролей
-        
-        Аргументы:
-            value (str): Пароль из запроса
-            
-        Возвращает:
-            str: Валидированный пароль
-            
-        Исключения:
-            ValidationError: Если пароль не соответствует требованиям
-        """
-        errors = []
-        
-        # Проверка длины
-        if len(value) < 8:
-            errors.append('Пароль должен содержать минимум 8 символов')
-        
-        # Проверка наличия буквы (латиница или кириллица)
-        if not re.search(r'[a-zA-Zа-яА-ЯёЁ]', value):
-            errors.append('Пароль должен содержать хотя бы одну букву')
-        
-        # Проверка наличия цифры
-        if not re.search(r'\d', value):
-            errors.append('Пароль должен содержать хотя бы одну цифру')
-        
-        # Проверка наличия специального символа
-        if not re.search(r'[!@#$%^&*()_+\-=\[\]{};\':"\\|,.<>\/?`~]', value):
-            errors.append('Пароль должен содержать хотя бы один специальный символ (!@#$%^&*...)')
-        
-        # Проверка на распространённые пароли
-        if value.lower() in COMMON_PASSWORDS:
-            errors.append('Этот пароль слишком распространён. Выберите другой')
-        
+        """Валидация сложности пароля через общую утилиту."""
+        errors = validate_password_strength(value)
         if errors:
             raise serializers.ValidationError(errors)
-        
         return value
     
     def validate(self, attrs):
@@ -262,6 +213,82 @@ class UserProfileSerializer(serializers.Serializer):
     id = serializers.CharField(read_only=True, help_text="UUIDv7 идентификатор пользователя")
     email = serializers.EmailField(read_only=True)
     created_at = serializers.CharField(read_only=True)
+
+
+class UserShortSerializer(serializers.Serializer):
+    """Краткая сериализация пользователя (замена User.to_dict())."""
+
+    id = serializers.UUIDField(read_only=True)
+    email = serializers.EmailField(read_only=True)
+    role = serializers.CharField(read_only=True)
+    isActivated = serializers.BooleanField(source='is_activated', read_only=True)
+    is_staff = serializers.BooleanField(read_only=True)
+    is_superuser = serializers.BooleanField(read_only=True)
+
+
+class UserFullSerializer(serializers.Serializer):
+    """Полная сериализация профиля (замена User.to_dict_full())."""
+
+    id = serializers.UUIDField(read_only=True)
+    email = serializers.EmailField(read_only=True)
+    first_name = serializers.CharField(read_only=True)
+    last_name = serializers.CharField(read_only=True)
+    phone = serializers.CharField(read_only=True)
+    default_address = serializers.CharField(read_only=True)
+    avatar = serializers.SerializerMethodField()
+    bio = serializers.CharField(read_only=True)
+    date_of_birth = serializers.DateField(read_only=True)
+    city = serializers.CharField(read_only=True)
+    website = serializers.URLField(read_only=True)
+    email_notifications = serializers.BooleanField(read_only=True)
+    push_notifications = serializers.BooleanField(read_only=True)
+    order_notifications = serializers.BooleanField(read_only=True)
+    marketing_notifications = serializers.BooleanField(read_only=True)
+    preferred_pet_types = serializers.JSONField(read_only=True)
+    created_at = serializers.DateTimeField(read_only=True)
+    isActivated = serializers.BooleanField(source='is_activated', read_only=True)
+    role = serializers.CharField(read_only=True)
+    is_staff = serializers.BooleanField(read_only=True)
+    is_superuser = serializers.BooleanField(read_only=True)
+
+    def get_avatar(self, obj):
+        if obj.avatar:
+            try:
+                return obj.avatar.url
+            except (ValueError, AttributeError):
+                pass
+        return None
+
+
+class UserProfileUpdateSerializer(serializers.Serializer):
+    """Сериализатор для обновления профиля пользователя."""
+
+    email = serializers.EmailField(required=False)
+    first_name = serializers.CharField(max_length=150, required=False, allow_blank=True)
+    last_name = serializers.CharField(max_length=150, required=False, allow_blank=True)
+    phone = serializers.CharField(max_length=20, required=False, allow_blank=True)
+    default_address = serializers.CharField(required=False, allow_blank=True)
+    bio = serializers.CharField(required=False, allow_blank=True)
+    date_of_birth = serializers.DateField(required=False, allow_null=True)
+    city = serializers.CharField(max_length=100, required=False, allow_blank=True)
+    website = serializers.URLField(required=False, allow_blank=True)
+    email_notifications = serializers.BooleanField(required=False)
+    push_notifications = serializers.BooleanField(required=False)
+    order_notifications = serializers.BooleanField(required=False)
+    marketing_notifications = serializers.BooleanField(required=False)
+    preferred_pet_types = serializers.ListField(
+        child=serializers.CharField(),
+        required=False,
+    )
+
+    def validate_email(self, value):
+        value = value.lower().strip()
+        user = self.context.get('user')
+        if user and value != user.email:
+            from .models import User
+            if User.objects.filter(email=value).exists():
+                raise serializers.ValidationError('Пользователь с таким email уже существует')
+        return value
 
 
 class OrderSerializer(serializers.Serializer):
@@ -395,36 +422,10 @@ class PasswordResetConfirmSerializer(serializers.Serializer):
         return value
     
     def validate_new_password(self, value):
-        """
-        Валидация сложности нового пароля.
-        
-        Проверяет те же требования, что и при регистрации.
-        """
-        errors = []
-        
-        # Проверка длины
-        if len(value) < 8:
-            errors.append('Пароль должен содержать минимум 8 символов')
-        
-        # Проверка наличия буквы (латиница или кириллица)
-        if not re.search(r'[a-zA-Zа-яА-ЯёЁ]', value):
-            errors.append('Пароль должен содержать хотя бы одну букву')
-        
-        # Проверка наличия цифры
-        if not re.search(r'\d', value):
-            errors.append('Пароль должен содержать хотя бы одну цифру')
-        
-        # Проверка наличия специального символа
-        if not re.search(r'[!@#$%^&*()_+\-=\[\]{};\':"\\|,.<>\/?`~]', value):
-            errors.append('Пароль должен содержать хотя бы один специальный символ (!@#$%^&*...)')
-        
-        # Проверка на распространённые пароли
-        if value.lower() in COMMON_PASSWORDS:
-            errors.append('Этот пароль слишком распространён. Выберите другой')
-        
+        """Валидация сложности нового пароля через общую утилиту."""
+        errors = validate_password_strength(value)
         if errors:
             raise serializers.ValidationError(errors)
-        
         return value
     
     def validate(self, attrs):

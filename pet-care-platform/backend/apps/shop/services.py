@@ -39,6 +39,7 @@ from django.core.cache import cache
 from django.core.exceptions import ValidationError
 
 from core.services import BaseService, BaseCRUDService, ServiceResult
+from core.constants import RESERVATION_TIMEOUT_MINUTES, DELIVERY_COSTS
 
 logger = logging.getLogger('apps.shop')
 
@@ -525,7 +526,7 @@ class ReservationService:
         from apps.shop.models import Reservation, Product
         
         reservations = []
-        expires_at = timezone.now() + timedelta(minutes=10)
+        expires_at = timezone.now() + timedelta(minutes=RESERVATION_TIMEOUT_MINUTES)
 
         with transaction.atomic():
             for item in items:
@@ -662,18 +663,10 @@ class OrderService(BaseService):
     - get_order_details() - детали заказа для API
     """
     
-    ORDER_EXPIRY_MINUTES = 10
-    
-    DELIVERY_COSTS = {
-        'standard': Decimal('300.00'),
-        'express': Decimal('600.00'),
-        'pickup': Decimal('0.00'),
-    }
-    
     @classmethod
     def calculate_delivery_cost(cls, delivery_type: str) -> Decimal:
         """Получить стоимость доставки."""
-        return cls.DELIVERY_COSTS.get(delivery_type, Decimal('0.00'))
+        return DELIVERY_COSTS.get(delivery_type, Decimal('0.00'))
     
     @classmethod
     def get_address(cls, user, address_id: Optional[str] = None,
@@ -791,7 +784,7 @@ class OrderService(BaseService):
                 recipient_name=recipient_name or user.get_full_name() or user.email,
                 recipient_phone=recipient_phone or user.phone or '',
                 status='pending',
-                expires_at=timezone.now() + timedelta(minutes=cls.ORDER_EXPIRY_MINUTES)
+                expires_at=timezone.now() + timedelta(minutes=RESERVATION_TIMEOUT_MINUTES)
             )
             
             # Создаём элементы заказа

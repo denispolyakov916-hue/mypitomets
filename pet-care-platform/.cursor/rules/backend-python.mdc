@@ -8,11 +8,26 @@ alwaysApply: false
 
 ## Архитектура слоёв
 
-Бизнес-логика ТОЛЬКО в сервисах, НИКОГДА напрямую во views. Порядок слоёв:
+Бизнес-логика ТОЛЬКО в сервисах, НИКОГДА напрямую во views или моделях. Порядок слоёв:
 
 ```
-Models → Serializers → Services → Views → URLs
+Constants → Models → Serializers → Services → Views → URLs
 ```
+
+## Константы
+
+Все магические числа и строки — в `core/constants.py`. НИКОГДА не хардкодить значения в коде:
+
+```python
+from core.constants import (
+    UserRole, OrderStatus,
+    DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE,
+    RESERVATION_TIMEOUT_MINUTES, DELIVERY_COSTS,
+    MAX_PETS_PER_USER, ACTIVATION_CODE_MIN, ACTIVATION_CODE_MAX,
+)
+```
+
+Роли и статусы — через классы-перечисления (`UserRole.ADMIN`, `OrderStatus.PENDING`), не строковые литералы.
 
 ## Модели
 
@@ -25,9 +40,6 @@ class MyModel(models.Model):
     created_at = models.DateTimeField(default=timezone.now)
     updated_at = models.DateTimeField(auto_now=True)
 
-    SOME_CHOICES = [('option_a', 'Вариант A'), ('option_b', 'Вариант B')]
-    status = models.CharField(max_length=20, choices=SOME_CHOICES, default='option_a')
-
     class Meta:
         db_table = 'my_models'
         verbose_name = 'Моя модель'
@@ -37,9 +49,11 @@ class MyModel(models.Model):
 ```
 
 - UUIDv7 для PK пользовательского контента, AutoField для админского (курсы, товары)
-- Computed свойства через `@property`
-- Choices как константы класса
+- Computed свойства через `@property` (только простые вычисления без запросов к БД)
+- Choices — из `core/constants.py` (например `UserRole.CHOICES`)
 - `related_name` — всегда явно указывать
+- **НЕ ПОМЕЩАТЬ** в модели: `to_dict()`, бизнес-логику, сериализацию, создание связанных объектов
+- Методы-хелперы для оптимизации запросов допустимы (например `Cart.get_items_optimized()`)
 
 ## Сервисы
 
@@ -53,15 +67,16 @@ class MyService(BaseCRUDService):
 
     def create_item(self, data, user):
         """Создание элемента с валидацией."""
-        # Бизнес-логика здесь
         return ServiceResult(success=True, data=instance, message='Создано')
 
 my_service = MyService()  # Инстанс на уровне модуля
 ```
 
 - Наследование от `BaseCRUDService` из `core.services`
-- Возврат через `ServiceResult` для единообразия
+- `BaseCRUDService` методы (`create`, `update`, `delete`, `get_by_id`, `list`) возвращают `ServiceResult`
+- `BaseCRUDService` обрабатывает `ValidationError`, `IntegrityError` отдельно (не общий `except Exception`)
 - `@dataclass` для сложных контекстов (`PetContext`, `PersonalizationContext`)
+- Общие утилиты (валидация, cookie) — в `core/validators.py`, не дублировать в приложениях
 
 ## Views
 
@@ -74,23 +89,29 @@ class MyListView(BaseListCreateView):
     model = MyModel
     serializer_class = MyCreateSerializer
     permission_classes = [IsAuthenticated]
+    select_related_fields = ['owner', 'category']
+    prefetch_related_fields = ['tags']
 
     def get_queryset(self):
-        return MyModel.objects.select_related('owner').filter(owner=self.request.user)
+        return super().get_queryset().filter(owner=self.request.user)
 ```
 
 - Наследование от `BaseListCreateView`, `BaseDetailView`, `BaseReadOnlyView`
+- `BaseCRUDMixin` предоставляет: `select_related_fields`, `prefetch_related_fields`, `filter_queryset()`, `order_queryset()`, `paginate_queryset()`, `make_response()`
 - Permissions: `IsAuthenticated`, `IsOwner`, `IsOwnerOrReadOnly`, `IsStaffOrReadOnly`
 - Ошибки: `ApiError.bad_request()`, `ApiError.not_found()`, `ApiError.forbidden()`
 - Декораторы: `@safe_api_operation`, `@handle_api_errors`
-- Оптимизация: `select_related()`, `prefetch_related()`
+- N+1 оптимизация: через `select_related_fields`/`prefetch_related_fields` в классе (предпочтительно) или `select_related()`/`prefetch_related()` в `get_queryset()`
+- Views должны быть тонкими — вызов сервиса + формирование Response, никакой бизнес-логики
 
 ## Serializers
 
 - Раздельные: `MyCreateSerializer` (запись), `MySerializer` (чтение)
 - Валидация: `validate_field_name()` для поля, `validate()` для cross-field
+- Общие валидаторы — в `core/validators.py` (например `validate_password_strength`), не дублировать между сериализаторами
 - `SerializerMethodField` для computed полей
 - Всегда передавать `context={'request': request}` для абсолютных URL
+- Сериализаторы — замена `to_dict()` в моделях. Никогда не создавать `to_dict()` в моделях
 
 ## URLs
 
@@ -147,3 +168,6 @@ if not data:
 
 - Django `TestCase`, helper-методы `_create_pet()`, `_create_product()`
 - `setUp()` для тестовых данных, docstrings на русском
+- `factory_boy` (`factory-boy==3.3.1`) для генерации тестовых объектов
+- Тесты для сервисов обязательны при создании нового сервиса
+- Структура: `apps/{app}/tests/test_{module}.py`, `core/tests/test_{module}.py`

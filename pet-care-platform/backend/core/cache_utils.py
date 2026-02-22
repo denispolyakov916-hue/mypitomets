@@ -129,19 +129,15 @@ def cached_function(timeout: int = 300, key_prefix: Optional[str] = None):
 def invalidate_cache_pattern(pattern: str):
     """
     Инвалидация кэша по шаблону.
-    
+
+    Для Redis используется delete_pattern, для LocMemCache — cache.clear() как fallback.
+
     Args:
         pattern: Шаблон ключа (например, 'products:*')
-    
-    Note:
-        Для LocMemCache инвалидация по шаблону не поддерживается напрямую.
-        В продакшене с Redis можно использовать более эффективные методы.
     """
-    # Для LocMemCache просто очищаем весь кэш при инвалидации по шаблону
-    # В продакшене с Redis можно использовать cache.delete_pattern(pattern)
-    if pattern.endswith('*'):
-        # Упрощенная инвалидация - очищаем весь кэш с префиксом
-        # В реальной реализации с Redis можно использовать KEYS pattern
+    if hasattr(cache, 'delete_pattern'):
+        cache.delete_pattern(pattern)
+    elif pattern.endswith('*'):
         cache.clear()
 
 

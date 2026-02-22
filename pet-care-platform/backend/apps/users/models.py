@@ -27,7 +27,8 @@ class UserManager(BaseUserManager):
     
     def create_superuser(self, email, password=None, **extra_fields):
         """Создание суперпользователя."""
-        extra_fields.setdefault('role', 'admin')
+        from core.constants import UserRole
+        extra_fields.setdefault('role', UserRole.ADMIN)
         extra_fields.setdefault('is_staff', True)
         extra_fields.setdefault('is_superuser', True)
         return self.create_user(email, password, **extra_fields)
@@ -42,11 +43,8 @@ class User(AbstractBaseUser, PermissionsMixin):
     Роль определяется полем role; is_staff/is_superuser синхронизируются автоматически.
     """
 
-    ROLE_CHOICES = [
-        ('user', 'Пользователь'),
-        ('course_creator', 'Создатель курсов'),
-        ('admin', 'Администратор'),
-    ]
+    from core.constants import UserRole
+    ROLE_CHOICES = UserRole.CHOICES
     
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     email = models.EmailField(unique=True, verbose_name='Email')
@@ -151,58 +149,12 @@ class User(AbstractBaseUser, PermissionsMixin):
         return self.email
 
     def save(self, *args, **kwargs):
-        if self.role == 'admin':
-            self.is_staff = True
-            self.is_superuser = True
-        else:
-            self.is_staff = False
-            self.is_superuser = False
+        """Синхронизация is_staff/is_superuser при изменении роли."""
+        from core.constants import UserRole
+        is_admin = self.role == UserRole.ADMIN
+        self.is_staff = is_admin
+        self.is_superuser = is_admin
         super().save(*args, **kwargs)
-    
-    def to_dict(self):
-        """Сериализация для API (DTO)."""
-        return {
-            'id': str(self.id),
-            'email': self.email,
-            'role': self.role,
-            'isActivated': self.is_activated,
-            'is_staff': self.is_staff,
-            'is_superuser': self.is_superuser,
-        }
-    
-    def to_dict_full(self):
-        """Полная сериализация для API."""
-        # Обработка аватара
-        avatar_url = None
-        if self.avatar:
-            try:
-                avatar_url = self.avatar.url
-            except (ValueError, AttributeError):
-                avatar_url = None
-
-        return {
-            'id': str(self.id),
-            'email': self.email,
-            'first_name': self.first_name,
-            'last_name': self.last_name,
-            'phone': self.phone,
-            'default_address': self.default_address,
-            'avatar': avatar_url,
-            'bio': self.bio,
-            'date_of_birth': self.date_of_birth.isoformat() if self.date_of_birth else None,
-            'city': self.city,
-            'website': self.website,
-            'email_notifications': self.email_notifications,
-            'push_notifications': self.push_notifications,
-            'order_notifications': self.order_notifications,
-            'marketing_notifications': self.marketing_notifications,
-            'preferred_pet_types': self.preferred_pet_types,
-            'created_at': self.created_at.isoformat() if self.created_at else None,
-            'isActivated': self.is_activated,
-            'role': self.role,
-            'is_staff': self.is_staff,
-            'is_superuser': self.is_superuser,
-        }
 
 
 class Token(models.Model):

@@ -23,6 +23,8 @@ from django.db import models
 from django.conf import settings
 from decimal import Decimal
 from django.utils import timezone
+
+from core.constants import COURSE_TIME_MULTIPLIERS
 from core.utils import generate_uuid7
 from core.validators import (
     validate_behavior_types, validate_activity_levels, validate_social_levels,
@@ -397,6 +399,7 @@ class Course(models.Model):
         # Система рейтингов удалена
         return 0
 
+    # TODO: Перенести в CourseRecommendationService
     def is_compatible_with_pet(self, pet):
         """
         Проверяет совместимость курса с питомцем на основе его характеристик.
@@ -536,17 +539,13 @@ class Course(models.Model):
         """Оценивает время прохождения для конкретного питомца."""
         base_time = self.duration
 
-        # Корректировка по уровню активности
-        if pet.activity_level == 'high':
-            base_time = int(base_time * 1.2)  # Активные питомцы быстрее обучаются
-        elif pet.activity_level == 'low':
-            base_time = int(base_time * 1.5)  # Менее активные нуждаются в большем времени
+        # Корректировка по уровню активности (high→puppy 1.2, low→senior 1.5)
+        activity_key = 'puppy' if pet.activity_level == 'high' else ('senior' if pet.activity_level == 'low' else 'default')
+        base_time = int(base_time * COURSE_TIME_MULTIPLIERS.get(activity_key, COURSE_TIME_MULTIPLIERS['default']))
 
-        # Корректировка по опыту
-        if pet.training_experience == 'none':
-            base_time = int(base_time * 1.8)
-        elif pet.training_experience == 'professional':
-            base_time = int(base_time * 0.8)
+        # Корректировка по опыту (none→elderly 1.8, professional→experienced 0.8)
+        experience_key = 'elderly' if pet.training_experience == 'none' else ('experienced' if pet.training_experience == 'professional' else 'default')
+        base_time = int(base_time * COURSE_TIME_MULTIPLIERS.get(experience_key, COURSE_TIME_MULTIPLIERS['default']))
 
         return base_time
 
@@ -585,6 +584,7 @@ class Course(models.Model):
 
         return warnings
 
+    # TODO: Перенести в CourseService или сигнал
     def update_counts(self):
         """
         Обновить счетчики уроков, видео и материалов на основе связанных уроков.

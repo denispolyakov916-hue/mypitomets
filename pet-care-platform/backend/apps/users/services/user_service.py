@@ -5,23 +5,28 @@
 Аналогично user-service.js из проекта-образца.
 """
 
+import logging
+import random
+import uuid
+from datetime import timedelta
+
 from django.contrib.auth import get_user_model
-from django.core.exceptions import ValidationError
 from django.conf import settings
 from django.utils import timezone
-from datetime import timedelta
+
 from core.exceptions import ApiError
+from core.constants import CODE_EXPIRATION_MINUTES, ACTIVATION_CODE_MIN, ACTIVATION_CODE_MAX
 from apps.users.services.token_service import TokenService
 from apps.users.services.mail_service import MailService
-import uuid
-import random
-import logging
 
 User = get_user_model()
 logger = logging.getLogger('apps.users')
 
-# Константа для срока действия кодов (15 минут)
-CODE_EXPIRATION_MINUTES = 15
+
+def _serialize_user(user):
+    """Сериализация пользователя через DRF-сериализатор."""
+    from apps.users.serializers import UserShortSerializer
+    return UserShortSerializer(user).data
 
 
 class UserService:
@@ -55,7 +60,7 @@ class UserService:
         Возвращает:
             str: Сгенерированный 6-значный код
         """
-        code = str(random.randint(100000, 999999))
+        code = str(random.randint(ACTIVATION_CODE_MIN, ACTIVATION_CODE_MAX))
         user.activation_code = code
         user.code_created_at = timezone.now()
         user.save(update_fields=['activation_code', 'code_created_at'])
@@ -87,7 +92,7 @@ class UserService:
         # Создание пользователя
         activation_link = str(uuid.uuid4())
         # Генерация 6-значного кода активации
-        activation_code = str(random.randint(100000, 999999))
+        activation_code = str(random.randint(ACTIVATION_CODE_MIN, ACTIVATION_CODE_MAX))
 
         user = User.objects.create_user(
             email=email,
@@ -104,19 +109,14 @@ class UserService:
         api_url = getattr(settings, 'API_URL', 'http://localhost:8000')
         activation_url = f"{api_url}/api/auth/activate/{activation_link}"
         
-        print(f"[REGISTRATION] Пользователь создан: ID={user.id}, Email={email}")
-        print(f"[REGISTRATION] Код активации: {activation_code}")
-        print(f"[REGISTRATION] Ссылка активации: {activation_url}")
-        
-        # Отправка письма активации с кодом и ссылкой
+        logger.info(f"Пользователь создан: ID={user.id}, Email={email}")
+        logger.debug(f"Код активации: {activation_code}, Ссылка: {activation_url}")
+
         try:
-            print(f"[EMAIL] Начало отправки письма активации на {email}")
             MailService.send_activation_mail(email, activation_url, activation_code)
-            print(f"[EMAIL SUCCESS] Письмо активации успешно отправлено на {email}")
-            print(f"[EMAIL SUCCESS] Код активации в письме: {activation_code}")
+            logger.info(f"Письмо активации отправлено на {email}")
         except Exception as e:
             logger.error(f"Не удалось отправить письмо активации на {email}: {str(e)}")
-            print(f"[EMAIL ERROR] Ошибка отправки письма на {email}: {str(e)}")
             # Продолжаем регистрацию даже если email не отправился
             # В production можно использовать очередь задач (Celery)
         
@@ -175,7 +175,7 @@ class UserService:
         user.save()
         
         logger.info(f"Пользователь активирован: {user.email}")
-        user_dto = user.to_dict()
+        user_dto = _serialize_user(user)
         
         # Для активации по коду возвращаем токены сразу
         if activation_code:
@@ -189,7 +189,7 @@ class UserService:
         
         # Для активации по ссылке генерируем временный код для получения токенов
         # Используем activation_code как временное хранилище (код уже очищен выше)
-        temp_auth_code = str(random.randint(100000, 999999))
+        temp_auth_code = str(random.randint(ACTIVATION_CODE_MIN, ACTIVATION_CODE_MAX))
         user.activation_code = temp_auth_code  # Временно сохраняем код для обмена на токены
         user.save()
         
@@ -225,7 +225,7 @@ class UserService:
         user.activation_code = None
         user.save()
         
-        user_dto = user.to_dict()
+        user_dto = _serialize_user(user)
         
         return {
             **tokens,
@@ -284,7 +284,7 @@ class UserService:
         TokenService.save_token(user.id, tokens['refreshToken'])
         
         # DTO пользователя
-        user_dto = user.to_dict()
+        user_dto = _serialize_user(user)
         
         return {
             **tokens,
@@ -360,7 +360,7 @@ class UserService:
         TokenService.save_token(user.id, tokens['refreshToken'])
         
         # DTO пользователя
-        user_dto = user.to_dict()
+        user_dto = _serialize_user(user)
         
         return {
             **tokens,
@@ -412,16 +412,13 @@ class UserService:
         api_url = getattr(settings, 'API_URL', 'http://localhost:8000')
         activation_url = f"{api_url}/api/auth/activate/{user.activation_link}"
         
-        logger.info(f"Повторная отправка кода активации для {email}: {new_code}")
-        print(f"[RESEND ACTIVATION] Новый код активации для {email}: {new_code}")
-        
-        # Отправка письма
+        logger.info(f"Повторная отправка кода активации для {email}")
+
         try:
             MailService.send_activation_mail(email, activation_url, new_code)
-            print(f"[RESEND ACTIVATION SUCCESS] Письмо отправлено на {email}")
+            logger.info(f"Письмо активации повторно отправлено на {email}")
         except Exception as e:
             logger.error(f"Ошибка отправки письма активации: {str(e)}")
-            print(f"[RESEND ACTIVATION ERROR] {str(e)}")
         
         return {
             'success': True,
@@ -451,23 +448,20 @@ class UserService:
             }
         
         # Генерация 6-значного кода восстановления с временной меткой
-        reset_code = str(random.randint(100000, 999999))
+        reset_code = str(random.randint(ACTIVATION_CODE_MIN, ACTIVATION_CODE_MAX))
 
         # Сохраняем код в отдельном поле password_reset_code и время создания
         user.password_reset_code = reset_code
         user.password_reset_code_created_at = timezone.now()
         user.save(update_fields=['password_reset_code', 'password_reset_code_created_at'])
         
-        logger.info(f"Код восстановления для {email}: {reset_code}")
-        print(f"[PASSWORD RESET] Код восстановления для {email}: {reset_code}")
-        
-        # Отправка письма с кодом
+        logger.debug(f"Код восстановления для {email}: {reset_code}")
+
         try:
             MailService.send_password_reset_mail(email, reset_code)
-            print(f"[PASSWORD RESET] Письмо отправлено на {email}")
+            logger.info(f"Письмо восстановления пароля отправлено на {email}")
         except Exception as e:
             logger.error(f"Ошибка отправки письма восстановления: {str(e)}")
-            print(f"[PASSWORD RESET ERROR] {str(e)}")
         
         return {
             'success': True,
@@ -489,42 +483,31 @@ class UserService:
         """
         try:
             user = User.objects.get(email__iexact=email.lower().strip())
-            print(f"[PASSWORD RESET CONFIRM] Найден пользователь: {user.email}")
         except User.DoesNotExist:
-            print(f"[PASSWORD RESET CONFIRM] Пользователь не найден: {email}")
             raise ApiError.bad_request('Пользователь не найден')
-        
-        # Проверка кода
-        print(f"[PASSWORD RESET CONFIRM] Код в БД: '{user.password_reset_code}', Код из запроса: '{code}'")
+
         if user.password_reset_code != code:
-            print(f"[PASSWORD RESET CONFIRM] Коды не совпадают!")
             raise ApiError.bad_request('Неверный код восстановления')
 
-        # Проверка срока действия кода (15 минут)
         if UserService._is_code_expired(user.password_reset_code_created_at):
             logger.warning(f"Попытка восстановления пароля просроченным кодом: {email}")
-            print(f"[PASSWORD RESET CONFIRM] Код просрочен!")
-            raise ApiError.bad_request(
-                f'Код восстановления истёк. Запросите новый код.'
-            )
-        
-        # Установка нового пароля
+            raise ApiError.bad_request('Код восстановления истёк. Запросите новый код.')
+
         user.set_password(new_password)
-        user.password_reset_code = None  # Очищаем код восстановления
-        user.password_reset_code_created_at = None  # Очищаем время создания кода восстановления
+        user.password_reset_code = None
+        user.password_reset_code_created_at = None
         user.save(update_fields=['password', 'password_reset_code', 'password_reset_code_created_at'])
-        
+
         logger.info(f"Пароль успешно сброшен для {email}")
-        print(f"[PASSWORD RESET SUCCESS] Пароль изменён для {email}")
-        
-        # Автоматически входим пользователя
+
         tokens = TokenService.generate_tokens(user)
         TokenService.save_token(user.id, tokens['refreshToken'])
-        
+
+        from apps.users.serializers import UserShortSerializer
         return {
             'success': True,
             'message': 'Пароль успешно изменён',
             **tokens,
-            'user': user.to_dict()
+            'user': UserShortSerializer(user).data,
         }
 

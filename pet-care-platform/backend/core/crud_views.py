@@ -35,47 +35,42 @@ class BaseCRUDMixin:
     Базовый миксин для CRUD операций.
 
     Предоставляет общие методы для работы с моделями:
-    - Получение queryset
+    - Получение queryset с оптимизацией запросов
+    - Фильтрация, сортировка, пагинация
     - Проверка прав доступа
-    - Обработка ошибок
+    - Единообразная обработка ошибок
     """
 
-    # Модель для работы (обязательно указать в наследниках)
     model = None
-
-    # Сериализатор для операций (обязательно указать в наследниках)
     serializer_class = None
-
-    # Поле для поиска объекта (по умолчанию 'pk')
     lookup_field = 'pk'
-
-    # URL kwarg для lookup_field (по умолчанию 'pk')
     lookup_url_kwarg = None
-
-    # Поля для поиска объекта (альтернатива lookup_field)
     lookup_fields = None
 
-    # Разрешить частичное обновление (PATCH)
     allow_partial_update = True
-
-    # Разрешить создание объектов
     allow_create = True
-
-    # Разрешить обновление объектов
     allow_update = True
-
-    # Разрешить удаление объектов
     allow_delete = True
 
+    select_related_fields = []
+    prefetch_related_fields = []
+
     def get_queryset(self):
-        """Получить queryset для модели."""
+        """Получить queryset с оптимизацией запросов через select/prefetch_related."""
         if self.model is None:
             raise ValueError("Необходимо указать model в классе представления")
 
         if hasattr(self, 'queryset') and self.queryset is not None:
-            return self.queryset
+            qs = self.queryset
+        else:
+            qs = self.model.objects.all()
 
-        return self.model.objects.all()
+        if self.select_related_fields:
+            qs = qs.select_related(*self.select_related_fields)
+        if self.prefetch_related_fields:
+            qs = qs.prefetch_related(*self.prefetch_related_fields)
+
+        return qs
 
     def get_serializer_class(self):
         """Получить класс сериализатора."""
@@ -86,7 +81,6 @@ class BaseCRUDMixin:
     def get_serializer(self, *args, **kwargs):
         """Получить экземпляр сериализатора."""
         serializer_class = self.get_serializer_class()
-        # Передаем request в контекст для формирования абсолютных URL медиа-файлов
         kwargs.setdefault('context', {})
         if 'request' not in kwargs['context'] and hasattr(self, 'request'):
             kwargs['context']['request'] = self.request
@@ -96,7 +90,6 @@ class BaseCRUDMixin:
         """Получить объект по lookup полям."""
         queryset = self.get_queryset()
 
-        # Если указаны lookup_fields, используем их
         if self.lookup_fields:
             filter_kwargs = {}
             for field in self.lookup_fields:
@@ -108,7 +101,6 @@ class BaseCRUDMixin:
                     raise ValueError(f"Не удалось найти значение для поля {field}")
             return get_object_or_404(queryset, **filter_kwargs)
 
-        # Используем стандартный lookup_field
         lookup_url_kwarg = self.lookup_url_kwarg or self.lookup_field
         lookup_value = self.kwargs.get(lookup_url_kwarg)
         if lookup_value is None:
@@ -118,20 +110,17 @@ class BaseCRUDMixin:
         return get_object_or_404(queryset, **filter_kwargs)
 
     def check_object_permissions(self, request, obj):
-        """Проверить права доступа к объекту."""
-        # По умолчанию проверяем только владение (для моделей с owner полем)
+        """Проверить права доступа к объекту через permission-классы или owner."""
+        from .permissions import IsOwner
         if hasattr(obj, 'owner') and hasattr(request, 'user'):
-            if obj.owner_id != request.user.id:
+            perm = IsOwner()
+            if not perm.has_object_permission(request, self, obj):
                 raise ApiError.forbidden("Нет доступа к этому объекту")
 
     def perform_create(self, serializer):
-        """Выполнить создание объекта."""
-        # По умолчанию устанавливаем owner если есть user
-        if hasattr(serializer, 'save') and hasattr(self.request, 'user'):
-            if 'owner' in serializer.validated_data or hasattr(serializer.Meta.model, 'owner'):
-                serializer.save(owner=self.request.user)
-            else:
-                serializer.save()
+        """Выполнить создание объекта с автоустановкой owner."""
+        if hasattr(self.request, 'user') and hasattr(serializer.Meta.model, 'owner'):
+            serializer.save(owner=self.request.user)
         else:
             serializer.save()
 
@@ -143,6 +132,36 @@ class BaseCRUDMixin:
         """Выполнить удаление объекта."""
         instance.delete()
 
+    def filter_queryset(self, queryset, request):
+        """Применить фильтры к queryset (переопределить в наследниках)."""
+        return queryset
+
+    def order_queryset(self, queryset, request):
+        """Применить сортировку к queryset (переопределить в наследниках)."""
+        return queryset
+
+    def paginate_queryset(self, queryset, request):
+        """Применить пагинацию (переопределить для включения пагинации)."""
+        return None
+
+    def get_paginated_response(self, data):
+        """Получить ответ с пагинацией."""
+        return Response({
+            'data': data,
+            'count': len(data)
+        })
+
+    def make_response(self, data=None, message=None, count=None, status_code=status.HTTP_200_OK):
+        """Единый формат API-ответа."""
+        body = {}
+        if data is not None:
+            body['data'] = data
+        if message:
+            body['message'] = message
+        if count is not None:
+            body['count'] = count
+        return Response(body, status=status_code)
+
     def handle_exception(self, exc):
         """Обработать исключение и вернуть ответ."""
         if isinstance(exc, ApiError):
@@ -153,7 +172,7 @@ class BaseCRUDMixin:
 
         logger.error(f"Необработанная ошибка в {self.__class__.__name__}: {str(exc)}")
         return Response(
-            {'error': 'Внутренняя ошибка сервера'},
+            {'error': 'Внутренняя ошибка сервера', 'code': 'INTERNAL_ERROR'},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
 
@@ -203,8 +222,6 @@ class BaseListCreateView(BaseCRUDMixin, APIView):
             )
 
         try:
-            logger.info(f"Creating {self.model.__name__} - Raw request data: {request.data}")
-            logger.info(f"Breed value: {request.data.get('breed')} (type: {type(request.data.get('breed'))})")
             serializer = self.get_serializer(data=request.data)
             serializer.is_valid(raise_exception=True)
             self.perform_create(serializer)
@@ -217,29 +234,6 @@ class BaseListCreateView(BaseCRUDMixin, APIView):
 
         except Exception as exc:
             return self.handle_exception(exc)
-
-    def filter_queryset(self, queryset, request):
-        """Применить фильтры к queryset."""
-        # Базовая реализация - переопределить в наследниках для кастомной фильтрации
-        return queryset
-
-    def order_queryset(self, queryset, request):
-        """Применить сортировку к queryset."""
-        # Базовая реализация - переопределить в наследниках для кастомной сортировки
-        return queryset
-
-    def paginate_queryset(self, queryset, request):
-        """Применить пагинацию к queryset."""
-        # Базовая реализация без пагинации - переопределить для включения пагинации
-        return None
-
-    def get_paginated_response(self, data):
-        """Получить ответ с пагинацией."""
-        # Базовая реализация - переопределить для кастомной пагинации
-        return Response({
-            'data': data,
-            'count': len(data)
-        })
 
 
 class BaseDetailView(BaseCRUDMixin, APIView):
@@ -361,24 +355,5 @@ class BaseReadOnlyView(BaseCRUDMixin, APIView):
 
         except Exception as exc:
             return self.handle_exception(exc)
-
-    def filter_queryset(self, queryset, request):
-        """Применить фильтры к queryset."""
-        return queryset
-
-    def order_queryset(self, queryset, request):
-        """Применить сортировку к queryset."""
-        return queryset
-
-    def paginate_queryset(self, queryset, request):
-        """Применить пагинацию к queryset."""
-        return None
-
-    def get_paginated_response(self, data):
-        """Получить ответ с пагинацией."""
-        return Response({
-            'data': data,
-            'count': len(data)
-        })
 
 

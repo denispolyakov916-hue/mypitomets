@@ -39,7 +39,7 @@ from core.exceptions import ApiError, safe_api_operation
 
 from .models import Pet, CalendarEvent
 from .models import Breed
-from .services import pet_service
+from .services import pet_service, pet_analysis_service
 from .calorie_calculator import calorie_calculator
 from .serializers import (
     PetCreateSerializer, PetUpdateSerializer, PetSerializer,
@@ -123,13 +123,13 @@ class PetListCreateView(BaseListCreateView):
                 data['date_of_birth'] = datetime.strptime(date_of_birth, '%Y-%m-%d').date()
 
             # Преобразуем breed ID в объект Breed
-            breed_id = data.get('breed')
-            if breed_id:
+            breed_value = data.get('breed')
+            if breed_value is not None:
                 try:
-                    data['breed'] = Breed.objects.get(id=breed_id)
-                except Breed.DoesNotExist:
+                    data['breed'] = pet_service.resolve_breed(breed_value)
+                except ValueError as e:
                     return Response(
-                        {'error': f'Порода с ID {breed_id} не найдена'},
+                        {'error': str(e)},
                         status=status.HTTP_400_BAD_REQUEST
                     )
 
@@ -260,13 +260,10 @@ class PetDetailView(BaseDetailView):
         # Преобразуем breed ID в объект Breed (как в создании)
         if 'breed' in serializer.validated_data:
             breed_value = serializer.validated_data.get('breed')
-            if breed_value is None:
-                serializer.validated_data['breed'] = None
-            elif isinstance(breed_value, (int, str)):
-                try:
-                    serializer.validated_data['breed'] = Breed.objects.get(id=breed_value)
-                except Breed.DoesNotExist:
-                    raise ApiError.bad_request(f'Порода с ID {breed_value} не найдена')
+            try:
+                serializer.validated_data['breed'] = pet_service.resolve_breed(breed_value)
+            except ValueError as e:
+                raise ApiError.bad_request(str(e))
         
         # Запоминаем старые значения для проверки изменений
         old_breed_id = pet.breed_id
@@ -453,150 +450,12 @@ class PetAnalysisView(APIView):
     def get(self, request, pet_id):
         """Получение анализа профиля питомца."""
         try:
-            pet = Pet.objects.select_related('owner').get(id=pet_id, owner=request.user)
+            pet = Pet.objects.select_related('owner', 'breed').get(id=pet_id, owner=request.user)
         except Pet.DoesNotExist:
             raise ApiError.not_found("Питомец не найден")
 
-        # Базовый анализ профиля
-        analysis = {
-            'pet_id': str(pet.id),
-            'pet_name': pet.name,
-            'profile_completeness': pet.profile_completeness,
-            'basic_info': {
-                'age': pet.age,
-                'age_months': pet.age_months,
-                'age_category': pet.age_category,
-                'calculated_size': pet.calculated_size,
-            },
-        }
-
-        # Анализ веса (если есть порода в справочнике)
-        weight_analysis = self._analyze_weight(pet)
-        if weight_analysis:
-            analysis['weight_analysis'] = weight_analysis
-
-        # Рекомендации, риски и предупреждения
-        analysis['recommendations'] = self._get_recommendations(pet)
-        analysis['health_risks'] = self._get_health_risks(pet)
-        analysis['alerts'] = self._get_alerts(pet)
-
+        analysis = pet_analysis_service.get_analysis(pet)
         return Response({'analysis': analysis})
-
-    def _analyze_weight(self, pet):
-        """Анализ веса относительно породы."""
-        if not pet.weight or not pet.breed:
-            return None
-
-        try:
-            breed = Breed.objects.get(name__iexact=pet.breed, species=pet.species)
-        except Breed.DoesNotExist:
-            return None
-
-        avg_weight = breed.average_weight
-        pet_weight = float(pet.weight)
-        ratio = pet_weight / avg_weight
-
-        if ratio < 0.8:
-            status_text, risk = 'underweight', 'medium'
-            message = f'Вес {pet_weight} кг ниже нормы для породы {breed.name}'
-        elif ratio > 1.2:
-            status_text, risk = 'overweight', 'high'
-            message = f'Вес {pet_weight} кг выше нормы для породы {breed.name}'
-        else:
-            status_text, risk = 'normal', 'low'
-            message = 'Вес в пределах нормы для породы'
-
-        return {
-            'current_weight': pet_weight,
-            'breed_average': avg_weight,
-            'breed_range': f'{breed.weight_min}-{breed.weight_max} кг',
-            'ratio': round(ratio, 2),
-            'status': status_text,
-            'risk_level': risk,
-            'message': message
-        }
-
-    def _get_recommendations(self, pet):
-        """Генерация рекомендаций."""
-        recommendations = {'products': [], 'courses': [], 'actions': []}
-
-        # По заполненности профиля
-        if pet.profile_completeness < 50:
-            recommendations['actions'].append({
-                'type': 'profile',
-                'priority': 'high',
-                'message': 'Заполните профиль питомца для получения персонализированных рекомендаций'
-            })
-
-        # По возрасту
-        if pet.age_category == 'senior':
-            recommendations['products'].extend(['senior_food', 'joint_supplements'])
-            recommendations['courses'].append('senior_care')
-        elif pet.age_category in ['puppy', 'kitten']:
-            recommendations['products'].append('puppy_food')
-            recommendations['courses'].append('basic_training')
-
-        # По проблемам здоровья
-        if pet.health_issues:
-            for issue in pet.health_issues:
-                if 'weight' in issue.lower() or 'ожирение' in issue.lower():
-                    recommendations['products'].append('diet_food')
-                elif 'сустав' in issue.lower() or 'joint' in issue.lower():
-                    recommendations['products'].append('joint_supplements')
-
-        # По поведению
-        if pet.behavioral_problems:
-            recommendations['courses'].append('behavior_correction')
-
-        return recommendations
-
-    def _get_health_risks(self, pet):
-        """Определение рисков здоровья."""
-        risks = []
-
-        # По возрасту
-        if pet.age and pet.age > 10:
-            risks.append({
-                'type': 'age',
-                'level': 'medium',
-                'message': f'Пожилой возраст ({pet.age} лет) - рекомендуются частые ветеринарные осмотры'
-            })
-
-        # По породе
-        if pet.breed:
-            try:
-                breed = Breed.objects.get(name__iexact=pet.breed, species=pet.species)
-                if getattr(breed, 'health_risk_level', None) == 'high':
-                    risks.append({
-                        'type': 'breed',
-                        'level': 'high',
-                        'message': f'Порода {breed.name} имеет повышенные риски здоровья',
-                        'genetic_risks': breed.health_risks or []
-                    })
-            except Breed.DoesNotExist:
-                pass
-
-        return risks
-
-    def _get_alerts(self, pet):
-        """Генерация предупреждений."""
-        alerts = []
-
-        if pet.profile_completeness < 30:
-            alerts.append({
-                'type': 'profile',
-                'priority': 'warning',
-                'message': 'Профиль питомца заполнен менее чем на 30%'
-            })
-
-        if pet.chronic_conditions:
-            alerts.append({
-                'type': 'health',
-                'priority': 'info',
-                'message': 'Есть хронические заболевания - следите за регулярностью лечения'
-            })
-
-        return alerts
 
 
 # =============================================================================

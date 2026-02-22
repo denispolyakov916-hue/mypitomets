@@ -707,6 +707,186 @@ class PaymentService(BaseService):
             raise
 
     @staticmethod
+    def get_payment_amount(payment_type: str, object_id: str, user) -> Optional[Decimal]:
+        """
+        Получение суммы платежа для разных типов объектов.
+
+        Args:
+            payment_type: Тип платежа (shop_order, unified_checkout, course, subscription)
+            object_id: ID связанного объекта
+            user: Пользователь
+
+        Returns:
+            Decimal или None: Сумма платежа или None если объект недоступен
+
+        Raises:
+            ValueError: При недоступных товарах/курсах в заказе (с деталями в сообщении)
+        """
+        import logging
+        from datetime import timedelta
+
+        logger = logging.getLogger('apps.payments')
+
+        if payment_type == 'shop_order':
+            from apps.shop.models import Order
+            from django.utils import timezone
+
+            try:
+                order = Order.objects.select_related('user').prefetch_related('items__product').get(
+                    id=object_id, user=user
+                )
+
+                if order.status not in ['pending', 'expired']:
+                    logger.warning(
+                        f"Попытка оплаты заказа с недопустимым статусом: {order.id}, статус: {order.status}"
+                    )
+                    return None
+
+                if order.status == 'expired':
+                    unavailable_items = []
+                    insufficient_items = []
+
+                    for order_item in order.items.filter(product__isnull=False):
+                        try:
+                            product = order_item.product
+                            if not product:
+                                unavailable_items.append({
+                                    'product_id': order_item.product_id,
+                                    'product_name': order_item.product_name,
+                                    'quantity': order_item.quantity
+                                })
+                            elif product.stock_count < order_item.quantity:
+                                insufficient_items.append({
+                                    'product_id': product.id,
+                                    'product_name': order_item.product_name,
+                                    'required': order_item.quantity,
+                                    'available': product.stock_count
+                                })
+                        except Exception:
+                            unavailable_items.append({
+                                'product_id': order_item.product_id,
+                                'product_name': order_item.product_name,
+                                'quantity': order_item.quantity
+                            })
+
+                    if unavailable_items or insufficient_items:
+                        error_data = {}
+                        if unavailable_items:
+                            error_data['unavailable_items'] = unavailable_items
+                        if insufficient_items:
+                            error_data['insufficient_items'] = insufficient_items
+                        raise ValueError(f"Недоступные товары в заказе: {error_data}")
+
+                    order.status = 'pending'
+                    order.expires_at = timezone.now() + timedelta(minutes=10)
+                    order.save()
+                    logger.info(f"Просроченный заказ восстановлен для оплаты: {order.id}")
+
+                return order.total_amount
+            except Order.DoesNotExist:
+                return None
+
+        elif payment_type == 'unified_checkout':
+            from apps.shop.models import Order
+            from apps.training.models import Course, UserCourse
+            from django.utils import timezone
+
+            try:
+                order = Order.objects.select_related('user').prefetch_related(
+                    'items__product', 'items__course'
+                ).get(id=object_id, user=user)
+
+                if order.status not in ['pending', 'expired']:
+                    logger.warning(
+                        f"Попытка оплаты unified_checkout заказа с недопустимым статусом: "
+                        f"{order.id}, статус: {order.status}"
+                    )
+                    return None
+
+                if order.status == 'expired':
+                    unavailable_items = []
+                    insufficient_items = []
+
+                    for order_item in order.items.filter(product__isnull=False):
+                        try:
+                            product = order_item.product
+                            if not product:
+                                unavailable_items.append({
+                                    'product_id': order_item.product_id,
+                                    'product_name': order_item.product_name,
+                                    'quantity': order_item.quantity
+                                })
+                            elif product.stock_count < order_item.quantity:
+                                insufficient_items.append({
+                                    'product_id': product.id,
+                                    'product_name': order_item.product_name,
+                                    'required': order_item.quantity,
+                                    'available': product.stock_count
+                                })
+                        except Exception:
+                            unavailable_items.append({
+                                'product_id': order_item.product_id,
+                                'product_name': order_item.product_name,
+                                'quantity': order_item.quantity
+                            })
+
+                    for order_item in order.items.filter(course__isnull=False):
+                        try:
+                            course = order_item.course
+                            if not course or not course.is_active:
+                                unavailable_items.append({
+                                    'course_id': order_item.course_id,
+                                    'course_name': order_item.product_name,
+                                    'quantity': 1
+                                })
+                            elif UserCourse.objects.filter(user=user, course=course).exists():
+                                unavailable_items.append({
+                                    'course_id': course.id,
+                                    'course_name': course.title,
+                                    'quantity': 1,
+                                    'reason': 'already_purchased'
+                                })
+                        except Exception:
+                            unavailable_items.append({
+                                'course_id': order_item.course_id,
+                                'course_name': order_item.product_name,
+                                'quantity': 1
+                            })
+
+                    if unavailable_items or insufficient_items:
+                        error_data = {}
+                        if unavailable_items:
+                            error_data['unavailable_items'] = unavailable_items
+                        if insufficient_items:
+                            error_data['insufficient_items'] = insufficient_items
+                        raise ValueError(f"Недоступные товары или курсы в заказе: {error_data}")
+
+                    order.status = 'pending'
+                    order.expires_at = timezone.now() + timedelta(minutes=10)
+                    order.save()
+                    logger.info(f"Просроченный unified_checkout заказ восстановлен для оплаты: {order.id}")
+
+                return order.total_amount
+            except Order.DoesNotExist:
+                return None
+
+        elif payment_type == 'course':
+            from apps.training.models import Course, UserCourse
+
+            try:
+                course = Course.objects.get(id=object_id, is_active=True)
+                if UserCourse.objects.filter(user=user, course=course).exists():
+                    return None
+                return course.price
+            except Course.DoesNotExist:
+                return None
+
+        elif payment_type == 'subscription':
+            return None
+
+        return None
+
+    @staticmethod
     def get_payment_statistics(user=None):
         """
         Получение статистики платежей.

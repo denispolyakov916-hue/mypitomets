@@ -758,6 +758,7 @@ class Product(models.Model):
         })
         return data
     
+    # TODO: Перенести в ProductService или RecommendationEngine
     def get_breed_suitability(self, breed):
         """
         Динамический расчёт совместимости товара с породой.
@@ -1402,6 +1403,7 @@ class ProductBreedRecommendation(models.Model):
             'reason': self.reason,
         }
     
+    # TODO: Перенести в RecommendationEngine
     @classmethod
     def generate_for_product(cls, product):
         """
@@ -2080,6 +2082,10 @@ class Cart(models.Model):
     
     def __str__(self):
         return f"Корзина {self.user.email}"
+
+    def get_items_optimized(self):
+        """Получение элементов корзины с оптимизированными запросами."""
+        return self.items.select_related('product', 'course', 'pet').all()
     
     def get_total(self):
         """Расчёт общей суммы корзины."""

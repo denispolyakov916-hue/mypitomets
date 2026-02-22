@@ -65,7 +65,9 @@ pet-care-platform/
 
 ## Инфраструктура (core/)
 
-- **Middleware**: `RequestLoggingMiddleware` — request_id, трейсинг, `X-Request-ID` в response header
+- **Константы**: `core/constants.py` — все магические числа и строки проекта (`UserRole`, `OrderStatus`, `DELIVERY_COSTS`, `MAX_PETS_PER_USER`, `SIZE_THRESHOLDS`, `COURSE_TIME_MULTIPLIERS` и др.)
+- **Валидаторы**: `core/validators.py` — общие валидаторы (`validate_password_strength()`) и утилиты (`set_refresh_token_cookie()`)
+- **Middleware**: `RequestLoggingMiddleware` — request_id, трейсинг, `X-Request-ID`, фильтрация чувствительных данных через `SensitiveDataFilter`
 - **Exception handler**: `core.exception_handler.custom_exception_handler` — глобальный обработчик для DRF
 - **Health check**: `/api/health/` (public), `/api/health/detailed/` (admin), `/api/metrics/` (admin)
 
@@ -79,14 +81,18 @@ pet-care-platform/
 
 | Класс | Файл | Назначение |
 |-------|------|------------|
-| `BaseCRUDService` | `core/services.py` | Базовый CRUD сервис для моделей |
-| `ServiceResult` | `core/services.py` | Единый формат возврата из сервисов (success, message, data, errors) |
+| `BaseCRUDService` | `core/services.py` | Базовый CRUD сервис, возвращает `ServiceResult` |
+| `ServiceResult` | `core/services.py` | Единый формат возврата из сервисов (success, message, data, errors, error_code) |
 | `BaseService` | `core/services.py` | Базовый класс с `log_info()`, `log_error()`, `validate_required_fields()` |
+| `BaseCRUDMixin` | `core/crud_views.py` | Миксин с `select_related_fields`, `prefetch_related_fields`, `filter/order/paginate_queryset()`, `make_response()` |
 | `BaseListCreateView` | `core/crud_views.py` | GET список + POST создание |
 | `BaseDetailView` | `core/crud_views.py` | GET/PUT/PATCH/DELETE для объекта |
 | `BaseReadOnlyView` | `core/crud_views.py` | GET список + GET детали (публичный) |
 | `ApiError` | `core/exceptions.py` | Стандартизированные ошибки API с кодами |
 | `IsOwner` / `IsOwnerOrReadOnly` | `core/permissions.py` | Проверка владения объектом |
+| `UserRole` / `OrderStatus` | `core/constants.py` | Константы ролей и статусов |
+| `validate_password_strength` | `core/validators.py` | Общая валидация сложности пароля |
+| `set_refresh_token_cookie` | `core/validators.py` | Утилита установки refresh-токена в cookie |
 
 ## Документация
 

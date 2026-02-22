@@ -10,33 +10,40 @@ from django.utils.deprecation import MiddlewareMixin
 logger = logging.getLogger('apps')
 
 
+_sensitive_filter = None
+
+
+def _get_sensitive_filter():
+    global _sensitive_filter
+    if _sensitive_filter is None:
+        _sensitive_filter = SensitiveDataFilter()
+    return _sensitive_filter
+
+
 class RequestLoggingMiddleware(MiddlewareMixin):
     """
     Middleware для логирования всех запросов с контекстом.
-    
+
     Добавляет:
     - request_id для трейсинга
     - user_id (если пользователь авторизован)
     - время выполнения запроса
-    - параметры запроса (без чувствительных данных)
+    - параметры запроса (с фильтрацией чувствительных данных)
     """
-    
+
     def process_request(self, request):
         """Обработка входящего запроса."""
-        # Генерируем уникальный ID для запроса
         request.request_id = str(uuid.uuid4())[:8]
-        
-        # Сохраняем время начала запроса
         request._start_time = time.time()
-        
-        # Получаем информацию о пользователе
+
         user_id = None
         user_email = None
         if hasattr(request, 'user') and request.user.is_authenticated:
             user_id = str(request.user.id)
             user_email = request.user.email
-        
-        # Логируем начало запроса
+
+        sanitized_params = _get_sensitive_filter()._sanitize_dict(dict(request.GET))
+
         logger.info(
             f"Request started: {request.method} {request.path}",
             extra={
@@ -45,7 +52,7 @@ class RequestLoggingMiddleware(MiddlewareMixin):
                 'user_email': user_email,
                 'method': request.method,
                 'path': request.path,
-                'query_params': dict(request.GET),
+                'query_params': sanitized_params,
                 'ip_address': self.get_client_ip(request),
             }
         )

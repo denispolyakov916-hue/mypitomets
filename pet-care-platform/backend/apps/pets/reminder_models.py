@@ -32,6 +32,49 @@ class ReminderFrequency(models.TextChoices):
     YEARLY = 'yearly', 'Ежегодно'
 
 
+def create_next_reminder(reminder):
+    """
+    Создаёт следующее напоминание для повторяющихся событий.
+
+    Args:
+        reminder: Объект Reminder, для которого создаётся следующее напоминание
+
+    Returns:
+        Reminder или None, если частота ONCE или неизвестна
+    """
+    next_date = reminder.reminder_date
+
+    if reminder.frequency == ReminderFrequency.DAILY:
+        next_date += timedelta(days=1)
+    elif reminder.frequency == ReminderFrequency.WEEKLY:
+        next_date += timedelta(weeks=1)
+    elif reminder.frequency == ReminderFrequency.BIWEEKLY:
+        next_date += timedelta(weeks=2)
+    elif reminder.frequency == ReminderFrequency.MONTHLY:
+        next_date += timedelta(days=30)
+    elif reminder.frequency == ReminderFrequency.QUARTERLY:
+        next_date += timedelta(days=90)
+    elif reminder.frequency == ReminderFrequency.YEARLY:
+        next_date += timedelta(days=365)
+    else:
+        return None
+
+    return Reminder.objects.create(
+        user=reminder.user,
+        pet=reminder.pet,
+        title=reminder.title,
+        description=reminder.description,
+        category=reminder.category,
+        frequency=reminder.frequency,
+        reminder_date=next_date,
+        reminder_time=reminder.reminder_time,
+        is_active=True,
+        notify_email=reminder.notify_email,
+        notify_push=reminder.notify_push,
+        notify_before=reminder.notify_before,
+    )
+
+
 class Reminder(models.Model):
     """
     Модель напоминания для ухода за питомцем.
@@ -171,45 +214,11 @@ class Reminder(models.Model):
         self.is_completed = True
         self.completed_at = timezone.now()
         self.save(update_fields=['is_completed', 'completed_at', 'updated_at'])
-        
+
         # Если это повторяющееся напоминание, создаём следующее
         if self.frequency != ReminderFrequency.ONCE:
-            self.create_next_reminder()
-    
-    def create_next_reminder(self):
-        """Создаёт следующее напоминание для повторяющихся событий."""
-        next_date = self.reminder_date
-        
-        if self.frequency == ReminderFrequency.DAILY:
-            next_date += timedelta(days=1)
-        elif self.frequency == ReminderFrequency.WEEKLY:
-            next_date += timedelta(weeks=1)
-        elif self.frequency == ReminderFrequency.BIWEEKLY:
-            next_date += timedelta(weeks=2)
-        elif self.frequency == ReminderFrequency.MONTHLY:
-            next_date += timedelta(days=30)
-        elif self.frequency == ReminderFrequency.QUARTERLY:
-            next_date += timedelta(days=90)
-        elif self.frequency == ReminderFrequency.YEARLY:
-            next_date += timedelta(days=365)
-        else:
-            return None
-        
-        return Reminder.objects.create(
-            user=self.user,
-            pet=self.pet,
-            title=self.title,
-            description=self.description,
-            category=self.category,
-            frequency=self.frequency,
-            reminder_date=next_date,
-            reminder_time=self.reminder_time,
-            is_active=True,
-            notify_email=self.notify_email,
-            notify_push=self.notify_push,
-            notify_before=self.notify_before,
-        )
-    
+            create_next_reminder(self)
+
     def to_dict(self):
         """Сериализация для API."""
         return {

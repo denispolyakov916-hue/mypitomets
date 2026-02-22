@@ -311,6 +311,8 @@ class PetFoodRecommendationsView(APIView):
         
         # Строим фильтры из PetID (единая логика с feeding-plan)
         filters = food_recommendation_service._build_filters_from_pet(pet)
+        allergy_codes = filters.allergy_codes or []
+        health_condition_codes = filters.health_condition_codes or []
         filters.food_type = params.get('food_type', 'dry')
         filters.preferred_brands = params.get('brands', '').split(',') if params.get('brands') else []
         filters.min_price = Decimal(params['min_price']) if params.get('min_price') else None

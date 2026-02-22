@@ -207,11 +207,8 @@ class BaseCRUDService(BaseService):
     """
     Базовый CRUD сервис для работы с моделями Django.
 
-    Предоставляет стандартные CRUD операции с:
-    - Валидацией
-    - Логированием
-    - Обработкой ошибок
-    - Транзакциями
+    Предоставляет стандартные CRUD операции с единообразным возвратом
+    через ServiceResult и обработкой конкретных типов исключений.
     """
 
     def __init__(self, model):
@@ -244,12 +241,17 @@ class BaseCRUDService(BaseService):
             user: Пользователь для проверки прав (опционально)
 
         Returns:
-            Model instance или None
+            ServiceResult с объектом или ошибкой
         """
         try:
-            return self.get_queryset(user).get(id=obj_id)
+            instance = self.get_queryset(user).get(id=obj_id)
+            return ServiceResult(success=True, data=instance)
         except self.model.DoesNotExist:
-            return None
+            return ServiceResult(
+                success=False,
+                message=f"{self.model.__name__} не найден",
+                error_code="NOT_FOUND"
+            )
 
     def create(self, data, user=None):
         """
@@ -260,17 +262,41 @@ class BaseCRUDService(BaseService):
             user: Пользователь (опционально)
 
         Returns:
-            tuple: (success, instance или errors)
+            ServiceResult с созданным объектом или ошибкой
         """
+        from django.core.exceptions import ValidationError
+        from django.db import IntegrityError
+
         try:
             instance = self.model(**data)
-            instance.full_clean()  # Валидация
+            instance.full_clean()
             instance.save()
             self.log_info(f"Created {self.model.__name__}: {instance.id}", {"user": user})
-            return True, instance
+            return ServiceResult(success=True, data=instance, message="Создано успешно")
+        except ValidationError as e:
+            self.log_warning(f"Ошибка валидации при создании {self.model.__name__}", {"errors": str(e)})
+            return ServiceResult(
+                success=False,
+                message="Ошибка валидации",
+                errors=e.messages if hasattr(e, 'messages') else [str(e)],
+                error_code="VALIDATION_ERROR"
+            )
+        except IntegrityError as e:
+            self.log_warning(f"Ошибка целостности при создании {self.model.__name__}", {"error": str(e)})
+            return ServiceResult(
+                success=False,
+                message="Объект с такими данными уже существует",
+                errors=[str(e)],
+                error_code="INTEGRITY_ERROR"
+            )
         except Exception as e:
             self.log_error(e, {"data": data, "user": user})
-            return False, str(e)
+            return ServiceResult(
+                success=False,
+                message="Внутренняя ошибка при создании",
+                errors=[str(e)],
+                error_code="INTERNAL_ERROR"
+            )
 
     def update(self, obj_id, data, user=None):
         """
@@ -282,23 +308,46 @@ class BaseCRUDService(BaseService):
             user: Пользователь (опционально)
 
         Returns:
-            tuple: (success, instance или errors)
+            ServiceResult с обновлённым объектом или ошибкой
         """
-        try:
-            instance = self.get_by_id(obj_id, user)
-            if not instance:
-                return False, "Object not found"
+        from django.core.exceptions import ValidationError
+        from django.db import IntegrityError
 
+        result = self.get_by_id(obj_id, user)
+        if not result:
+            return result
+
+        instance = result.data
+        try:
             for key, value in data.items():
                 setattr(instance, key, value)
 
-            instance.full_clean()  # Валидация
+            instance.full_clean()
             instance.save()
             self.log_info(f"Updated {self.model.__name__}: {obj_id}", {"user": user})
-            return True, instance
+            return ServiceResult(success=True, data=instance, message="Обновлено успешно")
+        except ValidationError as e:
+            return ServiceResult(
+                success=False,
+                message="Ошибка валидации",
+                errors=e.messages if hasattr(e, 'messages') else [str(e)],
+                error_code="VALIDATION_ERROR"
+            )
+        except IntegrityError as e:
+            return ServiceResult(
+                success=False,
+                message="Конфликт данных",
+                errors=[str(e)],
+                error_code="INTEGRITY_ERROR"
+            )
         except Exception as e:
             self.log_error(e, {"obj_id": obj_id, "data": data, "user": user})
-            return False, str(e)
+            return ServiceResult(
+                success=False,
+                message="Внутренняя ошибка при обновлении",
+                errors=[str(e)],
+                error_code="INTERNAL_ERROR"
+            )
 
     def delete(self, obj_id, user=None):
         """
@@ -309,21 +358,26 @@ class BaseCRUDService(BaseService):
             user: Пользователь (опционально)
 
         Returns:
-            tuple: (success, message или errors)
+            ServiceResult с результатом удаления
         """
-        try:
-            instance = self.get_by_id(obj_id, user)
-            if not instance:
-                return False, "Object not found"
+        result = self.get_by_id(obj_id, user)
+        if not result:
+            return result
 
-            instance.delete()
+        try:
+            result.data.delete()
             self.log_info(f"Deleted {self.model.__name__}: {obj_id}", {"user": user})
-            return True, "Deleted successfully"
+            return ServiceResult(success=True, message="Удалено успешно")
         except Exception as e:
             self.log_error(e, {"obj_id": obj_id, "user": user})
-            return False, str(e)
+            return ServiceResult(
+                success=False,
+                message="Ошибка при удалении",
+                errors=[str(e)],
+                error_code="INTERNAL_ERROR"
+            )
 
-    def list(self, filters=None, user=None, page=1, page_size=20):
+    def list(self, filters=None, user=None, page=1, page_size=None):
         """
         Получение списка объектов с пагинацией.
 
@@ -334,8 +388,13 @@ class BaseCRUDService(BaseService):
             page_size: Размер страницы
 
         Returns:
-            QuerySet: Отфильтрованный queryset
+            QuerySet: Отфильтрованный и пагинированный queryset
         """
+        from .constants import DEFAULT_PAGE_SIZE
+
+        if page_size is None:
+            page_size = DEFAULT_PAGE_SIZE
+
         queryset = self.get_queryset(user)
 
         if filters:

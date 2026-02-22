@@ -5,6 +5,8 @@ API для каталога, корзины и заказов.
 """
 
 import logging
+from datetime import timedelta
+
 from django.db import transaction
 from django.conf import settings
 from rest_framework import status, viewsets
@@ -27,6 +29,10 @@ from .serializers import (
 from .services import (
     ReservationService, process_expired_orders,
     AnalyticsDataService, AnalyticsMetricsInitializer
+)
+from core.constants import (
+    RESERVATION_TIMEOUT_MINUTES, DELIVERY_COSTS,
+    DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE, UNLIMITED_STOCK_THRESHOLD,
 )
 from django.db.models import Q
 
@@ -81,10 +87,10 @@ class ProductListView(APIView):
         # Параметры пагинации
         try:
             page = max(1, int(request.query_params.get('page', 1)))
-            per_page = min(100, max(1, int(request.query_params.get('per_page', 20))))
+            per_page = min(MAX_PAGE_SIZE, max(1, int(request.query_params.get('per_page', DEFAULT_PAGE_SIZE))))
         except ValueError:
             page = 1
-            per_page = 20
+            per_page = DEFAULT_PAGE_SIZE
         
         # Генерируем ключи кэша
         filters_hash = self._get_cache_key(request)
@@ -987,7 +993,7 @@ class CartView(APIView):
         cart = self._get_or_create_cart(request.user)
 
         # Оптимизация запросов: prefetch_related для загрузки связанных объектов
-        items = cart.items.select_related('product', 'course', 'pet').order_by('id').all()
+        items = cart.get_items_optimized().order_by('id')
         
         # Фильтрация по типу
         filter_type = request.query_params.get('type', 'all')
@@ -1073,7 +1079,7 @@ class CartView(APIView):
                     status=status.HTTP_400_BAD_REQUEST
                 )
             
-            available_stock = sku.stock_quantity if sku.stock_quantity and sku.stock_quantity > 0 else 999
+            available_stock = sku.stock_quantity if sku.stock_quantity and sku.stock_quantity > 0 else UNLIMITED_STOCK_THRESHOLD
         else:
             # Если SKU не указан, проверяем доступность товара в целом
             is_product_available = product.is_available
@@ -1090,9 +1096,9 @@ class CartView(APIView):
             
             if default_sku:
                 sku = default_sku
-                available_stock = sku.stock_quantity if sku.stock_quantity and sku.stock_quantity > 0 else 999
+                available_stock = sku.stock_quantity if sku.stock_quantity and sku.stock_quantity > 0 else UNLIMITED_STOCK_THRESHOLD
             else:
-                available_stock = 999
+                available_stock = UNLIMITED_STOCK_THRESHOLD
 
         # Проверка текущего количества в корзине
         existing_item = CartItem.objects.filter(cart=cart, product=product, sku=sku).first()
@@ -1113,7 +1119,7 @@ class CartView(APIView):
             CartItem.objects.create(cart=cart, product=product, sku=sku, quantity=quantity)
 
         # Возврат обновлённой корзины в правильной структуре
-        items = cart.items.select_related('product', 'course', 'pet').order_by('id').all()
+        items = cart.get_items_optimized().order_by('id')
 
         # Группировка
         products = [item for item in items if item.product]
@@ -1306,7 +1312,7 @@ class CartItemView(APIView):
             )
 
         # Возврат обновлённой корзины в правильной структуре (совместимой с фронтендом)
-        items = cart.items.select_related('product', 'course', 'pet').all()
+        items = cart.get_items_optimized()
 
         # Группировка
         products = [item for item in items if item.product]
@@ -1379,7 +1385,7 @@ class CartItemView(APIView):
         cart_item.delete()
 
         # Возврат обновлённой корзины в правильной структуре (совместимой с фронтендом)
-        items = cart.items.select_related('product', 'course', 'pet').all()
+        items = cart.get_items_optimized()
 
         # Группировка
         products = [item for item in items if item.product]
@@ -1412,7 +1418,7 @@ class CartRefreshView(APIView):
         cart, _ = Cart.objects.get_or_create(user=request.user)
 
         # Получение элементов корзины с правильной структурой
-        items = cart.items.select_related('product', 'course', 'pet').order_by('id').all()
+        items = cart.get_items_optimized().order_by('id')
 
         # Группировка
         products = [item for item in items if item.product]
@@ -1485,14 +1491,14 @@ class OrderCheckoutView(APIView):
             {
                 'type': 'standard',
                 'name': 'Стандартная доставка',
-                'cost': 300.0,
+                'cost': float(DELIVERY_COSTS['standard']),
                 'days': '3-5 дней',
                 'description': 'Доставка в пункт выдачи или курьером'
             },
             {
                 'type': 'express',
                 'name': 'Экспресс доставка',
-                'cost': 600.0,
+                'cost': float(DELIVERY_COSTS['express']),
                 'days': '1-2 дня',
                 'description': 'Быстрая доставка курьером'
             },
@@ -1597,10 +1603,9 @@ class OrderCreateView(APIView):
 
             total_amount = subtotal + delivery_cost
             
-            # Устанавливаем время истечения оплаты - 10 минут с момента создания заказа
+            # Устанавливаем время истечения оплаты
             from django.utils import timezone
-            from datetime import timedelta
-            expires_at = timezone.now() + timedelta(minutes=10)
+            expires_at = timezone.now() + timedelta(minutes=RESERVATION_TIMEOUT_MINUTES)
             
             order = Order.objects.create(
                 user=request.user,
@@ -1819,10 +1824,10 @@ class OrderHistoryView(APIView):
         # Пагинация
         try:
             page = max(1, int(request.query_params.get('page', 1)))
-            per_page = min(100, max(1, int(request.query_params.get('per_page', 20))))
+            per_page = min(MAX_PAGE_SIZE, max(1, int(request.query_params.get('per_page', DEFAULT_PAGE_SIZE))))
         except ValueError:
             page = 1
-            per_page = 20
+            per_page = DEFAULT_PAGE_SIZE
         
         start = (page - 1) * per_page
         end = start + per_page
@@ -2054,8 +2059,8 @@ class UnifiedCheckoutView(APIView):
         products_total = sum(item['total'] for item in product_items)
         courses_total = sum(item['total'] for item in course_items)
         delivery_options = [] if not product_items else [
-            {'type': 'standard', 'cost': 300, 'name': 'Стандартная доставка'},
-            {'type': 'express', 'cost': 600, 'name': 'Экспресс доставка'},
+            {'type': 'standard', 'cost': float(DELIVERY_COSTS['standard']), 'name': 'Стандартная доставка'},
+            {'type': 'express', 'cost': float(DELIVERY_COSTS['express']), 'name': 'Экспресс доставка'},
             {'type': 'pickup', 'cost': 0, 'name': 'Самовывоз'}
         ]
 
@@ -3125,10 +3130,10 @@ class ProductListViewV2(APIView):
         # Пагинация
         try:
             page = max(1, int(request.query_params.get('page', 1)))
-            per_page = min(100, max(1, int(request.query_params.get('per_page', 20))))
+            per_page = min(MAX_PAGE_SIZE, max(1, int(request.query_params.get('per_page', DEFAULT_PAGE_SIZE))))
         except ValueError:
             page = 1
-            per_page = 20
+            per_page = DEFAULT_PAGE_SIZE
         
         # Базовый queryset
         products = Product.objects.filter(

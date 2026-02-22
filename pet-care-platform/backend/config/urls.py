@@ -31,15 +31,7 @@ from core.views import health_check, health_check_detailed, metrics
 # URL МАРШРУТЫ
 # =============================================================================
 
-# from apps.shop.admin_views import admin_dashboard, recommendation_settings, pet_analytics, payment_analytics  # Временно отключено
-
 urlpatterns = [
-    # Кастомный дашборд администратора - временно отключен
-    # path('admin/dashboard/', admin_dashboard, name='admin-dashboard'),
-    # path('admin/recommendations/', recommendation_settings, name='admin-recommendations'),
-    # path('admin/pet-analytics/', pet_analytics, name='admin-pet-analytics'),
-    # path('admin/payment-analytics/', payment_analytics, name='admin-payment-analytics'),
-    
     # Административный интерфейс Django (для разработки/отладки)
     path('admin/', admin.site.urls),
     

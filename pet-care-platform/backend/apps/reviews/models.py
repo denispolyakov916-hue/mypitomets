@@ -121,25 +121,8 @@ class Review(models.Model):
             self.review_type = 'course'
     
     def save(self, *args, **kwargs):
-        """Переопределяем save для вызова clean и проверки уникальности."""
+        """Переопределяем save для вызова clean. Уникальность обеспечивается UniqueConstraint в БД."""
         self.clean()
-        
-        # Проверка уникальности на уровне Python (дополнительно к БД)
-        existing_review = None
-        if self.product_id:
-            existing_review = Review.objects.filter(
-                user=self.user,
-                product_id=self.product_id
-            ).exclude(pk=self.pk).first()
-        elif self.course_id:
-            existing_review = Review.objects.filter(
-                user=self.user,
-                course_id=self.course_id
-            ).exclude(pk=self.pk).first()
-        
-        if existing_review:
-            raise ValidationError('Вы уже оставили отзыв на этот товар/курс')
-        
         super().save(*args, **kwargs)
     
     # Ответ (reply) на другой отзыв

@@ -3,12 +3,13 @@ Views для работы с отзывами и рейтингами.
 """
 
 import logging
+from django.core.exceptions import ObjectDoesNotExist
 from django.core.paginator import Paginator
+from django.db.models import Avg, Prefetch
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import AllowAny, IsAuthenticated
-from django.db.models import Avg
 
 from .models import Review, ReviewLike
 from .serializers import ReviewCreateSerializer, ReviewUpdateSerializer
@@ -17,83 +18,97 @@ from .utils import can_user_review_product, can_user_review_course
 logger = logging.getLogger('apps.reviews')
 
 
-class ProductReviewsView(APIView):
+def _serialize_review_with_replies(review_obj, user_reactions):
+    """Сериализация отзыва с ответами (использует prefetched replies)."""
+    d = review_obj.to_dict()
+    d['user_reaction'] = user_reactions.get(review_obj.id)
+    d['replies'] = []
+    for reply in review_obj.replies.all():
+        if not reply.is_approved:
+            continue
+        rd = reply.to_dict()
+        rd['user_reaction'] = user_reactions.get(reply.id)
+        d['replies'].append(rd)
+    return d
+
+
+class BaseReviewsView(APIView):
     """
-    Получение и создание отзывов товара.
-    
-    GET  /api/reviews/products/{product_id}/ - получение отзывов
-    POST /api/reviews/products/{product_id}/ - создание отзыва
+    Базовый класс для получения отзывов товара или курса.
+
+    Наследники должны определить:
+    - object_id_param: имя параметра URL ('product_id' или 'course_id')
+    - review_filter_key: ключ фильтра ('product' или 'course')
+    - get_target_object(object_id): получение объекта (Product или Course)
+    - not_found_error: сообщение об ошибке «не найден»
     """
-    
-    def get(self, request, product_id):
+
+    object_id_param = None
+    review_filter_key = None
+    not_found_error = 'Объект не найден'
+
+    def get_target_object(self, object_id):
+        """Получение целевого объекта. Переопределить в наследниках."""
+        raise NotImplementedError
+
+    def get(self, request, **kwargs):
+        object_id = kwargs.get(self.object_id_param)
         try:
-            from apps.shop.models import Product
-            product = Product.objects.get(id=product_id)
-        except Product.DoesNotExist:
+            target = self.get_target_object(object_id)
+        except ObjectDoesNotExist:
             return Response(
-                {'error': 'Товар не найден'},
+                {'error': self.not_found_error},
                 status=status.HTTP_404_NOT_FOUND
             )
-        
-        # Получаем одобренные отзывы (только корневые)
+
+        filter_kwargs = {self.review_filter_key: target}
+
+        approved_replies = Review.objects.filter(is_approved=True).order_by('created_at').select_related('user')
         reviews = Review.objects.filter(
-            product=product,
+            **filter_kwargs,
             is_approved=True,
             parent__isnull=True,
         ).select_related('user').prefetch_related(
-            'replies__user', 'replies__replies',
+            Prefetch('replies', queryset=approved_replies),
         ).order_by('-created_at')
-        
-        # Пагинация
+
         page = int(request.query_params.get('page', 1))
         per_page = min(int(request.query_params.get('per_page', 10)), 50)
         paginator = Paginator(reviews, per_page)
         page_obj = paginator.get_page(page)
-        
-        # Отзыв текущего пользователя (если авторизован)
+
         user_review = None
         if request.user.is_authenticated:
             try:
                 user_review_obj = Review.objects.get(
-                    product=product,
+                    **filter_kwargs,
                     user=request.user,
                     parent__isnull=True,
                 )
                 user_review = user_review_obj.to_dict()
             except Review.DoesNotExist:
                 pass
-        
-        # Распределение рейтингов
+
         rating_distribution = {}
-        all_root_reviews = Review.objects.filter(product=product, is_approved=True, parent__isnull=True)
+        all_root_reviews = Review.objects.filter(**filter_kwargs, is_approved=True, parent__isnull=True)
         for rating_value in [5, 4, 3, 2, 1]:
             rating_distribution[str(rating_value)] = all_root_reviews.filter(rating=rating_value).count()
-        
+
         avg_rating = all_root_reviews.aggregate(Avg('rating'))['rating__avg'] or 0.0
         reviews_count = all_root_reviews.count()
 
-        # Получаем реакции текущего пользователя
         user_reactions = {}
         if request.user.is_authenticated:
             review_ids = [r.id for r in page_obj]
-            for reply_set in [r.replies.all() for r in page_obj]:
-                review_ids.extend([rr.id for rr in reply_set])
+            for review in page_obj:
+                for reply in review.replies.all():
+                    review_ids.append(reply.id)
             likes = ReviewLike.objects.filter(review_id__in=review_ids, user=request.user)
             for like in likes:
                 user_reactions[like.review_id] = 'like' if like.is_like else 'dislike'
-        
-        def serialize_review_with_replies(review_obj):
-            d = review_obj.to_dict()
-            d['user_reaction'] = user_reactions.get(review_obj.id)
-            d['replies'] = []
-            for reply in review_obj.replies.filter(is_approved=True).order_by('created_at'):
-                rd = reply.to_dict()
-                rd['user_reaction'] = user_reactions.get(reply.id)
-                d['replies'].append(rd)
-            return d
-        
+
         return Response({
-            'reviews': [serialize_review_with_replies(r) for r in page_obj],
+            'reviews': [_serialize_review_with_replies(r, user_reactions) for r in page_obj],
             'rating': round(avg_rating, 1),
             'reviews_count': reviews_count,
             'rating_distribution': rating_distribution,
@@ -105,7 +120,23 @@ class ProductReviewsView(APIView):
             },
             'user_review': user_review
         }, status=status.HTTP_200_OK)
-    
+
+
+class ProductReviewsView(BaseReviewsView):
+    """
+    Получение и создание отзывов товара.
+
+    GET  /api/reviews/products/{product_id}/ - получение отзывов
+    POST /api/reviews/products/{product_id}/ - создание отзыва
+    """
+    object_id_param = 'product_id'
+    review_filter_key = 'product'
+    not_found_error = 'Товар не найден'
+
+    def get_target_object(self, object_id):
+        from apps.shop.models import Product
+        return Product.objects.get(id=object_id)
+
     def post(self, request, product_id):
         # Проверка аутентификации для POST
         if not request.user.is_authenticated:
@@ -346,95 +377,21 @@ class ProductReviewEligibilityView(APIView):
         }, status=status.HTTP_200_OK)
 
 
-class CourseReviewsView(APIView):
+class CourseReviewsView(BaseReviewsView):
     """
     Получение и создание отзывов курса.
-    
+
     GET  /api/reviews/courses/{course_id}/ - получение отзывов
     POST /api/reviews/courses/{course_id}/ - создание отзыва
     """
-    
-    def get(self, request, course_id):
-        try:
-            from apps.training.models import Course
-            course = Course.objects.get(id=course_id)
-        except Course.DoesNotExist:
-            return Response(
-                {'error': 'Курс не найден'},
-                status=status.HTTP_404_NOT_FOUND
-            )
-        
-        # Получаем одобренные отзывы (только корневые)
-        reviews = Review.objects.filter(
-            course=course,
-            is_approved=True,
-            parent__isnull=True,
-        ).select_related('user').prefetch_related(
-            'replies__user', 'replies__replies',
-        ).order_by('-created_at')
-        
-        # Пагинация
-        page = int(request.query_params.get('page', 1))
-        per_page = min(int(request.query_params.get('per_page', 10)), 50)
-        paginator = Paginator(reviews, per_page)
-        page_obj = paginator.get_page(page)
-        
-        # Отзыв текущего пользователя (если авторизован)
-        user_review = None
-        if request.user.is_authenticated:
-            try:
-                user_review_obj = Review.objects.get(
-                    course=course,
-                    user=request.user,
-                    parent__isnull=True,
-                )
-                user_review = user_review_obj.to_dict()
-            except Review.DoesNotExist:
-                pass
-        
-        # Распределение рейтингов
-        rating_distribution = {}
-        all_root_reviews = Review.objects.filter(course=course, is_approved=True, parent__isnull=True)
-        for rating_value in [5, 4, 3, 2, 1]:
-            rating_distribution[str(rating_value)] = all_root_reviews.filter(rating=rating_value).count()
-        
-        avg_rating = all_root_reviews.aggregate(Avg('rating'))['rating__avg'] or 0.0
-        reviews_count = all_root_reviews.count()
+    object_id_param = 'course_id'
+    review_filter_key = 'course'
+    not_found_error = 'Курс не найден'
 
-        # Получаем реакции текущего пользователя
-        user_reactions = {}
-        if request.user.is_authenticated:
-            review_ids = [r.id for r in page_obj]
-            for reply_set in [r.replies.all() for r in page_obj]:
-                review_ids.extend([rr.id for rr in reply_set])
-            likes = ReviewLike.objects.filter(review_id__in=review_ids, user=request.user)
-            for like in likes:
-                user_reactions[like.review_id] = 'like' if like.is_like else 'dislike'
-        
-        def serialize_review_with_replies(review_obj):
-            d = review_obj.to_dict()
-            d['user_reaction'] = user_reactions.get(review_obj.id)
-            d['replies'] = []
-            for reply in review_obj.replies.filter(is_approved=True).order_by('created_at'):
-                rd = reply.to_dict()
-                rd['user_reaction'] = user_reactions.get(reply.id)
-                d['replies'].append(rd)
-            return d
-        
-        return Response({
-            'reviews': [serialize_review_with_replies(r) for r in page_obj],
-            'rating': round(avg_rating, 1),
-            'reviews_count': reviews_count,
-            'rating_distribution': rating_distribution,
-            'pagination': {
-                'page': page,
-                'per_page': per_page,
-                'total': paginator.count,
-                'total_pages': paginator.num_pages
-            },
-            'user_review': user_review
-        }, status=status.HTTP_200_OK)
-    
+    def get_target_object(self, object_id):
+        from apps.training.models import Course
+        return Course.objects.get(id=object_id)
+
     def post(self, request, course_id):
         # Проверка аутентификации для POST
         if not request.user.is_authenticated:

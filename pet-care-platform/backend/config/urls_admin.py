@@ -33,6 +33,7 @@ from .admin_api import (
 admin_router = DefaultRouter()
 
 # Аналитические эндпоинты
+admin_router.register(r'analytics', AdminAnalyticsViewSet, basename='admin-analytics')
 
 # Управление данными (bulk операции, экспорт)
 admin_router.register(r'management', AdminManagementViewSet, basename='admin-management')

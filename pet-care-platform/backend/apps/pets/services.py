@@ -28,8 +28,50 @@ from django.utils import timezone
 from decimal import Decimal
 
 from core.services import BaseCRUDService, ServiceResult
+from core.constants import MAX_PETS_PER_USER, SIZE_THRESHOLDS
 
 logger = logging.getLogger('apps.pets')
+
+
+def calculate_size_category(weight: Optional[float], species: str) -> Optional[str]:
+    """
+    Рассчитывает категорию размера по весу и виду животного.
+
+    Args:
+        weight: Вес в кг
+        species: Вид (dog, cat)
+
+    Returns:
+        Категория размера: toy/small/medium/large/giant для собак,
+        small/medium/large для кошек. None если вес не указан.
+    """
+    if weight is None:
+        return None
+
+    thresholds = SIZE_THRESHOLDS.get(species)
+    if not thresholds:
+        return None
+
+    if species == 'dog':
+        if weight < 5:
+            return 'toy'
+        elif weight < thresholds.get('small', 10):
+            return 'small'
+        elif weight < thresholds.get('medium', 25):
+            return 'medium'
+        elif weight < thresholds.get('large', 45):
+            return 'large'
+        else:
+            return 'giant'
+    elif species == 'cat':
+        if weight < thresholds.get('small', 4):
+            return 'small'
+        elif weight < thresholds.get('medium', 6):
+            return 'medium'
+        else:
+            return 'large'
+
+    return None
 
 
 # Константы для проблем здоровья и категорий товаров
@@ -165,33 +207,9 @@ class PetContext:
         Рассчитанная категория размера по весу.
         Возвращает сохранённый size_category или рассчитывает по весу.
         """
-        # Если есть сохранённый размер — возвращаем его
         if self.size_category:
             return self.size_category
-        
-        # Рассчитываем по весу
-        if self.weight is None:
-            return None
-        
-        if self.species == 'dog':
-            if self.weight < 5:
-                return 'toy'
-            elif self.weight < 10:
-                return 'small'
-            elif self.weight < 25:
-                return 'medium'
-            elif self.weight < 45:
-                return 'large'
-            else:
-                return 'giant'
-        elif self.species == 'cat':
-            if self.weight < 4:
-                return 'small'
-            elif self.weight < 6:
-                return 'medium'
-            else:
-                return 'large'
-        return None
+        return calculate_size_category(self.weight, self.species)
     
     @property
     def animal_type(self) -> str:
@@ -827,6 +845,171 @@ class PersonalizationService:
 
 
 # =============================================================================
+# СЕРВИС АНАЛИЗА ПРОФИЛЯ ПИТОМЦА
+# =============================================================================
+
+
+class PetAnalysisService:
+    """
+    Сервис анализа профиля питомца.
+
+    Предоставляет методы для:
+    - Анализа веса относительно породы
+    - Генерации рекомендаций по товарам и курсам
+    - Определения рисков здоровья
+    - Генерации предупреждений
+    """
+
+    @staticmethod
+    def get_analysis(pet) -> Dict[str, Any]:
+        """
+        Получить полный анализ профиля питомца.
+
+        Args:
+            pet: Объект Pet (должен иметь select_related('breed'))
+
+        Returns:
+            Dict с ключами: pet_id, pet_name, profile_completeness, basic_info,
+            weight_analysis, recommendations, health_risks, alerts
+        """
+        analysis = {
+            'pet_id': str(pet.id),
+            'pet_name': pet.name,
+            'profile_completeness': pet.profile_completeness,
+            'basic_info': {
+                'age': pet.age,
+                'age_months': pet.age_months,
+                'age_category': pet.age_category,
+                'calculated_size': getattr(pet, 'calculated_size_category', None),
+            },
+        }
+
+        weight_analysis = PetAnalysisService.analyze_weight(pet)
+        if weight_analysis:
+            analysis['weight_analysis'] = weight_analysis
+
+        analysis['recommendations'] = PetAnalysisService.get_recommendations(pet)
+        analysis['health_risks'] = PetAnalysisService.get_health_risks(pet)
+        analysis['alerts'] = PetAnalysisService.get_alerts(pet)
+
+        return analysis
+
+    @staticmethod
+    def analyze_weight(pet) -> Optional[Dict[str, Any]]:
+        """Анализ веса относительно породы."""
+        if not pet.weight or not pet.breed:
+            return None
+
+        breed = pet.breed
+        avg_weight = breed.average_weight
+        if not avg_weight:
+            return None
+
+        pet_weight = float(pet.weight)
+        ratio = pet_weight / avg_weight
+
+        if ratio < 0.8:
+            status_text, risk = 'underweight', 'medium'
+            message = f'Вес {pet_weight} кг ниже нормы для породы {breed.name}'
+        elif ratio > 1.2:
+            status_text, risk = 'overweight', 'high'
+            message = f'Вес {pet_weight} кг выше нормы для породы {breed.name}'
+        else:
+            status_text, risk = 'normal', 'low'
+            message = 'Вес в пределах нормы для породы'
+
+        return {
+            'current_weight': pet_weight,
+            'breed_average': avg_weight,
+            'breed_range': f'{breed.weight_min}-{breed.weight_max} кг',
+            'ratio': round(ratio, 2),
+            'status': status_text,
+            'risk_level': risk,
+            'message': message
+        }
+
+    @staticmethod
+    def get_recommendations(pet) -> Dict[str, List]:
+        """Генерация рекомендаций."""
+        recommendations = {'products': [], 'courses': [], 'actions': []}
+
+        if pet.profile_completeness < 50:
+            recommendations['actions'].append({
+                'type': 'profile',
+                'priority': 'high',
+                'message': 'Заполните профиль питомца для получения персонализированных рекомендаций'
+            })
+
+        if pet.age_category == 'senior':
+            recommendations['products'].extend(['senior_food', 'joint_supplements'])
+            recommendations['courses'].append('senior_care')
+        elif pet.age_category in ['puppy', 'kitten']:
+            recommendations['products'].append('puppy_food')
+            recommendations['courses'].append('basic_training')
+
+        health_issues = getattr(pet, 'health_issues', None) or []
+        if health_issues:
+            for issue in health_issues:
+                if 'weight' in str(issue).lower() or 'ожирение' in str(issue).lower():
+                    recommendations['products'].append('diet_food')
+                elif 'сустав' in str(issue).lower() or 'joint' in str(issue).lower():
+                    recommendations['products'].append('joint_supplements')
+
+        if pet.behavioral_problems:
+            recommendations['courses'].append('behavior_correction')
+
+        return recommendations
+
+    @staticmethod
+    def get_health_risks(pet) -> List[Dict[str, Any]]:
+        """Определение рисков здоровья."""
+        risks = []
+
+        if pet.age and pet.age > 10:
+            risks.append({
+                'type': 'age',
+                'level': 'medium',
+                'message': f'Пожилой возраст ({pet.age} лет) - рекомендуются частые ветеринарные осмотры'
+            })
+
+        if pet.breed:
+            breed = pet.breed
+            if getattr(breed, 'health_risk_level', None) == 'high':
+                risks.append({
+                    'type': 'breed',
+                    'level': 'high',
+                    'message': f'Порода {breed.name} имеет повышенные риски здоровья',
+                    'genetic_risks': breed.health_risks or []
+                })
+
+        return risks
+
+    @staticmethod
+    def get_alerts(pet) -> List[Dict[str, Any]]:
+        """Генерация предупреждений."""
+        alerts = []
+
+        if pet.profile_completeness < 30:
+            alerts.append({
+                'type': 'profile',
+                'priority': 'warning',
+                'message': 'Профиль питомца заполнен менее чем на 30%'
+            })
+
+        has_chronic = bool(getattr(pet, 'chronic_conditions', None)) or bool(
+            getattr(pet, 'chronic_conditions_notes', '')
+        )
+        if has_chronic:
+            alerts.append({
+                'type': 'health',
+                'priority': 'info',
+                'message': 'Есть хронические заболевания - следите за регулярностью лечения'
+            })
+
+        return alerts
+
+
+# =============================================================================
 # CRUD СЕРВИСЫ НА БАЗЕ BaseCRUDService
 # =============================================================================
 
@@ -848,6 +1031,30 @@ class PetService(BaseCRUDService):
             return self.model.objects.filter(owner=user)
         return super().get_queryset(user)
 
+    @staticmethod
+    def resolve_breed(breed_value):
+        """
+        Преобразует breed_id (int/str) в объект Breed.
+
+        Args:
+            breed_value: ID породы (int/str), объект Breed или None
+
+        Returns:
+            Breed или None
+
+        Raises:
+            ValueError: Если порода с указанным ID не найдена
+        """
+        if breed_value is None:
+            return None
+        from .breed_models import Breed
+        if hasattr(breed_value, 'id') and hasattr(breed_value, 'name'):
+            return breed_value
+        try:
+            return Breed.objects.get(id=breed_value)
+        except Breed.DoesNotExist:
+            raise ValueError(f'Порода с ID {breed_value} не найдена')
+
     def create_pet(self, data, user):
         """
         Создать питомца с дополнительной валидацией.
@@ -864,7 +1071,7 @@ class PetService(BaseCRUDService):
 
         # Проверка лимита питомцев на пользователя
         pets_count = self.model.objects.filter(owner=user).count()
-        if pets_count >= 50:  # Максимум 50 питомцев на пользователя
+        if pets_count >= MAX_PETS_PER_USER:
             raise ValueError("Превышен лимит количества питомцев")
 
         # Добавляем owner к данным
@@ -986,4 +1193,5 @@ personalization_service = PersonalizationService()
 # CRUD сервисы
 pet_service = PetService()
 reminder_service = ReminderService()
+pet_analysis_service = PetAnalysisService()
 

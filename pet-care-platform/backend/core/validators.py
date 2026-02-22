@@ -243,3 +243,75 @@ def validate_analytics_config(value):
     
     return value
 
+
+# =============================================================================
+# ВАЛИДАЦИЯ ПАРОЛЕЙ
+# =============================================================================
+
+COMMON_PASSWORDS = {
+    'password', 'password1', 'password123', '123456', '12345678', '123456789',
+    'qwerty', 'qwerty123', 'abc123', 'monkey', 'letmein', 'trustno1',
+    'dragon', 'baseball', 'iloveyou', 'master', 'sunshine', 'ashley',
+    'football', 'shadow', 'passw0rd', '1234567', '1234567890', 'welcome',
+    'admin', 'admin123', 'login', 'princess', 'solo', 'qwertyuiop',
+    'пароль', 'пароль123', '123456а', 'qwerty1', 'йцукен', 'привет'
+}
+
+
+def validate_password_strength(value):
+    """
+    Валидация сложности пароля.
+
+    Проверяет минимум 8 символов, наличие буквы, цифры, спецсимвола
+    и отсутствие в списке распространённых паролей.
+
+    Args:
+        value: Строка пароля
+
+    Returns:
+        list: Список ошибок (пустой если валидация пройдена)
+    """
+    errors = []
+
+    if len(value) < 8:
+        errors.append('Пароль должен содержать минимум 8 символов')
+
+    if not re.search(r'[a-zA-Zа-яА-ЯёЁ]', value):
+        errors.append('Пароль должен содержать хотя бы одну букву')
+
+    if not re.search(r'\d', value):
+        errors.append('Пароль должен содержать хотя бы одну цифру')
+
+    if not re.search(r'[!@#$%^&*()_+\-=\[\]{};\':"\\|,.<>\/?`~]', value):
+        errors.append('Пароль должен содержать хотя бы один специальный символ (!@#$%^&*...)')
+
+    if value.lower() in COMMON_PASSWORDS:
+        errors.append('Этот пароль слишком распространён. Выберите другой')
+
+    return errors
+
+
+# =============================================================================
+# УТИЛИТЫ ДЛЯ COOKIE
+# =============================================================================
+
+def set_refresh_token_cookie(response, token):
+    """
+    Установка refresh-токена в httpOnly cookie.
+
+    Args:
+        response: Django Response объект
+        token: Строка refresh-токена
+    """
+    from django.conf import settings
+    from .constants import REFRESH_TOKEN_COOKIE_NAME, REFRESH_TOKEN_COOKIE_MAX_AGE
+
+    response.set_cookie(
+        REFRESH_TOKEN_COOKIE_NAME,
+        token,
+        max_age=REFRESH_TOKEN_COOKIE_MAX_AGE,
+        httponly=True,
+        samesite='Lax',
+        secure=not settings.DEBUG,
+    )
+
