@@ -24,14 +24,15 @@ import { useToastStore } from '../store/toastStore'
  * Использует min-h-screen для прижатия подвала к низу.
  */
 function Layout({ children }) {
-  const { toasts, removeToast } = useToastStore()
+  const toasts = useToastStore(s => s.toasts)
+  const removeToast = useToastStore(s => s.removeToast)
   
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
       {/* Skip links для доступности */}
       <a
         href="#main-content"
-        className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:bg-purple-600 focus:text-white focus:rounded-lg focus:shadow-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2"
+        className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:bg-primary-600 focus:text-white focus:rounded-lg focus:shadow-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
       >
         Перейти к основному содержимому
       </a>

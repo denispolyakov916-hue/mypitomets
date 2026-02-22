@@ -13,18 +13,10 @@ import { createPayment } from '../../api/payments'
 import { useAuthStore } from '../../store/authStore'
 import { useCartStore } from '../../store/cartStore'
 import { PageLoader, ButtonLoader } from '../../components/Loader'
+import { EmptyState } from '../../components/ui/EmptyState'
+import { Alert } from '../../components/ui/Alert'
 import AuthGuard from '../../components/AuthGuard'
-
-/**
- * Форматирование цены с символом рубля
- */
-const formatPrice = (price) => {
-  return new Intl.NumberFormat('ru-RU', {
-    style: 'currency',
-    currency: 'RUB',
-    maximumFractionDigits: 0
-  }).format(price)
-}
+import { formatPrice } from '../../utils/format'
 
 // =============================================================================
 // КОМПОНЕНТ: ReservationTimer
@@ -113,7 +105,7 @@ function ProductsSection({ products }) {
           <span className="text-xl">📦</span>
         </div>
         <div>
-          <h2 className="text-xl font-semibold text-gray-900">Товары</h2>
+          <h2 className="section-title mb-0">Товары</h2>
           <p className="text-sm text-gray-500">{products.items.length} позиций</p>
         </div>
       </div>
@@ -176,7 +168,7 @@ function CoursesSection({ courses, formData, onFormChange }) {
           <span className="text-xl">📚</span>
         </div>
         <div>
-          <h2 className="text-xl font-semibold text-gray-900">Курсы</h2>
+          <h2 className="section-title mb-0">Курсы</h2>
           <p className="text-sm text-gray-500">{courses.items.length} курсов</p>
         </div>
       </div>
@@ -264,7 +256,7 @@ function AddressSection({ addresses, formData, onFormChange }) {
 
   return (
     <div className="card mb-6">
-      <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
+      <h2 className="section-title flex items-center gap-2">
         <svg className="w-5 h-5 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
             d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
@@ -410,7 +402,7 @@ function DeliverySection({ deliveryOptions, formData, onFormChange }) {
 
   return (
     <div className="card mb-6">
-      <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
+      <h2 className="section-title flex items-center gap-2">
         <svg className="w-5 h-5 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
             d="M8 4H6a2 2 0 00-2 2v12a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-2m-4-1v8m0 0l3-3m-3 3L9 8m-5 5h2.586a1 1 0 01.707.293l2.414 2.414a1 1 0 00.707.293h3.172a1 1 0 00.707-.293l2.414-2.414a1 1 0 01.707-.293H20" />
@@ -605,7 +597,7 @@ function PaymentMethodSection({ paymentMethod, onPaymentMethodChange }) {
 
   return (
     <div className="card mb-6">
-      <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
+      <h2 className="section-title flex items-center gap-2">
         <svg className="w-5 h-5 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
             d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
@@ -691,7 +683,7 @@ function SummarySection({
 
   return (
     <div className="card sticky top-24">
-      <h2 className="text-xl font-semibold text-gray-900 mb-6">Итого к оплате</h2>
+      <h2 className="section-title mb-6">Итого к оплате</h2>
 
       <div className="space-y-3 mb-6">
         {hasProducts && (
@@ -800,7 +792,7 @@ const getDisabledReason = (formData, hasProducts, hasCourses) => {
 function UnifiedCheckout() {
   const navigate = useNavigate()
   const location = useLocation()
-  const { isAuthenticated } = useAuthStore()
+  const isAuthenticated = useAuthStore(s => s.isAuthenticated)
   const { clearCart, loadCart } = useCartStore()
   
   // Получаем выбранные элементы из state (переданы из Cart)
@@ -1076,18 +1068,22 @@ function UnifiedCheckout() {
   if (error && !checkoutData) {
     return (
       <div className="page-container animate-fadeIn">
-        <div className="card text-center py-12 max-w-lg mx-auto">
-          <div className="text-5xl mb-4">😕</div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Ошибка загрузки</h1>
-          <p className="text-gray-600 mb-6">{error}</p>
-          <div className="flex gap-4 justify-center">
-            <button onClick={loadCheckout} className="btn-primary">
-              Попробовать снова
-            </button>
-            <Link to="/cart" className="btn-secondary">
-              Вернуться в корзину
-            </Link>
-          </div>
+        <div className="card max-w-lg mx-auto">
+          <EmptyState
+            icon="😕"
+            title="Ошибка загрузки"
+            description={error}
+            action={
+              <button onClick={loadCheckout} className="btn-primary">
+                Попробовать снова
+              </button>
+            }
+            secondaryAction={
+              <Link to="/cart" className="btn-secondary">
+                Вернуться в корзину
+              </Link>
+            }
+          />
         </div>
       </div>
     )
@@ -1097,29 +1093,34 @@ function UnifiedCheckout() {
   if (!checkoutData) {
     return (
       <div className="page-container animate-fadeIn">
-        <div className="card text-center py-12 max-w-lg mx-auto">
-          <div className="text-5xl mb-4">📦</div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Нет данных для оформления</h1>
-          <p className="text-gray-600 mb-6">
-            {selectedItemsFromCart.length === 0
-              ? 'Не выбраны товары для оформления. Вернитесь в корзину и выберите товары.'
-              : 'Данные загружаются...'
+        <div className="card max-w-lg mx-auto">
+          <EmptyState
+            icon="📦"
+            title="Нет данных для оформления"
+            description={
+              selectedItemsFromCart.length === 0
+                ? 'Не выбраны товары для оформления. Вернитесь в корзину и выберите товары.'
+                : 'Данные загружаются...'
             }
-          </p>
-          <div className="flex gap-4 justify-center">
-            {selectedItemsFromCart.length === 0 ? (
-              <Link to="/cart" className="btn-primary">
-                К корзине
-              </Link>
-            ) : (
-              <button onClick={loadCheckout} className="btn-primary">
-                Загрузить данные
-              </button>
-            )}
-            <Link to="/cart" className="btn-secondary">
-              К корзине
-            </Link>
-          </div>
+            action={
+              selectedItemsFromCart.length === 0 ? (
+                <Link to="/cart" className="btn-primary">
+                  К корзине
+                </Link>
+              ) : (
+                <button onClick={loadCheckout} className="btn-primary">
+                  Загрузить данные
+                </button>
+              )
+            }
+            secondaryAction={
+              selectedItemsFromCart.length > 0 ? (
+                <Link to="/cart" className="btn-secondary">
+                  К корзине
+                </Link>
+              ) : undefined
+            }
+          />
         </div>
       </div>
     )
@@ -1184,13 +1185,9 @@ function UnifiedCheckout() {
 
         {/* Ошибка */}
         {error && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-600 flex items-center gap-2">
-            <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <span>{error}</span>
-          </div>
+          <Alert variant="error" className="mb-6">
+            {error}
+          </Alert>
         )}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">

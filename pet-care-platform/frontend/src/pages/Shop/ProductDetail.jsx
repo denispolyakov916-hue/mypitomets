@@ -19,17 +19,7 @@ import { PageLoader, ButtonLoader } from '../../components/Loader'
 import Rating from '../../components/Rating'
 import ReviewsSection from '../../components/ReviewsSection'
 import RecommendationBlock from '../../components/RecommendationBlock'
-
-/**
- * Форматирование цены
- */
-const formatPrice = (price) => {
-  return new Intl.NumberFormat('ru-RU', {
-    style: 'currency',
-    currency: 'RUB',
-    maximumFractionDigits: 0
-  }).format(price)
-}
+import { formatPrice } from '../../utils/format'
 
 /**
  * Получение URL изображения из различных форматов
@@ -59,7 +49,7 @@ function ProductDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
   const location = useLocation()
-  const { isAuthenticated } = useAuthStore()
+  const isAuthenticated = useAuthStore(s => s.isAuthenticated)
   const { refreshCart, loadCart, getItemInCart, updateQuantity } = useCartStore()
   const { success, error: showError } = useToastStore()
   
@@ -412,7 +402,7 @@ function ProductDetail() {
     return (
       <div className="page-container">
         <div className="card text-center py-12">
-          <p className="text-red-500 mb-4">{error || 'Товар не найден'}</p>
+          <p className="text-red-600 mb-4">{error || 'Товар не найден'}</p>
           <Link to="/shop" className="btn-primary">
             Вернуться в магазин
           </Link>
@@ -644,7 +634,7 @@ function ProductDetail() {
               </p>
             )}
 
-            <h1 className="text-3xl font-bold text-gray-900 leading-tight">
+            <h1 className="page-title mb-0 leading-tight">
               {product.name}
             </h1>
 
@@ -769,7 +759,7 @@ function ProductDetail() {
           {(product.is_veterinary || product.is_hypoallergenic || product.is_grain_free || product.age_group || product.size_group) && (
             <div className="flex flex-wrap gap-2">
               {product.is_veterinary && (
-                <span className="px-3 py-1 bg-orange-100 text-orange-700 text-xs font-medium rounded-full">
+                <span className="px-3 py-1 bg-accent-100 text-accent-700 text-xs font-medium rounded-full">
                   ⚕️ Ветеринарная диета
                 </span>
               )}
@@ -844,7 +834,7 @@ function ProductDetail() {
               
               {currentPrice.stock > 0 && (
                 <p className="text-sm text-gray-500">
-                  На складе: <span className={`font-medium ${currentPrice.stock <= 5 ? 'text-orange-600' : 'text-green-600'}`}>
+                  На складе: <span className={`font-medium ${currentPrice.stock <= 5 ? 'text-accent-600' : 'text-green-600'}`}>
                     {currentPrice.stock} шт.
                   </span>
                 </p>

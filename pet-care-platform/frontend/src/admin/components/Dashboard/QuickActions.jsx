@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { Link } from 'react-router-dom';
 
 const QuickActions = () => {
@@ -8,7 +8,7 @@ const QuickActions = () => {
       description: 'Просмотреть заказы, требующие внимания',
       href: '/admin-panel/orders?status=pending,processing',
       icon: '📦',
-      color: 'bg-orange-50 border-orange-200 text-orange-700',
+      color: 'bg-accent-50 border-accent-200 text-accent-700',
     },
     {
       title: 'Управление товарами',
@@ -22,7 +22,7 @@ const QuickActions = () => {
       description: 'Просмотреть финансовые отчеты',
       href: '/admin-panel/analytics',
       icon: '💳',
-      color: 'bg-purple-50 border-purple-200 text-purple-700',
+      color: 'bg-primary-50 border-primary-200 text-primary-700',
     },
     {
       title: 'Управление пользователями',

@@ -16,10 +16,12 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import PropTypes from 'prop-types'
+import { Card } from './ui/Card'
 import { ButtonLoader } from './Loader'
 import Rating from './Rating'
 import FavoriteButton from './FavoriteButton'
 import { CoursePropTypes } from '../utils/propTypes'
+import { formatCoursePrice } from '../utils/format'
 
 /**
  * Маппинг названий типов животных
@@ -64,18 +66,6 @@ const levelLabels = {
   intermediate: 'Средний',
   advanced: 'Продвинутый',
   expert: 'Эксперт',
-}
-
-/**
- * Форматирование цены
- */
-const formatPrice = (price) => {
-  if (price === 0) return 'Бесплатно'
-  return new Intl.NumberFormat('ru-RU', {
-    style: 'currency',
-    currency: 'RUB',
-    maximumFractionDigits: 0
-  }).format(price)
 }
 
 /**
@@ -138,7 +128,7 @@ function CourseCard({ course, onAddToCart, onEnrollFree, isOwned = false, isLoad
   }
   
   return (
-    <div className="group bg-white rounded-2xl shadow-sm hover:shadow-lg border border-gray-100 transition-all duration-300 flex flex-col h-full overflow-hidden">
+    <Card variant="default" hoverable rounded="2xl" className="group shadow-sm flex flex-col h-full overflow-hidden">
       {/* Изображение курса - кликабельное */}
       <Link to={`/courses/${course.id}`} className="aspect-square relative overflow-hidden bg-gray-50 block">
         {course.image_url && !imageError ? (
@@ -198,7 +188,7 @@ function CourseCard({ course, onAddToCart, onEnrollFree, isOwned = false, isLoad
           <span className={`text-lg font-bold ${
             course.price === 0 ? 'text-green-600' : 'text-gray-900'
           }`}>
-            {formatPrice(course.price)}
+            {formatCoursePrice(course.price)}
           </span>
         </div>
         
@@ -289,7 +279,7 @@ function CourseCard({ course, onAddToCart, onEnrollFree, isOwned = false, isLoad
           )}
         </div>
       </div>
-    </div>
+    </Card>
   )
 }
 

@@ -20,8 +20,8 @@ import { getCourseBuilder, getCourse, saveCourseBuilder, publishCourse } from '.
 function CourseBuilderPage() {
   const { courseId } = useParams()
   const navigate = useNavigate()
-  const { user } = useAuthStore()
-  const { showToast } = useToastStore()
+  const user = useAuthStore(s => s.user)
+  const showToast = useToastStore(s => s.showToast)
 
   const [course, setCourse] = useState(null)
   const [loading, setLoading] = useState(true)

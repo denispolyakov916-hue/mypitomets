@@ -61,7 +61,7 @@ function FavoriteButton({
   onToggle,
 }) {
   const [isAnimating, setIsAnimating] = useState(false)
-  const { success } = useToastStore()
+  const success = useToastStore(s => s.success)
   
   // Получаем методы из store
   const toggleProduct = useFavoritesStore(state => state.toggleProduct)

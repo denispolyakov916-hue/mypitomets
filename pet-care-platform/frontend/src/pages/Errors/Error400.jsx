@@ -2,7 +2,6 @@ import React, { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { baseAnimations } from './errorAnimations'
-import '../../styles/errors-common.css'
 
 /**
  * Страница ошибки 400 - Неверный запрос
@@ -28,7 +27,7 @@ const Error400 = () => {
       title.textContent = ''
       text.split('').forEach((char, index) => {
         const span = document.createElement('span')
-        span.className = 'letter'
+        span.className = 'inline-block opacity-0 animate-letterFadeIn'
         span.innerHTML = char === ' ' ? '&nbsp;' : char
         span.style.animationDelay = `${0.4 + index * 0.05}s`
         title.appendChild(span)
@@ -37,9 +36,9 @@ const Error400 = () => {
   }, [])
 
   return (
-    <div className="min-h-screen bg-white flex items-center justify-center px-4 relative overflow-hidden">
+    <div className="min-h-screen bg-white flex items-center justify-center px-4 relative overflow-hidden font-[Nunito,sans-serif]">
       <motion.div 
-        className="error-number-bg"
+        className="fixed inset-0 flex items-center justify-center text-[40vw] font-extrabold text-primary-500 z-0 leading-none pointer-events-none"
         initial={animations.backgroundNumber.initial}
         animate={animations.backgroundNumber.animate}
         transition={animations.backgroundNumber.transition}
@@ -57,12 +56,12 @@ const Error400 = () => {
           <img 
             src={config.imageUrl} 
             alt={config.imageAlt} 
-            className="error-page-image mx-auto"
+            className="w-64 h-64 object-cover rounded-full mx-auto border-4 border-gray-100"
           />
         </motion.div>
 
         <motion.h2 
-          className="text-3xl font-bold text-gray-900 mb-4 animate-title error-400-title"
+          className="text-3xl font-bold text-gray-900 mb-4 inline-block error-400-title"
           initial={animations.title.initial}
           animate={animations.title.animate}
           transition={animations.title.transition}
@@ -86,7 +85,7 @@ const Error400 = () => {
           transition={animations.buttons.transition}
         >
           <motion.button 
-            className="btn bg-purple-500 text-white px-8 py-3 rounded-full font-semibold"
+            className="transition-all duration-200 bg-primary-500 text-white px-8 py-3 rounded-full font-semibold"
             onClick={() => navigate('/')}
             whileHover={{ scale: 1.05, y: -2 }}
             whileTap={{ scale: 0.95 }}
@@ -96,7 +95,7 @@ const Error400 = () => {
           </motion.button>
           
           <motion.button 
-            className="btn bg-white text-gray-700 px-8 py-3 rounded-full font-semibold border-2 border-gray-200"
+            className="transition-all duration-200 bg-white text-gray-700 px-8 py-3 rounded-full font-semibold border-2 border-gray-200"
             onClick={() => window.history.back()}
             whileHover={{ scale: 1.05, y: -2 }}
             whileTap={{ scale: 0.95 }}
@@ -106,7 +105,7 @@ const Error400 = () => {
           </motion.button>
           
           <motion.button 
-            className="btn bg-orange-500 text-white px-8 py-3 rounded-full font-semibold"
+            className="transition-all duration-200 bg-accent-500 text-white px-8 py-3 rounded-full font-semibold"
             onClick={() => alert('Игра скоро появится! 🎮')}
             whileHover={{ scale: 1.05, y: -2 }}
             whileTap={{ scale: 0.95 }}

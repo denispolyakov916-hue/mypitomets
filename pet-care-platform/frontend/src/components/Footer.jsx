@@ -1,9 +1,9 @@
-import { Facebook, Instagram, Plane } from 'lucide-react';
+﻿import { Facebook, Instagram, Plane } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 export function Footer() {
   return (
-    <footer className="bg-white border-t border-purple-100 relative overflow-hidden">
+    <footer className="bg-white border-t border-primary-100 relative overflow-hidden">
       {/* Floating decorative elements - dots and lines */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
         {/* Dots */}
@@ -11,7 +11,7 @@ export function Footer() {
           <motion.div
             key={`dot-footer-${i}`}
             className={`absolute w-1.5 h-1.5 rounded-full ${
-              i % 3 === 0 ? 'bg-purple-200' : i % 3 === 1 ? 'bg-orange-200' : 'bg-purple-100'
+              i % 3 === 0 ? 'bg-primary-200' : i % 3 === 1 ? 'bg-accent-200' : 'bg-primary-100'
             }`}
             style={{
               left: `${Math.random() * 100}%`,
@@ -94,10 +94,10 @@ export function Footer() {
           {/* Logo and Description */}
           <div className="lg:col-span-3">
             <div className="flex items-center gap-2 mb-4">
-              <div className="bg-gradient-to-br from-purple-500 to-orange-500 p-2 rounded-xl shadow-lg">
+              <div className="bg-gradient-to-br from-primary-500 to-accent-500 p-2 rounded-xl shadow-lg">
                 <span className="text-2xl">🐾</span>
               </div>
-              <span className="text-2xl bg-gradient-to-r from-purple-600 to-orange-500 bg-clip-text text-transparent font-bold">
+              <span className="text-2xl bg-gradient-to-r from-primary-600 to-accent-500 bg-clip-text text-transparent font-bold">
                 Питомец+
               </span>
             </div>
@@ -111,17 +111,17 @@ export function Footer() {
             <h3 className="text-gray-900 mb-4 font-semibold">Сервисы</h3>
             <ul className="space-y-3">
               <li>
-                <a href="#courses" className="text-gray-600 hover:text-purple-600 transition-colors duration-200 text-sm">
+                <a href="#courses" className="text-gray-600 hover:text-primary-600 transition-colors duration-200 text-sm">
                   Обучающие курсы
                 </a>
               </li>
               <li>
-                <a href="#pets" className="text-gray-600 hover:text-purple-600 transition-colors duration-200 text-sm">
+                <a href="#pets" className="text-gray-600 hover:text-primary-600 transition-colors duration-200 text-sm">
                   Мои питомцы
                 </a>
               </li>
               <li>
-                <a href="#health-diary" className="text-gray-600 hover:text-purple-600 transition-colors duration-200 text-sm">
+                <a href="#health-diary" className="text-gray-600 hover:text-primary-600 transition-colors duration-200 text-sm">
                   Дневник здоровья
                 </a>
               </li>
@@ -133,22 +133,22 @@ export function Footer() {
             <h3 className="text-gray-900 mb-4 font-semibold">Каталог</h3>
             <ul className="space-y-3">
               <li>
-                <a href="#shop" className="text-gray-600 hover:text-purple-600 transition-colors duration-200 text-sm">
+                <a href="#shop" className="text-gray-600 hover:text-primary-600 transition-colors duration-200 text-sm">
                   Корма и добавки
                 </a>
               </li>
               <li>
-                <a href="#shop" className="text-gray-600 hover:text-purple-600 transition-colors duration-200 text-sm">
+                <a href="#shop" className="text-gray-600 hover:text-primary-600 transition-colors duration-200 text-sm">
                   Аксессуары
                 </a>
               </li>
               <li>
-                <a href="#shop" className="text-gray-600 hover:text-purple-600 transition-colors duration-200 text-sm">
+                <a href="#shop" className="text-gray-600 hover:text-primary-600 transition-colors duration-200 text-sm">
                   Уход и гигиена
                 </a>
               </li>
               <li>
-                <a href="#shop" className="text-gray-600 hover:text-purple-600 transition-colors duration-200 text-sm">
+                <a href="#shop" className="text-gray-600 hover:text-primary-600 transition-colors duration-200 text-sm">
                   Игрушки
                 </a>
               </li>
@@ -160,22 +160,22 @@ export function Footer() {
             <h3 className="text-gray-900 mb-4 font-semibold">Компания</h3>
             <ul className="space-y-3">
               <li>
-                <a href="#about" className="text-gray-600 hover:text-purple-600 transition-colors duration-200 text-sm">
+                <a href="#about" className="text-gray-600 hover:text-primary-600 transition-colors duration-200 text-sm">
                   О нас
                 </a>
               </li>
               <li>
-                <a href="#blog" className="text-gray-600 hover:text-purple-600 transition-colors duration-200 text-sm">
+                <a href="#blog" className="text-gray-600 hover:text-primary-600 transition-colors duration-200 text-sm">
                   Блог
                 </a>
               </li>
               <li>
-                <a href="#contacts" className="text-gray-600 hover:text-purple-600 transition-colors duration-200 text-sm">
+                <a href="#contacts" className="text-gray-600 hover:text-primary-600 transition-colors duration-200 text-sm">
                   Контакты
                 </a>
               </li>
               <li>
-                <a href="#careers" className="text-gray-600 hover:text-purple-600 transition-colors duration-200 text-sm">
+                <a href="#careers" className="text-gray-600 hover:text-primary-600 transition-colors duration-200 text-sm">
                   Вакансии
                 </a>
               </li>
@@ -192,15 +192,15 @@ export function Footer() {
               <input
                 type="email"
                 placeholder="Введите ваш email"
-                className="px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 text-sm"
+                className="px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all duration-200 text-sm"
               />
-              <button className="bg-gradient-to-r from-purple-500 to-orange-500 text-white px-6 py-3 rounded-xl hover:shadow-lg hover:shadow-purple-500/30 transition-all duration-200 font-semibold">
+              <button className="bg-gradient-to-r from-primary-500 to-accent-500 text-white px-6 py-3 rounded-xl hover:shadow-lg hover:shadow-primary-500/30 transition-all duration-200 font-semibold">
                 Подписаться
               </button>
             </div>
             <p className="text-xs text-gray-500 mt-3">
               Подписываясь, вы соглашаетесь с нашей{' '}
-              <a href="#privacy" className="underline hover:text-purple-600">
+              <a href="#privacy" className="underline hover:text-primary-600">
                 Политикой конфиденциальности
               </a>
             </p>
@@ -208,7 +208,7 @@ export function Footer() {
         </div>
 
         {/* Divider */}
-        <div className="h-px bg-gradient-to-r from-transparent via-purple-300 to-transparent mb-8" />
+        <div className="h-px bg-gradient-to-r from-transparent via-primary-300 to-transparent mb-8" />
 
         {/* Bottom Section */}
         <div className="flex flex-col md:flex-row justify-between items-center gap-6">
@@ -216,13 +216,13 @@ export function Footer() {
           <div className="flex flex-col md:flex-row items-center gap-4 text-sm text-gray-600">
             <p>© 2024 Питомец+. Все права защищены.</p>
             <div className="flex gap-4">
-              <a href="#privacy" className="hover:text-purple-600 transition-colors duration-200 underline">
+              <a href="#privacy" className="hover:text-primary-600 transition-colors duration-200 underline">
                 Конфиденциальность
               </a>
-              <a href="#terms" className="hover:text-purple-600 transition-colors duration-200 underline">
+              <a href="#terms" className="hover:text-primary-600 transition-colors duration-200 underline">
                 Условия
               </a>
-              <a href="#cookies" className="hover:text-purple-600 transition-colors duration-200 underline">
+              <a href="#cookies" className="hover:text-primary-600 transition-colors duration-200 underline">
                 Cookies
               </a>
             </div>
@@ -234,7 +234,7 @@ export function Footer() {
               href="https://t.me"
               target="_blank"
               rel="noopener noreferrer"
-              className="w-10 h-10 rounded-full bg-white border border-purple-200 flex items-center justify-center hover:bg-gradient-to-r hover:from-purple-500 hover:to-orange-500 hover:border-transparent group transition-all duration-300 hover:shadow-lg"
+              className="w-10 h-10 rounded-full bg-white border border-primary-200 flex items-center justify-center hover:bg-gradient-to-r hover:from-primary-500 hover:to-accent-500 hover:border-transparent group transition-all duration-300 hover:shadow-lg"
             >
               <Plane size={20} className="group-hover:text-white transition-colors" />
             </a>
@@ -242,7 +242,7 @@ export function Footer() {
               href="https://instagram.com"
               target="_blank"
               rel="noopener noreferrer"
-              className="w-10 h-10 rounded-full bg-white border border-purple-200 flex items-center justify-center hover:bg-gradient-to-r hover:from-purple-500 hover:to-orange-500 hover:border-transparent group transition-all duration-300 hover:shadow-lg"
+              className="w-10 h-10 rounded-full bg-white border border-primary-200 flex items-center justify-center hover:bg-gradient-to-r hover:from-primary-500 hover:to-accent-500 hover:border-transparent group transition-all duration-300 hover:shadow-lg"
             >
               <Instagram size={20} className="group-hover:text-white transition-colors" />
             </a>
@@ -250,7 +250,7 @@ export function Footer() {
               href="https://facebook.com"
               target="_blank"
               rel="noopener noreferrer"
-              className="w-10 h-10 rounded-full bg-white border border-purple-200 flex items-center justify-center hover:bg-gradient-to-r hover:from-purple-500 hover:to-orange-500 hover:border-transparent group transition-all duration-300 hover:shadow-lg"
+              className="w-10 h-10 rounded-full bg-white border border-primary-200 flex items-center justify-center hover:bg-gradient-to-r hover:from-primary-500 hover:to-accent-500 hover:border-transparent group transition-all duration-300 hover:shadow-lg"
             >
               <Facebook size={20} className="group-hover:text-white transition-colors" />
             </a>

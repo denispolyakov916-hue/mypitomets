@@ -33,7 +33,9 @@ if (typeof window !== 'undefined') {
  */
 function AppInitializer({ children }) {
   const [isInitializing, setIsInitializing] = useState(true)
-  const { isAuthenticated, user, validateToken, startTokenValidation } = useAuthStore()
+  const isAuthenticated = useAuthStore(s => s.isAuthenticated)
+  const user = useAuthStore(s => s.user)
+  const { validateToken, startTokenValidation } = useAuthStore()
   const hasInitialized = React.useRef(false)
 
   useEffect(() => {

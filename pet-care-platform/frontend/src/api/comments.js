@@ -10,6 +10,9 @@
  */
 
 import api from './client'
+import { createCrudApi } from './baseApi'
+
+const commentsApi = createCrudApi('/courses/comments/')
 
 /**
  * Получение комментариев к уроку
@@ -50,7 +53,7 @@ export const addLessonComment = async (lessonId, content, parentId = null, attac
  * @returns {Promise<Object>} Результат лайка
  */
 export const likeComment = async (commentId) => {
-  return await api.post(`/courses/comments/${commentId}/like/`, { is_like: true })
+  return await commentsApi.performAction(commentId, 'like', { is_like: true })
 }
 
 /**
@@ -60,7 +63,7 @@ export const likeComment = async (commentId) => {
  * @returns {Promise<Object>} Результат дизлайка
  */
 export const dislikeComment = async (commentId) => {
-  return await api.post(`/courses/comments/${commentId}/like/`, { is_like: false })
+  return await commentsApi.performAction(commentId, 'like', { is_like: false })
 }
 
 /**
@@ -70,11 +73,8 @@ export const dislikeComment = async (commentId) => {
  * @returns {Promise<Object>} Результат удаления
  */
 export const removeCommentReaction = async (commentId) => {
-  return await api.delete(`/courses/comments/${commentId}/like/`)
+  return await commentsApi.performAction(commentId, 'like', {}, 'delete')
 }
-
-// Функции комментариев курсов перенесены в courses.js для логичности
-// export const getCourseComments, addCourseComment, createCourseComment
 
 /**
  * Получение деталей комментария
@@ -83,7 +83,7 @@ export const removeCommentReaction = async (commentId) => {
  * @returns {Promise<Object>} Детали комментария
  */
 export const getCommentDetails = async (commentId) => {
-  return await api.get(`/courses/comments/${commentId}/`)
+  return await commentsApi.getById(commentId)
 }
 
 // Псевдоним для обратной совместимости
@@ -98,7 +98,7 @@ export { getCommentDetails as getComment }
  * @returns {Promise<Object>} Обновленный комментарий
  */
 export const updateComment = async (commentId, content, attachments = []) => {
-  return await api.put(`/courses/comments/${commentId}/`, {
+  return await commentsApi.update(commentId, {
     content: content,
     attachments: attachments
   })
@@ -111,7 +111,7 @@ export const updateComment = async (commentId, content, attachments = []) => {
  * @returns {Promise<Object>} Результат удаления
  */
 export const deleteComment = async (commentId) => {
-  return await api.delete(`/courses/comments/${commentId}/`)
+  return await commentsApi.delete(commentId)
 }
 
 /**
@@ -122,7 +122,7 @@ export const deleteComment = async (commentId) => {
  * @returns {Promise<Object>} Результат реакции
  */
 export const addCommentReaction = async (commentId, action) => {
-  return await api.post(`/courses/comments/${commentId}/${action}/`)
+  return await commentsApi.performAction(commentId, action)
 }
 
 // Псевдоним для обратной совместимости

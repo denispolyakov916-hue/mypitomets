@@ -100,7 +100,7 @@ const AdminPanelLoader = () => (
  * Использует компонент Layout для единообразной навигации на всех страницах.
  */
 function App() {
-  const { isAuthenticated } = useAuthStore()
+  const isAuthenticated = useAuthStore(s => s.isAuthenticated)
 
   return (
     <Routes>

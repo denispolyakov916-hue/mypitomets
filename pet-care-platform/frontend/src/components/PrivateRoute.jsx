@@ -24,7 +24,7 @@ import { useAuthStore } from '../store/authStore'
  * @returns {JSX.Element} Дочерние маршруты или редирект на страницу входа
  */
 function PrivateRoute() {
-  const { isAuthenticated } = useAuthStore()
+  const isAuthenticated = useAuthStore(s => s.isAuthenticated)
   const location = useLocation()
   
   // Если не аутентифицирован, перенаправляем на вход

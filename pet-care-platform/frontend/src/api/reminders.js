@@ -2,7 +2,9 @@
  * API для работы с напоминаниями
  */
 
-import api from './client'
+import { createCrudApi } from './baseApi'
+
+const remindersApi = createCrudApi('/pets/reminders/')
 
 /**
  * Получить список напоминаний пользователя
@@ -15,17 +17,7 @@ import api from './client'
  * @returns {Promise<Object>} Объект с напоминаниями по группам
  */
 export const getReminders = async (params = {}) => {
-  const queryParams = new URLSearchParams()
-  
-  if (params.pet_id) queryParams.append('pet_id', params.pet_id)
-  if (params.category) queryParams.append('category', params.category)
-  if (params.show_completed) queryParams.append('show_completed', 'true')
-  if (params.upcoming_only) queryParams.append('upcoming_only', 'true')
-  
-  const queryString = queryParams.toString()
-  const url = `/pets/reminders/${queryString ? `?${queryString}` : ''}`
-  
-  return await api.get(url)
+  return await remindersApi.getList(params)
 }
 
 /**
@@ -35,7 +27,7 @@ export const getReminders = async (params = {}) => {
  * @returns {Promise<Object>} Созданное напоминание
  */
 export const createReminder = async (data) => {
-  return await api.post('/pets/reminders/', data)
+  return await remindersApi.create(data)
 }
 
 /**
@@ -45,7 +37,7 @@ export const createReminder = async (data) => {
  * @returns {Promise<Object>} Напоминание
  */
 export const getReminder = async (reminderId) => {
-  return await api.get(`/pets/reminders/${reminderId}/`)
+  return await remindersApi.getById(reminderId)
 }
 
 /**
@@ -56,7 +48,7 @@ export const getReminder = async (reminderId) => {
  * @returns {Promise<Object>} Обновлённое напоминание
  */
 export const updateReminder = async (reminderId, data) => {
-  return await api.put(`/pets/reminders/${reminderId}/`, data)
+  return await remindersApi.update(reminderId, data)
 }
 
 /**
@@ -66,7 +58,7 @@ export const updateReminder = async (reminderId, data) => {
  * @returns {Promise<Object>} Результат удаления
  */
 export const deleteReminder = async (reminderId) => {
-  return await api.delete(`/pets/reminders/${reminderId}/`)
+  return await remindersApi.delete(reminderId)
 }
 
 /**
@@ -76,7 +68,7 @@ export const deleteReminder = async (reminderId) => {
  * @returns {Promise<Object>} Обновлённое напоминание
  */
 export const completeReminder = async (reminderId) => {
-  return await api.post(`/pets/reminders/${reminderId}/complete/`)
+  return await remindersApi.performAction(reminderId, 'complete')
 }
 
 /**
@@ -85,7 +77,7 @@ export const completeReminder = async (reminderId) => {
  * @returns {Promise<Object>} Объект с категориями и частотами
  */
 export const getReminderCategories = async () => {
-  return await api.get('/pets/reminders/categories/')
+  return await remindersApi.performAction(null, 'categories', {}, 'get')
 }
 
 /**
@@ -95,6 +87,5 @@ export const getReminderCategories = async () => {
  * @returns {Promise<Object>} Предстоящие напоминания
  */
 export const getUpcomingReminders = async (limit = 5) => {
-  return await api.get(`/pets/reminders/upcoming/?limit=${limit}`)
+  return await remindersApi.performAction(null, 'upcoming', { params: { limit } }, 'get')
 }
-

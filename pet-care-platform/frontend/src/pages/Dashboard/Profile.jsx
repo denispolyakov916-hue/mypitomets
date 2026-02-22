@@ -35,16 +35,7 @@ const formatDate = (dateString) => {
   })
 }
 
-/**
- * Форматирование цены с символом рубля
- */
-const formatPrice = (price) => {
-  return new Intl.NumberFormat('ru-RU', {
-    style: 'currency',
-    currency: 'RUB',
-    maximumFractionDigits: 0
-  }).format(price)
-}
+import { formatPrice } from '../../utils/format'
 
 /**
  * Инициалы пользователя для аватара
@@ -66,8 +57,8 @@ const getInitials = (user) => {
 const statusLabels = {
   pending: { label: 'Ожидает', class: 'bg-yellow-100 text-yellow-700' },
   processing: { label: 'В обработке', class: 'bg-blue-100 text-blue-700' },
-  shipped: { label: 'Отправлен', class: 'bg-purple-100 text-purple-700' },
-  partially_delivered: { label: 'Частично доставлен', class: 'bg-purple-100 text-purple-700' },
+  shipped: { label: 'Отправлен', class: 'bg-primary-100 text-primary-700' },
+  partially_delivered: { label: 'Частично доставлен', class: 'bg-primary-100 text-primary-700' },
   delivered: { label: 'Доставлен', class: 'bg-green-100 text-green-700' },
 }
 
@@ -75,7 +66,7 @@ const statusLabels = {
  * Компонент страницы профиля
  */
 function Profile() {
-  const { logout } = useAuthStore()
+  const logout = useAuthStore(s => s.logout)
   const navigate = useNavigate()
   
   // Состояние
@@ -264,7 +255,7 @@ function Profile() {
     return (
       <div className="page-container">
         <div className="card text-center py-12">
-          <p className="text-red-500 mb-4">{error || 'Профиль не найден'}</p>
+          <p className="text-red-600 mb-4">{error || 'Профиль не найден'}</p>
           <button onClick={fetchProfile} className="btn-primary">
             Попробовать снова
           </button>
@@ -1119,7 +1110,7 @@ function Profile() {
                     requested: { label: 'Запрошено', class: 'bg-yellow-100 text-yellow-700' },
                     approved: { label: 'Одобрено', class: 'bg-blue-100 text-blue-700' },
                     rejected: { label: 'Отклонено', class: 'bg-red-100 text-red-700' },
-                    received: { label: 'Получено', class: 'bg-purple-100 text-purple-700' },
+                    received: { label: 'Получено', class: 'bg-primary-100 text-primary-700' },
                     refunded: { label: 'Возвращены средства', class: 'bg-green-100 text-green-700' },
                   }
 

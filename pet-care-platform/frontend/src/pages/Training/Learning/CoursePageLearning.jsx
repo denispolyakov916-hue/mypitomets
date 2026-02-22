@@ -52,7 +52,7 @@ const blockRenderers = {
 const pageTypeConfig = {
   text:        { icon: '📖', bg: 'bg-blue-50',   border: 'border-blue-200',   text: 'text-blue-700',   label: 'Теория' },
   video:       { icon: '▶️', bg: 'bg-red-50',    border: 'border-red-200',    text: 'text-red-700',    label: 'Видео' },
-  quiz:        { icon: '❓', bg: 'bg-purple-50', border: 'border-purple-200', text: 'text-purple-700', label: 'Тест' },
+  quiz:        { icon: '❓', bg: 'bg-primary-50', border: 'border-primary-200', text: 'text-primary-700', label: 'Тест' },
   interactive: { icon: '🐾', bg: 'bg-green-50',  border: 'border-green-200',  text: 'text-green-700',  label: 'Упражнение' },
   assignment:  { icon: '✏️', bg: 'bg-amber-50',  border: 'border-amber-200',  text: 'text-amber-700',  label: 'Задание' },
   webinar:     { icon: '📡', bg: 'bg-indigo-50', border: 'border-indigo-200', text: 'text-indigo-700', label: 'Вебинар' },
@@ -88,7 +88,8 @@ const CoursePageLearning = () => {
   const { courseId, pageId } = useParams()
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
-  const { user, isAuthenticated } = useAuthStore()
+  const user = useAuthStore(s => s.user)
+  const isAuthenticated = useAuthStore(s => s.isAuthenticated)
   const { pets } = usePets()
   const { success, error: showError } = useToastStore()
 

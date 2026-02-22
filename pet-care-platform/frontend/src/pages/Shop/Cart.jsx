@@ -16,20 +16,12 @@ import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useCartStore } from '../../store/cartStore'
 import { useToastStore } from '../../store/toastStore'
 import { PageLoader, ButtonLoader } from '../../components/Loader'
+import { EmptyState } from '../../components/ui/EmptyState'
+import { Alert } from '../../components/ui/Alert'
 import RecommendationBlock from '../../components/RecommendationBlock'
 import * as shopApi from '../../api/shop'
 import { apiCache } from '../../utils/apiCache'
-
-/**
- * Форматирование цены с символом рубля
- */
-const formatPrice = (price) => {
-  return new Intl.NumberFormat('ru-RU', {
-    style: 'currency',
-    currency: 'RUB',
-    maximumFractionDigits: 0
-  }).format(price)
-}
+import { formatPrice } from '../../utils/format'
 
 /**
  * Компонент страницы корзины
@@ -42,16 +34,16 @@ function Cart() {
   try {
     const navigate = useNavigate()
     const location = useLocation()
+    const items = useCartStore(s => s.items)
+    const total = useCartStore(s => s.total)
+    const isLoading = useCartStore(s => s.isLoading)
+    const error = useCartStore(s => s.error)
+    const selectedItems = useCartStore(s => s.selectedItems)
     const {
-      items,
-      total,
-      isLoading,
-      error,
       loadCart,
       updateQuantity,
       removeItem,
       clearError,
-      selectedItems,
       setItemSelection,
       selectAllItems,
       deselectAllItems,
@@ -304,37 +296,33 @@ function Cart() {
     console.log('Rendering empty cart')
     return (
       <div className="page-container animate-fadeIn">
-        <div className="card text-center py-12 max-w-lg mx-auto">
-          {/* Показываем ошибку, если она есть */}
+        <div className="card max-w-lg mx-auto">
           {error && (
-            <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-600 mb-6">
-              <p className="font-medium mb-2">Ошибка загрузки корзины</p>
-              <p className="text-sm">{error}</p>
+            <Alert variant="error" title="Ошибка загрузки корзины" className="mb-6">
+              <p>{error}</p>
               <button
                 onClick={() => {
                   clearError()
                   loadCart()
                 }}
-                className="mt-4 btn-primary text-sm"
+                className="mt-3 btn-primary text-sm"
               >
                 Попробовать снова
               </button>
-            </div>
+            </Alert>
           )}
 
           {!error && (
-            <>
-              <div className="text-6xl mb-4">🛒</div>
-              <h1 className="text-2xl font-bold text-gray-900 mb-2">
-                Корзина пуста
-              </h1>
-              <p className="text-gray-600 mb-6">
-                Добавьте товары из каталога, чтобы оформить заказ
-              </p>
-              <Link to="/shop" className="btn-primary">
-                Перейти в магазин
-              </Link>
-            </>
+            <EmptyState
+              icon="🛒"
+              title="Корзина пуста"
+              description="Добавьте товары из каталога, чтобы оформить заказ"
+              action={
+                <Link to="/shop" className="btn-primary">
+                  Перейти в магазин
+                </Link>
+              }
+            />
           )}
         </div>
       </div>
@@ -349,26 +337,15 @@ function Cart() {
 
       {/* Сообщение из редиректа */}
       {redirectMessage && (
-        <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg text-amber-700 mb-6 flex items-center gap-2">
-          <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-          </svg>
-          <span>{redirectMessage}</span>
-          <button
-            onClick={() => setRedirectMessage(null)}
-            className="ml-auto text-amber-600 hover:text-amber-800"
-          >
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
+        <Alert variant="warning" dismissible onDismiss={() => setRedirectMessage(null)} className="mb-6">
+          {redirectMessage}
+        </Alert>
       )}
 
       {error && (
-        <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm mb-6">
+        <Alert variant="error" className="mb-6">
           {error}
-        </div>
+        </Alert>
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -420,7 +397,7 @@ function Cart() {
           {products.length > 0 && (
             <div className="card">
               <div className="flex items-center justify-between mb-4 pb-4 border-b border-gray-200">
-                <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                <h2 className="section-title mb-0 flex items-center gap-2">
                   <svg className="w-5 h-5 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
                   </svg>
@@ -537,7 +514,7 @@ function Cart() {
                                 </span>
                               )}
                               {item.sku.color_display && (
-                                <span className="inline-flex items-center px-2 py-0.5 bg-purple-50 text-purple-700 text-xs rounded-full gap-1">
+                                <span className="inline-flex items-center px-2 py-0.5 bg-primary-50 text-primary-700 text-xs rounded-full gap-1">
                                   {item.sku.color_hex && (
                                     <span 
                                       className="w-3 h-3 rounded-full border border-gray-300"
@@ -620,7 +597,7 @@ function Cart() {
           {courses.length > 0 && (
             <div className="card">
               <div className="flex items-center justify-between mb-4 pb-4 border-b border-gray-200">
-                <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                <h2 className="section-title mb-0 flex items-center gap-2">
                   <svg className="w-5 h-5 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
                   </svg>
@@ -757,7 +734,7 @@ function Cart() {
         {/* Итог и оформление заказа */}
         <div className="lg:col-span-1">
           <div className="card sticky top-24">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">
+            <h2 className="section-title">
               Оформление заказа
             </h2>
 
@@ -816,26 +793,24 @@ function Cart() {
     console.error('Error in Cart component:', error)
     return (
       <div className="page-container animate-fadeIn">
-        <div className="card text-center py-12 max-w-lg mx-auto">
-          <div className="text-6xl mb-4">⚠️</div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">
-            Ошибка загрузки корзины
-          </h1>
-          <p className="text-gray-600 mb-6">
-            Произошла ошибка при отображении корзины. Попробуйте обновить страницу.
-          </p>
-          <button
-            onClick={() => window.location.reload()}
-            className="btn-primary"
+        <div className="card max-w-lg mx-auto">
+          <EmptyState
+            icon="⚠️"
+            title="Ошибка загрузки корзины"
+            description="Произошла ошибка при отображении корзины. Попробуйте обновить страницу."
+            action={
+              <button onClick={() => window.location.reload()} className="btn-primary">
+                Обновить страницу
+              </button>
+            }
           >
-            Обновить страницу
-          </button>
-          <details className="mt-4 text-left">
-            <summary className="cursor-pointer text-sm text-gray-500">Подробности ошибки</summary>
-            <pre className="mt-2 text-xs bg-gray-100 p-2 rounded overflow-auto">
-              {error.message}
-            </pre>
-          </details>
+            <details className="mt-4 text-left w-full">
+              <summary className="cursor-pointer text-sm text-gray-500">Подробности ошибки</summary>
+              <pre className="mt-2 text-xs bg-gray-100 p-2 rounded overflow-auto">
+                {error.message}
+              </pre>
+            </details>
+          </EmptyState>
         </div>
       </div>
     )

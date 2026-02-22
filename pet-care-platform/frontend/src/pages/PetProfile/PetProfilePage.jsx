@@ -5,7 +5,6 @@ import BreedComparisonWidget from '../../components/PetID/BreedComparisonWidget'
 import DietCalculationWidget from '../../components/PetID/DietCalculationWidget';
 import HealthRiskAlertsWidget from '../../components/PetID/HealthRiskAlertsWidget';
 import PersonalizedProductsList from '../../components/Shop/PersonalizedProductsList';
-import './PetProfilePage.css';
 
 /**
  * Страница профиля питомца с персонализацией
@@ -41,7 +40,7 @@ const PetProfilePage = () => {
 
   if (loading) {
     return (
-      <div className="pet-profile-page loading">
+      <div className="max-w-[1200px] mx-auto p-6 flex flex-col items-center justify-center min-h-[400px]">
         <div className="spinner"></div>
         <p>Загрузка профиля...</p>
       </div>
@@ -50,30 +49,34 @@ const PetProfilePage = () => {
 
   if (!pet) {
     return (
-      <div className="pet-profile-page error">
+      <div className="max-w-[1200px] mx-auto py-[100px] px-6 text-center text-red-600 text-lg">
         <p>Питомец не найден</p>
       </div>
     );
   }
 
+  const tabBase = "flex-1 py-3 px-6 border-0 rounded-lg text-[15px] font-medium cursor-pointer transition-all duration-200 max-md:flex-[1_1_45%]";
+  const tabActive = "bg-blue-500 text-white";
+  const tabInactive = "bg-transparent text-gray-500 hover:bg-gray-50 hover:text-gray-800";
+
   return (
-    <div className="pet-profile-page">
+    <div className="max-w-[1200px] mx-auto p-6">
       {/* Шапка профиля */}
-      <div className="profile-header">
-        <div className="pet-avatar">
+      <div className="flex items-center gap-6 p-8 bg-white rounded-xl shadow-md mb-6 max-md:flex-col max-md:text-center">
+        <div className="w-[120px] h-[120px] rounded-full overflow-hidden bg-gray-50 flex items-center justify-center border-4 border-blue-500 shrink-0">
           {pet.photo ? (
-            <img src={pet.photo} alt={pet.name} />
+            <img src={pet.photo} alt={pet.name} className="w-full h-full object-cover" />
           ) : (
-            <div className="avatar-placeholder">
+            <div className="text-6xl">
               {pet.species === 'dog' ? '🐕' : '🐱'}
             </div>
           )}
         </div>
         
-        <div className="pet-info">
-          <h1>{pet.name}</h1>
-          {pet.breed && <p className="breed">{pet.breed}</p>}
-          <div className="pet-meta">
+        <div>
+          <h1 className="text-3xl max-md:text-2xl font-bold text-gray-800 mb-2">{pet.name}</h1>
+          {pet.breed && <p className="text-lg text-gray-500 font-medium mb-3">{pet.breed}</p>}
+          <div className="flex gap-3 text-sm text-gray-400 max-md:justify-center max-md:flex-wrap">
             <span>{pet.species === 'dog' ? 'Собака' : 'Кошка'}</span>
             {pet.age && <span>• {pet.age} лет</span>}
             {pet.weight && <span>• {pet.weight} кг</span>}
@@ -83,27 +86,27 @@ const PetProfilePage = () => {
       </div>
 
       {/* Табы */}
-      <div className="profile-tabs">
+      <div className="flex gap-2 p-2 bg-white rounded-xl shadow-md mb-6 max-md:flex-wrap">
         <button
-          className={activeTab === 'overview' ? 'active' : ''}
+          className={`${tabBase} ${activeTab === 'overview' ? tabActive : tabInactive}`}
           onClick={() => setActiveTab('overview')}
         >
           Обзор
         </button>
         <button
-          className={activeTab === 'health' ? 'active' : ''}
+          className={`${tabBase} ${activeTab === 'health' ? tabActive : tabInactive}`}
           onClick={() => setActiveTab('health')}
         >
           Здоровье
         </button>
         <button
-          className={activeTab === 'diet' ? 'active' : ''}
+          className={`${tabBase} ${activeTab === 'diet' ? tabActive : tabInactive}`}
           onClick={() => setActiveTab('diet')}
         >
           Питание
         </button>
         <button
-          className={activeTab === 'shop' ? 'active' : ''}
+          className={`${tabBase} ${activeTab === 'shop' ? tabActive : tabInactive}`}
           onClick={() => setActiveTab('shop')}
         >
           Товары
@@ -111,10 +114,10 @@ const PetProfilePage = () => {
       </div>
 
       {/* Контент */}
-      <div className="profile-content">
+      <div className="min-h-[400px]">
         {activeTab === 'overview' && (
-          <div className="tab-content overview-tab">
-            <div className="widgets-grid">
+          <div className="animate-slideUp">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <BreedComparisonWidget petId={petId} />
               {pet.breed && (
                 <HealthRiskAlertsWidget breedId={pet.breed_id} petAge={pet.age} />
@@ -124,25 +127,25 @@ const PetProfilePage = () => {
         )}
 
         {activeTab === 'health' && (
-          <div className="tab-content health-tab">
+          <div className="animate-slideUp">
             {pet.breed ? (
               <HealthRiskAlertsWidget breedId={pet.breed_id} petAge={pet.age} />
             ) : (
-              <div className="no-breed-message">
-                <p>Добавьте породу для просмотра генетических рисков</p>
+              <div className="py-20 px-6 text-center bg-white rounded-xl shadow-md">
+                <p className="text-base text-gray-500">Добавьте породу для просмотра генетических рисков</p>
               </div>
             )}
           </div>
         )}
 
         {activeTab === 'diet' && (
-          <div className="tab-content diet-tab">
+          <div className="animate-slideUp">
             <DietCalculationWidget petId={petId} />
           </div>
         )}
 
         {activeTab === 'shop' && (
-          <div className="tab-content shop-tab">
+          <div className="animate-slideUp">
             <PersonalizedProductsList petId={petId} limit={24} />
           </div>
         )}
@@ -152,4 +155,3 @@ const PetProfilePage = () => {
 };
 
 export default PetProfilePage;
-

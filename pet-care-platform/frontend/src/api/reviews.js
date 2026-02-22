@@ -5,9 +5,19 @@
  * - Получения рейтингов и отзывов товаров/курсов
  * - Создания и обновления отзывов
  * - Проверки возможности оставить отзыв
+ * 
+ * Большинство эндпоинтов используют вложенные URL (/reviews/{type}/{itemId}/...),
+ * поэтому baseApi применяется только для операций верхнего уровня (реакции, недавние покупки).
  */
 
 import api from './client'
+import { createCrudApi } from './baseApi'
+
+const reviewsApi = createCrudApi('/reviews/')
+
+// =============================================================================
+// ОТЗЫВЫ НА ТОВАРЫ (вложенные URL — /reviews/products/{productId}/...)
+// =============================================================================
 
 /**
  * Получение рейтинга и отзывов товара
@@ -133,6 +143,10 @@ export const deleteReview = async (type, itemId, reviewId) => {
   return await api.delete(`/reviews/${type}/${itemId}/reviews/${reviewId}/delete/`)
 }
 
+// =============================================================================
+// ПРОВЕРКА ВОЗМОЖНОСТИ ОСТАВИТЬ ОТЗЫВ (вложенные URL)
+// =============================================================================
+
 /**
  * Проверка возможности оставить отзыв на товар
  * 
@@ -164,32 +178,36 @@ export const checkReviewEligibility = async (type, itemId) => {
   return await api.get(`/reviews/${type}/${itemId}/eligibility/`)
 }
 
+// =============================================================================
+// ОПЕРАЦИИ ВЕРХНЕГО УРОВНЯ (через baseApi)
+// =============================================================================
+
 /**
  * Получение недавних покупок для отзывов
  * 
  * @returns {Promise<Object>} Список недавно приобретённых товаров и курсов
  */
 export const getRecentPurchasesForReview = async () => {
-  return await api.get('/reviews/recent-purchases/')
+  return await reviewsApi.performAction(null, 'recent-purchases', {}, 'get')
 }
 
 /**
  * Поставить лайк на отзыв
  */
 export const likeReview = async (reviewId) => {
-  return await api.post(`/reviews/${reviewId}/like/`)
+  return await reviewsApi.performAction(reviewId, 'like')
 }
 
 /**
  * Поставить дизлайк на отзыв
  */
 export const dislikeReview = async (reviewId) => {
-  return await api.post(`/reviews/${reviewId}/dislike/`)
+  return await reviewsApi.performAction(reviewId, 'dislike')
 }
 
 /**
  * Убрать реакцию с отзыва
  */
 export const removeReviewReaction = async (reviewId) => {
-  return await api.delete(`/reviews/${reviewId}/reaction/`)
+  return await reviewsApi.performAction(reviewId, 'reaction', {}, 'delete')
 }

@@ -17,7 +17,7 @@ import * as authApi from '../../api/auth'
 function Activate() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
-  const { setUser } = useAuthStore()
+  const setUser = useAuthStore(s => s.setUser)
   const [status, setStatus] = useState('loading') // loading, success, error
   const [error, setError] = useState(null)
 

@@ -16,6 +16,8 @@ import { apiCache } from '../utils/apiCache'
 import ProductCard from '../components/ProductCard'
 import CourseCard from '../components/CourseCard'
 import { PageLoader } from '../components/Loader'
+import { EmptyState } from '../components/ui/EmptyState'
+import { Alert } from '../components/ui/Alert'
 /**
  * Компонент боковой панели фильтров для избранного
  */
@@ -73,7 +75,7 @@ function FavoritesFilterSidebar({ filters, onFilterChange, onReset }) {
           onClick={onReset}
           className={`text-sm transition-colors ${
             (filters.type !== 'all' || filters.animal || filters.min_price || filters.max_price || filters.sort_by)
-              ? 'text-purple-600 hover:text-purple-700'
+              ? 'text-primary-600 hover:text-primary-700'
               : 'text-gray-400 hover:text-gray-600'
           }`}
         >
@@ -87,36 +89,36 @@ function FavoritesFilterSidebar({ filters, onFilterChange, onReset }) {
           Показывать
         </label>
         <div className="space-y-2">
-          <label className="flex items-center cursor-pointer hover:text-purple-600 transition-colors">
+          <label className="flex items-center cursor-pointer hover:text-primary-600 transition-colors">
             <input
               type="radio"
               name="type"
               value="all"
               checked={filters.type === 'all'}
               onChange={(e) => onFilterChange('type', e.target.value)}
-              className="w-4 h-4 text-purple-600 focus:ring-purple-500"
+              className="w-4 h-4 text-primary-600 focus:ring-primary-500"
             />
             <span className="ml-2 text-gray-700">Все</span>
           </label>
-          <label className="flex items-center cursor-pointer hover:text-purple-600 transition-colors">
+          <label className="flex items-center cursor-pointer hover:text-primary-600 transition-colors">
             <input
               type="radio"
               name="type"
               value="products"
               checked={filters.type === 'products'}
               onChange={(e) => onFilterChange('type', e.target.value)}
-              className="w-4 h-4 text-purple-600 focus:ring-purple-500"
+              className="w-4 h-4 text-primary-600 focus:ring-primary-500"
             />
             <span className="ml-2 text-gray-700">Только товары</span>
           </label>
-          <label className="flex items-center cursor-pointer hover:text-purple-600 transition-colors">
+          <label className="flex items-center cursor-pointer hover:text-primary-600 transition-colors">
             <input
               type="radio"
               name="type"
               value="courses"
               checked={filters.type === 'courses'}
               onChange={(e) => onFilterChange('type', e.target.value)}
-              className="w-4 h-4 text-purple-600 focus:ring-purple-500"
+              className="w-4 h-4 text-primary-600 focus:ring-primary-500"
             />
             <span className="ml-2 text-gray-700">Только курсы</span>
           </label>
@@ -129,36 +131,36 @@ function FavoritesFilterSidebar({ filters, onFilterChange, onReset }) {
           Для кого
         </label>
         <div className="space-y-2">
-          <label className="flex items-center cursor-pointer hover:text-purple-600 transition-colors">
+          <label className="flex items-center cursor-pointer hover:text-primary-600 transition-colors">
             <input
               type="radio"
               name="animal"
               value=""
               checked={filters.animal === ''}
               onChange={(e) => onFilterChange('animal', e.target.value)}
-              className="w-4 h-4 text-purple-600 focus:ring-purple-500"
+              className="w-4 h-4 text-primary-600 focus:ring-primary-500"
             />
             <span className="ml-2 text-gray-700">Для всех</span>
           </label>
-          <label className="flex items-center cursor-pointer hover:text-purple-600 transition-colors">
+          <label className="flex items-center cursor-pointer hover:text-primary-600 transition-colors">
             <input
               type="radio"
               name="animal"
               value="dog"
               checked={filters.animal === 'dog'}
               onChange={(e) => onFilterChange('animal', e.target.value)}
-              className="w-4 h-4 text-purple-600 focus:ring-purple-500"
+              className="w-4 h-4 text-primary-600 focus:ring-primary-500"
             />
             <span className="ml-2 text-gray-700">🐕 Для собак</span>
           </label>
-          <label className="flex items-center cursor-pointer hover:text-purple-600 transition-colors">
+          <label className="flex items-center cursor-pointer hover:text-primary-600 transition-colors">
             <input
               type="radio"
               name="animal"
               value="cat"
               checked={filters.animal === 'cat'}
               onChange={(e) => onFilterChange('animal', e.target.value)}
-              className="w-4 h-4 text-purple-600 focus:ring-purple-500"
+              className="w-4 h-4 text-primary-600 focus:ring-primary-500"
             />
             <span className="ml-2 text-gray-700">🐱 Для кошек</span>
           </label>
@@ -176,20 +178,20 @@ function FavoritesFilterSidebar({ filters, onFilterChange, onReset }) {
             placeholder="от"
             value={priceRange.min}
             onChange={(e) => setPriceRange(prev => ({ ...prev, min: e.target.value }))}
-            className="w-full px-3 py-2 border border-purple-200 rounded-lg text-sm focus:ring-purple-500 focus:border-purple-500 bg-white"
+            className="w-full px-3 py-2 border border-primary-200 rounded-lg text-sm focus:ring-primary-500 focus:border-primary-500 bg-white"
           />
-          <span className="text-purple-400">—</span>
+          <span className="text-primary-400">—</span>
           <input
             type="number"
             placeholder="до"
             value={priceRange.max}
             onChange={(e) => setPriceRange(prev => ({ ...prev, max: e.target.value }))}
-            className="w-full px-3 py-2 border border-purple-200 rounded-lg text-sm focus:ring-purple-500 focus:border-purple-500 bg-white"
+            className="w-full px-3 py-2 border border-primary-200 rounded-lg text-sm focus:ring-primary-500 focus:border-primary-500 bg-white"
           />
         </div>
         <button
           onClick={handlePriceApply}
-          className="mt-2 w-full py-1.5 text-sm bg-purple-100 hover:bg-purple-200 text-purple-700 rounded-lg transition-colors"
+          className="mt-2 w-full py-1.5 text-sm bg-primary-100 hover:bg-primary-200 text-primary-700 rounded-lg transition-colors"
         >
           Применить
         </button>
@@ -239,11 +241,11 @@ function FavoritesPagination({ currentPage, totalPages, onPageChange }) {
   }
 
   return (
-    <div className="flex justify-center items-center gap-1 mt-8 p-4 bg-white/50 backdrop-blur-sm rounded-xl border border-purple-100">
+    <div className="flex justify-center items-center gap-1 mt-8 p-4 bg-white/50 backdrop-blur-sm rounded-xl border border-primary-100">
       <button
         onClick={() => onPageChange(currentPage - 1)}
         disabled={currentPage === 1}
-        className="px-3 py-2 rounded-lg bg-white/90 backdrop-blur-sm border border-purple-200 text-gray-700 hover:bg-purple-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+        className="px-3 py-2 rounded-lg bg-white/90 backdrop-blur-sm border border-primary-200 text-gray-700 hover:bg-primary-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
       >
         ←
       </button>
@@ -254,8 +256,8 @@ function FavoritesPagination({ currentPage, totalPages, onPageChange }) {
           onClick={() => onPageChange(num)}
           className={`px-3 py-2 rounded-lg transition-all duration-200 ${
             num === currentPage
-              ? 'bg-gradient-to-r from-purple-500 to-purple-600 text-white shadow-lg'
-              : 'bg-white/90 backdrop-blur-sm border border-purple-200 text-gray-700 hover:bg-purple-50'
+              ? 'bg-gradient-to-r from-primary-500 to-primary-600 text-white shadow-lg'
+              : 'bg-white/90 backdrop-blur-sm border border-primary-200 text-gray-700 hover:bg-primary-50'
           }`}
         >
           {num}
@@ -265,7 +267,7 @@ function FavoritesPagination({ currentPage, totalPages, onPageChange }) {
       <button
         onClick={() => onPageChange(currentPage + 1)}
         disabled={currentPage === totalPages}
-        className="px-3 py-2 rounded-lg bg-white/90 backdrop-blur-sm border border-purple-200 text-gray-700 hover:bg-purple-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+        className="px-3 py-2 rounded-lg bg-white/90 backdrop-blur-sm border border-primary-200 text-gray-700 hover:bg-primary-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
       >
         →
       </button>
@@ -292,15 +294,12 @@ function Favorites() {
   const [totalPages, setTotalPages] = useState(1)
 
   // Stores
-  const {
-    products: favoriteProductIds,
-    courses: favoriteCourseIds,
-    removeProduct,
-    removeCourse
-  } = useFavoritesStore()
+  const favoriteProductIds = useFavoritesStore(s => s.products)
+  const favoriteCourseIds = useFavoritesStore(s => s.courses)
+  const { removeProduct, removeCourse } = useFavoritesStore()
 
-  const { addItem } = useCartStore()
-  const { success } = useToastStore()
+  const addItem = useCartStore(s => s.addItem)
+  const success = useToastStore(s => s.success)
 
   // Мемоизированные ID избранных элементов
   const favoriteProductIdsMemo = useMemo(() =>
@@ -573,11 +572,13 @@ function Favorites() {
   if (error) {
     return (
       <div className="page-container">
-        <div className="card text-center py-12">
-          <p className="text-red-500 mb-4">{error}</p>
-          <button onClick={() => window.location.reload()} className="btn-primary">
-            Попробовать снова
-          </button>
+        <div className="card py-8">
+          <Alert variant="error" title="Ошибка загрузки">
+            <p className="mb-3">{error}</p>
+            <button onClick={() => window.location.reload()} className="btn-primary text-sm">
+              Попробовать снова
+            </button>
+          </Alert>
         </div>
       </div>
     )
@@ -589,22 +590,22 @@ function Favorites() {
   if (!hasFavorites) {
     return (
       <div className="page-container">
-        <div className="card text-center py-12">
-          <div className="text-6xl mb-4">💖</div>
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">
-            Избранное пустое
-          </h2>
-          <p className="text-gray-600 mb-6">
-            Добавьте товары или курсы в избранное, чтобы они появились здесь
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link to="/shop" className="btn-primary">
-              Перейти в магазин
-            </Link>
-            <Link to="/courses" className="btn-secondary">
-              Посмотреть курсы
-            </Link>
-          </div>
+        <div className="card">
+          <EmptyState
+            icon="💖"
+            title="Избранное пустое"
+            description="Добавьте товары или курсы в избранное, чтобы они появились здесь"
+            action={
+              <Link to="/shop" className="btn-primary">
+                Перейти в магазин
+              </Link>
+            }
+            secondaryAction={
+              <Link to="/courses" className="btn-secondary">
+                Посмотреть курсы
+              </Link>
+            }
+          />
         </div>
       </div>
     )
@@ -640,7 +641,7 @@ function Favorites() {
                 onClick={handleReset}
                 className={`w-full py-2 px-4 rounded-lg text-sm font-medium transition-colors ${
                   (filters.type !== 'all' || filters.animal || filters.min_price || filters.max_price || filters.sort_by)
-                    ? 'bg-purple-100 text-purple-700 hover:bg-purple-200'
+                    ? 'bg-primary-100 text-primary-700 hover:bg-primary-200'
                     : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
                 }`}
               >
@@ -651,7 +652,7 @@ function Favorites() {
               <select
                 value={filters.type}
                 onChange={(e) => handleFilterChange('type', e.target.value)}
-                className="px-3 py-2 border border-purple-200 rounded-lg text-sm bg-white focus:ring-purple-500 focus:border-purple-500"
+                className="px-3 py-2 border border-primary-200 rounded-lg text-sm bg-white focus:ring-primary-500 focus:border-primary-500"
               >
                 <option value="all">Все</option>
                 <option value="products">Только товары</option>
@@ -660,7 +661,7 @@ function Favorites() {
               <select
                 value={filters.animal}
                 onChange={(e) => handleFilterChange('animal', e.target.value)}
-                className="px-3 py-2 border border-purple-200 rounded-lg text-sm bg-white focus:ring-purple-500 focus:border-purple-500"
+                className="px-3 py-2 border border-primary-200 rounded-lg text-sm bg-white focus:ring-primary-500 focus:border-primary-500"
               >
                 <option value="">Для всех</option>
                 <option value="dog">🐕 Для собак</option>
@@ -671,7 +672,7 @@ function Favorites() {
 
           {/* Информация о результатах */}
           {(filteredProducts.length > 0 || filteredCourses.length > 0) && (
-            <p className="text-purple-600 mb-4 font-medium">
+            <p className="text-primary-600 mb-4 font-medium">
               Найдено: {filteredProducts.length + filteredCourses.length} элементов
             </p>
           )}
@@ -680,10 +681,10 @@ function Favorites() {
       {filteredProducts.length > 0 && (
         <section className="mb-12">
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-bold text-gray-900">
+            <h2 className="section-title mb-0">
               Избранные товары ({filteredProducts.length})
             </h2>
-            <Link to="/shop" className="text-purple-600 hover:text-purple-700 font-medium">
+            <Link to="/shop" className="text-primary-600 hover:text-primary-700 font-medium">
               Перейти в магазин →
             </Link>
           </div>
@@ -716,10 +717,10 @@ function Favorites() {
       {filteredCourses.length > 0 && (
         <section className="mb-12">
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-bold text-gray-900">
+            <h2 className="section-title mb-0">
               Избранные курсы ({filteredCourses.length})
             </h2>
-            <Link to="/courses" className="text-purple-600 hover:text-purple-700 font-medium">
+            <Link to="/courses" className="text-primary-600 hover:text-primary-700 font-medium">
               Посмотреть все курсы →
             </Link>
           </div>

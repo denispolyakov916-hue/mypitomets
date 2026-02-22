@@ -130,7 +130,7 @@ const SelectField = ({ label, value, onChange, options, placeholder, required, d
       className={`w-full px-4 py-2.5 rounded-xl border-2 transition-all appearance-none bg-white ${
         disabled
           ? 'border-gray-200 text-gray-400 bg-gray-100 cursor-not-allowed'
-          : 'border-gray-200 focus:border-purple-500 focus:outline-none'
+          : 'border-gray-200 focus:border-primary-500 focus:outline-none'
       }`}
       style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%236b7280'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center', backgroundSize: '20px' }}
     >
@@ -378,7 +378,7 @@ const SearchableSelect = ({ label, value, onChange, options, placeholder, multip
       <label className="block text-sm font-medium text-gray-700 mb-1.5">{label}</label>
       
       <div 
-        className="w-full min-h-[46px] px-4 py-2 rounded-xl border-2 border-gray-200 focus-within:border-purple-500 focus:border-purple-500 bg-white cursor-pointer flex flex-wrap gap-1.5 items-center"
+        className="w-full min-h-[46px] px-4 py-2 rounded-xl border-2 border-gray-200 focus-within:border-primary-500 focus:border-primary-500 bg-white cursor-pointer flex flex-wrap gap-1.5 items-center"
         onClick={() => {
           setIsOpen(true);
           setTimeout(() => searchInputRef.current?.focus(), 0);
@@ -444,13 +444,13 @@ const SearchableSelect = ({ label, value, onChange, options, placeholder, multip
           selectedItems.map(id => (
             <span 
               key={id}
-              className="inline-flex items-center gap-1 px-2 py-0.5 bg-purple-100 text-purple-700 rounded-full text-sm"
+              className="inline-flex items-center gap-1 px-2 py-0.5 bg-primary-100 text-primary-700 rounded-full text-sm"
             >
               {getDisplayName(id)}
               <button
                 type="button"
                 onClick={(e) => { e.stopPropagation(); toggleItem({ id }); }}
-                className="hover:text-purple-900"
+                className="hover:text-primary-900"
               >
                 <X className="w-3 h-3" />
               </button>
@@ -479,7 +479,7 @@ const SearchableSelect = ({ label, value, onChange, options, placeholder, multip
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder="Поиск..."
-                  className="w-full pl-9 pr-4 py-2 rounded-lg border border-gray-200 focus:border-purple-500 focus:outline-none text-sm"
+                  className="w-full pl-9 pr-4 py-2 rounded-lg border border-gray-200 focus:border-primary-500 focus:outline-none text-sm"
                   autoFocus
                   role="combobox"
                   aria-expanded={isOpen}
@@ -519,9 +519,9 @@ const SearchableSelect = ({ label, value, onChange, options, placeholder, multip
                       onKeyDown={handleListKeyDown}
                       className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
                         activeIndex === index
-                          ? 'bg-purple-100 text-purple-700'
+                          ? 'bg-primary-100 text-primary-700'
                           : isSelected
-                            ? 'bg-purple-50 text-purple-700'
+                            ? 'bg-primary-50 text-primary-700'
                             : 'hover:bg-gray-100'
                       }`}
                     >
@@ -633,7 +633,7 @@ const BreedAutocomplete = ({ species, value, onChange }) => {
           onChange={(e) => { setSearch(e.target.value); setIsOpen(true); }}
           onFocus={() => setIsOpen(true)}
           placeholder="Начните вводить породу..."
-          className="w-full px-4 py-2.5 rounded-xl border-2 border-gray-200 focus:border-purple-500 focus:outline-none transition-all"
+          className="w-full px-4 py-2.5 rounded-xl border-2 border-gray-200 focus:border-primary-500 focus:outline-none transition-all"
           role="combobox"
           aria-expanded={isOpen}
           aria-controls={listboxIdRef.current}
@@ -677,7 +677,7 @@ const BreedAutocomplete = ({ species, value, onChange }) => {
         />
         {loading && (
           <div className="absolute right-3 top-1/2 -translate-y-1/2">
-            <div className="w-4 h-4 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />
+            <div className="w-4 h-4 border-2 border-primary-500 border-t-transparent rounded-full animate-spin" />
           </div>
         )}
       </div>
@@ -716,7 +716,7 @@ const BreedAutocomplete = ({ species, value, onChange }) => {
                   }
                 }}
                 className={`w-full text-left px-4 py-2 text-sm transition-colors ${
-                  activeIndex === index ? 'bg-purple-100 text-purple-700' : 'hover:bg-purple-50'
+                  activeIndex === index ? 'bg-primary-100 text-primary-700' : 'hover:bg-primary-50'
                 }`}
               >
                 {breed.name}
@@ -770,7 +770,7 @@ const VaccinationsField = ({ vaccinations = [], vaccineOptions = [], onAdd, onRe
         <button
           type="button"
           onClick={() => setShowAdd(!showAdd)}
-          className="text-sm text-purple-600 hover:text-purple-700 flex items-center gap-1"
+          className="text-sm text-primary-600 hover:text-primary-700 flex items-center gap-1"
         >
           <Plus className="w-4 h-4" /> Добавить
         </button>
@@ -780,7 +780,7 @@ const VaccinationsField = ({ vaccinations = [], vaccineOptions = [], onAdd, onRe
         <motion.div
           initial={{ opacity: 0, height: 0 }}
           animate={{ opacity: 1, height: 'auto' }}
-          className="p-3 bg-purple-50 rounded-xl space-y-2"
+          className="p-3 bg-primary-50 rounded-xl space-y-2"
         >
           <SearchableSelect
             label="Вакцина"
@@ -824,7 +824,7 @@ const VaccinationsField = ({ vaccinations = [], vaccineOptions = [], onAdd, onRe
             type="button"
             onClick={addVaccination}
             disabled={!newVaccine.vaccine_code || !newVaccine.date_administered}
-            className="w-full px-4 py-2 bg-purple-600 text-white rounded-lg text-sm disabled:opacity-50"
+            className="w-full px-4 py-2 bg-primary-600 text-white rounded-lg text-sm disabled:opacity-50"
           >
             Добавить
           </button>
@@ -842,7 +842,7 @@ const VaccinationsField = ({ vaccinations = [], vaccineOptions = [], onAdd, onRe
                 <div className="text-xs text-gray-500">
                   Дата: {new Date(vac.date_administered).toLocaleDateString('ru-RU')}
                   {vac.next_due_date && (
-                    <span className="ml-2 text-orange-600">
+                    <span className="ml-2 text-accent-600">
                       Следующая: {new Date(vac.next_due_date).toLocaleDateString('ru-RU')}
                     </span>
                   )}
@@ -917,7 +917,7 @@ const MedicationsField = ({
         <button
           type="button"
           onClick={() => setShowAdd(!showAdd)}
-          className="text-sm text-purple-600 hover:text-purple-700 flex items-center gap-1"
+          className="text-sm text-primary-600 hover:text-primary-700 flex items-center gap-1"
         >
           <Plus className="w-4 h-4" /> Добавить
         </button>
@@ -927,7 +927,7 @@ const MedicationsField = ({
         <motion.div
           initial={{ opacity: 0, height: 0 }}
           animate={{ opacity: 1, height: 'auto' }}
-          className="p-3 bg-purple-50 rounded-xl space-y-2"
+          className="p-3 bg-primary-50 rounded-xl space-y-2"
         >
           <SelectField
             label="Категория"
@@ -999,7 +999,7 @@ const MedicationsField = ({
             type="button"
             onClick={addMedication}
             disabled={!newMed.medication_code || !newMed.start_date || !newMed.frequency}
-            className="w-full px-4 py-2 bg-purple-600 text-white rounded-lg text-sm disabled:opacity-50"
+            className="w-full px-4 py-2 bg-primary-600 text-white rounded-lg text-sm disabled:opacity-50"
           >
             Добавить препарат
           </button>
@@ -1048,7 +1048,7 @@ const ToggleField = ({ label, checked, onChange, description }) => (
     <button
       type="button"
       onClick={() => onChange(!checked)}
-      className={`relative w-12 h-6 rounded-full transition-colors ${checked ? 'bg-purple-500' : 'bg-gray-300'}`}
+      className={`relative w-12 h-6 rounded-full transition-colors ${checked ? 'bg-primary-500' : 'bg-gray-300'}`}
     >
       <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform ${checked ? 'translate-x-7' : 'translate-x-1'}`} />
     </button>
@@ -1552,9 +1552,9 @@ export default function PetProfileEditor({ pet, onClose, onSave, isLoading }) {
                 placeholder="Как зовут питомца?"
                 aria-invalid={errors.name ? 'true' : 'false'}
                 aria-describedby={errors.name ? 'pet-name-error' : undefined}
-                className={`w-full px-4 py-2.5 rounded-xl border-2 ${errors.name ? 'border-red-500' : 'border-gray-200'} focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20 transition-all`}
+                className={`w-full px-4 py-2.5 rounded-xl border-2 ${errors.name ? 'border-red-500' : 'border-gray-200'} focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 transition-all`}
               />
-              {errors.name && <p id="pet-name-error" className="text-red-500 text-xs mt-1" role="alert">{errors.name}</p>}
+              {errors.name && <p id="pet-name-error" className="text-red-600 text-xs mt-1" role="alert">{errors.name}</p>}
             </div>
             
             <div className="grid grid-cols-2 gap-4">
@@ -1571,7 +1571,7 @@ export default function PetProfileEditor({ pet, onClose, onSave, isLoading }) {
                   value={formData.date_of_birth || ''}
                   onChange={(e) => handleChange('date_of_birth', e.target.value)}
                   max={new Date().toISOString().split('T')[0]}
-                  className="w-full px-4 py-2.5 rounded-xl border-2 border-gray-200 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20 transition-all"
+                  className="w-full px-4 py-2.5 rounded-xl border-2 border-gray-200 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 transition-all"
                 />
               </div>
             </div>
@@ -1725,7 +1725,7 @@ export default function PetProfileEditor({ pet, onClose, onSave, isLoading }) {
                     value={formData.current_food?.food_id || ''}
                     onChange={(e) => handleChange('current_food', { ...(formData.current_food || {}), food_id: e.target.value })}
                     placeholder="ID корма из каталога"
-                    className="w-full px-4 py-2.5 rounded-xl border-2 border-gray-200 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20 transition-all"
+                    className="w-full px-4 py-2.5 rounded-xl border-2 border-gray-200 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 transition-all"
                   />
                 </>
               )}
@@ -1740,7 +1740,7 @@ export default function PetProfileEditor({ pet, onClose, onSave, isLoading }) {
                       value={formData.current_food?.brand_name || ''}
                       onChange={(e) => handleChange('current_food', { ...(formData.current_food || {}), brand_name: e.target.value })}
                       placeholder="Бренд"
-                      className="w-full px-4 py-2.5 rounded-xl border-2 border-gray-200 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20 transition-all"
+                      className="w-full px-4 py-2.5 rounded-xl border-2 border-gray-200 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 transition-all"
                     />
                   </div>
                   <div>
@@ -1751,7 +1751,7 @@ export default function PetProfileEditor({ pet, onClose, onSave, isLoading }) {
                       value={formData.current_food?.product_name || ''}
                       onChange={(e) => handleChange('current_food', { ...(formData.current_food || {}), product_name: e.target.value })}
                       placeholder="Название продукта"
-                      className="w-full px-4 py-2.5 rounded-xl border-2 border-gray-200 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20 transition-all"
+                      className="w-full px-4 py-2.5 rounded-xl border-2 border-gray-200 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 transition-all"
                     />
                   </div>
                 </div>
@@ -1766,7 +1766,7 @@ export default function PetProfileEditor({ pet, onClose, onSave, isLoading }) {
                   value={formData.current_food?.daily_amount_grams || ''}
                   onChange={(e) => handleChange('current_food', { ...(formData.current_food || {}), daily_amount_grams: e.target.value })}
                   placeholder="Суточная порция (граммы)"
-                  className="w-full px-4 py-2.5 rounded-xl border-2 border-gray-200 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20 transition-all"
+                  className="w-full px-4 py-2.5 rounded-xl border-2 border-gray-200 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 transition-all"
                 />
               </div>
             </div>
@@ -1873,7 +1873,7 @@ export default function PetProfileEditor({ pet, onClose, onSave, isLoading }) {
                 value={formData.last_vet_visit || ''}
                 onChange={(e) => handleChange('last_vet_visit', e.target.value)}
                 max={new Date().toISOString().split('T')[0]}
-                className="w-full px-4 py-2.5 rounded-xl border-2 border-gray-200 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20 transition-all"
+                className="w-full px-4 py-2.5 rounded-xl border-2 border-gray-200 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 transition-all"
               />
             </div>
             
@@ -1891,9 +1891,9 @@ export default function PetProfileEditor({ pet, onClose, onSave, isLoading }) {
                   placeholder="Вес при осмотре"
                   aria-invalid={errors.weight ? 'true' : 'false'}
                   aria-describedby={errors.weight ? 'vet-weight-error' : undefined}
-                  className={`w-full px-4 py-2.5 rounded-xl border-2 ${errors.weight ? 'border-red-500' : 'border-gray-200'} focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20 transition-all`}
+                  className={`w-full px-4 py-2.5 rounded-xl border-2 ${errors.weight ? 'border-red-500' : 'border-gray-200'} focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 transition-all`}
                 />
-                {errors.weight && <p id="vet-weight-error" className="mt-2 text-sm text-red-500" role="alert">{errors.weight}</p>}
+                {errors.weight && <p id="vet-weight-error" className="mt-2 text-sm text-red-600" role="alert">{errors.weight}</p>}
               </div>
               <SelectField
                 label="Оценка упитанности (BCS)"
@@ -1913,7 +1913,7 @@ export default function PetProfileEditor({ pet, onClose, onSave, isLoading }) {
                   value={formData.heart_rate || ''}
                   onChange={(e) => handleChange('heart_rate', e.target.value)}
                   placeholder="60-180"
-                  className="w-full px-4 py-2.5 rounded-xl border-2 border-gray-200 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20 transition-all"
+                  className="w-full px-4 py-2.5 rounded-xl border-2 border-gray-200 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 transition-all"
                 />
               </div>
               <div>
@@ -1924,7 +1924,7 @@ export default function PetProfileEditor({ pet, onClose, onSave, isLoading }) {
                   value={formData.respiratory_rate || ''}
                   onChange={(e) => handleChange('respiratory_rate', e.target.value)}
                   placeholder="15-30"
-                  className="w-full px-4 py-2.5 rounded-xl border-2 border-gray-200 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20 transition-all"
+                  className="w-full px-4 py-2.5 rounded-xl border-2 border-gray-200 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 transition-all"
                 />
               </div>
               <div>
@@ -1936,7 +1936,7 @@ export default function PetProfileEditor({ pet, onClose, onSave, isLoading }) {
                   value={formData.temperature || ''}
                   onChange={(e) => handleChange('temperature', e.target.value)}
                   placeholder="37.5-39.0"
-                  className="w-full px-4 py-2.5 rounded-xl border-2 border-gray-200 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20 transition-all"
+                  className="w-full px-4 py-2.5 rounded-xl border-2 border-gray-200 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 transition-all"
                 />
               </div>
             </div>
@@ -1949,7 +1949,7 @@ export default function PetProfileEditor({ pet, onClose, onSave, isLoading }) {
                 onChange={(e) => handleChange('vet_notes', e.target.value)}
                 placeholder="Дополнительные наблюдения и рекомендации врача..."
                 rows={4}
-                className="w-full px-4 py-2.5 rounded-xl border-2 border-gray-200 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20 transition-all resize-none"
+                className="w-full px-4 py-2.5 rounded-xl border-2 border-gray-200 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 transition-all resize-none"
               />
             </div>
           </div>
@@ -2003,9 +2003,9 @@ export default function PetProfileEditor({ pet, onClose, onSave, isLoading }) {
                   key={section.id}
                   type="button"
                   onClick={() => setActiveSection(section.id)}
-                  className={`w-full text-left rounded-xl transition-all ${isActive ? 'bg-purple-50' : 'hover:bg-gray-50'}`}
+                  className={`w-full text-left rounded-xl transition-all ${isActive ? 'bg-primary-50' : 'hover:bg-gray-50'}`}
                 >
-                  <div className={`flex items-center gap-3 px-4 py-3 ${isActive ? 'text-purple-600' : 'text-gray-600'}`}>
+                  <div className={`flex items-center gap-3 px-4 py-3 ${isActive ? 'text-primary-600' : 'text-gray-600'}`}>
                     <Icon className="w-5 h-5" />
                     <span className="font-medium text-sm flex-1">{section.label}</span>
                     {isActive && <ChevronRight className="w-4 h-4" />}
@@ -2045,7 +2045,7 @@ export default function PetProfileEditor({ pet, onClose, onSave, isLoading }) {
                   <span className={`text-sm font-bold ${
                     totalProgress >= 75 ? 'text-green-600' :
                     totalProgress >= 50 ? 'text-yellow-600' :
-                    'text-orange-600'
+                    'text-accent-600'
                   }`}>
                     {totalProgress}%
                   </span>
@@ -2067,7 +2067,7 @@ export default function PetProfileEditor({ pet, onClose, onSave, isLoading }) {
                 <div className="flex items-center gap-2 text-sm text-gray-500">
                   {hasChanges && (
                     <>
-                      <AlertTriangle className="w-4 h-4 text-orange-600" />
+                      <AlertTriangle className="w-4 h-4 text-accent-600" />
                       <span>Есть несохранённые изменения</span>
                     </>
                   )}
@@ -2083,7 +2083,7 @@ export default function PetProfileEditor({ pet, onClose, onSave, isLoading }) {
                   <button
                     type="submit"
                     disabled={isLoading || !hasChanges}
-                    className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-orange-500 text-white font-medium hover:shadow-lg transition-all disabled:opacity-50 flex items-center gap-2"
+                    className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-primary-600 to-accent-500 text-white font-medium hover:shadow-lg transition-all disabled:opacity-50 flex items-center gap-2"
                   >
                     {isLoading ? (
                       <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -2134,7 +2134,7 @@ export default function PetProfileEditor({ pet, onClose, onSave, isLoading }) {
                   <button
                     type="button"
                     onClick={confirmClose}
-                    className="px-4 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-orange-500 text-white font-medium hover:shadow-lg transition-all"
+                    className="px-4 py-2 rounded-xl bg-gradient-to-r from-primary-600 to-accent-500 text-white font-medium hover:shadow-lg transition-all"
                   >
                     Да, выйти
                   </button>

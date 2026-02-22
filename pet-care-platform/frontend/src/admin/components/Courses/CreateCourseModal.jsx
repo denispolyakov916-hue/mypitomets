@@ -6,7 +6,7 @@
  */
 
 import React, { useState } from 'react'
-import Modal from '../Forms/Modal'
+import Modal from '../../../components/ui/Modal'
 import { adminAPI } from '../../utils/api'
 
 const categoryOptions = [
@@ -70,7 +70,7 @@ export default function CreateCourseModal({ isOpen, onClose, onCreated }) {
   }
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Новый курс" size="md">
+    <Modal isOpen={isOpen} onClose={onClose} title="Новый курс" size="lg">
       <form onSubmit={handleSubmit} className="space-y-4">
         {error && (
           <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">

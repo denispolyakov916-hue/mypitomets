@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 
 // Components
@@ -88,7 +88,7 @@ const AnalyticsDashboard = () => {
           {/* Кнопка конструктора */}
           <Link
             to="/admin-panel/analytics/builder"
-            className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-indigo-500 to-purple-600 text-white text-sm font-medium rounded-lg hover:from-indigo-600 hover:to-purple-700 transition-all shadow-sm"
+            className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-indigo-500 to-primary-600 text-white text-sm font-medium rounded-lg hover:from-indigo-600 hover:to-primary-700 transition-all shadow-sm"
           >
             <span className="mr-2">🎨</span>
             Конструктор графиков
@@ -253,11 +253,11 @@ const AnalyticsDashboard = () => {
 
           <button
             onClick={() => openDrillDown('sales_by_category', 'Продажи по категориям')}
-            className="bg-white p-4 rounded-lg border border-gray-200 hover:border-orange-300 hover:shadow-md transition-all duration-200"
+            className="bg-white p-4 rounded-lg border border-gray-200 hover:border-accent-300 hover:shadow-md transition-all duration-200"
           >
             <div className="flex items-center">
-              <div className="bg-orange-100 p-2 rounded-lg">
-                <svg className="w-6 h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="bg-accent-100 p-2 rounded-lg">
+                <svg className="w-6 h-6 text-accent-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
                 </svg>
               </div>
@@ -287,11 +287,11 @@ const AnalyticsDashboard = () => {
 
           <button
             onClick={() => openDrillDown('orders_delivery_analysis', 'Анализ заказов')}
-            className="bg-white p-4 rounded-lg border border-gray-200 hover:border-purple-300 hover:shadow-md transition-all duration-200"
+            className="bg-white p-4 rounded-lg border border-gray-200 hover:border-primary-300 hover:shadow-md transition-all duration-200"
           >
             <div className="flex items-center">
-              <div className="bg-purple-100 p-2 rounded-lg">
-                <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="bg-primary-100 p-2 rounded-lg">
+                <svg className="w-6 h-6 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
                 </svg>
               </div>

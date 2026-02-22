@@ -13,10 +13,12 @@
 import { useState, useCallback, memo, useRef, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import PropTypes from 'prop-types'
+import { Card, CardMedia } from './ui/Card'
 import { ButtonLoader } from './Loader'
 import { useCartStore } from '../store/cartStore'
 import { useFavoritesStore } from '../store/favoritesStore'
 import { ProductPropTypes } from '../utils/propTypes'
+import { formatPrice } from '../utils/format'
 
 /**
  * Получение URL изображения из различных форматов
@@ -29,16 +31,6 @@ const getImageUrl = (image) => {
   }
   return null
 }
-
-/**
- * Форматирование цены
- */
-const priceFormatter = new Intl.NumberFormat('ru-RU', {
-  style: 'currency',
-  currency: 'RUB',
-  maximumFractionDigits: 0
-})
-const formatPrice = (price) => priceFormatter.format(price)
 
 /**
  * Компонент оптимизированного изображения товара
@@ -313,13 +305,14 @@ const ProductCard = memo(function ProductCard({ product, onAddToCart, isLoading 
   }, [cartQuantity, product.id, updateQuantity])
 
   return (
-    <article className="group bg-white rounded-2xl shadow-sm hover:shadow-lg border border-gray-100 transition-all duration-300 flex flex-col h-full overflow-hidden">
+    <Card as="article" variant="default" hoverable rounded="2xl" className="group shadow-sm flex flex-col h-full overflow-hidden">
       {/* Изображение */}
-      <Link 
-        to={`/shop/products/${product.id}`} 
-        className="aspect-square relative overflow-hidden bg-gray-50 block"
-        aria-label={`Перейти к товару ${product.name}`}
-      >
+      <CardMedia aspectRatio="square" className="bg-gray-50">
+        <Link 
+          to={`/shop/products/${product.id}`} 
+          className="relative block w-full h-full"
+          aria-label={`Перейти к товару ${product.name}`}
+        >
         <ProductImage src={mainImage} alt={product.name || 'Изображение товара'} animal={animalType} />
         
         {/* Бейджи сверху слева */}
@@ -372,7 +365,8 @@ const ProductCard = memo(function ProductCard({ product, onAddToCart, isLoading 
             </span>
           </div>
         )}
-      </Link>
+        </Link>
+      </CardMedia>
       
       {/* Информация */}
       <div className="flex-1 flex flex-col p-4">
@@ -420,7 +414,7 @@ const ProductCard = memo(function ProductCard({ product, onAddToCart, isLoading 
 
           {/* Остаток */}
           {product.stock_count > 0 && product.stock_count <= 5 && isAvailable && (
-            <span className="ml-auto text-xs text-orange-700 font-medium">
+            <span className="ml-auto text-xs text-accent-700 font-medium">
               Осталось {product.stock_count}
             </span>
           )}
@@ -439,7 +433,7 @@ const ProductCard = memo(function ProductCard({ product, onAddToCart, isLoading 
           />
         </div>
       </div>
-    </article>
+    </Card>
   )
 })
 

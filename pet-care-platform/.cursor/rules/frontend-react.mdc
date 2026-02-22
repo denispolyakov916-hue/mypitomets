@@ -17,25 +17,19 @@ alwaysApply: false
 
 Stores в `src/store/`. НЕ использовать Redux или Context API для глобального состояния.
 
+**Обязательно: индивидуальные селекторы** для предотвращения лишних ререндеров:
+
 ```javascript
-import { create } from 'zustand';
+// ЗАПРЕЩЕНО — ререндер при любом изменении store
+const { items, isLoading } = useCartStore()
 
-const useMyStore = create((set, get) => ({
-  items: [],
-  isLoading: false,
-  error: null,
-
-  loadItems: async () => {
-    set({ isLoading: true, error: null });
-    try {
-      const data = await myApi.getItems();
-      set({ items: data, isLoading: false });
-    } catch (err) {
-      set({ error: err.message, isLoading: false });
-    }
-  },
-}));
+// ПРАВИЛЬНО — ререндер только при изменении конкретного значения
+const items = useCartStore(s => s.items)
+const isLoading = useCartStore(s => s.isLoading)
+const addItem = useCartStore(s => s.addItem)  // actions стабильны, но лучше тоже через селектор
 ```
+
+Обработка ошибок в stores: через `handleStoreError` из `store/baseStore.js`.
 
 Существующие stores: `useAuthStore`, `useCartStore`, `useFavoritesStore`, `useToastStore`.
 
@@ -43,21 +37,24 @@ const useMyStore = create((set, get) => ({
 
 - HTTP клиент: Axios в `src/api/client.js` (автоматический JWT injection и refresh)
 - Модули по доменам: `src/api/auth.js`, `src/api/pets.js`, `src/api/shop.js` и т.д.
-- Реэкспорт из `src/api/index.js`
-- Кэширование: `apiCache` из `src/utils/apiCache.js` — TTL-кэш с дедупликацией запросов
+- **Базовые CRUD**: через `createCrudApi` / `createReadOnlyApi` из `src/api/baseApi.js`
+- Кэширование: `apiCache` из `src/utils/apiCache.js` — единственный механизм кэширования (не создавать локальные кэши)
 
 ```javascript
-import { apiCache } from '../utils/apiCache';
-const data = await apiCache.get('cache-key', () => api.fetchData(), ttlMs);
+// Новый API модуль
+import { createCrudApi } from './baseApi';
+const myApi = createCrudApi('/my-resource/');
+// Даёт: myApi.getList(), myApi.getById(id), myApi.create(data), myApi.update(id, data), myApi.delete(id)
 ```
 
 ## Стили — Tailwind CSS
 
-- Utility-first подход, без CSS-модулей
-- Кастомные цвета: `primary` (purple), `secondary` (green), `accent` (orange)
+- Utility-first подход, CSS файлы запрещены (см. правило `frontend-styling`)
+- Семантические цвета: `primary`, `secondary`, `accent`, `error`, `warning`, `success`, `info`
 - Шрифт: Inter
 - Анимации: Framer Motion (`motion.div`, `AnimatePresence`)
 - Иконки: Lucide React (`import { Icon } from 'lucide-react'`)
+- UI компоненты: обязательно из `src/components/ui/` (см. правило `frontend-ui-kit`)
 
 ## Роутинг — React Router v6
 
@@ -71,7 +68,29 @@ const data = await apiCache.get('cache-key', () => api.fetchData(), ttlMs);
 - `useMemo` / `useCallback` для дорогих вычислений и колбэков
 - `IntersectionObserver` для ленивой загрузки изображений
 - Debounce 300ms для фильтров и поиска
-- Кастомные хуки в `src/hooks/` для переиспользуемой логики (`useProducts`, `usePets`)
+- Кастомные хуки в `src/hooks/` для переиспользуемой логики
+
+## Хуки — data fetching
+
+Data-fetching логика выносится в хуки, а не пишется inline в компонентах:
+
+| Хук | Назначение |
+|-----|-----------|
+| `useProducts` | Каталог товаров с фильтрацией |
+| `usePets` | Питомцы пользователя |
+| `useCourses` | Каталог курсов с фильтрацией |
+| `useCourse` | Детали одного курса |
+| `useOrders` | Заказы пользователя |
+| `useFormValidation` | Валидация форм |
+
+```jsx
+// ЗАПРЕЩЕНО — data fetching в компоненте
+const [courses, setCourses] = useState([])
+useEffect(() => { getCourses().then(setCourses) }, [])
+
+// ПРАВИЛЬНО — через хук
+const { courses, isLoading, error } = useCourses(filters)
+```
 
 ## Админ-панель React
 
@@ -110,10 +129,15 @@ src/admin/
 ## Структура файлов
 
 ```
-src/pages/{Feature}/{Feature}.jsx     — страница фичи
-src/components/{Component}.jsx        — переиспользуемый компонент
-src/hooks/use{Feature}.js             — кастомный хук
-src/store/{feature}Store.js           — Zustand store
-src/api/{feature}.js                  — API модуль
-src/admin/                            — React админ-панель (отдельная структура)
+src/pages/{Feature}/{Feature}.jsx             — страница фичи
+src/pages/{Feature}/components/{Sub}.jsx      — подкомпоненты страницы (фильтры, сетки, модалки)
+src/components/{Component}.jsx                — переиспользуемый компонент
+src/components/ui/{Component}.jsx             — UI Kit (Button, Card, Modal, Input, Alert, EmptyState, Skeleton, FormField)
+src/hooks/use{Feature}.js                     — кастомный хук (data fetching, валидация)
+src/store/{feature}Store.js                   — Zustand store
+src/api/{feature}.js                          — API модуль (через baseApi)
+src/utils/format.js                           — утилиты форматирования (formatPrice и др.)
+src/admin/                                    — React админ-панель
 ```
+
+Страницы свыше 400 строк — сигнал к декомпозиции на подкомпоненты в `pages/{Feature}/components/`.

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * BlockRenderers - Компоненты для отображения блоков контента в режиме просмотра
  *
  * Эти компоненты используются в системе обучения для отображения
@@ -263,7 +263,7 @@ export function QuizRenderer({ block, mode = 'view', onComplete, onProgress }) {
     return (
       <div key={qi} className={`pb-5 ${qi < questions.length - 1 ? 'border-b border-gray-100 mb-5' : ''}`}>
         <div className="flex items-start gap-3 mb-3">
-          <span className="flex-shrink-0 w-7 h-7 rounded-full bg-purple-100 text-purple-700 flex items-center justify-center text-sm font-bold">
+          <span className="flex-shrink-0 w-7 h-7 rounded-full bg-primary-100 text-primary-700 flex items-center justify-center text-sm font-bold">
             {qi + 1}
           </span>
           <h4 className="font-medium text-gray-900 pt-0.5">{question.question || question.text}</h4>
@@ -403,7 +403,7 @@ export function QuizRenderer({ block, mode = 'view', onComplete, onProgress }) {
   }
 
   return (
-    <div className="bg-white border border-purple-200 rounded-xl p-6">
+    <div className="bg-white border border-primary-200 rounded-xl p-6">
       <div className="flex items-center gap-3 mb-6">
         <span className="text-2xl">❓</span>
         <h3 className="text-lg font-semibold text-gray-900">{block.content?.title || 'Тест'}</h3>
@@ -416,7 +416,7 @@ export function QuizRenderer({ block, mode = 'view', onComplete, onProgress }) {
           <button
             onClick={handleSubmit}
             disabled={!isAllAnswered}
-            className="px-8 py-3 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-8 py-3 bg-primary-600 hover:bg-primary-700 text-white font-medium rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Проверить ответы
           </button>

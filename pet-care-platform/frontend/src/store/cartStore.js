@@ -19,6 +19,7 @@ import { create } from 'zustand'
 import * as shopApi from '../api/shop'
 import * as coursesApi from '../api/courses'
 import { apiCache } from '../utils/apiCache'
+import { handleStoreError } from './baseStore'
 
 /**
  * Автоматическое обновление корзины
@@ -151,14 +152,12 @@ export const useCartStore = create((set, get) => ({
 
         return true
       } catch (error) {
-        console.error('Ошибка загрузки корзины:', error)
+        handleStoreError(error, set, 'Не удалось загрузить корзину')
         set({
-          items: [], // Сбрасываем items при ошибке
+          items: [],
           total: 0,
           itemsCount: 0,
           selectedItems: new Set(),
-          isLoading: false,
-          error: error.message || 'Не удалось загрузить корзину',
           _loadingPromise: null
         })
         return false
@@ -218,11 +217,7 @@ export const useCartStore = create((set, get) => ({
 
       return true
     } catch (error) {
-      console.error('Ошибка добавления товара в корзину:', error)
-      set({
-        isLoading: false,
-        error: error.message || 'Не удалось добавить товар'
-      })
+      handleStoreError(error, set, 'Не удалось добавить товар')
       return false
     }
   },
@@ -276,17 +271,7 @@ export const useCartStore = create((set, get) => ({
 
       return true
     } catch (error) {
-      console.error('Ошибка добавления курса в корзину:', error)
-      // Обработка ошибок от API
-      const errorMessage = error.response?.data?.error ||
-                          error.response?.data?.message ||
-                          error.message ||
-                          'Не удалось добавить курс в корзину'
-
-      set({
-        isLoading: false,
-        error: errorMessage
-      })
+      handleStoreError(error, set, 'Не удалось добавить курс в корзину')
       return false
     }
   },
@@ -340,11 +325,7 @@ export const useCartStore = create((set, get) => ({
 
       return true
     } catch (error) {
-      console.error('Ошибка обновления количества в корзине:', error)
-      set({
-        isLoading: false,
-        error: error.message || 'Не удалось обновить количество'
-      })
+      handleStoreError(error, set, 'Не удалось обновить количество')
       return false
     }
   },
@@ -386,11 +367,7 @@ export const useCartStore = create((set, get) => ({
 
       return true
     } catch (error) {
-      console.error('Ошибка удаления курса из корзины:', error)
-      set({
-        isLoading: false,
-        error: error.message || 'Не удалось удалить курс из корзины'
-      })
+      handleStoreError(error, set, 'Не удалось удалить курс из корзины')
       return false
     }
   },
@@ -441,10 +418,7 @@ export const useCartStore = create((set, get) => ({
       
       return response.order
     } catch (error) {
-      set({
-        isLoading: false,
-        error: error.message || 'Не удалось оформить заказ'
-      })
+      handleStoreError(error, set, 'Не удалось оформить заказ')
       return null
     }
   },
@@ -673,11 +647,7 @@ export const useCartStore = create((set, get) => ({
 
       return true
     } catch (error) {
-      console.error('Ошибка удаления выбранных элементов из корзины:', error)
-      set({
-        isLoading: false,
-        error: error.message || 'Не удалось удалить выбранные элементы'
-      })
+      handleStoreError(error, set, 'Не удалось удалить выбранные элементы')
       return false
     }
   }

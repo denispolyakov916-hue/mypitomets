@@ -13,23 +13,19 @@
 
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate, Link, useSearchParams } from 'react-router-dom'
-import { getCourse, enrollFreeCourse, getCourseStructure, resetCourseProgress } from '../../api/courses'
+import { enrollFreeCourse, getCourseStructure, resetCourseProgress } from '../../api/courses'
 import { useAuthStore } from '../../store/authStore'
 import { useCartStore } from '../../store/cartStore'
 import { useToastStore } from '../../store/toastStore'
 import { usePets } from '../../hooks/usePets'
+import { useCourse } from '../../hooks/useCourse'
 import { PageLoader, ButtonLoader } from '../../components/Loader'
 import ReviewsSection from '../../components/ReviewsSection'
 import { CoursePersonalizationWidget } from '../../components/Learning'
 
-/* ─── Утилиты ──────────────────────────────────────────── */
+import { formatCoursePrice } from '../../utils/format'
 
-const formatPrice = (price) => {
-  if (price === 0) return 'Бесплатно'
-  return new Intl.NumberFormat('ru-RU', {
-    style: 'currency', currency: 'RUB', maximumFractionDigits: 0,
-  }).format(price)
-}
+/* ─── Утилиты ──────────────────────────────────────────── */
 
 const formatDuration = (minutes) => {
   if (!minutes) return null
@@ -41,7 +37,7 @@ const formatDuration = (minutes) => {
 
 const petTypeInfo = {
   dog:  { label: 'Для собак',  icon: '🐕', color: 'from-blue-100 to-blue-200',   badge: 'bg-blue-100 text-blue-700' },
-  cat:  { label: 'Для кошек',  icon: '🐱', color: 'from-purple-100 to-purple-200', badge: 'bg-purple-100 text-purple-700' },
+  cat:  { label: 'Для кошек',  icon: '🐱', color: 'from-primary-100 to-primary-200', badge: 'bg-primary-100 text-primary-700' },
   all:  { label: 'Для всех',   icon: '🐾', color: 'from-green-100 to-green-200',  badge: 'bg-green-100 text-green-700' },
 }
 
@@ -53,7 +49,7 @@ const categoryLabels = { basics: 'Основы', training: 'Дрессировк
 const pageTypeConfig = {
   text:        { icon: '📖', color: 'bg-blue-100 text-blue-600', label: 'Теория' },
   video:       { icon: '▶️', color: 'bg-red-100 text-red-600', label: 'Видео' },
-  quiz:        { icon: '❓', color: 'bg-purple-100 text-purple-600', label: 'Тест' },
+  quiz:        { icon: '❓', color: 'bg-primary-100 text-primary-600', label: 'Тест' },
   interactive: { icon: '🐾', color: 'bg-green-100 text-green-600', label: 'Упражнение' },
   assignment:  { icon: '✏️', color: 'bg-amber-100 text-amber-600', label: 'Задание' },
   webinar:     { icon: '📡', color: 'bg-indigo-100 text-indigo-600', label: 'Вебинар' },
@@ -65,16 +61,14 @@ function CourseDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
-  const { isAuthenticated } = useAuthStore()
-  const { addCourse, error: cartError, getItemInCart } = useCartStore()
+  const isAuthenticated = useAuthStore(s => s.isAuthenticated)
+  const cartError = useCartStore(s => s.error)
+  const { addCourse, getItemInCart } = useCartStore()
   const { success, error: showError } = useToastStore()
   const { pets } = usePets()
 
-  const [course, setCourse] = useState(null)
+  const { course, isOwned, isLoading, error, setOwned } = useCourse(id)
   const [imageError, setImageError] = useState(false)
-  const [isOwned, setIsOwned] = useState(false)
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState(null)
   const [isAddingToCart, setIsAddingToCart] = useState(false)
 
   // Бесплатная запись
@@ -88,25 +82,9 @@ function CourseDetail() {
   const [expandedModules, setExpandedModules] = useState({})
   const [isResetting, setIsResetting] = useState(false)
 
-  /* ─── Загрузка данных ─── */
+  /* ─── Загрузка структуры курса ─── */
 
   useEffect(() => {
-    const load = async () => {
-      setIsLoading(true)
-      setError(null)
-      try {
-        const response = await getCourse(id)
-        setCourse(response.course)
-        setIsOwned(response.is_owned || false)
-      } catch (err) {
-        setError(err.message || 'Не удалось загрузить данные курса')
-      } finally {
-        setIsLoading(false)
-      }
-    }
-    load()
-
-    // Структура загружается параллельно
     getCourseStructure(id)
       .then(structure => {
         setCourseStructure(structure)
@@ -177,7 +155,7 @@ function CourseDetail() {
     setIsEnrolling(true)
     try {
       await enrollFreeCourse(course.id, true, selectedPetForEnroll)
-      setIsOwned(true)
+      setOwned(true)
       setShowFreeEnrollModal(false)
       success(`Вы записались на курс "${course.title}"!`)
       setTimeout(() => navigate(`/training/courses/${course.id}/learn`), 2000)
@@ -199,7 +177,7 @@ function CourseDetail() {
     return (
       <div className="page-container">
         <div className="card text-center py-12">
-          <p className="text-red-500 mb-4">{error || 'Курс не найден'}</p>
+          <p className="text-red-600 mb-4">{error || 'Курс не найден'}</p>
           <Link to="/courses" className="btn-primary">Вернуться к курсам</Link>
         </div>
       </div>
@@ -259,7 +237,7 @@ function CourseDetail() {
               )}
             </div>
 
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">{course.title}</h1>
+            <h1 className="page-title mb-2">{course.title}</h1>
 
             {/* Компактная строка: рейтинг + кол-во уроков */}
             <div className="flex items-center gap-4 text-sm text-gray-500">
@@ -280,7 +258,7 @@ function CourseDetail() {
           {/* ── О курсе ── */}
           {(course.description || course.detailed_description) && (
             <div className="card">
-              <h2 className="text-lg font-semibold text-gray-900 mb-3">О курсе</h2>
+              <h2 className="section-title mb-3">О курсе</h2>
               <p className="text-gray-600 leading-relaxed whitespace-pre-line">
                 {course.description}
               </p>
@@ -295,7 +273,7 @@ function CourseDetail() {
           {/* ── Чему вы научитесь ── */}
           {course.what_you_will_learn && (
             <div className="card">
-              <h2 className="text-lg font-semibold text-gray-900 mb-3">Чему вы научитесь</h2>
+              <h2 className="section-title mb-3">Чему вы научитесь</h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {course.what_you_will_learn.split('\n').filter(Boolean).map((item, i) => (
                   <div key={i} className="flex items-start gap-2">
@@ -313,7 +291,7 @@ function CourseDetail() {
           {courseStructure?.modules?.length > 0 && (
             <div className="card">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold text-gray-900">Программа курса</h2>
+                <h2 className="section-title mb-0">Программа курса</h2>
                 <span className="text-sm text-gray-400">
                   {courseStructure.modules.length} модулей · {totalPages} уроков
                 </span>
@@ -386,7 +364,7 @@ function CourseDetail() {
           {/* ── Требования (компактно, только если есть) ── */}
           {course.requirements && (
             <div className="card">
-              <h2 className="text-lg font-semibold text-gray-900 mb-2">Требования</h2>
+              <h2 className="section-title mb-2">Требования</h2>
               <p className="text-sm text-gray-600 whitespace-pre-line">{course.requirements}</p>
             </div>
           )}
@@ -416,7 +394,7 @@ function CourseDetail() {
             {/* Цена */}
             <div>
               <div className={`text-3xl font-bold ${course.price === 0 ? 'text-green-600' : 'text-gray-900'}`}>
-                {formatPrice(course.price)}
+                {formatCoursePrice(course.price)}
               </div>
               {course.price > 0 && <p className="text-xs text-gray-400 mt-1">Единоразовая оплата · Доступ навсегда</p>}
             </div>

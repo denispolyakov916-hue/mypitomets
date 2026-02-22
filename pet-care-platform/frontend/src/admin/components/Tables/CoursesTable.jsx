@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 // Components
 import DataTable from './DataTable';
 import CreateCourseModal from '../Courses/CreateCourseModal';
-import ConfirmModal from '../Forms/ConfirmModal';
+import { ConfirmModal } from '../../../components/ui/Modal';
 
 // Hooks
 import { adminAPI } from '../../utils/api';
@@ -252,8 +252,8 @@ const CoursesTable = () => {
       render: (value) => (
         <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
           value === 'dog' ? 'bg-blue-100 text-blue-800' :
-          value === 'cat' ? 'bg-orange-100 text-orange-800' :
-          'bg-purple-100 text-purple-800'
+          value === 'cat' ? 'bg-accent-100 text-accent-800' :
+          'bg-primary-100 text-primary-800'
         }`}>
           {value === 'dog' ? '🐕 Собаки' :
            value === 'cat' ? '🐈 Кошки' :
@@ -277,7 +277,7 @@ const CoursesTable = () => {
         const levelConfig = {
           beginner: { label: 'Начинающий', color: 'bg-green-100 text-green-800' },
           intermediate: { label: 'Средний', color: 'bg-blue-100 text-blue-800' },
-          advanced: { label: 'Продвинутый', color: 'bg-orange-100 text-orange-800' },
+          advanced: { label: 'Продвинутый', color: 'bg-accent-100 text-accent-800' },
           expert: { label: 'Эксперт', color: 'bg-red-100 text-red-800' }
         };
 
@@ -525,8 +525,8 @@ const CoursesTable = () => {
       message={courseToDelete
         ? `Курс «${courseToDelete.title}» будет удалён. Это действие нельзя отменить.`
         : ''}
-      confirmLabel="Удалить"
-      cancelLabel="Отмена"
+      confirmText="Удалить"
+      cancelText="Отмена"
       onConfirm={handleDeleteConfirm}
       variant="danger"
     />

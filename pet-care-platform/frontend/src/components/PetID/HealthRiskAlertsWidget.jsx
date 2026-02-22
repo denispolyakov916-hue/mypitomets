@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../../api/axios';
-import './HealthRiskAlertsWidget.css';
 
 /**
  * Виджет предупреждений о рисках здоровья породы
@@ -29,7 +28,7 @@ const HealthRiskAlertsWidget = ({ breedId, petAge }) => {
       if (filter !== 'all') {
         params.severity = filter;
       }
-      
+
       const response = await api.get(`/pets/breeds/${breedId}/health-risks/`, { params });
       setRisks(response.data.risks || []);
     } catch (err) {
@@ -39,37 +38,62 @@ const HealthRiskAlertsWidget = ({ breedId, petAge }) => {
     }
   };
 
+  const getRiskBorderColor = (severity) => {
+    if (severity === 'medium') return 'border-amber-500';
+    if (severity === 'low') return 'border-blue-500';
+    return 'border-red-500';
+  };
+
+  const getSeverityBadgeClasses = (severity) => {
+    const base = 'py-1 px-3 rounded-full text-xs font-semibold';
+    if (severity === 'high') return `${base} bg-red-50 text-red-600`;
+    if (severity === 'medium') return `${base} bg-yellow-100 text-yellow-800`;
+    return `${base} bg-cyan-100 text-cyan-800`;
+  };
+
   if (!breedId) {
     return (
-      <div className="health-risks-widget empty">
+      <div className="bg-white rounded-xl p-10 text-center text-gray-500">
         <p>Добавьте породу в профиль для просмотра рисков здоровья</p>
       </div>
     );
   }
 
   if (loading) {
-    return <div className="health-risks-widget loading">Загрузка рисков...</div>;
+    return <div className="bg-white rounded-xl p-10 text-center text-gray-500">Загрузка рисков...</div>;
   }
 
   return (
-    <div className="health-risks-widget">
-      <div className="widget-header">
-        <h3>⚕️ Риски здоровья породы</h3>
-        <div className="filter-buttons">
+    <div className="bg-white rounded-xl p-6 shadow-md">
+      <div className="flex flex-col items-start gap-3 md:flex-row md:justify-between md:items-center mb-5 pb-4 border-b-2 border-gray-100">
+        <h3 className="text-xl font-semibold text-gray-800">⚕️ Риски здоровья породы</h3>
+        <div className="flex gap-2">
           <button
-            className={filter === 'all' ? 'active' : ''}
+            className={`py-1.5 px-4 border rounded-full text-[13px] cursor-pointer transition-all duration-200 ${
+              filter === 'all'
+                ? 'bg-blue-500 text-white border-blue-500'
+                : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+            }`}
             onClick={() => setFilter('all')}
           >
             Все
           </button>
           <button
-            className={filter === 'high' ? 'active' : ''}
+            className={`py-1.5 px-4 border rounded-full text-[13px] cursor-pointer transition-all duration-200 ${
+              filter === 'high'
+                ? 'bg-blue-500 text-white border-blue-500'
+                : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+            }`}
             onClick={() => setFilter('high')}
           >
             Высокие
           </button>
           <button
-            className={filter === 'medium' ? 'active' : ''}
+            className={`py-1.5 px-4 border rounded-full text-[13px] cursor-pointer transition-all duration-200 ${
+              filter === 'medium'
+                ? 'bg-blue-500 text-white border-blue-500'
+                : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+            }`}
             onClick={() => setFilter('medium')}
           >
             Средние
@@ -78,47 +102,50 @@ const HealthRiskAlertsWidget = ({ breedId, petAge }) => {
       </div>
 
       {risks.length === 0 ? (
-        <div className="no-risks">
+        <div className="p-10 text-center text-green-600 text-base font-medium">
           <p>✓ Нет выявленных генетических рисков</p>
         </div>
       ) : (
-        <div className="risks-list">
+        <div className="flex flex-col gap-4">
           {risks.map((risk, idx) => (
-            <div key={idx} className={`risk-card severity-${risk.severity}`}>
-              <div className="risk-header">
-                <div className="risk-title">
-                  <h4>{risk.condition_name}</h4>
-                  <span className={`severity-badge ${risk.severity}`}>
+            <div
+              key={idx}
+              className={`p-5 rounded-xl bg-gray-50 border-l-4 transition-all duration-200 hover:shadow-md hover:translate-x-1 ${getRiskBorderColor(risk.severity)}`}
+            >
+              <div className="mb-4">
+                <div className="flex flex-col items-start gap-2 mb-2 md:flex-row md:justify-between md:items-center">
+                  <h4 className="text-base font-semibold text-gray-800">{risk.condition_name}</h4>
+                  <span className={getSeverityBadgeClasses(risk.severity)}>
                     {risk.severity === 'high' && '⚠️ Высокий'}
                     {risk.severity === 'medium' && '⚡ Средний'}
                     {risk.severity === 'low' && 'ℹ️ Низкий'}
                   </span>
                 </div>
-                <div className="risk-stats">
-                  <span className="prevalence">{risk.prevalence_percent}%</span>
-                  <span className="system">{risk.affected_system}</span>
+                <div className="flex flex-col gap-1 text-[13px] text-gray-500 md:flex-row md:gap-3">
+                  <span className="font-semibold text-red-500">{risk.prevalence_percent}%</span>
+                  <span className="py-0.5 px-2 bg-white rounded text-xs">{risk.affected_system}</span>
                 </div>
               </div>
 
               {risk.age_of_onset && (
-                <div className="risk-onset">
-                  <strong>Возраст проявления:</strong> {risk.age_of_onset}
+                <div className="my-3 p-2.5 bg-white rounded-md text-[13px] text-gray-600">
+                  <strong className="text-gray-800">Возраст проявления:</strong> {risk.age_of_onset}
                   {petAge && (
-                    <span className={`age-indicator ${petAge >= parseAge(risk.age_of_onset) ? 'risk' : 'safe'}`}>
+                    <span className={`ml-2 font-semibold ${petAge >= parseAge(risk.age_of_onset) ? 'text-red-500' : 'text-green-600'}`}>
                       {petAge >= parseAge(risk.age_of_onset) ? ' (возраст риска!)' : ' (пока рано)'}
                     </span>
                   )}
                 </div>
               )}
 
-              <div className="risk-prevention">
-                <strong>Профилактика:</strong>
-                <p>{risk.prevention}</p>
+              <div className="my-3 p-3 bg-white rounded-md text-sm">
+                <strong className="block mb-1.5 text-gray-800 text-[13px]">Профилактика:</strong>
+                <p className="m-0 text-gray-600 leading-normal">{risk.prevention}</p>
               </div>
 
-              <div className="risk-screening">
-                <strong>Рекомендуемые обследования:</strong>
-                <p>{risk.screening}</p>
+              <div className="my-3 p-3 bg-white rounded-md text-sm">
+                <strong className="block mb-1.5 text-gray-800 text-[13px]">Рекомендуемые обследования:</strong>
+                <p className="m-0 text-gray-600 leading-normal">{risk.screening}</p>
               </div>
             </div>
           ))}
@@ -128,7 +155,6 @@ const HealthRiskAlertsWidget = ({ breedId, petAge }) => {
   );
 };
 
-// Вспомогательная функция для парсинга возраста
 const parseAge = (ageStr) => {
   if (!ageStr) return 0;
   const match = ageStr.match(/(\d+)/);
@@ -136,4 +162,3 @@ const parseAge = (ageStr) => {
 };
 
 export default HealthRiskAlertsWidget;
-

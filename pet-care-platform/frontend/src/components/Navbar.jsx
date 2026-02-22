@@ -55,7 +55,9 @@ const services = [
 function Navbar() {
   const navigate = useNavigate()
   const location = useLocation()
-  const { isAuthenticated, user, logout } = useAuthStore()
+  const isAuthenticated = useAuthStore(s => s.isAuthenticated)
+  const user = useAuthStore(s => s.user)
+  const logout = useAuthStore(s => s.logout)
   const itemsCount = useCartStore(s => s.itemsCount)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
@@ -85,16 +87,16 @@ function Navbar() {
   
   
   return (
-    <header className="fixed top-0 left-0 right-0 bg-gradient-to-r from-purple-600 via-purple-500 to-purple-600 backdrop-blur-xl shadow-lg z-50 border-b border-purple-400/30">
+    <header className="fixed top-0 left-0 right-0 bg-gradient-to-r from-primary-600 via-primary-500 to-primary-600 backdrop-blur-xl shadow-lg z-50 border-b border-primary-400/30">
       <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-20">
           {/* Логотип и бренд */}
           <div className="flex items-center">
             <Link to="/" className="flex items-center gap-2">
-              <div className="bg-gradient-to-br from-purple-500 to-orange-500 p-2 rounded-xl shadow-lg">
+              <div className="bg-gradient-to-br from-primary-500 to-accent-500 p-2 rounded-xl shadow-lg">
                 <span className="text-2xl">🐾</span>
               </div>
-              <span className="text-2xl bg-gradient-to-r from-white to-orange-200 bg-clip-text text-transparent font-bold">
+              <span className="text-2xl bg-gradient-to-r from-white to-accent-200 bg-clip-text text-transparent font-bold">
                 Питомец+
               </span>
             </Link>
@@ -111,7 +113,7 @@ function Navbar() {
             >
               Главная
               {location.pathname === '/' && (
-                <span className="absolute -bottom-1 left-0 w-full h-0.5 bg-orange-400 rounded-full shadow-lg shadow-orange-400/50"></span>
+                <span className="absolute -bottom-1 left-0 w-full h-0.5 bg-accent-400 rounded-full shadow-lg shadow-accent-400/50"></span>
               )}
             </Link>
 
@@ -131,7 +133,7 @@ function Navbar() {
                 >
                   {service.label}
                   {isActive && (
-                    <span className="absolute -bottom-1 left-0 w-full h-0.5 bg-orange-400 rounded-full shadow-lg shadow-orange-400/50"></span>
+                    <span className="absolute -bottom-1 left-0 w-full h-0.5 bg-accent-400 rounded-full shadow-lg shadow-accent-400/50"></span>
                   )}
                 </Link>
               )
@@ -149,7 +151,7 @@ function Navbar() {
                 >
                   Заказы
                   {(location.pathname === '/orders' || location.pathname.startsWith('/orders/')) && (
-                    <span className="absolute -bottom-1 left-0 w-full h-0.5 bg-orange-400 rounded-full shadow-lg shadow-orange-400/50"></span>
+                    <span className="absolute -bottom-1 left-0 w-full h-0.5 bg-accent-400 rounded-full shadow-lg shadow-accent-400/50"></span>
                   )}
                 </Link>
                 <Link
@@ -161,7 +163,7 @@ function Navbar() {
                 >
                   Профиль
                   {(location.pathname === '/profile' || location.pathname.startsWith('/profile/')) && (
-                    <span className="absolute -bottom-1 left-0 w-full h-0.5 bg-orange-400 rounded-full shadow-lg shadow-orange-400/50"></span>
+                    <span className="absolute -bottom-1 left-0 w-full h-0.5 bg-accent-400 rounded-full shadow-lg shadow-accent-400/50"></span>
                   )}
                 </Link>
               </>
@@ -179,21 +181,21 @@ function Navbar() {
                 className="text-white/80 hover:text-white transition-all duration-300 relative group"
               >
                 Выйти
-                <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-orange-400 group-hover:w-full transition-all duration-300"></span>
+                <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-accent-400 group-hover:w-full transition-all duration-300"></span>
               </button>
             ) : (
               <div className="flex items-center gap-4">
                 <Link
                   to="/login"
-                  className="text-white/80 hover:text-white transition-all duration-300 relative group focus:outline-none focus:ring-2 focus:ring-orange-400 focus:ring-offset-2 focus:ring-offset-purple-600 rounded"
+                  className="text-white/80 hover:text-white transition-all duration-300 relative group focus:outline-none focus:ring-2 focus:ring-accent-400 focus:ring-offset-2 focus:ring-offset-primary-600 rounded"
                   aria-current={location.pathname === '/login' ? 'page' : undefined}
                 >
                   Вход
-                  <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-orange-400 group-hover:w-full transition-all duration-300"></span>
+                  <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-accent-400 group-hover:w-full transition-all duration-300"></span>
                 </Link>
                 <Link
                   to="/register"
-                  className="bg-orange-500 text-white px-6 py-2.5 rounded-full hover:bg-orange-600 transition-all duration-300 font-semibold shadow-lg focus:outline-none focus:ring-2 focus:ring-orange-400 focus:ring-offset-2 focus:ring-offset-purple-600"
+                  className="bg-accent-500 text-white px-6 py-2.5 rounded-full hover:bg-accent-600 transition-all duration-300 font-semibold shadow-lg focus:outline-none focus:ring-2 focus:ring-accent-400 focus:ring-offset-2 focus:ring-offset-primary-600"
                   aria-current={location.pathname === '/register' ? 'page' : undefined}
                 >
                   Регистрация
@@ -209,7 +211,7 @@ function Navbar() {
 
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="p-2 text-white flex-shrink-0 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:ring-offset-2 focus:ring-offset-purple-600 rounded"
+              className="p-2 text-white flex-shrink-0 focus:outline-none focus:ring-2 focus:ring-accent-400 focus:ring-offset-2 focus:ring-offset-primary-600 rounded"
               aria-label={mobileMenuOpen ? 'Закрыть меню' : 'Открыть меню'}
               aria-expanded={mobileMenuOpen}
               aria-controls="mobile-menu"
@@ -222,7 +224,7 @@ function Navbar() {
 
         {/* Mobile Menu */}
         {mobileMenuOpen && (
-          <div id="mobile-menu" className="lg:hidden py-4 border-t border-purple-400/30 bg-gradient-to-b from-purple-600 to-purple-500">
+          <div id="mobile-menu" className="lg:hidden py-4 border-t border-primary-400/30 bg-gradient-to-b from-primary-600 to-primary-500">
             <nav className="flex flex-col gap-3">
               <Link
                 to="/"
@@ -294,7 +296,7 @@ function Navbar() {
                   <Link
                     to="/register"
                     onClick={() => setMobileMenuOpen(false)}
-                    className="bg-orange-500 text-white px-6 py-2.5 rounded-full hover:bg-orange-600 transition-all duration-300 mt-2 font-semibold shadow-lg"
+                    className="bg-accent-500 text-white px-6 py-2.5 rounded-full hover:bg-accent-600 transition-all duration-300 mt-2 font-semibold shadow-lg"
                     aria-current={location.pathname === '/register' ? 'page' : undefined}
                   >
                     Регистрация

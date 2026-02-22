@@ -1,8 +1,8 @@
-import { useState, useEffect, useRef } from 'react';
+﻿import { useState, useEffect, useRef } from 'react';
 import { Upload, Search, X, ChevronDown, Check } from 'lucide-react';
 import { getBreeds } from '../../../api/pets';
 
-const INPUT_STYLE = "w-full px-4 py-3 border-2 border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all bg-gradient-to-r from-white to-purple-50 hover:border-purple-300 hover:shadow-md";
+const INPUT_STYLE = "w-full px-4 py-3 border-2 border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all bg-gradient-to-r from-white to-primary-50 hover:border-primary-300 hover:shadow-md";
 const SELECT_STYLE = INPUT_STYLE + " cursor-pointer appearance-none pr-12";
 
 export default function StepBasicInfo({ formData, updateFormData }) {
@@ -234,7 +234,7 @@ export default function StepBasicInfo({ formData, updateFormData }) {
             >
               {isLoadingBreeds ? (
                 <div className="p-4 text-center text-gray-500">
-                  <div className="animate-spin w-6 h-6 border-2 border-purple-500 border-t-transparent rounded-full mx-auto mb-2" />
+                  <div className="animate-spin w-6 h-6 border-2 border-primary-500 border-t-transparent rounded-full mx-auto mb-2" />
                   Загрузка пород...
                 </div>
               ) : filteredBreeds.length === 0 ? (
@@ -260,10 +260,10 @@ export default function StepBasicInfo({ formData, updateFormData }) {
                       tabIndex={-1}
                       className={`w-full px-4 py-3 text-left transition-colors flex items-center justify-between ${
                         activeBreedIndex === index
-                          ? 'bg-purple-100 text-purple-700'
+                          ? 'bg-primary-100 text-primary-700'
                           : formData.breed === breed.name
-                            ? 'bg-purple-50'
-                            : 'hover:bg-purple-50'
+                            ? 'bg-primary-50'
+                            : 'hover:bg-primary-50'
                       }`}
                     >
                       <div>
@@ -276,7 +276,7 @@ export default function StepBasicInfo({ formData, updateFormData }) {
                         )}
                       </div>
                       {formData.breed === breed.name && (
-                        <Check className="w-5 h-5 text-purple-600" />
+                        <Check className="w-5 h-5 text-primary-600" />
                       )}
                     </button>
                   ))}
@@ -331,8 +331,8 @@ export default function StepBasicInfo({ formData, updateFormData }) {
       {/* Фото */}
       <div>
         <label className="block text-sm text-gray-700 mb-2">Фотография питомца</label>
-        <div className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-purple-400 hover:bg-purple-50 transition-all cursor-pointer">
-          <Upload className="w-12 h-12 mx-auto text-purple-400 mb-2" />
+        <div className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-primary-400 hover:bg-primary-50 transition-all cursor-pointer">
+          <Upload className="w-12 h-12 mx-auto text-primary-400 mb-2" />
           <p className="text-gray-700 text-sm mb-1">Нажмите для загрузки фото</p>
           <p className="text-gray-400 text-xs">PNG, JPG до 5MB</p>
         </div>

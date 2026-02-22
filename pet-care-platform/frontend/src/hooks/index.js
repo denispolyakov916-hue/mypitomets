@@ -34,8 +34,14 @@ export {
   breakpoints,
 } from './useMediaQuery'
 
+// Валидация форм
+export { useFormValidation } from './useFormValidation'
+
 // Хуки для работы с данными
 export { usePets } from './usePets'
+export { useCourses } from './useCourses'
+export { useCourse } from './useCourse'
+export { useOrders } from './useOrders'
 
 // Хуки для аналитики (Admin)
 // export { useChartData } from './useChartData' // УДАЛЕН - не используется

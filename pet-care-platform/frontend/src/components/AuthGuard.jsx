@@ -25,7 +25,8 @@ import { useAuthStore } from '../store/authStore'
 function AuthGuard({ children, redirectTo = '/login' }) {
   const navigate = useNavigate()
   const location = useLocation()
-  const { isAuthenticated, validateToken } = useAuthStore()
+  const isAuthenticated = useAuthStore(s => s.isAuthenticated)
+  const validateToken = useAuthStore(s => s.validateToken)
 
   useEffect(() => {
     const checkAuth = async () => {

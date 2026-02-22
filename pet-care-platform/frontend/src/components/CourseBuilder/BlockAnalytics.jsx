@@ -1,4 +1,4 @@
-/**
+﻿/**
  * BlockAnalytics - Аналитика использования блоков
  *
  * Отображает статистику использования различных типов блоков,
@@ -28,8 +28,8 @@ function StatCard({ title, value, icon: Icon, trend, color = 'blue' }) {
   const colorClasses = {
     blue: 'bg-blue-50 text-blue-700 border-blue-200',
     green: 'bg-green-50 text-green-700 border-green-200',
-    purple: 'bg-purple-50 text-purple-700 border-purple-200',
-    orange: 'bg-orange-50 text-orange-700 border-orange-200'
+    purple: 'bg-primary-50 text-primary-700 border-primary-200',
+    orange: 'bg-accent-50 text-accent-700 border-accent-200'
   }
 
   return (
@@ -371,7 +371,7 @@ function BlockAnalytics({ courseId }) {
                 <span className="font-medium">20%</span>
               </div>
               <div className="w-full h-2 bg-gray-200 rounded-full">
-                <div className="h-full bg-purple-500 rounded-full" style={{ width: '20%' }}></div>
+                <div className="h-full bg-primary-500 rounded-full" style={{ width: '20%' }}></div>
               </div>
             </div>
           </div>
@@ -397,7 +397,7 @@ function BlockAnalytics({ courseId }) {
 
               <div className="flex justify-between items-center">
                 <span className="text-sm text-gray-600 flex items-center">
-                  <div className="w-3 h-3 bg-orange-500 rounded mr-2"></div>
+                  <div className="w-3 h-3 bg-accent-500 rounded mr-2"></div>
                   Планшеты
                 </span>
                 <span className="font-medium">10%</span>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+﻿import React, { useState, useEffect, useMemo } from 'react';
 
 // Components
 import DataTable from './DataTable';
@@ -127,7 +127,7 @@ const UsersTable = () => {
       sortable: true,
       render: (value) => {
         const cfg = {
-          admin: { label: 'Администратор', cls: 'bg-purple-100 text-purple-800' },
+          admin: { label: 'Администратор', cls: 'bg-primary-100 text-primary-800' },
           course_creator: { label: 'Создатель курсов', cls: 'bg-blue-100 text-blue-800' },
           user: { label: 'Пользователь', cls: 'bg-gray-100 text-gray-800' },
         };

@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 
 const MetricCard = ({
   title,
@@ -13,7 +13,7 @@ const MetricCard = ({
     success: 'border-green-200 bg-green-50',
     warning: 'border-yellow-200 bg-yellow-50',
     danger: 'border-red-200 bg-red-50',
-    purple: 'border-purple-200 bg-purple-50',
+    purple: 'border-primary-200 bg-primary-50',
   };
 
   const textColors = {
@@ -21,7 +21,7 @@ const MetricCard = ({
     success: 'text-green-700',
     warning: 'text-yellow-700',
     danger: 'text-red-700',
-    purple: 'text-purple-700',
+    purple: 'text-primary-700',
   };
 
   return (

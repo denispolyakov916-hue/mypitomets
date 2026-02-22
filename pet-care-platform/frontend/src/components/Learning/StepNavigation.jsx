@@ -1,4 +1,4 @@
-/**
+﻿/**
  * StepNavigation - Горизонтальная навигация по шагам (Stepik-стиль)
  *
  * Отображает цепочку кружков с иконками типа урока:
@@ -13,7 +13,7 @@ import { useRef, useEffect } from 'react'
 const typeConfig = {
   text:        { icon: '📖', ring: 'ring-blue-300',   activeBg: 'bg-blue-600 text-white' },
   video:       { icon: '▶️', ring: 'ring-red-300',    activeBg: 'bg-red-500 text-white' },
-  quiz:        { icon: '❓', ring: 'ring-purple-300', activeBg: 'bg-purple-600 text-white' },
+  quiz:        { icon: '❓', ring: 'ring-primary-300', activeBg: 'bg-primary-600 text-white' },
   interactive: { icon: '🐾', ring: 'ring-green-300',  activeBg: 'bg-green-600 text-white' },
   assignment:  { icon: '✏️', ring: 'ring-amber-300',  activeBg: 'bg-amber-500 text-white' },
   webinar:     { icon: '📡', ring: 'ring-indigo-300', activeBg: 'bg-indigo-600 text-white' },

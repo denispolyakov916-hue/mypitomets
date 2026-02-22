@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 
 // Components
-import Modal from '../Forms/Modal';
+import Modal from '../../../components/ui/Modal';
 import LineChart from '../Charts/LineChart';
 import BarChart from '../Charts/BarChart';
 import PieChart from '../Charts/PieChart';
@@ -291,6 +291,7 @@ const DrillDownModal = ({
       onClose={onClose}
       title={getDrillDownTitle()}
       size="xl"
+      className="max-w-4xl"
     >
       <div className="p-6">
         {/* Настройки периода */}

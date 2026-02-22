@@ -33,7 +33,7 @@ const eventTypes = {
  */
 function HealthDiary() {
   const navigate = useNavigate()
-  const { isAuthenticated } = useAuthStore()
+  const isAuthenticated = useAuthStore(s => s.isAuthenticated)
   const { pets, isLoading: petsLoading } = usePets()
   
   const [selectedPetId, setSelectedPetId] = useState(null)
@@ -311,7 +311,7 @@ function HealthDiary() {
       {/* Заголовок */}
       <div className="flex justify-between items-center mb-8">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Дневник здоровья</h1>
+          <h1 className="page-title mb-0">Дневник здоровья</h1>
           <p className="text-gray-600 mt-1">
             Умный календарь и история событий для ваших питомцев
           </p>
@@ -386,7 +386,7 @@ function HealthDiary() {
               /* Список всех событий */
               <div className="card">
                 <div className="flex justify-between items-center mb-4">
-                  <h2 className="text-xl font-semibold text-gray-900">
+                  <h2 className="section-title mb-0">
                     Все события ({events.length})
                   </h2>
                 </div>

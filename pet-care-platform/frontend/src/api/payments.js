@@ -5,6 +5,9 @@
  */
 
 import api from './client'
+import { createCrudApi } from './baseApi'
+
+const paymentsApi = createCrudApi('/payments/')
 
 /**
  * Получение списка платежей пользователя
@@ -12,7 +15,7 @@ import api from './client'
  * @returns {Promise<Object>} Список платежей
  */
 export const getPayments = async () => {
-  return await api.get('/payments/')
+  return await paymentsApi.getList()
 }
 
 /**
@@ -29,7 +32,7 @@ export const getPayments = async () => {
  * @returns {Promise<Object>} Результат платежа
  */
 export const processPayment = async (paymentData) => {
-  return await api.post('/payments/page/', paymentData)
+  return await paymentsApi.performAction(null, 'page', paymentData)
 }
 
 // Псевдоним для обратной совместимости
@@ -42,7 +45,7 @@ export { processPayment as submitPaymentPage }
  * @returns {Promise<Object>} Результат подтверждения
  */
 export const confirmPayment = async (paymentId) => {
-  return await api.post(`/payments/${paymentId}/confirm/`, {})
+  return await paymentsApi.performAction(paymentId, 'confirm')
 }
 
 /**
@@ -57,7 +60,7 @@ export const confirmPayment = async (paymentId) => {
  * @returns {Promise<Object>} Созданный платеж
  */
 export const createPayment = async (paymentData) => {
-  return await api.post('/payments/create/', paymentData)
+  return await paymentsApi.performAction(null, 'create', paymentData)
 }
 
 /**
@@ -67,7 +70,7 @@ export const createPayment = async (paymentData) => {
  * @returns {Promise<Object>} Данные платежа
  */
 export const getPayment = async (paymentId) => {
-  return await api.get(`/payments/${paymentId}/`)
+  return await paymentsApi.getById(paymentId)
 }
 
 /**
@@ -87,7 +90,7 @@ export const getPaymentByOrder = async (orderId) => {
  * @returns {Promise<Object>} Результат отмены
  */
 export const cancelPayment = async (paymentId) => {
-  return await api.post(`/payments/${paymentId}/cancel/`, {})
+  return await paymentsApi.performAction(paymentId, 'cancel')
 }
 
 /**
@@ -96,6 +99,5 @@ export const cancelPayment = async (paymentId) => {
  * @returns {Promise<Object>} Статистика платежей
  */
 export const getPaymentStatistics = async () => {
-  return await api.get('/payments/statistics/')
+  return await paymentsApi.performAction(null, 'statistics', {}, 'get')
 }
-

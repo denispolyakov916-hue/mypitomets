@@ -112,7 +112,7 @@ const PhotoUpload = ({ photo, photoPreview, onChange, species }) => {
     <div className="flex flex-col items-center mb-8">
       <div 
         onClick={handleClick}
-        className="relative w-32 h-32 rounded-full bg-gradient-to-br from-purple-100 to-orange-100 
+        className="relative w-32 h-32 rounded-full bg-gradient-to-br from-primary-100 to-accent-100 
                    flex items-center justify-center cursor-pointer border-4 border-white shadow-lg
                    hover:shadow-xl transition-all overflow-hidden group"
       >
@@ -154,12 +154,12 @@ const TextField = ({ label, value, onChange, placeholder, error, required }) => 
       className={`w-full px-4 py-3 rounded-xl border-2 transition-all
         ${error 
           ? 'border-red-300 focus:border-red-500 focus:ring-red-200' 
-          : 'border-gray-200 focus:border-purple-500 focus:ring-purple-200'
+          : 'border-gray-200 focus:border-primary-500 focus:ring-primary-200'
         }
         focus:outline-none focus:ring-4`}
     />
     {error && (
-      <p className="mt-1 text-sm text-red-500 flex items-center gap-1">
+      <p className="mt-1 text-sm text-red-600 flex items-center gap-1">
         <AlertCircle className="w-4 h-4" /> {error}
       </p>
     )}
@@ -183,16 +183,16 @@ const ButtonSelect = ({ label, options, value, onChange, error, required }) => (
             onClick={() => onChange(option.value)}
             className={`flex-1 py-4 px-4 rounded-xl border-2 transition-all flex flex-col items-center gap-2
               ${isSelected 
-                ? 'border-purple-500 bg-purple-50 text-purple-700' 
-                : 'border-gray-200 hover:border-purple-300 hover:bg-purple-50/50'
+                ? 'border-primary-500 bg-primary-50 text-primary-700' 
+                : 'border-gray-200 hover:border-primary-300 hover:bg-primary-50/50'
               }`}
           >
-            {Icon && <Icon className={`w-8 h-8 ${isSelected ? 'text-purple-600' : 'text-gray-400'}`} />}
+            {Icon && <Icon className={`w-8 h-8 ${isSelected ? 'text-primary-600' : 'text-gray-400'}`} />}
             {option.emoji && <span className="text-3xl">{option.emoji}</span>}
-            {option.symbol && <span className={`text-2xl font-bold ${isSelected ? 'text-purple-600' : 'text-gray-400'}`}>{option.symbol}</span>}
+            {option.symbol && <span className={`text-2xl font-bold ${isSelected ? 'text-primary-600' : 'text-gray-400'}`}>{option.symbol}</span>}
             <span className="font-medium">{option.label}</span>
             {isSelected && (
-              <div className="absolute -top-1 -right-1 w-5 h-5 bg-purple-500 rounded-full flex items-center justify-center">
+              <div className="absolute -top-1 -right-1 w-5 h-5 bg-primary-500 rounded-full flex items-center justify-center">
                 <CheckCircle2 className="w-4 h-4 text-white" />
               </div>
             )}
@@ -201,7 +201,7 @@ const ButtonSelect = ({ label, options, value, onChange, error, required }) => (
       })}
     </div>
     {error && (
-      <p className="mt-2 text-sm text-red-500 flex items-center gap-1">
+      <p className="mt-2 text-sm text-red-600 flex items-center gap-1">
         <AlertCircle className="w-4 h-4" /> {error}
       </p>
     )}
@@ -320,13 +320,13 @@ const BreedSelect = ({ species, value, breedId, isMixed, onChange, error, requir
         {value ? (
           <div 
             className={`w-full px-4 py-3 rounded-xl border-2 flex justify-between items-center cursor-pointer
-              ${error ? 'border-red-300' : 'border-purple-500 bg-purple-50'}`}
+              ${error ? 'border-red-300' : 'border-primary-500 bg-primary-50'}`}
             onClick={() => {
               onChange({ breed: '', breedId: null, isMixed: false });
               setIsOpen(true);
             }}
           >
-            <span className="font-medium text-purple-700">{value}</span>
+            <span className="font-medium text-primary-700">{value}</span>
             <X className="w-5 h-5 text-gray-400 hover:text-gray-600" />
           </div>
         ) : (
@@ -344,9 +344,9 @@ const BreedSelect = ({ species, value, breedId, isMixed, onChange, error, requir
               className={`w-full pl-10 pr-4 py-3 rounded-xl border-2 transition-all
                 ${error 
                   ? 'border-red-300 focus:border-red-500' 
-                  : 'border-gray-200 focus:border-purple-500'
+                  : 'border-gray-200 focus:border-primary-500'
                 }
-                focus:outline-none focus:ring-4 focus:ring-purple-200`}
+                focus:outline-none focus:ring-4 focus:ring-primary-200`}
               role="combobox"
               aria-expanded={isOpen}
               aria-controls={listboxIdRef.current}
@@ -414,7 +414,7 @@ const BreedSelect = ({ species, value, breedId, isMixed, onChange, error, requir
                       tabIndex={-1}
                       onClick={() => handleSelectBreed(breed)}
                       className={`w-full px-4 py-3 text-left transition-colors ${
-                        activeIndex === index ? 'bg-purple-100 text-purple-700' : 'hover:bg-purple-50'
+                        activeIndex === index ? 'bg-primary-100 text-primary-700' : 'hover:bg-primary-50'
                       }`}
                     >
                       {breed.name}
@@ -437,7 +437,7 @@ const BreedSelect = ({ species, value, breedId, isMixed, onChange, error, requir
                     tabIndex={-1}
                     onClick={() => handleSelectBreed(mixedBreed)}
                     className={`w-full px-4 py-3 text-left transition-colors border-t border-gray-100 ${
-                      activeIndex === breeds.length ? 'bg-purple-100 text-purple-700' : 'hover:bg-purple-50'
+                      activeIndex === breeds.length ? 'bg-primary-100 text-primary-700' : 'hover:bg-primary-50'
                     }`}
                   >
                     {mixedBreed.name}
@@ -462,7 +462,7 @@ const BreedSelect = ({ species, value, breedId, isMixed, onChange, error, requir
                         tabIndex={-1}
                         onClick={() => handleSelectBreed(breed)}
                         className={`w-full px-4 py-3 text-left transition-colors ${
-                          activeIndex === index ? 'bg-purple-100 text-purple-700' : 'hover:bg-purple-50'
+                          activeIndex === index ? 'bg-primary-100 text-primary-700' : 'hover:bg-primary-50'
                         }`}
                       >
                         {breed.name}
@@ -480,8 +480,8 @@ const BreedSelect = ({ species, value, breedId, isMixed, onChange, error, requir
                   onClick={() => handleSelectBreed(mixedBreed)}
                   className={`w-full px-4 py-3 text-left transition-colors border-t border-gray-100 ${
                     activeIndex === popularBreeds.length
-                      ? 'bg-purple-100 text-purple-700'
-                      : 'hover:bg-purple-50 text-gray-600'
+                      ? 'bg-primary-100 text-primary-700'
+                      : 'hover:bg-primary-50 text-gray-600'
                   }`}
                 >
                   {mixedBreed.name}
@@ -500,7 +500,7 @@ const BreedSelect = ({ species, value, breedId, isMixed, onChange, error, requir
               key={breed.id}
               type="button"
               onClick={() => handleSelectBreed(breed)}
-              className="px-3 py-1.5 text-sm bg-gray-100 hover:bg-purple-100 hover:text-purple-700 
+              className="px-3 py-1.5 text-sm bg-gray-100 hover:bg-primary-100 hover:text-primary-700 
                          rounded-full transition-colors"
             >
               {breed.name}
@@ -509,7 +509,7 @@ const BreedSelect = ({ species, value, breedId, isMixed, onChange, error, requir
           <button
             type="button"
             onClick={() => handleSelectBreed(mixedBreed)}
-            className="px-3 py-1.5 text-sm bg-gray-100 hover:bg-purple-100 hover:text-purple-700 
+            className="px-3 py-1.5 text-sm bg-gray-100 hover:bg-primary-100 hover:text-primary-700 
                        rounded-full transition-colors"
           >
             {mixedBreed.name}
@@ -518,7 +518,7 @@ const BreedSelect = ({ species, value, breedId, isMixed, onChange, error, requir
       )}
       
       {error && (
-        <p className="mt-2 text-sm text-red-500 flex items-center gap-1">
+        <p className="mt-2 text-sm text-red-600 flex items-center gap-1">
           <AlertCircle className="w-4 h-4" /> {error}
         </p>
       )}
@@ -542,7 +542,7 @@ const AgeSelect = ({ ageType, dateOfBirth, ageYears, ageMonths, onChange, error,
             name="ageType"
             checked={ageType === 'exact'}
             onChange={() => onChange({ ageType: 'exact' })}
-            className="w-4 h-4 text-purple-600"
+            className="w-4 h-4 text-primary-600"
           />
           <span className="text-sm">Точная дата рождения</span>
         </label>
@@ -552,7 +552,7 @@ const AgeSelect = ({ ageType, dateOfBirth, ageYears, ageMonths, onChange, error,
             name="ageType"
             checked={ageType === 'approximate'}
             onChange={() => onChange({ ageType: 'approximate' })}
-            className="w-4 h-4 text-purple-600"
+            className="w-4 h-4 text-primary-600"
           />
           <span className="text-sm">Примерный возраст</span>
         </label>
@@ -571,9 +571,9 @@ const AgeSelect = ({ ageType, dateOfBirth, ageYears, ageMonths, onChange, error,
           className={`w-full px-4 py-3 rounded-xl border-2 transition-all
             ${error 
               ? 'border-red-300 focus:border-red-500' 
-              : 'border-gray-200 focus:border-purple-500'
+              : 'border-gray-200 focus:border-primary-500'
             }
-            focus:outline-none focus:ring-4 focus:ring-purple-200`}
+            focus:outline-none focus:ring-4 focus:ring-primary-200`}
         />
       ) : (
         <div className="flex gap-4">
@@ -584,9 +584,9 @@ const AgeSelect = ({ ageType, dateOfBirth, ageYears, ageMonths, onChange, error,
               className={`w-full px-4 py-3 rounded-xl border-2 transition-all
                 ${error 
                   ? 'border-red-300 focus:border-red-500' 
-                  : 'border-gray-200 focus:border-purple-500'
+                  : 'border-gray-200 focus:border-primary-500'
                 }
-                focus:outline-none focus:ring-4 focus:ring-purple-200`}
+                focus:outline-none focus:ring-4 focus:ring-primary-200`}
             >
               <option value="">Годы</option>
               {[...Array(20)].map((_, i) => (
@@ -601,9 +601,9 @@ const AgeSelect = ({ ageType, dateOfBirth, ageYears, ageMonths, onChange, error,
               className={`w-full px-4 py-3 rounded-xl border-2 transition-all
                 ${error 
                   ? 'border-red-300 focus:border-red-500' 
-                  : 'border-gray-200 focus:border-purple-500'
+                  : 'border-gray-200 focus:border-primary-500'
                 }
-                focus:outline-none focus:ring-4 focus:ring-purple-200`}
+                focus:outline-none focus:ring-4 focus:ring-primary-200`}
             >
               <option value="">Месяцы</option>
               {[...Array(12)].map((_, i) => (
@@ -615,7 +615,7 @@ const AgeSelect = ({ ageType, dateOfBirth, ageYears, ageMonths, onChange, error,
       )}
       
       {error && (
-        <p className="mt-2 text-sm text-red-500 flex items-center gap-1">
+        <p className="mt-2 text-sm text-red-600 flex items-center gap-1">
           <AlertCircle className="w-4 h-4" /> {error}
         </p>
       )}
@@ -682,9 +682,9 @@ const WeightInput = ({ value, onChange, error, required, selectedBreed, ageMonth
           className={`w-full px-4 py-3 pr-12 rounded-xl border-2 transition-all
             ${error 
               ? 'border-red-300 focus:border-red-500' 
-              : 'border-gray-200 focus:border-purple-500'
+              : 'border-gray-200 focus:border-primary-500'
             }
-            focus:outline-none focus:ring-4 focus:ring-purple-200`}
+            focus:outline-none focus:ring-4 focus:ring-primary-200`}
         />
         <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 font-medium">
           кг
@@ -696,7 +696,7 @@ const WeightInput = ({ value, onChange, error, required, selectedBreed, ageMonth
         </p>
       )}
       {error && (
-        <p className="mt-2 text-sm text-red-500 flex items-center gap-1">
+        <p className="mt-2 text-sm text-red-600 flex items-center gap-1">
           <AlertCircle className="w-4 h-4" /> {error}
         </p>
       )}
@@ -1097,9 +1097,9 @@ const PetCreateForm = ({ onClose }) => {
           <button
             type="submit"
             disabled={isSubmitting}
-            className="w-full py-4 px-6 bg-gradient-to-r from-purple-600 to-purple-500 
+            className="w-full py-4 px-6 bg-gradient-to-r from-primary-600 to-primary-500 
                        text-white font-semibold rounded-xl shadow-lg
-                       hover:from-purple-700 hover:to-purple-600 
+                       hover:from-primary-700 hover:to-primary-600 
                        disabled:opacity-50 disabled:cursor-not-allowed
                        transition-all flex items-center justify-center gap-2"
           >

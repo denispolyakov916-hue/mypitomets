@@ -11,17 +11,7 @@ import { useAuthStore } from '../../store/authStore'
 import { confirmPayment, getPayment, createPayment, getPaymentByOrder } from '../../api/payments'
 import { PageLoader, ButtonLoader } from '../../components/Loader'
 import AuthGuard from '../../components/AuthGuard'
-
-/**
- * Форматирование цены
- */
-const formatPrice = (price) => {
-  return new Intl.NumberFormat('ru-RU', {
-    style: 'currency',
-    currency: 'RUB',
-    maximumFractionDigits: 0
-  }).format(price)
-}
+import { formatPrice } from '../../utils/format'
 
 /**
  * Компонент страницы Payment
@@ -29,7 +19,7 @@ const formatPrice = (price) => {
 function Payment() {
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
-  const { isAuthenticated } = useAuthStore()
+  const isAuthenticated = useAuthStore(s => s.isAuthenticated)
 
   // Ref для предотвращения множественных вызовов
   const initRef = useRef(false)

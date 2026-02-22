@@ -11,6 +11,9 @@
  */
 
 import api from './client'
+import { createReadOnlyApi } from './baseApi'
+
+const coursesApi = createReadOnlyApi('/courses/')
 
 /**
  * Получение каталога курсов
@@ -30,21 +33,7 @@ import api from './client'
  * @returns {Promise<Object>} Массив курсов и количество
  */
 export const getCourses = async (filters = {}) => {
-  const params = new URLSearchParams()
-
-  // Добавляем только непустые фильтры
-  const filterKeys = ['pet_type', 'pet_id', 'category', 'subcategory', 'level', 'format_type', 'personal', 'price_type', 'min_price', 'max_price', 'search', 'page', 'per_page', 'ids']
-
-  filterKeys.forEach(key => {
-    if (filters[key]) {
-      params.append(key, filters[key])
-    }
-  })
-
-  const queryString = params.toString()
-  const url = queryString ? `/courses/?${queryString}` : '/courses/'
-
-  return await api.get(url)
+  return await coursesApi.getList(filters)
 }
 
 /**
@@ -70,7 +59,7 @@ export const getPersonalizedCourses = async (petId, additionalFilters = {}) => {
  * @returns {Promise<Object>} Данные курса и флаг is_owned
  */
 export const getCourse = async (courseId) => {
-  return await api.get(`/courses/${courseId}/`)
+  return await coursesApi.getById(courseId)
 }
 
 /**

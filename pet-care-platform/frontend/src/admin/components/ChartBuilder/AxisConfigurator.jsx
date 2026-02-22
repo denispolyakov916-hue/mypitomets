@@ -1,8 +1,5 @@
 import React, { useState, useEffect } from 'react';
 
-// Styles
-import './AxisConfigurator.css';
-
 const AxisConfigurator = ({ axes, metrics, onChange }) => {
   const [activeAxis, setActiveAxis] = useState('x');
   const [axisConfig, setAxisConfig] = useState(axes || { x: null, y: [] });
@@ -11,68 +8,43 @@ const AxisConfigurator = ({ axes, metrics, onChange }) => {
     setAxisConfig(axes || { x: null, y: [] });
   }, [axes]);
 
-  // Обработчики изменений
   const handleAxisMetricChange = (axisType, metricId) => {
     const metric = metrics.find(m => m.id === metricId);
     if (!metric) return;
-
     const newConfig = { ...axisConfig };
 
     if (axisType === 'x') {
       newConfig.x = {
-        id: metric.id,
-        field: metric.field_name,
-        type: getAxisTypeForMetric(metric),
-        label: metric.display_name || metric.name,
-        format: getDefaultFormat(metric),
-        ...newConfig.x
+        id: metric.id, field: metric.field_name, type: getAxisTypeForMetric(metric),
+        label: metric.display_name || metric.name, format: getDefaultFormat(metric), ...newConfig.x
       };
     } else if (axisType === 'y') {
-      // Для Y оси поддерживаем несколько метрик
       const existingIndex = newConfig.y.findIndex(axis => axis.id === metric.id);
       if (existingIndex >= 0) {
-        // Обновляем существующую
         newConfig.y[existingIndex] = {
-          ...newConfig.y[existingIndex],
-          id: metric.id,
-          field: metric.field_name,
-          type: 'linear',
-          label: metric.display_name || metric.name,
-          aggregation: metric.default_aggregation,
-          units: metric.units,
-          color: newConfig.y[existingIndex].color || getDefaultColor(newConfig.y.length)
+          ...newConfig.y[existingIndex], id: metric.id, field: metric.field_name, type: 'linear',
+          label: metric.display_name || metric.name, aggregation: metric.default_aggregation,
+          units: metric.units, color: newConfig.y[existingIndex].color || getDefaultColor(newConfig.y.length)
         };
       } else {
-        // Добавляем новую
         newConfig.y.push({
-          id: metric.id,
-          field: metric.field_name,
-          type: 'linear',
-          label: metric.display_name || metric.name,
-          aggregation: metric.default_aggregation,
-          units: metric.units,
-          color: getDefaultColor(newConfig.y.length)
+          id: metric.id, field: metric.field_name, type: 'linear',
+          label: metric.display_name || metric.name, aggregation: metric.default_aggregation,
+          units: metric.units, color: getDefaultColor(newConfig.y.length)
         });
       }
     }
-
     setAxisConfig(newConfig);
     onChange(axisType, newConfig[axisType]);
   };
 
   const handleAxisPropertyChange = (axisType, property, value) => {
     const newConfig = { ...axisConfig };
-
     if (axisType === 'x') {
       newConfig.x = { ...newConfig.x, [property]: value };
     } else if (axisType === 'y') {
-      // Для Y оси обновляем все метрики
-      newConfig.y = newConfig.y.map(axis => ({
-        ...axis,
-        [property]: value
-      }));
+      newConfig.y = newConfig.y.map(axis => ({ ...axis, [property]: value }));
     }
-
     setAxisConfig(newConfig);
     onChange(axisType, newConfig[axisType]);
   };
@@ -91,29 +63,19 @@ const AxisConfigurator = ({ axes, metrics, onChange }) => {
     onChange('y', newConfig.y);
   };
 
-  // Вспомогательные функции
   function getAxisTypeForMetric(metric) {
-    if (metric.data_type === 'date' || metric.data_type === 'datetime') {
-      return 'time';
-    } else if (metric.data_type === 'integer' || metric.data_type === 'decimal') {
-      return 'linear';
-    } else {
-      return 'band';
-    }
+    if (metric.data_type === 'date' || metric.data_type === 'datetime') return 'time';
+    else if (metric.data_type === 'integer' || metric.data_type === 'decimal') return 'linear';
+    else return 'band';
   }
 
   function getDefaultFormat(metric) {
     switch (metric.data_type) {
-      case 'date':
-        return '%d.%m.%Y';
-      case 'datetime':
-        return '%d.%m.%Y %H:%M';
-      case 'decimal':
-        return ',.2f';
-      case 'integer':
-        return ',';
-      default:
-        return null;
+      case 'date': return '%d.%m.%Y';
+      case 'datetime': return '%d.%m.%Y %H:%M';
+      case 'decimal': return ',.2f';
+      case 'integer': return ',';
+      default: return null;
     }
   }
 
@@ -122,140 +84,81 @@ const AxisConfigurator = ({ axes, metrics, onChange }) => {
     return colors[index % colors.length];
   }
 
+  const inputClasses = "w-full px-3 py-2 border border-gray-300 rounded-md text-sm bg-white focus:outline-none focus:border-blue-500 focus:shadow-[0_0_0_3px_rgba(59,130,246,0.1)]";
+
   return (
-    <div className="axis-configurator">
-      <div className="config-header">
-        <h3>Конфигурация осей</h3>
+    <div className="flex flex-col h-full bg-white rounded-lg">
+      <div className="px-5 py-4 border-b border-slate-200">
+        <h3 className="m-0 text-lg font-semibold text-slate-800">Конфигурация осей</h3>
       </div>
 
-      {/* Переключатель активной оси */}
-      <div className="axis-tabs">
-        <button
-          className={`axis-tab ${activeAxis === 'x' ? 'active' : ''}`}
-          onClick={() => setActiveAxis('x')}
-        >
+      <div className="flex mx-5 my-4 bg-slate-50 rounded-lg p-1">
+        <button className={`flex-1 px-4 py-2 border-none rounded-md text-sm font-medium cursor-pointer transition-all duration-200 ${activeAxis === 'x' ? 'bg-white text-slate-800 shadow-sm' : 'bg-transparent text-gray-500'}`} onClick={() => setActiveAxis('x')}>
           Ось X
         </button>
-        <button
-          className={`axis-tab ${activeAxis === 'y' ? 'active' : ''}`}
-          onClick={() => setActiveAxis('y')}
-        >
+        <button className={`flex-1 px-4 py-2 border-none rounded-md text-sm font-medium cursor-pointer transition-all duration-200 ${activeAxis === 'y' ? 'bg-white text-slate-800 shadow-sm' : 'bg-transparent text-gray-500'}`} onClick={() => setActiveAxis('y')}>
           Ось Y ({axisConfig.y?.length || 0})
         </button>
       </div>
 
-      {/* Конфигурация оси X */}
       {activeAxis === 'x' && (
-        <div className="axis-config">
-          <h4>Настройки оси X</h4>
-
-          <div className="config-group">
-            <label>Метрика:</label>
-            <select
-              value={axisConfig.x?.id || ''}
-              onChange={(e) => handleAxisMetricChange('x', e.target.value)}
-              className="metric-select"
-            >
+        <div className="flex-1 p-5 overflow-y-auto">
+          <h4 className="m-0 mb-4 text-base font-semibold text-gray-700">Настройки оси X</h4>
+          <div className="mb-4">
+            <label className="block mb-1.5 text-sm font-medium text-gray-700">Метрика:</label>
+            <select value={axisConfig.x?.id || ''} onChange={(e) => handleAxisMetricChange('x', e.target.value)} className={`${inputClasses} bg-gray-50`}>
               <option value="">Выберите метрику</option>
-              {metrics.map(metric => (
-                <option key={metric.id} value={metric.id}>
-                  {metric.display_name || metric.name}
-                </option>
-              ))}
+              {metrics.map(metric => <option key={metric.id} value={metric.id}>{metric.display_name || metric.name}</option>)}
             </select>
           </div>
-
           {axisConfig.x && (
             <>
-              <div className="config-group">
-                <label>Название оси:</label>
-                <input
-                  type="text"
-                  value={axisConfig.x.label || ''}
-                  onChange={(e) => handleAxisPropertyChange('x', 'label', e.target.value)}
-                  placeholder="Название оси"
-                />
+              <div className="mb-4">
+                <label className="block mb-1.5 text-sm font-medium text-gray-700">Название оси:</label>
+                <input type="text" value={axisConfig.x.label || ''} onChange={(e) => handleAxisPropertyChange('x', 'label', e.target.value)} placeholder="Название оси" className={inputClasses} />
               </div>
-
-              <div className="config-group">
-                <label>Тип шкалы:</label>
-                <select
-                  value={axisConfig.x.type || 'linear'}
-                  onChange={(e) => handleAxisPropertyChange('x', 'type', e.target.value)}
-                >
+              <div className="mb-4">
+                <label className="block mb-1.5 text-sm font-medium text-gray-700">Тип шкалы:</label>
+                <select value={axisConfig.x.type || 'linear'} onChange={(e) => handleAxisPropertyChange('x', 'type', e.target.value)} className={inputClasses}>
                   <option value="linear">Линейная</option>
                   <option value="time">Временная</option>
                   <option value="band">Категориальная</option>
                 </select>
               </div>
-
-              <div className="config-group">
-                <label>Формат:</label>
-                <input
-                  type="text"
-                  value={axisConfig.x.format || ''}
-                  onChange={(e) => handleAxisPropertyChange('x', 'format', e.target.value)}
-                  placeholder="d3-time-format или число"
-                />
+              <div className="mb-4">
+                <label className="block mb-1.5 text-sm font-medium text-gray-700">Формат:</label>
+                <input type="text" value={axisConfig.x.format || ''} onChange={(e) => handleAxisPropertyChange('x', 'format', e.target.value)} placeholder="d3-time-format или число" className={inputClasses} />
               </div>
-
-              <div className="config-group">
-                <label>Поворот подписей:</label>
-                <input
-                  type="number"
-                  value={axisConfig.x.rotation || 0}
-                  onChange={(e) => handleAxisPropertyChange('x', 'rotation', parseInt(e.target.value))}
-                  min="-90"
-                  max="90"
-                />
+              <div className="mb-4">
+                <label className="block mb-1.5 text-sm font-medium text-gray-700">Поворот подписей:</label>
+                <input type="number" value={axisConfig.x.rotation || 0} onChange={(e) => handleAxisPropertyChange('x', 'rotation', parseInt(e.target.value))} min="-90" max="90" className={inputClasses} />
               </div>
             </>
           )}
         </div>
       )}
 
-      {/* Конфигурация оси Y */}
       {activeAxis === 'y' && (
-        <div className="axis-config">
-          <h4>Настройки оси Y</h4>
-
-          <div className="y-axis-list">
+        <div className="flex-1 p-5 overflow-y-auto">
+          <h4 className="m-0 mb-4 text-base font-semibold text-gray-700">Настройки оси Y</h4>
+          <div className="flex flex-col gap-4">
             {axisConfig.y && axisConfig.y.map((axis, index) => (
-              <div key={axis.id} className="y-axis-item">
-                <div className="y-axis-header">
-                  <span className="axis-label">{axis.label}</span>
-                  <button
-                    className="remove-axis-btn"
-                    onClick={() => removeYAxis(index)}
-                    title="Удалить ось"
-                  >
-                    ×
-                  </button>
+              <div key={axis.id} className="p-4 bg-slate-50 rounded-lg border border-slate-200">
+                <div className="flex justify-between items-center mb-3">
+                  <span className="font-semibold text-slate-800">{axis.label}</span>
+                  <button className="w-6 h-6 rounded-full border-none bg-red-500 text-white cursor-pointer text-base font-bold flex items-center justify-center transition-colors duration-200 hover:bg-red-600" onClick={() => removeYAxis(index)} title="Удалить ось">×</button>
                 </div>
-
-                <div className="y-axis-config">
-                  <div className="config-row">
-                    <div className="config-group">
-                      <label>Метрика:</label>
-                      <select
-                        value={axis.id}
-                        onChange={(e) => handleAxisMetricChange('y', e.target.value)}
-                        className="metric-select"
-                      >
-                        {metrics.map(metric => (
-                          <option key={metric.id} value={metric.id}>
-                            {metric.display_name || metric.name}
-                          </option>
-                        ))}
+                <div className="flex flex-col gap-3">
+                  <div className="flex gap-3">
+                    <div className="flex-1">
+                      <label className="block mb-1.5 text-sm font-medium text-gray-700">Метрика:</label>
+                      <select value={axis.id} onChange={(e) => handleAxisMetricChange('y', e.target.value)} className={`${inputClasses} bg-gray-50`}>
+                        {metrics.map(metric => <option key={metric.id} value={metric.id}>{metric.display_name || metric.name}</option>)}
                       </select>
                     </div>
-
-                    <div className="config-group">
-                      <label>Агрегация:</label>
-                      <select
-                        value={axis.aggregation || 'count'}
-                        onChange={(e) => handleYAxisPropertyChange(index, 'aggregation', e.target.value)}
-                      >
+                    <div className="flex-1">
+                      <label className="block mb-1.5 text-sm font-medium text-gray-700">Агрегация:</label>
+                      <select value={axis.aggregation || 'count'} onChange={(e) => handleYAxisPropertyChange(index, 'aggregation', e.target.value)} className={inputClasses}>
                         <option value="count">Количество</option>
                         <option value="sum">Сумма</option>
                         <option value="avg">Среднее</option>
@@ -264,36 +167,24 @@ const AxisConfigurator = ({ axes, metrics, onChange }) => {
                       </select>
                     </div>
                   </div>
-
-                  <div className="config-row">
-                    <div className="config-group">
-                      <label>Цвет:</label>
-                      <input
-                        type="color"
-                        value={axis.color || '#3b82f6'}
-                        onChange={(e) => handleYAxisPropertyChange(index, 'color', e.target.value)}
-                      />
+                  <div className="flex gap-3">
+                    <div className="flex-1">
+                      <label className="block mb-1.5 text-sm font-medium text-gray-700">Цвет:</label>
+                      <input type="color" value={axis.color || '#3b82f6'} onChange={(e) => handleYAxisPropertyChange(index, 'color', e.target.value)} className={inputClasses} />
                     </div>
-
-                    <div className="config-group">
-                      <label>Единицы:</label>
-                      <input
-                        type="text"
-                        value={axis.units || ''}
-                        onChange={(e) => handleYAxisPropertyChange(index, 'units', e.target.value)}
-                        placeholder="шт, ₽, %"
-                      />
+                    <div className="flex-1">
+                      <label className="block mb-1.5 text-sm font-medium text-gray-700">Единицы:</label>
+                      <input type="text" value={axis.units || ''} onChange={(e) => handleYAxisPropertyChange(index, 'units', e.target.value)} placeholder="шт, ₽, %" className={inputClasses} />
                     </div>
                   </div>
                 </div>
               </div>
             ))}
           </div>
-
           {(!axisConfig.y || axisConfig.y.length === 0) && (
-            <div className="empty-y-axes">
-              <p>Нет настроенных осей Y</p>
-              <p>Добавьте метрики из панели метрик</p>
+            <div className="text-center py-10 px-5 text-gray-500">
+              <p className="font-semibold text-gray-700 mb-2">Нет настроенных осей Y</p>
+              <p className="m-0 text-sm">Добавьте метрики из панели метрик</p>
             </div>
           )}
         </div>

@@ -7,17 +7,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { getOrders } from '../api/shop'
-
-/**
- * Форматирование цены
- */
-const formatPrice = (price) => {
-  return new Intl.NumberFormat('ru-RU', {
-    style: 'currency',
-    currency: 'RUB',
-    maximumFractionDigits: 0
-  }).format(price)
-}
+import { formatPrice } from '../utils/format'
 
 /**
  * Форматирование даты
@@ -37,8 +27,8 @@ const formatDate = (dateString) => {
 const statusLabels = {
   pending: { label: 'Ожидает оплаты', class: 'text-amber-600' },
   processing: { label: 'В обработке', class: 'text-blue-600' },
-  shipped: { label: 'Отправлен', class: 'text-purple-600' },
-  partially_delivered: { label: 'Частично доставлен', class: 'text-purple-600' },
+  shipped: { label: 'Отправлен', class: 'text-primary-600' },
+  partially_delivered: { label: 'Частично доставлен', class: 'text-primary-600' },
   delivered: { label: 'Доставлен', class: 'text-green-600' },
   cancelled: { label: 'Отменён', class: 'text-red-600' }
 }

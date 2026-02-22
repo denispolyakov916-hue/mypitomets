@@ -18,6 +18,7 @@ import { getPets, createPet, updatePet, updatePetPartial, deletePet, getPetAnaly
 import PetCreateForm from './components/PetCreateForm';
 import PetProfileEditor from './components/PetProfileEditor';
 import { PageLoader } from '../../components/Loader';
+import { EmptyState } from '../../components/ui/EmptyState';
 
 // Иконка вида животного
 const getSpeciesEmoji = (species) => {
@@ -50,8 +51,8 @@ const getSpeciesName = (species) => {
 // Цвет прогресс-бара по проценту заполнения
 const getProgressColor = (percent) => {
   if (percent >= 80) return 'from-green-500 to-emerald-500';
-  if (percent >= 50) return 'from-yellow-500 to-orange-500';
-  return 'from-red-500 to-orange-500';
+  if (percent >= 50) return 'from-yellow-500 to-accent-500';
+  return 'from-red-500 to-accent-500';
 };
 
 // ============================================
@@ -72,7 +73,7 @@ const PetCard = React.memo(({ pet, index, onEdit, onDelete, onViewAnalysis, onNa
     >
       {/* Фото питомца */}
       <div 
-        className="relative h-48 bg-gradient-to-br from-purple-100 to-orange-100 cursor-pointer"
+        className="relative h-48 bg-gradient-to-br from-primary-100 to-accent-100 cursor-pointer"
         onClick={() => onNavigate(pet.id)}
       >
         {pet.photo ? (
@@ -116,7 +117,7 @@ const PetCard = React.memo(({ pet, index, onEdit, onDelete, onViewAnalysis, onNa
                 <Trash2 className="w-4 h-4" />
               </button>
               <button
-                className="p-2 bg-white/90 hover:bg-white text-purple-600 rounded-lg shadow-md transition-colors"
+                className="p-2 bg-white/90 hover:bg-white text-primary-600 rounded-lg shadow-md transition-colors"
                 title="QR-код"
               >
                 <QrCode className="w-4 h-4" />
@@ -136,7 +137,7 @@ const PetCard = React.memo(({ pet, index, onEdit, onDelete, onViewAnalysis, onNa
             </p>
           </div>
           {(pet.age !== null || pet.age_years !== null || pet.age_years !== undefined) && (
-            <span className="px-2.5 py-1 bg-purple-100 text-purple-600 text-xs font-medium rounded-full">
+            <span className="px-2.5 py-1 bg-primary-100 text-primary-600 text-xs font-medium rounded-full">
               {(() => {
                 const age = pet.age_years ?? pet.age;
                 if (age === null || age === undefined) return null;
@@ -174,9 +175,9 @@ const PetCard = React.memo(({ pet, index, onEdit, onDelete, onViewAnalysis, onNa
         
         {/* Предупреждения/подсказки */}
         {pet.profile_completeness < 50 && (
-          <div className="mt-3 p-2.5 bg-orange-50 rounded-xl flex items-center gap-2">
-            <AlertCircle className="w-4 h-4 text-orange-600 flex-shrink-0" />
-            <p className="text-xs text-orange-700">
+          <div className="mt-3 p-2.5 bg-accent-50 rounded-xl flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 text-accent-600 flex-shrink-0" />
+            <p className="text-xs text-accent-700">
               Заполните профиль для персонализации
             </p>
           </div>
@@ -193,7 +194,7 @@ const PetCard = React.memo(({ pet, index, onEdit, onDelete, onViewAnalysis, onNa
           </button>
           <button
             onClick={() => onFoodRecommendation(pet)}
-            className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-orange-50 text-orange-600 rounded-xl hover:bg-orange-100 transition-all font-medium"
+            className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-accent-50 text-accent-600 rounded-xl hover:bg-accent-100 transition-all font-medium"
             title="Подбор корма"
           >
             <UtensilsCrossed className="w-4 h-4" /> Подбор корма
@@ -249,7 +250,7 @@ const DraftCard = React.memo(({ draft, onContinue, onDelete }) => {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
-      className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-2xl border-2 border-dashed border-amber-200 overflow-hidden"
+      className="bg-gradient-to-br from-amber-50 to-accent-50 rounded-2xl border-2 border-dashed border-amber-200 overflow-hidden"
     >
       <div className="p-5">
         <div className="flex items-start gap-4">
@@ -277,7 +278,7 @@ const DraftCard = React.memo(({ draft, onContinue, onDelete }) => {
             <div className="flex items-center gap-2 mt-3">
               <div className="flex-1 h-1.5 bg-amber-100 rounded-full overflow-hidden">
                 <div 
-                  className="h-full bg-gradient-to-r from-amber-400 to-orange-400 transition-all"
+                  className="h-full bg-gradient-to-r from-amber-400 to-accent-400 transition-all"
                   style={{ width: `${progress}%` }}
                 />
               </div>
@@ -295,7 +296,7 @@ const DraftCard = React.memo(({ draft, onContinue, onDelete }) => {
         <div className="flex gap-2 mt-4">
           <button
             onClick={() => onContinue(draft)}
-            className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-xl hover:shadow-lg transition-all font-medium"
+            className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-gradient-to-r from-amber-500 to-accent-500 text-white rounded-xl hover:shadow-lg transition-all font-medium"
           >
             Продолжить
             <ChevronRight className="w-4 h-4" />
@@ -329,62 +330,62 @@ const DraftCard = React.memo(({ draft, onContinue, onDelete }) => {
 });
 
 // ============================================
-// ПУСТОЕ СОСТОЯНИЕ (оптимизировано)
+// ПУСТОЕ СОСТОЯНИЕ (использует общий EmptyState)
 // ============================================
 
-const EmptyState = React.memo(({ onCreateClick }) => (
+const PetsEmptyState = React.memo(({ onCreateClick }) => (
   <motion.div
     initial={{ opacity: 0, y: 20 }}
     animate={{ opacity: 1, y: 0 }}
     transition={{ duration: 0.4, ease: 'easeOut' }}
-    className="text-center py-16 px-8 bg-white rounded-3xl shadow-sm"
+    className="bg-white rounded-3xl shadow-sm px-8"
   >
-    <div className="text-8xl mb-6">🐾</div>
-    <h3 className="text-2xl font-bold text-gray-800 mb-2">
-      У вас ещё нет питомцев
-    </h3>
-    <p className="text-gray-500 mb-8 max-w-md mx-auto">
-      Создайте цифровой паспорт для вашего любимца и получите 
-      персонализированные рекомендации по уходу, питанию и обучению
-    </p>
-    <button
-      onClick={onCreateClick}
-      className="px-8 py-4 bg-gradient-to-r from-purple-600 to-orange-500 text-white rounded-2xl font-medium hover:shadow-lg transition-all flex items-center gap-2 mx-auto"
+    <EmptyState
+      icon="🐾"
+      title="У вас ещё нет питомцев"
+      description="Создайте цифровой паспорт для вашего любимца и получите персонализированные рекомендации по уходу, питанию и обучению"
+      size="lg"
+      action={
+        <button
+          onClick={onCreateClick}
+          className="px-8 py-4 bg-gradient-to-r from-primary-600 to-accent-500 text-white rounded-2xl font-medium hover:shadow-lg transition-all flex items-center gap-2"
+        >
+          <Plus className="w-5 h-5" />
+          Добавить первого питомца
+        </button>
+      }
     >
-      <Plus className="w-5 h-5" />
-      Добавить первого питомца
-    </button>
-    
-    {/* Преимущества */}
-    <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mt-12 text-left">
-      <div className="flex gap-3">
-        <div className="w-10 h-10 rounded-xl bg-purple-100 flex items-center justify-center flex-shrink-0">
-          <Heart className="w-5 h-5 text-purple-600" />
+      {/* Преимущества */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mt-8 text-left w-full">
+        <div className="flex gap-3">
+          <div className="w-10 h-10 rounded-xl bg-primary-100 flex items-center justify-center flex-shrink-0">
+            <Heart className="w-5 h-5 text-primary-600" />
+          </div>
+          <div>
+            <h4 className="font-semibold text-gray-700">Здоровье</h4>
+            <p className="text-sm text-gray-500">Отслеживание здоровья и напоминания о прививках</p>
+          </div>
         </div>
-        <div>
-          <h4 className="font-semibold text-gray-700">Здоровье</h4>
-          <p className="text-sm text-gray-500">Отслеживание здоровья и напоминания о прививках</p>
+        <div className="flex gap-3">
+          <div className="w-10 h-10 rounded-xl bg-accent-100 flex items-center justify-center flex-shrink-0">
+            <Activity className="w-5 h-5 text-accent-600" />
+          </div>
+          <div>
+            <h4 className="font-semibold text-gray-700">Рекомендации</h4>
+            <p className="text-sm text-gray-500">Персональный подбор товаров и курсов</p>
+          </div>
         </div>
-      </div>
-      <div className="flex gap-3">
-        <div className="w-10 h-10 rounded-xl bg-orange-100 flex items-center justify-center flex-shrink-0">
-          <Activity className="w-5 h-5 text-orange-600" />
-        </div>
-        <div>
-          <h4 className="font-semibold text-gray-700">Рекомендации</h4>
-          <p className="text-sm text-gray-500">Персональный подбор товаров и курсов</p>
-        </div>
-      </div>
-      <div className="flex gap-3">
-        <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center flex-shrink-0">
-          <QrCode className="w-5 h-5 text-blue-600" />
-        </div>
-        <div>
-          <h4 className="font-semibold text-gray-700">QR-код</h4>
-          <p className="text-sm text-gray-500">Быстрый доступ к профилю в экстренных случаях</p>
+        <div className="flex gap-3">
+          <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center flex-shrink-0">
+            <QrCode className="w-5 h-5 text-blue-600" />
+          </div>
+          <div>
+            <h4 className="font-semibold text-gray-700">QR-код</h4>
+            <p className="text-sm text-gray-500">Быстрый доступ к профилю в экстренных случаях</p>
+          </div>
         </div>
       </div>
-    </div>
+    </EmptyState>
   </motion.div>
 ));
 
@@ -630,7 +631,7 @@ export default function PetIdPage() {
       {/* Заголовок */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
         <div>
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-orange-500 bg-clip-text text-transparent">
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-primary-600 to-accent-500 bg-clip-text text-transparent">
             Мои питомцы
           </h1>
           <p className="text-gray-500 mt-1">
@@ -645,7 +646,7 @@ export default function PetIdPage() {
         {hasPetsOrDrafts && (
           <button
             onClick={() => setShowCreateModal(true)}
-            className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-orange-500 text-white rounded-xl hover:shadow-lg transition-all font-medium"
+            className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-primary-600 to-accent-500 text-white rounded-xl hover:shadow-lg transition-all font-medium"
           >
             <Plus className="w-5 h-5" />
             Добавить питомца
@@ -663,7 +664,7 @@ export default function PetIdPage() {
             exit={{ opacity: 0, y: -20 }}
             transition={{ duration: 0.3 }}
           >
-            <EmptyState onCreateClick={() => setShowCreateModal(true)} />
+            <PetsEmptyState onCreateClick={() => setShowCreateModal(true)} />
           </motion.div>
         ) : (
           <motion.div
@@ -683,7 +684,7 @@ export default function PetIdPage() {
                   exit={{ opacity: 0, height: 0 }}
                   transition={{ duration: 0.3 }}
                 >
-                  <h2 className="text-lg font-semibold text-gray-700 mb-4 flex items-center gap-2">
+                  <h2 className="section-title text-gray-700 flex items-center gap-2">
                     <FileEdit className="w-5 h-5 text-amber-500" />
                     Незавершённые профили ({drafts.length})
                   </h2>
@@ -711,7 +712,7 @@ export default function PetIdPage() {
                   transition={{ duration: 0.3 }}
                 >
                   {drafts.length > 0 && (
-                    <h2 className="text-lg font-semibold text-gray-700 mb-4">
+                    <h2 className="section-title text-gray-700">
                       Профили питомцев ({pets.length})
                     </h2>
                   )}

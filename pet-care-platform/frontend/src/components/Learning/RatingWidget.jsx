@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react'
 import { Button } from '../ui'
 import { Card } from '../ui'
 import { Textarea } from '../ui'
+import Rating from '../Rating'
 import { getCourseRatings, rateCourse } from '../../api/courses'
 import { useAuthStore } from '../../store/authStore'
 
@@ -17,7 +18,7 @@ const RatingWidget = ({
   onRatingSubmit,
   className = ''
 }) => {
-  const { user } = useAuthStore()
+  const user = useAuthStore(s => s.user)
   const [ratings, setRatings] = useState([])
   const [stats, setStats] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -27,7 +28,6 @@ const RatingWidget = ({
   const [review, setReview] = useState('')
   const [userRating, setUserRating] = useState(null)
   const [editing, setEditing] = useState(false)
-  const [hoveredRating, setHoveredRating] = useState(0)
 
   // Загрузка оценок при монтировании
   useEffect(() => {
@@ -76,46 +76,6 @@ const RatingWidget = ({
     } finally {
       setSubmitting(false)
     }
-  }
-
-  // Отрисовка звезд
-  const renderStars = (rating, interactive = false, onStarClick = null) => {
-    const handleMouseEnter = (value) => {
-      if (!interactive) return
-      setHoveredRating(value)
-    }
-
-    const handleMouseLeave = () => {
-      if (!interactive) return
-      setHoveredRating(0)
-    }
-
-    const activeRating = hoveredRating || rating
-
-    return (
-      <div className="flex items-center space-x-1" onMouseLeave={handleMouseLeave}>
-        {[1, 2, 3, 4, 5].map((star) => {
-          const isFilled = star <= activeRating
-
-          return (
-            <button
-              key={star}
-              type="button"
-              className={`text-2xl transition-all duration-150 ${
-                isFilled
-                  ? 'text-yellow-400'
-                  : 'text-gray-300'
-              } ${interactive ? 'hover:scale-110 cursor-pointer' : 'cursor-default'}`}
-              onClick={interactive ? () => onStarClick(star) : undefined}
-              onMouseEnter={() => handleMouseEnter(star)}
-              disabled={!interactive}
-            >
-              ★
-            </button>
-          )
-        })}
-      </div>
-    )
   }
 
   // Удаление оценки
@@ -177,13 +137,13 @@ const RatingWidget = ({
                 Ваша оценка
               </label>
               <div className="flex justify-center">
-                {renderStars(selectedRating, true, setSelectedRating)}
+                <Rating
+                  rating={selectedRating}
+                  readonly={false}
+                  onChange={setSelectedRating}
+                  size="lg"
+                />
               </div>
-              {selectedRating > 0 && (
-                <p className="text-center text-sm text-gray-500 mt-2">
-                  {selectedRating} из 5 звезд
-                </p>
-              )}
             </div>
 
             {/* Отзыв */}
@@ -257,7 +217,7 @@ const RatingWidget = ({
                       <span className="text-sm text-gray-500">({rating.pet_name})</span>
                     )}
                   </div>
-                  {renderStars(rating.rating)}
+                  <Rating rating={rating.rating} size="sm" />
                 </div>
 
                 {rating.review && (

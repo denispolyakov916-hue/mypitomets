@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+﻿import { useState, useMemo } from 'react'
 
 /**
  * Компоненты иконок (замена heroicons)
@@ -336,7 +336,7 @@ function SimpleCalendar({
                             <span className="text-xs px-2 py-1 rounded-full" style={{ backgroundColor: eventType.bgColor, color: eventType.color }}>
                               {eventType.label}
                             </span>
-                            <span className={`text-xs ${daysInfo.urgent ? 'text-orange-600 font-medium' : 'text-gray-500'}`}>
+                            <span className={`text-xs ${daysInfo.urgent ? 'text-accent-600 font-medium' : 'text-gray-500'}`}>
                               {daysInfo.text}
                             </span>
                           </div>
@@ -476,7 +476,7 @@ function SimpleCalendar({
                       <p className="font-medium text-gray-900 text-sm truncate">
                         {event.title}
                       </p>
-                      <p className={`text-xs ${daysInfo.urgent ? 'text-orange-600 font-medium' : 'text-gray-500'}`}>
+                      <p className={`text-xs ${daysInfo.urgent ? 'text-accent-600 font-medium' : 'text-gray-500'}`}>
                         {daysInfo.text}
                       </p>
                     </div>

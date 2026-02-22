@@ -8,7 +8,7 @@ import NotificationCenter from '../Notifications/NotificationCenter';
 const Header = ({ onMenuClick }) => {
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const { user, logout: adminLogout } = useAdminStore();
-  const { logout: authLogout } = useAuthStore();
+  const authLogout = useAuthStore(s => s.logout);
 
   const handleLogout = async () => {
     try {

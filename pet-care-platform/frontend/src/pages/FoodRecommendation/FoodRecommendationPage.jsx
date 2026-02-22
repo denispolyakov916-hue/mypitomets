@@ -79,7 +79,7 @@ const PetDropdown = ({ pets, selectedPet, onSelect, isLoading }) => {
         onClick={() => setIsOpen(!isOpen)}
         disabled={isLoading}
         className={`w-full flex items-center justify-between px-4 py-3 bg-white border-2 rounded-xl transition-all
-          ${isOpen ? 'border-purple-500 ring-4 ring-purple-100' : 'border-gray-200 hover:border-purple-300'}
+          ${isOpen ? 'border-primary-500 ring-4 ring-primary-100' : 'border-gray-200 hover:border-primary-300'}
           ${isLoading ? 'opacity-50 cursor-wait' : ''}`}
         role="combobox"
         aria-expanded={isOpen}
@@ -164,10 +164,10 @@ const PetDropdown = ({ pets, selectedPet, onSelect, isLoading }) => {
                 tabIndex={-1}
                 className={`w-full flex items-center gap-3 px-4 py-3 transition-colors text-left
                   ${activeIndex === index
-                    ? 'bg-purple-100 text-purple-700'
+                    ? 'bg-primary-100 text-primary-700'
                     : selectedPet?.id === pet.id
-                      ? 'bg-purple-50'
-                      : 'hover:bg-purple-50'}`}
+                      ? 'bg-primary-50'
+                      : 'hover:bg-primary-50'}`}
               >
                 <span className="text-xl">{pet.species === 'dog' ? '🐕' : '🐱'}</span>
                 <div className="flex-1">
@@ -177,7 +177,7 @@ const PetDropdown = ({ pets, selectedPet, onSelect, isLoading }) => {
                     {(pet.weight_kg || pet.weight) && ` • ${pet.weight_kg || pet.weight} кг`}
                   </p>
                 </div>
-                {selectedPet?.id === pet.id && <Check className="w-5 h-5 text-purple-600" />}
+                {selectedPet?.id === pet.id && <Check className="w-5 h-5 text-primary-600" />}
               </button>
             ))}
           </motion.div>
@@ -241,7 +241,7 @@ const SelectDropdown = ({ options, value, onChange, label, disabled }) => {
         onClick={() => !disabled && setIsOpen(!isOpen)}
         disabled={disabled}
         className={`w-full flex items-center justify-between px-4 py-3 bg-white border-2 rounded-xl transition-all
-          ${isOpen ? 'border-purple-500 ring-4 ring-purple-100' : 'border-gray-200 hover:border-purple-300'}
+          ${isOpen ? 'border-primary-500 ring-4 ring-primary-100' : 'border-gray-200 hover:border-primary-300'}
           ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
         role="combobox"
         aria-expanded={isOpen}
@@ -317,10 +317,10 @@ const SelectDropdown = ({ options, value, onChange, label, disabled }) => {
                 tabIndex={-1}
                 className={`w-full flex items-center gap-3 px-4 py-3 transition-colors text-left
                   ${activeIndex === index
-                    ? 'bg-purple-100 text-purple-700'
+                    ? 'bg-primary-100 text-primary-700'
                     : value === option.value
-                      ? 'bg-purple-50'
-                      : 'hover:bg-purple-50'}`}
+                      ? 'bg-primary-50'
+                      : 'hover:bg-primary-50'}`}
               >
                 {option.icon && <span className="text-lg">{option.icon}</span>}
                 <div className="flex-1">
@@ -329,7 +329,7 @@ const SelectDropdown = ({ options, value, onChange, label, disabled }) => {
                     <p className="text-xs text-gray-500">{option.description}</p>
                   )}
                 </div>
-                {value === option.value && <Check className="w-5 h-5 text-purple-600" />}
+                {value === option.value && <Check className="w-5 h-5 text-primary-600" />}
               </button>
             ))}
           </motion.div>
@@ -443,7 +443,7 @@ const PeriodInput = ({ value, onChange, disabled }) => {
           maxLength={2}
           className={`w-full px-4 py-3 pr-12 border-2 rounded-xl text-sm font-medium transition-all
             ${disabled ? 'opacity-50 cursor-not-allowed bg-gray-50' : 'bg-white'}
-            ${isOpen ? 'border-purple-500 ring-4 ring-purple-100' : 'border-gray-200 hover:border-purple-300'}
+            ${isOpen ? 'border-primary-500 ring-4 ring-primary-100' : 'border-gray-200 hover:border-primary-300'}
             ${showWarning ? 'border-amber-400 ring-4 ring-amber-100' : ''}`}
           placeholder="Введите дни..."
           role="combobox"
@@ -512,16 +512,16 @@ const PeriodInput = ({ value, onChange, disabled }) => {
                 tabIndex={-1}
                 className={`w-full flex items-center justify-between px-4 py-3 transition-colors text-left
                   ${activeIndex === index
-                    ? 'bg-purple-100 text-purple-700'
+                    ? 'bg-primary-100 text-primary-700'
                     : value === preset.value
-                      ? 'bg-purple-50'
-                      : 'hover:bg-purple-50'}`}
+                      ? 'bg-primary-50'
+                      : 'hover:bg-primary-50'}`}
               >
                 <div className="flex items-center gap-3">
                   <span className="font-semibold text-gray-800">{preset.label}</span>
                   <span className="text-xs text-gray-400">{preset.desc}</span>
                 </div>
-                {value === preset.value && <Check className="w-5 h-5 text-purple-600" />}
+                {value === preset.value && <Check className="w-5 h-5 text-primary-600" />}
               </button>
             ))}
             <div className="px-4 py-2 bg-gray-50 border-t border-gray-100">
@@ -563,7 +563,7 @@ const VariantToggle = ({ value, onChange, disabled }) => (
         disabled={disabled}
         className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-all
           ${value === option.value 
-            ? 'bg-white text-purple-700 shadow-sm' 
+            ? 'bg-white text-primary-700 shadow-sm' 
             : 'text-gray-600 hover:text-gray-800'}
           ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
       >
@@ -886,7 +886,7 @@ const RationComponentCard = ({
               {baseType === 'supplement' && (
                 <>
                   {component.dosage_text && (
-                    <span className="bg-purple-50 text-purple-600 px-1.5 py-0.5 rounded">
+                    <span className="bg-primary-50 text-primary-600 px-1.5 py-0.5 rounded">
                       {component.dosage_text}
                     </span>
                   )}
@@ -901,7 +901,7 @@ const RationComponentCard = ({
             
             {/* Причина рекомендации для добавок */}
             {component.reasons?.length > 0 && baseType === 'supplement' && (
-              <p className="text-xs text-purple-600 mt-1 line-clamp-1">
+              <p className="text-xs text-primary-600 mt-1 line-clamp-1">
                 ✨ {component.reasons[0]}
               </p>
             )}
@@ -909,7 +909,7 @@ const RationComponentCard = ({
           
           {/* Цена справа */}
           <div className="flex flex-col items-end justify-between text-right flex-shrink-0">
-            <span className="font-bold text-purple-700">
+            <span className="font-bold text-primary-700">
               {component.price 
                 ? `${(parseFloat(component.price) * (component.packages_needed || 1)).toLocaleString('ru-RU')} ₽`
                 : '—'
@@ -1098,12 +1098,12 @@ const FeedingPlanBlock = ({ plan, isLoading, selectedComponents, treatFrequencyD
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
       <h3 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
-        <UtensilsCrossed className="w-5 h-5 text-orange-600" />
+        <UtensilsCrossed className="w-5 h-5 text-accent-600" />
         План питания
       </h3>
       
       {/* Дневная норма */}
-      <div className="bg-gradient-to-r from-orange-50 to-amber-50 rounded-xl p-4 mb-4">
+      <div className="bg-gradient-to-r from-accent-50 to-amber-50 rounded-xl p-4 mb-4">
         <p className="text-xs text-gray-500 mb-1">Дневная норма</p>
         <p className="text-2xl font-bold text-gray-800">
           {(caloriesForUi?.total ?? regularDay.total_kcal ?? Math.round(plan.daily_calories))}{" "}
@@ -1119,7 +1119,7 @@ const FeedingPlanBlock = ({ plan, isLoading, selectedComponents, treatFrequencyD
         
         {/* БЖУ за день */}
         {componentsForUi?.length > 0 && (
-          <div className="mt-3 pt-3 border-t border-orange-200/50">
+          <div className="mt-3 pt-3 border-t border-accent-200/50">
             <p className="text-xs text-gray-500 mb-1">Питательные вещества (в день)</p>
             <div className="grid grid-cols-4 gap-2 text-xs">
               {(() => {
@@ -1135,7 +1135,7 @@ const FeedingPlanBlock = ({ plan, isLoading, selectedComponents, treatFrequencyD
                   return (
                     <>
                       <div className="bg-white/60 rounded p-1.5 text-center">
-                        <p className="font-semibold text-orange-700">{dailyNutrition.protein.grams}г</p>
+                        <p className="font-semibold text-accent-700">{dailyNutrition.protein.grams}г</p>
                         <p className="text-[10px] text-gray-500">Белок</p>
                         {dailyNutrition.protein.coverage && (
                           <p className={`text-[10px] font-medium ${covClass(dailyNutrition.protein.coverage)}`}>
@@ -1144,7 +1144,7 @@ const FeedingPlanBlock = ({ plan, isLoading, selectedComponents, treatFrequencyD
                         )}
                       </div>
                       <div className="bg-white/60 rounded p-1.5 text-center">
-                        <p className="font-semibold text-orange-700">{dailyNutrition.fat.grams}г</p>
+                        <p className="font-semibold text-accent-700">{dailyNutrition.fat.grams}г</p>
                         <p className="text-[10px] text-gray-500">Жир</p>
                         {dailyNutrition.fat.coverage && (
                           <p className={`text-[10px] font-medium ${covClass(dailyNutrition.fat.coverage)}`}>
@@ -1153,7 +1153,7 @@ const FeedingPlanBlock = ({ plan, isLoading, selectedComponents, treatFrequencyD
                         )}
                       </div>
                       <div className="bg-white/60 rounded p-1.5 text-center">
-                        <p className="font-semibold text-orange-700">—</p>
+                        <p className="font-semibold text-accent-700">—</p>
                         <p className="text-[10px] text-gray-500">Другие показатели</p>
                       </div>
                     </>
@@ -1175,15 +1175,15 @@ const FeedingPlanBlock = ({ plan, isLoading, selectedComponents, treatFrequencyD
                 return (
                   <>
                     <div className="bg-white/60 rounded p-1.5 text-center">
-                      <p className="font-semibold text-orange-700">{totals.protein.toFixed(1)}г</p>
+                      <p className="font-semibold text-accent-700">{totals.protein.toFixed(1)}г</p>
                       <p className="text-[10px] text-gray-500">Белок</p>
                     </div>
                     <div className="bg-white/60 rounded p-1.5 text-center">
-                      <p className="font-semibold text-orange-700">{totals.fat.toFixed(1)}г</p>
+                      <p className="font-semibold text-accent-700">{totals.fat.toFixed(1)}г</p>
                       <p className="text-[10px] text-gray-500">Жир</p>
                     </div>
                     <div className="bg-white/60 rounded p-1.5 text-center">
-                      <p className="font-semibold text-orange-700">—</p>
+                      <p className="font-semibold text-accent-700">—</p>
                       <p className="text-[10px] text-gray-500">Другие показатели</p>
                     </div>
                   </>
@@ -1340,15 +1340,15 @@ const FeedingPlanBlock = ({ plan, isLoading, selectedComponents, treatFrequencyD
             <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">
               Лакомства (между кормлениями)
             </p>
-            <div className="p-2.5 bg-orange-50 border border-orange-100 rounded-lg text-sm">
+            <div className="p-2.5 bg-accent-50 border border-accent-100 rounded-lg text-sm">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 flex-1 min-w-0">
                   <span>🦴</span>
-                  <span className="text-orange-700 font-medium line-clamp-1">{productName}</span>
+                  <span className="text-accent-700 font-medium line-clamp-1">{productName}</span>
                 </div>
                 <div className="text-right flex-shrink-0 ml-2">
                   {gramsPerTreatDay && (
-                    <span className="text-orange-700 font-semibold">{gramsPerTreatDay}г</span>
+                    <span className="text-accent-700 font-semibold">{gramsPerTreatDay}г</span>
                   )}
                   {piecesPerTreatDay && (
                     <span className="text-xs text-gray-500 ml-1">(~{piecesPerTreatDay} шт)</span>
@@ -1364,8 +1364,8 @@ const FeedingPlanBlock = ({ plan, isLoading, selectedComponents, treatFrequencyD
                     onClick={() => onTreatFrequencyChange?.(days)}
                     className={`px-2 py-0.5 rounded border ${
                       frequencyDays === days
-                        ? 'bg-orange-200 border-orange-300 text-orange-900'
-                        : 'bg-white border-orange-200 text-orange-700 hover:bg-orange-100'
+                        ? 'bg-accent-200 border-accent-300 text-accent-900'
+                        : 'bg-white border-accent-200 text-accent-700 hover:bg-accent-100'
                     }`}
                   >
                     {days === 1 ? 'Ежедневно' : `Раз в ${days} дн.`}
@@ -1400,12 +1400,12 @@ const FeedingPlanBlock = ({ plan, isLoading, selectedComponents, treatFrequencyD
             </p>
             <div className="space-y-2">
               {suppList.map((supp, i) => (
-                <div key={i} className="p-2.5 bg-purple-50 border border-purple-100 rounded-lg text-sm">
+                <div key={i} className="p-2.5 bg-primary-50 border border-primary-100 rounded-lg text-sm">
                   <div className="flex items-center justify-between">
-                    <span className="text-purple-700 font-medium flex items-center gap-1">
+                    <span className="text-primary-700 font-medium flex items-center gap-1">
                       💊 {supp.product?.split(' ').slice(0, 4).join(' ') || 'Добавка'}
                     </span>
-                    <span className="text-xs text-purple-600 bg-purple-100 px-2 py-0.5 rounded">
+                    <span className="text-xs text-primary-600 bg-primary-100 px-2 py-0.5 rounded">
                       {supp.dosage}
                     </span>
                   </div>
@@ -1455,8 +1455,8 @@ const FeedingPlanBlock = ({ plan, isLoading, selectedComponents, treatFrequencyD
       )}
       
       {/* Кнопка PDF */}
-      <button className="w-full mt-4 py-2.5 text-sm text-purple-600 hover:bg-purple-50 
-                         rounded-xl transition-colors flex items-center justify-center gap-2 border border-purple-200">
+      <button className="w-full mt-4 py-2.5 text-sm text-primary-600 hover:bg-primary-50 
+                         rounded-xl transition-colors flex items-center justify-center gap-2 border border-primary-200">
         <Download className="w-4 h-4" />
         Скачать PDF
       </button>
@@ -1939,7 +1939,7 @@ export default function FoodRecommendationPage() {
       <div className="page-container animate-fadeIn">
         <div className="flex items-center justify-center min-h-[400px]">
           <div className="text-center">
-            <Loader2 className="w-12 h-12 text-purple-500 animate-spin mx-auto mb-4" />
+            <Loader2 className="w-12 h-12 text-primary-500 animate-spin mx-auto mb-4" />
             <p className="text-gray-500">Загрузка...</p>
           </div>
         </div>
@@ -1953,7 +1953,7 @@ export default function FoodRecommendationPage() {
       <div className="page-container animate-fadeIn">
         <div className="flex flex-col items-center justify-center min-h-[400px] text-center">
           <div className="text-6xl mb-4">🐾</div>
-          <h2 className="text-xl font-semibold text-gray-800 mb-2">
+          <h2 className="section-title text-gray-800 mb-2">
             Для подбора корма нужен профиль питомца
           </h2>
           <p className="text-gray-500 mb-6 max-w-md">
@@ -1961,7 +1961,7 @@ export default function FoodRecommendationPage() {
           </p>
           <button
             onClick={() => navigate('/pet-id')}
-            className="px-6 py-3 bg-gradient-to-r from-purple-600 to-orange-500 text-white rounded-xl 
+            className="px-6 py-3 bg-gradient-to-r from-primary-600 to-accent-500 text-white rounded-xl 
                        font-medium hover:shadow-lg transition-all"
           >
             Создать PetID
@@ -2031,9 +2031,9 @@ export default function FoodRecommendationPage() {
         <div className="lg:col-span-2 space-y-6">
           {/* Параметры расчёта — заголовок страницы и настройки в одном блоке (overflow-visible чтобы выпадающие списки не обрезались) */}
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100">
-            <div className="bg-gradient-to-r from-purple-50 to-orange-50/50 border-b border-gray-100 rounded-t-2xl px-6 py-5">
-              <h1 className="text-xl sm:text-2xl font-bold text-gray-800 flex items-center gap-2">
-                <UtensilsCrossed className="w-6 h-6 text-purple-600 flex-shrink-0" />
+            <div className="bg-gradient-to-r from-primary-50 to-accent-50/50 border-b border-gray-100 rounded-t-2xl px-6 py-5">
+              <h1 className="page-title mb-0 flex items-center gap-2">
+                <UtensilsCrossed className="w-6 h-6 text-primary-600 flex-shrink-0" />
                 Подбор корма
               </h1>
               <p className="text-gray-500 text-sm mt-1">
@@ -2084,7 +2084,7 @@ export default function FoodRecommendationPage() {
               {/* Заголовок с переключателем варианта */}
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
                 <h3 className="font-semibold text-gray-800 flex items-center gap-2">
-                  <Sparkles className="w-5 h-5 text-purple-500" />
+                  <Sparkles className="w-5 h-5 text-primary-500" />
                   Конструктор рациона
                 </h3>
                 
@@ -2098,7 +2098,7 @@ export default function FoodRecommendationPage() {
               {isPlanLoading && (
                 <div className="flex items-center justify-center py-8">
                   <div className="flex flex-col items-center gap-2 text-center">
-                    <RefreshCw className="w-6 h-6 text-purple-500 animate-spin" />
+                    <RefreshCw className="w-6 h-6 text-primary-500 animate-spin" />
                     <p className="text-sm text-gray-500">
                       Подбираем корм для вашего питомца
                     </p>
@@ -2181,7 +2181,7 @@ export default function FoodRecommendationPage() {
                               type="button"
                               onClick={handleAddSupplement}
                               disabled={isSuppPoolLoading || supplementComponents.length >= 3 || supplementPool.length === 0}
-                              className="inline-flex items-center gap-2 text-sm px-3 py-2 rounded-lg border border-purple-200 text-purple-700 hover:bg-purple-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                              className="inline-flex items-center gap-2 text-sm px-3 py-2 rounded-lg border border-primary-200 text-primary-700 hover:bg-primary-50 disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                               <span className="text-lg leading-none">＋</span>
                               Добавить витамины
@@ -2220,7 +2220,7 @@ export default function FoodRecommendationPage() {
                   <button 
                     onClick={handleAddToCart}
                     disabled={isPlanLoading || totalCost === 0}
-                    className="w-full py-3.5 bg-gradient-to-r from-purple-600 to-orange-500 text-white 
+                    className="w-full py-3.5 bg-gradient-to-r from-primary-600 to-accent-500 text-white 
                                rounded-xl font-medium hover:shadow-lg transition-all flex items-center 
                                justify-center gap-2 disabled:opacity-50"
                   >

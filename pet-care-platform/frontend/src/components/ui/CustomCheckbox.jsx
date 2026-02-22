@@ -1,10 +1,10 @@
-import { motion } from 'framer-motion';
+﻿import { motion } from 'framer-motion';
 import { Check } from 'lucide-react';
 
 export function CustomCheckbox({ checked, onChange, variant = 'purple' }) {
   const gradientClass = variant === 'orange' 
-    ? 'from-orange-500 to-red-500' 
-    : 'from-purple-500 to-orange-500';
+    ? 'from-accent-500 to-red-500' 
+    : 'from-primary-500 to-accent-500';
 
   return (
     <button
@@ -25,7 +25,7 @@ export function CustomCheckbox({ checked, onChange, variant = 'purple' }) {
         className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
           checked 
             ? `bg-gradient-to-r ${gradientClass} border-transparent` 
-            : 'border-gray-300 bg-white hover:border-purple-400'
+            : 'border-gray-300 bg-white hover:border-primary-400'
         }`}
         whileHover={{ scale: 1.1 }}
         whileTap={{ scale: 0.95 }}

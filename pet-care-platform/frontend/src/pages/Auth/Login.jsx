@@ -28,7 +28,10 @@ import { Eye, EyeOff } from 'lucide-react'
 function Login() {
   const navigate = useNavigate()
   const location = useLocation()
-  const { login, isLoading, error, clearError, user } = useAuthStore()
+  const isLoading = useAuthStore(s => s.isLoading)
+  const error = useAuthStore(s => s.error)
+  const user = useAuthStore(s => s.user)
+  const { login, clearError } = useAuthStore()
   
   // Состояние формы
   const [formData, setFormData] = useState({
@@ -111,12 +114,12 @@ function Login() {
   }
   
   return (
-    <div className="min-h-screen flex items-center justify-center relative overflow-hidden bg-gradient-to-br from-purple-600 via-purple-500 to-purple-600 px-4">
+    <div className="min-h-screen flex items-center justify-center relative overflow-hidden bg-gradient-to-br from-primary-600 via-primary-500 to-primary-600 px-4">
       {/* Animated background elements - same as Home page */}
       <div className="absolute inset-0">
         {/* Primary gradient orbs */}
         <motion.div
-          className="absolute top-20 left-20 w-64 h-64 bg-orange-400/10 rounded-full blur-3xl"
+          className="absolute top-20 left-20 w-64 h-64 bg-accent-400/10 rounded-full blur-3xl"
           animate={{
             scale: [1, 1.3, 1],
             opacity: [0.3, 0.6, 0.3],
@@ -128,7 +131,7 @@ function Login() {
           }}
         />
         <motion.div
-          className="absolute bottom-20 right-20 w-80 h-80 bg-purple-400/10 rounded-full blur-3xl"
+          className="absolute bottom-20 right-20 w-80 h-80 bg-primary-400/10 rounded-full blur-3xl"
           animate={{
             scale: [1.3, 1, 1.3],
             opacity: [0.4, 0.7, 0.4],
@@ -141,7 +144,7 @@ function Login() {
           }}
         />
         <motion.div
-          className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-gradient-to-r from-purple-300/5 to-orange-300/5 rounded-full blur-3xl"
+          className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-gradient-to-r from-primary-300/5 to-accent-300/5 rounded-full blur-3xl"
           animate={{
             scale: [1, 1.2, 1],
             rotate: [0, 180, 360],
@@ -155,7 +158,7 @@ function Login() {
 
         {/* Additional decorative orbs */}
         <motion.div
-          className="absolute top-1/4 right-1/4 w-32 h-32 bg-orange-300/8 rounded-full blur-2xl"
+          className="absolute top-1/4 right-1/4 w-32 h-32 bg-accent-300/8 rounded-full blur-2xl"
           animate={{
             scale: [1, 1.5, 1],
             opacity: [0.2, 0.5, 0.2],
@@ -168,7 +171,7 @@ function Login() {
           }}
         />
         <motion.div
-          className="absolute bottom-1/4 left-1/4 w-40 h-40 bg-purple-300/6 rounded-full blur-2xl"
+          className="absolute bottom-1/4 left-1/4 w-40 h-40 bg-primary-300/6 rounded-full blur-2xl"
           animate={{
             scale: [1.2, 1, 1.2],
             opacity: [0.3, 0.6, 0.3],
@@ -269,7 +272,7 @@ function Login() {
           <motion.div
             key={`dot-auth-${i}`}
             className={`absolute w-2 h-2 rounded-full ${
-              i % 4 === 0 ? 'bg-purple-200' : i % 4 === 1 ? 'bg-orange-200' : i % 4 === 2 ? 'bg-purple-100' : 'bg-white/20'
+              i % 4 === 0 ? 'bg-primary-200' : i % 4 === 1 ? 'bg-accent-200' : i % 4 === 2 ? 'bg-primary-100' : 'bg-white/20'
             }`}
             style={{
               left: `${Math.random() * 100}%`,
@@ -307,15 +310,15 @@ function Login() {
             className="inline-flex items-center gap-3 mb-6"
             whileHover={{ scale: 1.05 }}
           >
-            <div className="bg-gradient-to-br from-purple-500 to-orange-500 p-3 rounded-2xl shadow-lg shadow-purple-500/30">
+            <div className="bg-gradient-to-br from-primary-500 to-accent-500 p-3 rounded-2xl shadow-lg shadow-primary-500/30">
               <span className="text-3xl">🐾</span>
             </div>
-            <span className="text-3xl bg-gradient-to-r from-purple-600 to-orange-500 bg-clip-text text-transparent font-bold">
+            <span className="text-3xl bg-gradient-to-r from-primary-600 to-accent-500 bg-clip-text text-transparent font-bold">
               Питомец+
             </span>
           </motion.div>
 
-          <h1 className="text-4xl sm:text-5xl font-bold bg-gradient-to-r from-purple-600 to-orange-500 bg-clip-text text-transparent mb-4">
+          <h1 className="text-4xl sm:text-5xl font-bold bg-gradient-to-r from-primary-600 to-accent-500 bg-clip-text text-transparent mb-4">
             Вход в аккаунт
           </h1>
           <p className="text-lg text-gray-600 leading-relaxed">
@@ -378,8 +381,8 @@ function Login() {
                 name="email"
                 value={formData.email}
                 onChange={handleChange}
-                className={`w-full px-4 py-3 border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent transition-all duration-200 text-white placeholder-white/60 bg-white/10 backdrop-blur-sm ${
-                  validationErrors.email ? 'border-red-400 bg-red-500/20' : 'border-white/30 hover:border-orange-400/60'
+                className={`w-full px-4 py-3 border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent-400 focus:border-transparent transition-all duration-200 text-white placeholder-white/60 bg-white/10 backdrop-blur-sm ${
+                  validationErrors.email ? 'border-red-400 bg-red-500/20' : 'border-white/30 hover:border-accent-400/60'
                 }`}
                 placeholder="your@email.com"
                 autoComplete="email"
@@ -387,7 +390,7 @@ function Login() {
               />
               {validationErrors.email && (
                 <motion.p
-                  className="text-sm text-red-500 mt-1"
+                  className="text-sm text-red-600 mt-1"
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   transition={{ duration: 0.3 }}
@@ -413,8 +416,8 @@ function Login() {
                   name="password"
                   value={formData.password}
                   onChange={handleChange}
-                  className={`w-full px-4 py-3 pr-12 border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent transition-all duration-200 text-white placeholder-white/60 bg-white/10 backdrop-blur-sm ${
-                    validationErrors.password ? 'border-red-400 bg-red-500/20' : 'border-white/30 hover:border-orange-400/60'
+                  className={`w-full px-4 py-3 pr-12 border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent-400 focus:border-transparent transition-all duration-200 text-white placeholder-white/60 bg-white/10 backdrop-blur-sm ${
+                    validationErrors.password ? 'border-red-400 bg-red-500/20' : 'border-white/30 hover:border-accent-400/60'
                   }`}
                   placeholder="Введите пароль"
                   autoComplete="current-password"
@@ -423,14 +426,14 @@ function Login() {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-white/60 hover:text-orange-300 transition-colors"
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-white/60 hover:text-accent-300 transition-colors"
                 >
                   {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                 </button>
               </div>
               {validationErrors.password && (
                 <motion.p
-                  className="text-sm text-red-500 mt-1"
+                  className="text-sm text-red-600 mt-1"
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   transition={{ duration: 0.3 }}
@@ -443,7 +446,7 @@ function Login() {
             {/* Кнопка отправки - same style as Home page CTA */}
             <motion.button
               type="submit"
-              className="w-full bg-gradient-to-r from-purple-500 to-orange-500 text-white font-bold py-4 px-8 rounded-2xl hover:shadow-xl hover:shadow-purple-500/50 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3 relative overflow-hidden group"
+              className="w-full bg-gradient-to-r from-primary-500 to-accent-500 text-white font-bold py-4 px-8 rounded-2xl hover:shadow-xl hover:shadow-primary-500/50 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3 relative overflow-hidden group"
               disabled={isLoading}
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
@@ -480,10 +483,10 @@ function Login() {
             <span className="text-white/80">Нет аккаунта? </span>
             <Link
               to="/register"
-              className="text-white font-semibold hover:text-orange-300 transition-all duration-200 relative group"
+              className="text-white font-semibold hover:text-accent-300 transition-all duration-200 relative group"
             >
               Зарегистрироваться
-              <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-orange-400 group-hover:w-full transition-all duration-300"></span>
+              <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-accent-400 group-hover:w-full transition-all duration-300"></span>
             </Link>
           </motion.div>
 

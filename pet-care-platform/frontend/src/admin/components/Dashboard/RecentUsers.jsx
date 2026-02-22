@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { Link } from 'react-router-dom';
 
 const RecentUsers = ({ users }) => {
@@ -58,7 +58,7 @@ const RecentUsers = ({ users }) => {
               <div className="flex items-center space-x-2">
                 <span className={`inline-flex px-2 py-1 text-xs rounded-full ${
                   user.role === 'admin'
-                    ? 'bg-purple-100 text-purple-800'
+                    ? 'bg-primary-100 text-primary-800'
                     : user.role === 'course_creator'
                     ? 'bg-blue-100 text-blue-800'
                     : 'bg-gray-100 text-gray-800'

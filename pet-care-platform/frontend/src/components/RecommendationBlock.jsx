@@ -20,17 +20,7 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useCartStore } from '../store/cartStore'
 import { ButtonLoader } from './Loader'
-
-/**
- * Форматирование цены
- */
-const formatPrice = (price) => {
-  return new Intl.NumberFormat('ru-RU', {
-    style: 'currency',
-    currency: 'RUB',
-    maximumFractionDigits: 0
-  }).format(price)
-}
+import { formatPrice } from '../utils/format'
 
 /**
  * Компонент мини-карточки товара для рекомендаций
@@ -202,7 +192,7 @@ function RecommendationCourseCard({ course, showReason = false }) {
       className="group bg-white rounded-xl shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden flex flex-col h-full border border-gray-100 hover:border-amber-200"
     >
       {/* Изображение */}
-      <div className="aspect-video bg-gradient-to-br from-amber-50 to-orange-50 relative overflow-hidden">
+      <div className="aspect-video bg-gradient-to-br from-amber-50 to-accent-50 relative overflow-hidden">
         {mainImage ? (
           <img
             src={mainImage}

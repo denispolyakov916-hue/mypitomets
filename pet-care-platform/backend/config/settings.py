@@ -23,12 +23,10 @@ try:
     
     if env_path.exists():
         load_dotenv(env_path)
-        print(f"[CONFIG] Загружен .env из {env_path}")
     
     # Затем .env.local (личные переопределения, если есть, не в Git)
     if env_local_path.exists():
         load_dotenv(env_local_path, override=True)
-        print(f"[CONFIG] Загружен .env.local из {env_local_path}")
 except ImportError:
     pass  # python-dotenv не установлен, используем переменные окружения напрямую
 
@@ -72,11 +70,12 @@ EMAIL_HOST_USER = os.getenv('SMTP_USER', 'testpetplus@mail.ru')
 EMAIL_HOST_PASSWORD = os.getenv('SMTP_PASSWORD', 'zrflr90NTgUXpTEYL080')
 DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', None) or EMAIL_HOST_USER or 'testpetplus@mail.ru'
 
-# Логирование конфигурации email для отладки (без пароля)
-print(f"[EMAIL CONFIG] Backend: {EMAIL_BACKEND}")
-print(f"[EMAIL CONFIG] Host: {EMAIL_HOST}:{EMAIL_PORT}")
-print(f"[EMAIL CONFIG] User: {EMAIL_HOST_USER}")
-print(f"[EMAIL CONFIG] From: {DEFAULT_FROM_EMAIL}")
+# Логирование конфигурации email (только в dev)
+if DEBUG:
+    print(f"[EMAIL CONFIG] Backend: {EMAIL_BACKEND}")
+    print(f"[EMAIL CONFIG] Host: {EMAIL_HOST}:{EMAIL_PORT}")
+    print(f"[EMAIL CONFIG] User: {EMAIL_HOST_USER}")
+    print(f"[EMAIL CONFIG] From: {DEFAULT_FROM_EMAIL}")
 
 # TLS и SSL взаимоисключающие - определяем автоматически по порту или из переменных окружения
 # Для Gmail: порт 587 использует TLS, порт 465 использует SSL
@@ -255,7 +254,6 @@ YANDEX_S3_REGION = os.getenv('YANDEX_S3_REGION', 'ru-central1')
 USE_S3_STORAGE = bool(YANDEX_S3_ACCESS_KEY_ID and YANDEX_S3_SECRET_ACCESS_KEY)
 
 if USE_S3_STORAGE:
-    # Django 5.1+ STORAGES конфигурация
     STORAGES = {
         'default': {
             'BACKEND': 'core.storage_backends.PrivateYandexS3Storage',
@@ -267,8 +265,9 @@ if USE_S3_STORAGE:
             'BACKEND': 'django.contrib.staticfiles.storage.StaticFilesStorage',
         },
     }
-    print('[STORAGE] Yandex Cloud S3 storage enabled')
-else:
+    if DEBUG:
+        print('[STORAGE] Yandex Cloud S3 storage enabled')
+elif DEBUG:
     print('[STORAGE] Local file storage (S3 keys not configured)')
 
 # Ограничения на размер загружаемых файлов
@@ -391,33 +390,30 @@ CORS_ALLOW_HEADERS = [
 # КЭШИРОВАНИЕ
 # =============================================================================
 
-# Настройки кэширования
-# В разработке используем локальный memory cache
-# В продакшене рекомендуется использовать Redis
-CACHES = {
-    'default': {
-        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
-        'LOCATION': 'unique-snowflake',
-        'OPTIONS': {
-            'MAX_ENTRIES': 10000,
-        },
-        'KEY_PREFIX': 'pitomets',
-        'TIMEOUT': 300,  # 5 минут по умолчанию
-    }
-}
+# Кэширование: Redis в production (при наличии REDIS_URL), LocMemCache в dev
+REDIS_URL = os.getenv('REDIS_URL')
 
-# Для продакшена рекомендуется использовать Redis:
-# CACHES = {
-#     'default': {
-#         'BACKEND': 'django.core.cache.backends.redis.RedisCache',
-#         'LOCATION': os.getenv('REDIS_URL', 'redis://127.0.0.1:6379/1'),
-#         'OPTIONS': {
-#             'CLIENT_CLASS': 'django_redis.client.DefaultClient',
-#         },
-#         'KEY_PREFIX': 'pitomets',
-#         'TIMEOUT': 300,
-#     }
-# }
+if REDIS_URL:
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.redis.RedisCache',
+            'LOCATION': REDIS_URL,
+            'KEY_PREFIX': 'pitomets',
+            'TIMEOUT': 300,
+        }
+    }
+else:
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+            'LOCATION': 'unique-snowflake',
+            'OPTIONS': {
+                'MAX_ENTRIES': 10000,
+            },
+            'KEY_PREFIX': 'pitomets',
+            'TIMEOUT': 300,
+        }
+    }
 
 # Время жизни кэша для разных типов данных (в секундах)
 CACHE_TIMEOUTS = {
@@ -548,3 +544,26 @@ handler400 = 'config.error_views.bad_request'
 handler403 = 'config.error_views.permission_denied'
 handler404 = 'config.error_views.page_not_found'
 handler500 = 'config.error_views.server_error'
+
+# =============================================================================
+# PRODUCTION SECURITY (активируется при DEBUG=False)
+# =============================================================================
+
+if not DEBUG:
+    SECURE_SSL_REDIRECT = os.getenv('SECURE_SSL_REDIRECT', 'False').lower() == 'true'
+
+    SECURE_HSTS_SECONDS = 31536000
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
+    CSRF_TRUSTED_ORIGINS = [
+        f'https://{host.strip()}' for host in ALLOWED_HOSTS if host.strip() != '*'
+    ]
+    client_url = os.getenv('CLIENT_URL', '')
+    if client_url:
+        CSRF_TRUSTED_ORIGINS.append(client_url)

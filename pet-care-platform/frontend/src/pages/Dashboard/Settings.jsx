@@ -12,6 +12,7 @@ import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../../store/authStore'
 import { PageLoader, ButtonLoader } from '../../components/Loader'
+import { Alert } from '../../components/ui/Alert'
 import api from '../../api/client'
 
 /**
@@ -19,7 +20,8 @@ import api from '../../api/client'
  */
 function Settings() {
   const navigate = useNavigate()
-  const { isAuthenticated, user } = useAuthStore()
+  const isAuthenticated = useAuthStore(s => s.isAuthenticated)
+  const user = useAuthStore(s => s.user)
   
   const [formData, setFormData] = useState({
     email: '',
@@ -117,28 +119,28 @@ function Settings() {
         </Link>
         
         {/* Заголовок */}
-        <h1 className="text-3xl font-bold text-gray-900 mb-8">
+        <h1 className="page-title mb-8">
           Настройки профиля
         </h1>
         
         {/* Сообщения */}
         {error && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-600">
+          <Alert variant="error" className="mb-6">
             {error}
-          </div>
+          </Alert>
         )}
         
         {success && (
-          <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg text-green-600">
+          <Alert variant="success" className="mb-6">
             Изменения успешно сохранены!
-          </div>
+          </Alert>
         )}
         
         {/* Форма */}
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Email */}
           <div className="card">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">
+            <h2 className="section-title">
               Учетная запись
             </h2>
             <div>
@@ -163,7 +165,7 @@ function Settings() {
           
           {/* Персональные данные */}
           <div className="card">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">
+            <h2 className="section-title">
               Персональные данные
             </h2>
             
@@ -222,7 +224,7 @@ function Settings() {
           
           {/* Адрес доставки */}
           <div className="card">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">
+            <h2 className="section-title">
               Адрес доставки по умолчанию
             </h2>
             

@@ -55,7 +55,7 @@ const AdminDefaultRedirect = () => {
 };
 
 const AdminApp = () => {
-  const { user } = useAuthStore();
+  const user = useAuthStore(s => s.user);
   const { setUser, checkAuth } = useAdminStore();
 
   // Синхронизация пользователя из authStore в adminStore

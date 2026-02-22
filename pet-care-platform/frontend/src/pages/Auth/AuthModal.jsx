@@ -9,6 +9,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate, useLocation, Link } from 'react-router-dom'
 import { useAuthStore } from '../../store/authStore'
 import { ButtonLoader } from '../../components/Loader'
+import '../../styles/auth.css'
 
 /**
  * Компонент AuthModal
@@ -19,7 +20,9 @@ import { ButtonLoader } from '../../components/Loader'
 function AuthModal() {
   const navigate = useNavigate()
   const location = useLocation()
-  const { login, register, activateByCode, isLoading, error, clearError } = useAuthStore()
+  const isLoading = useAuthStore(s => s.isLoading)
+  const error = useAuthStore(s => s.error)
+  const { login, register, activateByCode, clearError } = useAuthStore()
 
   // Определяем начальный режим по URL
   const isRegisterPath = location.pathname === '/register'

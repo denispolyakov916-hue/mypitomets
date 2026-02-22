@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../../api/client';
 
@@ -82,7 +82,7 @@ const BreedsPage = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Заголовок */}
-      <div className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white py-12">
+      <div className="bg-gradient-to-r from-indigo-600 to-primary-600 text-white py-12">
         <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8">
           <h1 className="text-3xl md:text-4xl font-bold mb-4">Каталог пород</h1>
           <p className="text-indigo-100 text-lg">
@@ -220,7 +220,7 @@ const BreedsPage = () => {
                   className="bg-white rounded-xl shadow-sm hover:shadow-md transition overflow-hidden group"
                 >
                   {/* Заголовок карточки */}
-                  <div className={`p-4 ${breed.species === 'dog' ? 'bg-amber-50' : 'bg-purple-50'}`}>
+                  <div className={`p-4 ${breed.species === 'dog' ? 'bg-amber-50' : 'bg-primary-50'}`}>
                     <div className="flex items-center justify-between">
                       <span className={`text-2xl`}>
                         {breed.species === 'dog' ? '🐕' : '🐈'}
@@ -277,7 +277,7 @@ const BreedsPage = () => {
                         </span>
                       )}
                       {breed.brachycephalic && (
-                        <span className="px-2 py-0.5 bg-orange-100 text-orange-700 text-xs rounded">
+                        <span className="px-2 py-0.5 bg-accent-100 text-accent-700 text-xs rounded">
                           Брахицефал
                         </span>
                       )}

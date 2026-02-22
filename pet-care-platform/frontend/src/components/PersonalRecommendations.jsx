@@ -11,17 +11,7 @@ import { useAuthStore } from '../store/authStore'
 import { PageLoader } from './Loader'
 import Rating from './Rating'
 import { apiCache } from '../utils/apiCache'
-
-/**
- * Форматирование цены
- */
-const formatPrice = (price) => {
-  return new Intl.NumberFormat('ru-RU', {
-    style: 'currency',
-    currency: 'RUB',
-    maximumFractionDigits: 0
-  }).format(price)
-}
+import { formatPrice } from '../utils/format'
 
 /**
  * Компонент PersonalRecommendations
@@ -37,7 +27,7 @@ function PersonalRecommendations({
   ctaLabel = 'Посмотреть все товары',
   ctaHref = '/shop'
 }) {
-  const { isAuthenticated } = useAuthStore()
+  const isAuthenticated = useAuthStore(s => s.isAuthenticated)
   const [recommendations, setRecommendations] = useState([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -202,7 +192,7 @@ function PersonalRecommendations({
                 </div>
                 <div className="flex flex-col gap-1">
                   <span className={`px-2 py-1 text-xs rounded-full ${
-                    (item.animal || item.pet_type) === 'dog' ? 'bg-blue-100 text-blue-700' : 'bg-orange-100 text-orange-700'
+                    (item.animal || item.pet_type) === 'dog' ? 'bg-blue-100 text-blue-700' : 'bg-accent-100 text-accent-700'
                   }`}>
                     {(item.animal || item.pet_type) === 'dog' ? 'Собаки' : (item.pet_type === 'all' ? 'Все' : 'Кошки')}
                   </span>

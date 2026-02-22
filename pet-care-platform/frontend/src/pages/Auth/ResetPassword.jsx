@@ -37,7 +37,7 @@ const validatePassword = (password) => {
 const ResetPassword = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { setAuth } = useAuthStore();
+  const setAuth = useAuthStore(s => s.setAuth);
   
   const [formData, setFormData] = useState({
     email: location.state?.email || '',

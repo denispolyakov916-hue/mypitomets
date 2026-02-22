@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 
 // Components
-import Modal from './Modal';
+import Modal from '../../../components/ui/Modal';
 import FormField from './FormField';
 import FormButtons from './FormButtons';
 import ImageUpload from './ImageUpload';
@@ -205,6 +205,7 @@ const ProductForm = ({
       onClose={onClose}
       title={isEditing ? 'Редактирование товара' : 'Создание товара'}
       size="xl"
+      className="max-w-4xl"
     >
       <form className="p-6 space-y-6">
         {/* Основная информация */}

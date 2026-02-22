@@ -5,24 +5,14 @@
  * Позволяет перейти к деталям каждого заказа.
  */
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { getOrders } from '../../api/shop'
 import { createPayment } from '../../api/payments'
 import { PageLoader } from '../../components/Loader'
-import { useToastStore } from '../../store/toastStore'
+import { EmptyState } from '../../components/ui/EmptyState'
+import { useOrders } from '../../hooks/useOrders'
 import OrderTimer from '../../components/OrderTimer'
-
-/**
- * Форматирование цены
- */
-const formatPrice = (price) => {
-  return new Intl.NumberFormat('ru-RU', {
-    style: 'currency',
-    currency: 'RUB',
-    maximumFractionDigits: 0
-  }).format(price)
-}
+import { formatPrice } from '../../utils/format'
 
 /**
  * Форматирование даты
@@ -92,7 +82,7 @@ const statusConfig = {
   },
   partially_delivered: {
     label: 'Частично доставлен',
-    class: 'bg-purple-100 text-purple-800 border-purple-200',
+    class: 'bg-primary-100 text-primary-800 border-primary-200',
     icon: (
       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7 8h10M7 12h4m-4 4h6" />
@@ -101,7 +91,7 @@ const statusConfig = {
   },
   shipped: {
     label: 'Отправлен',
-    class: 'bg-purple-100 text-purple-800 border-purple-200',
+    class: 'bg-primary-100 text-primary-800 border-primary-200',
     icon: (
       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
@@ -378,51 +368,7 @@ function OrderCard({ order, onOrderExpired }) {
  */
 function Orders() {
   const navigate = useNavigate()
-  const [orders, setOrders] = useState([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState(null)
-  const { error: showError } = useToastStore()
-
-
-  const fetchOrders = async () => {
-    setIsLoading(true)
-    setError(null)
-
-    try {
-      const response = await getOrders()
-      console.log('Orders response:', response)
-      console.log('Orders data:', response.orders)
-      setOrders(response.orders || [])
-    } catch (err) {
-      const errorMessage = err.response?.data?.error || err.message || 'Не удалось загрузить заказы'
-      setError(errorMessage)
-      showError(errorMessage)
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  const handleOrderExpired = (orderId) => {
-    // Обновляем статус заказа на 'expired' локально
-    setOrders(prevOrders =>
-      prevOrders.map(order =>
-        order.id === orderId
-          ? { ...order, status: 'expired' }
-          : order
-      )
-    )
-  }
-
-  useEffect(() => {
-    fetchOrders()
-
-    // Автообновление заказов каждые 5 минут (уменьшено для снижения нагрузки)
-    const interval = setInterval(() => {
-      fetchOrders()
-    }, 300000) // Каждые 5 минут
-
-    return () => clearInterval(interval)
-  }, [])
+  const { orders, isLoading, error, refetch, handleOrderExpired } = useOrders()
 
   if (isLoading) {
     return <PageLoader />
@@ -431,15 +377,17 @@ function Orders() {
   if (error && orders.length === 0) {
     return (
       <div className="page-container">
-        <div className="card text-center py-12">
-          <div className="text-5xl mb-4">📦</div>
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">
-            Не удалось загрузить заказы
-          </h2>
-          <p className="text-gray-600 mb-6">{error}</p>
-          <button onClick={fetchOrders} className="btn-primary">
-            Попробовать снова
-          </button>
+        <div className="card">
+          <EmptyState
+            icon="📦"
+            title="Не удалось загрузить заказы"
+            description={error}
+            action={
+              <button onClick={refetch} className="btn-primary">
+                Попробовать снова
+              </button>
+            }
+          />
         </div>
       </div>
     )
@@ -467,28 +415,29 @@ function Orders() {
       
       {/* Список заказов */}
       {orders.length === 0 ? (
-        <div className="card text-center py-16">
-          <div className="text-6xl mb-6">📦</div>
-          <h2 className="text-2xl font-semibold text-gray-900 mb-3">
-            У вас пока нет заказов
-          </h2>
-          <p className="text-gray-600 mb-8 max-w-md mx-auto">
-            Сделайте первый заказ в нашем магазине или приобретите обучающий курс
-          </p>
-          <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <Link to="/shop" className="btn-primary">
-              Перейти в магазин
-            </Link>
-            <Link to="/courses" className="btn-secondary">
-              Смотреть курсы
-            </Link>
-          </div>
+        <div className="card">
+          <EmptyState
+            icon="📦"
+            title="У вас пока нет заказов"
+            description="Сделайте первый заказ в нашем магазине или приобретите обучающий курс"
+            size="lg"
+            action={
+              <Link to="/shop" className="btn-primary">
+                Перейти в магазин
+              </Link>
+            }
+            secondaryAction={
+              <Link to="/courses" className="btn-secondary">
+                Смотреть курсы
+              </Link>
+            }
+          />
         </div>
       ) : (
         <div className="space-y-8">
           {Object.entries(groupedOrders).map(([dateKey, dateOrders]) => (
             <div key={dateKey}>
-              <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+              <h2 className="section-title flex items-center gap-2">
                 <span className="w-1 h-6 bg-primary-600 rounded-full"></span>
                 {dateKey}
               </h2>

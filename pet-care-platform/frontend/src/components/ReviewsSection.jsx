@@ -20,7 +20,7 @@ import { useToastStore } from '../store/toastStore'
 import { useAuthStore } from '../store/authStore'
 
 function ReviewsSection({ type, itemId, isPurchased = false }) {
-  const { isAuthenticated } = useAuthStore()
+  const isAuthenticated = useAuthStore(s => s.isAuthenticated)
   const [reviews, setReviews] = useState([])
   const [rating, setRating] = useState(0)
   const [reviewsCount, setReviewsCount] = useState(0)

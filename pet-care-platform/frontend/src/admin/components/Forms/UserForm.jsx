@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 
 // Components
-import Modal from './Modal';
+import Modal from '../../../components/ui/Modal';
 import FormField from './FormField';
 import FormButtons from './FormButtons';
 
@@ -111,7 +111,7 @@ const UserForm = ({
       isOpen={isOpen}
       onClose={onClose}
       title={isEditing ? 'Редактирование пользователя' : 'Создание пользователя'}
-      size="lg"
+      size="2xl"
     >
       <form className="p-6 space-y-6">
         {/* Основная информация */}
@@ -214,11 +214,11 @@ const UserForm = ({
                 <div className="text-sm text-gray-600">Заказов</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold text-purple-600">{user.payments_count || 0}</div>
+                <div className="text-2xl font-bold text-primary-600">{user.payments_count || 0}</div>
                 <div className="text-sm text-gray-600">Платежей</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold text-orange-600">{user.courses_count || 0}</div>
+                <div className="text-2xl font-bold text-accent-600">{user.courses_count || 0}</div>
                 <div className="text-sm text-gray-600">Курсов</div>
               </div>
             </div>

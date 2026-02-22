@@ -3,17 +3,7 @@ import { useSearchParams, useNavigate, Link } from 'react-router-dom'
 import { useAuthStore } from '../../store/authStore'
 import { PageLoader } from '../../components/Loader'
 import { useCartStore } from '../../store/cartStore'
-
-/**
- * Форматирование цены
- */
-const formatPrice = (price) => {
-  return new Intl.NumberFormat('ru-RU', {
-    style: 'currency',
-    currency: 'RUB',
-    maximumFractionDigits: 0
-  }).format(price)
-}
+import { formatPrice } from '../../utils/format'
 
 /**
  * Компонент выбора способа оплаты
@@ -21,8 +11,9 @@ const formatPrice = (price) => {
 function PaymentMethodSelection() {
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
-  const { isAuthenticated } = useAuthStore()
-  const { itemsCount, totalPrice } = useCartStore()
+  const isAuthenticated = useAuthStore(s => s.isAuthenticated)
+  const itemsCount = useCartStore(s => s.itemsCount)
+  const totalPrice = useCartStore(s => s.totalPrice)
 
   const [selectedMethod, setSelectedMethod] = useState('')
   const [isProcessing, setIsProcessing] = useState(false)

@@ -2,7 +2,6 @@ import React, { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { baseAnimations } from './errorAnimations'
-import '../../styles/errors-common.css'
 
 /**
  * Страница ошибки 404 - Страница не найдена
@@ -13,7 +12,6 @@ import '../../styles/errors-common.css'
 const Error404 = () => {
   const navigate = useNavigate()
 
-  // Конфигурация страницы
   const config = {
     imageUrl: 'https://images.unsplash.com/photo-1548199973-03cce0bbc87b?w=640&q=80',
     imageAlt: 'Пуф Пуфыч',
@@ -23,10 +21,8 @@ const Error404 = () => {
     description: 'К сожалению, страница, которую вы ищете, не существует или была перемещена.'
   }
 
-  // Анимации для разных элементов
   const animations = baseAnimations
 
-  // Анимация букв в заголовке (можно улучшить позже с помощью framer-motion)
   useEffect(() => {
     const title = document.querySelector('.error-404-title')
     if (title) {
@@ -34,7 +30,7 @@ const Error404 = () => {
       title.textContent = ''
       text.split('').forEach((char, index) => {
         const span = document.createElement('span')
-        span.className = 'letter'
+        span.className = 'inline-block opacity-0 animate-letterFadeIn'
         span.innerHTML = char === ' ' ? '&nbsp;' : char
         span.style.animationDelay = `${0.4 + index * 0.05}s`
         title.appendChild(span)
@@ -43,10 +39,9 @@ const Error404 = () => {
   }, [])
 
   return (
-    <div className="min-h-screen bg-white flex items-center justify-center px-4 relative overflow-hidden">
-      {/* Большая цифра ошибки на фоне - с framer-motion */}
+    <div className="min-h-screen bg-white flex items-center justify-center px-4 relative overflow-hidden font-[Nunito,sans-serif]">
       <motion.div 
-        className="error-number-bg"
+        className="fixed inset-0 flex items-center justify-center text-[40vw] font-extrabold text-primary-500 z-0 leading-none pointer-events-none"
         initial={animations.backgroundNumber.initial}
         animate={animations.backgroundNumber.animate}
         transition={animations.backgroundNumber.transition}
@@ -55,7 +50,6 @@ const Error404 = () => {
       </motion.div>
 
       <div className="text-center max-w-2xl mx-auto relative z-10">
-        {/* Изображение - с framer-motion */}
         <motion.div 
           className="mb-12"
           initial={animations.image.initial}
@@ -65,21 +59,12 @@ const Error404 = () => {
           <img 
             src={config.imageUrl} 
             alt={config.imageAlt} 
-            className="error-page-image mx-auto"
+            className="w-64 h-64 object-cover rounded-full mx-auto border-4 border-gray-100"
           />
-          
-          {/* МЕСТО ДЛЯ БУДУЩЕЙ АНИМАЦИИ ИЗОБРАЖЕНИЯ */}
-          {/* Здесь можно добавить:
-              - Анимацию покачивания (wiggleAnimation)
-              - Пульсацию (pulseAnimation)
-              - Эффект "дыхания" (breathingAnimation)
-              - Реакцию на наведение (imageHoverAnimation)
-              - Комплексную анимацию "живого питомца" (livingPetAnimation) */}
         </motion.div>
 
-        {/* Заголовок - с framer-motion */}
         <motion.h2 
-          className="text-3xl font-bold text-gray-900 mb-4 animate-title error-404-title"
+          className="text-3xl font-bold text-gray-900 mb-4 inline-block error-404-title"
           initial={animations.title.initial}
           animate={animations.title.animate}
           transition={animations.title.transition}
@@ -87,7 +72,6 @@ const Error404 = () => {
           {config.title}
         </motion.h2>
 
-        {/* Текст - с framer-motion */}
         <motion.p 
           className="text-lg text-gray-600 mb-12 max-w-md mx-auto"
           initial={animations.text.initial}
@@ -97,7 +81,6 @@ const Error404 = () => {
           {config.description}
         </motion.p>
 
-        {/* Кнопки - с framer-motion */}
         <motion.div 
           className="flex gap-4 justify-center flex-wrap"
           initial={animations.buttons.initial}
@@ -105,7 +88,7 @@ const Error404 = () => {
           transition={animations.buttons.transition}
         >
           <motion.button 
-            className="btn bg-purple-500 text-white px-8 py-3 rounded-full font-semibold"
+            className="transition-all duration-200 bg-primary-500 text-white px-8 py-3 rounded-full font-semibold"
             onClick={() => navigate('/')}
             whileHover={{ scale: 1.05, y: -2 }}
             whileTap={{ scale: 0.95 }}
@@ -115,7 +98,7 @@ const Error404 = () => {
           </motion.button>
           
           <motion.button 
-            className="btn bg-white text-gray-700 px-8 py-3 rounded-full font-semibold border-2 border-gray-200"
+            className="transition-all duration-200 bg-white text-gray-700 px-8 py-3 rounded-full font-semibold border-2 border-gray-200"
             onClick={() => window.history.back()}
             whileHover={{ scale: 1.05, y: -2 }}
             whileTap={{ scale: 0.95 }}
@@ -125,7 +108,7 @@ const Error404 = () => {
           </motion.button>
           
           <motion.button 
-            className="btn bg-orange-500 text-white px-8 py-3 rounded-full font-semibold"
+            className="transition-all duration-200 bg-accent-500 text-white px-8 py-3 rounded-full font-semibold"
             onClick={() => alert('Игра скоро появится! 🎮')}
             whileHover={{ scale: 1.05, y: -2 }}
             whileTap={{ scale: 0.95 }}

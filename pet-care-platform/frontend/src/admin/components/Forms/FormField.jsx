@@ -1,4 +1,17 @@
 import React from 'react';
+import Input, { Textarea, Checkbox } from '../../../components/ui/Input';
+
+const selectClasses = (error, disabled) => `
+  block w-full rounded-lg border bg-white
+  transition-colors duration-200
+  focus:outline-none focus:ring-2 focus:ring-offset-0
+  px-4 py-2 text-sm
+  ${error
+    ? 'border-red-300 focus:border-red-500 focus:ring-red-500'
+    : 'border-gray-300 focus:border-primary-500 focus:ring-primary-500'
+  }
+  ${disabled ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''}
+`.trim().replace(/\s+/g, ' ');
 
 const FormField = ({
   label,
@@ -15,15 +28,6 @@ const FormField = ({
   children,
   ...props
 }) => {
-  const baseInputClasses = `
-    block w-full px-3 py-2 border rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm
-    ${error
-      ? 'border-red-300 focus:ring-red-500 focus:border-red-500'
-      : 'border-gray-300'
-    }
-    ${disabled ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'}
-  `;
-
   const handleChange = (e) => {
     if (onChange) {
       if (type === 'checkbox') {
@@ -46,7 +50,7 @@ const FormField = ({
     switch (type) {
       case 'textarea':
         return (
-          <textarea
+          <Textarea
             id={name}
             name={name}
             value={value || ''}
@@ -55,9 +59,7 @@ const FormField = ({
             placeholder={placeholder}
             disabled={disabled}
             required={required}
-            className={`${baseInputClasses} resize-vertical`}
-            rows={4}
-            {...props}
+            rows={props.rows || 4}
           />
         );
 
@@ -71,7 +73,7 @@ const FormField = ({
             onBlur={handleBlur}
             disabled={disabled}
             required={required}
-            className={baseInputClasses}
+            className={selectClasses(error, disabled)}
             {...props}
           >
             {children}
@@ -80,41 +82,32 @@ const FormField = ({
 
       case 'checkbox':
         return (
-          <div className="flex items-center">
-            <input
-              id={name}
-              name={name}
-              type="checkbox"
-              checked={value || false}
-              onChange={handleChange}
-              disabled={disabled}
-              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-              {...props}
-            />
-            {label && (
-              <label htmlFor={name} className="ml-2 text-sm text-gray-900">
-                {label}
-              </label>
-            )}
-          </div>
+          <Checkbox
+            id={name}
+            name={name}
+            checked={value || false}
+            onChange={handleChange}
+            disabled={disabled}
+            label={label}
+            error={error}
+          />
         );
 
       case 'file':
         return (
-          <input
+          <Input
             id={name}
             name={name}
             type="file"
             onChange={handleChange}
             disabled={disabled}
-            className={`${baseInputClasses} file:mr-4 file:py-2 file:px-4 file:rounded-l-md file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100`}
             {...props}
           />
         );
 
       default:
         return (
-          <input
+          <Input
             id={name}
             name={name}
             type={type}
@@ -124,21 +117,16 @@ const FormField = ({
             placeholder={placeholder}
             disabled={disabled}
             required={required}
-            className={baseInputClasses}
             {...props}
           />
         );
     }
   };
 
-  // Для checkbox поле рендерится по-другому
   if (type === 'checkbox') {
     return (
       <div className={`space-y-1 ${className}`}>
         {renderInput()}
-        {error && (
-          <p className="text-sm text-red-600">{error}</p>
-        )}
       </div>
     );
   }

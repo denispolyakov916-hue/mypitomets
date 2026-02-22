@@ -178,7 +178,7 @@ function RemindersWidget({ limit = 5 }) {
   if (error) {
     return (
       <Card className="p-6">
-        <p className="text-red-500 text-center">{error}</p>
+        <p className="text-red-600 text-center">{error}</p>
         <Button onClick={fetchReminders} variant="secondary" className="mt-4 w-full">
           Попробовать снова
         </Button>

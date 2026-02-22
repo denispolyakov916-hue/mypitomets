@@ -38,7 +38,7 @@ const formatDate = (dateString) => {
  * Компонент одного отзыва (поддерживает вложенные ответы)
  */
 function ReviewItem({ review, onReply, isReply = false, onReactionUpdate }) {
-  const { isAuthenticated } = useAuthStore()
+  const isAuthenticated = useAuthStore(s => s.isAuthenticated)
   const [reaction, setReaction] = useState(review.user_reaction || null)
   const [likes, setLikes] = useState(review.likes_count || 0)
   const [dislikes, setDislikes] = useState(review.dislikes_count || 0)

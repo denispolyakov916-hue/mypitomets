@@ -15,13 +15,13 @@ const STATUS_COLORS = {
   good: 'bg-green-100 text-green-700 border-green-200',
   normal: 'bg-green-100 text-green-700 border-green-200',
   attention: 'bg-yellow-100 text-yellow-700 border-yellow-200',
-  needs_attention: 'bg-orange-100 text-orange-700 border-orange-200',
-  needs_improvement: 'bg-orange-100 text-orange-700 border-orange-200',
-  needs_work: 'bg-orange-100 text-orange-700 border-orange-200',
+  needs_attention: 'bg-accent-100 text-accent-700 border-accent-200',
+  needs_improvement: 'bg-accent-100 text-accent-700 border-accent-200',
+  needs_work: 'bg-accent-100 text-accent-700 border-accent-200',
   insufficient: 'bg-yellow-100 text-yellow-700 border-yellow-200',
   excessive: 'bg-blue-100 text-blue-700 border-blue-200',
   underweight: 'bg-yellow-100 text-yellow-700 border-yellow-200',
-  overweight: 'bg-orange-100 text-orange-700 border-orange-200',
+  overweight: 'bg-accent-100 text-accent-700 border-accent-200',
   obese: 'bg-red-100 text-red-700 border-red-200',
   severely_underweight: 'bg-red-100 text-red-700 border-red-200',
   unknown: 'bg-gray-100 text-gray-600 border-gray-200',
@@ -44,7 +44,7 @@ const STATUS_ICONS = {
 };
 
 // Компонент карточки анализа
-function AnalysisCard({ title, icon: Icon, analysis, iconColor = 'text-purple-600' }) {
+function AnalysisCard({ title, icon: Icon, analysis, iconColor = 'text-primary-600' }) {
   const StatusIcon = STATUS_ICONS[analysis.status] || Info;
   const statusColor = STATUS_COLORS[analysis.status] || STATUS_COLORS.unknown;
 
@@ -56,7 +56,7 @@ function AnalysisCard({ title, icon: Icon, analysis, iconColor = 'text-purple-60
     >
       <div className="flex items-start justify-between mb-4">
         <div className="flex items-center gap-3">
-          <div className={`p-2.5 rounded-xl bg-purple-50 ${iconColor}`}>
+          <div className={`p-2.5 rounded-xl bg-primary-50 ${iconColor}`}>
             <Icon className="w-5 h-5" />
           </div>
           <h3 className="font-semibold text-gray-800">{title}</h3>
@@ -72,7 +72,7 @@ function AnalysisCard({ title, icon: Icon, analysis, iconColor = 'text-purple-60
       <p className="text-gray-600 text-sm mb-3">{analysis.message}</p>
       
       {analysis.recommendation && (
-        <p className="text-sm text-purple-600 bg-purple-50 rounded-xl p-3">
+        <p className="text-sm text-primary-600 bg-primary-50 rounded-xl p-3">
           💡 {analysis.recommendation}
         </p>
       )}
@@ -99,7 +99,7 @@ function AnalysisCard({ title, icon: Icon, analysis, iconColor = 'text-purple-60
         <div className="mt-3 space-y-1.5">
           {analysis.issues.map((issue, idx) => (
             <div key={idx} className="text-xs text-gray-600 flex items-start gap-2">
-              <span className="text-orange-600 mt-0.5">•</span>
+              <span className="text-accent-600 mt-0.5">•</span>
               {issue}
             </div>
           ))}
@@ -134,7 +134,7 @@ function RecommendationCard({ recommendation, index }) {
             <div className="space-y-1.5">
               {recommendation.actions.map((action, idx) => (
                 <div key={idx} className="text-sm text-gray-700 flex items-start gap-2">
-                  <ChevronRight className="w-4 h-4 text-purple-500 mt-0.5 flex-shrink-0" />
+                  <ChevronRight className="w-4 h-4 text-primary-500 mt-0.5 flex-shrink-0" />
                   {action}
                 </div>
               ))}
@@ -151,7 +151,7 @@ function HealthRiskCard({ risk }) {
   const severityColors = {
     low: 'bg-green-100 text-green-700',
     medium: 'bg-yellow-100 text-yellow-700',
-    high: 'bg-orange-100 text-orange-700',
+    high: 'bg-accent-100 text-accent-700',
     critical: 'bg-red-100 text-red-700',
   };
 
@@ -177,8 +177,8 @@ function HealthRiskCard({ risk }) {
 function ScoreIndicator({ score }) {
   const getScoreColor = (s) => {
     if (s >= 80) return 'from-green-400 to-emerald-500';
-    if (s >= 60) return 'from-yellow-400 to-orange-500';
-    if (s >= 40) return 'from-orange-400 to-red-500';
+    if (s >= 60) return 'from-yellow-400 to-accent-500';
+    if (s >= 40) return 'from-accent-400 to-red-500';
     return 'from-red-500 to-red-600';
   };
 
@@ -306,7 +306,7 @@ export default function PetDetailPage() {
         <div className="text-center py-16 bg-white rounded-2xl shadow-sm">
           <AlertCircle className="w-16 h-16 text-red-400 mx-auto mb-4" />
           <h3 className="text-xl font-semibold text-gray-700 mb-2">{error}</h3>
-          <Link to="/pet-id" className="text-purple-600 hover:underline">
+          <Link to="/pet-id" className="text-primary-600 hover:underline">
             Вернуться к списку питомцев
           </Link>
         </div>
@@ -320,7 +320,7 @@ export default function PetDetailPage() {
         <div className="text-center py-16 bg-white rounded-2xl shadow-sm">
           <div className="text-6xl mb-4">🔍</div>
           <h3 className="text-xl font-semibold text-gray-700 mb-2">Питомец не найден</h3>
-          <Link to="/pet-id" className="text-purple-600 hover:underline">
+          <Link to="/pet-id" className="text-primary-600 hover:underline">
             Вернуться к списку питомцев
           </Link>
         </div>
@@ -346,7 +346,7 @@ export default function PetDetailPage() {
           <ArrowLeft className="w-5 h-5 text-gray-600" />
         </button>
         <div className="flex-1">
-          <h1 className="text-2xl font-bold text-gray-800">{pet.name}</h1>
+          <h1 className="page-title mb-0">{pet.name}</h1>
           <p className="text-sm text-gray-500">
             {pet.breed_name || 'Порода не указана'} • {pet.species === 'dog' ? 'Собака' : 'Кошка'}
           </p>
@@ -356,7 +356,7 @@ export default function PetDetailPage() {
           {pet.weight && (
             <button
               onClick={() => navigate(`/food-recommendation?pet_id=${pet.id}`)}
-              className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-orange-500 to-amber-500 text-white rounded-xl hover:shadow-lg transition-all"
+              className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-accent-500 to-amber-500 text-white rounded-xl hover:shadow-lg transition-all"
             >
               <UtensilsCrossed className="w-4 h-4" />
               Подбор корма
@@ -364,7 +364,7 @@ export default function PetDetailPage() {
           )}
           <button
             onClick={() => setShowWizard(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-purple-50 text-purple-600 rounded-xl hover:bg-purple-100 transition-all"
+            className="flex items-center gap-2 px-4 py-2 bg-primary-50 text-primary-600 rounded-xl hover:bg-primary-100 transition-all"
           >
             <Edit className="w-4 h-4" />
             Изменить
@@ -383,7 +383,7 @@ export default function PetDetailPage() {
         <div className="flex flex-col md:flex-row gap-6">
           {/* Фото и основная информация */}
           <div className="flex gap-6">
-            <div className="w-32 h-32 rounded-2xl bg-gradient-to-br from-purple-100 to-orange-100 flex items-center justify-center text-6xl">
+            <div className="w-32 h-32 rounded-2xl bg-gradient-to-br from-primary-100 to-accent-100 flex items-center justify-center text-6xl">
               {pet.photo ? (
                 <img src={pet.photo} alt={pet.name} className="w-full h-full object-cover rounded-2xl" />
               ) : (
@@ -435,13 +435,13 @@ export default function PetDetailPage() {
             </div>
             <p className="text-gray-600 text-sm mb-3">{comparison.breed_standard.description}</p>
             <div className="flex flex-wrap gap-3">
-              <span className="px-3 py-1 bg-purple-50 text-purple-700 rounded-full text-xs">
+              <span className="px-3 py-1 bg-primary-50 text-primary-700 rounded-full text-xs">
                 📏 {comparison.breed_standard.weight_min}-{comparison.breed_standard.weight_max} кг
               </span>
-              <span className="px-3 py-1 bg-purple-50 text-purple-700 rounded-full text-xs">
+              <span className="px-3 py-1 bg-primary-50 text-primary-700 rounded-full text-xs">
                 📅 {comparison.breed_standard.lifespan_min}-{comparison.breed_standard.lifespan_max} лет
               </span>
-              <span className="px-3 py-1 bg-purple-50 text-purple-700 rounded-full text-xs">
+              <span className="px-3 py-1 bg-primary-50 text-primary-700 rounded-full text-xs">
                 ⚡ {comparison.breed_standard.energy_level_display}
               </span>
               {comparison.breed_standard.apartment_friendly && (
@@ -482,7 +482,7 @@ export default function PetDetailPage() {
             onClick={() => setActiveTab(tab.id)}
             className={`flex items-center gap-2 px-4 py-2 rounded-xl whitespace-nowrap transition-all ${
               activeTab === tab.id
-                ? 'bg-gradient-to-r from-purple-600 to-orange-500 text-white shadow-md'
+                ? 'bg-gradient-to-r from-primary-600 to-accent-500 text-white shadow-md'
                 : 'bg-white text-gray-600 hover:bg-gray-50'
             }`}
           >
@@ -525,7 +525,7 @@ export default function PetDetailPage() {
                   const Icon = icons[key];
                   return (
                     <div key={key} className="bg-white rounded-xl p-4 text-center shadow-sm">
-                      <Icon className="w-6 h-6 text-purple-600 mx-auto mb-2" />
+                      <Icon className="w-6 h-6 text-primary-600 mx-auto mb-2" />
                       <div className="text-2xl font-bold text-gray-800">{value.score || 0}</div>
                       <div className="text-xs text-gray-500">{titles[key]}</div>
                     </div>
@@ -636,7 +636,7 @@ export default function PetDetailPage() {
             {comparison?.health_risks && comparison.health_risks.length > 0 && (
               <div>
                 <h3 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                  <AlertTriangle className="w-5 h-5 text-orange-600" />
+                  <AlertTriangle className="w-5 h-5 text-accent-600" />
                   Породные риски здоровья
                 </h3>
                 <div className="grid md:grid-cols-2 gap-4">
@@ -673,7 +673,7 @@ export default function PetDetailPage() {
             {comparison?.care_procedures && comparison.care_procedures.length > 0 && (
               <div className="bg-white rounded-2xl p-6 shadow-sm">
                 <h3 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                  <Scissors className="w-5 h-5 text-purple-600" />
+                  <Scissors className="w-5 h-5 text-primary-600" />
                   Рекомендации по уходу
                 </h3>
                 <div className="space-y-3">

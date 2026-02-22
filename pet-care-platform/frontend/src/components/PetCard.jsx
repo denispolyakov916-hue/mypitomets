@@ -14,6 +14,7 @@
 
 import { Link } from 'react-router-dom'
 import PropTypes from 'prop-types'
+import { Card } from './ui/Card'
 import { PetPropTypes } from '../utils/propTypes'
 
 /**
@@ -88,7 +89,7 @@ function PetCard({ pet, onClick, showActions = false, onEdit, onDelete }) {
   const age = calculateAge(pet.date_of_birth)
   
   const cardContent = (
-    <div className="card hover:shadow-md transition-shadow cursor-pointer">
+    <Card variant="default" hoverable padding="lg" className="shadow-sm cursor-pointer">
       <div className="flex items-start gap-4">
         {/* Иконка вида */}
         <div className="w-14 h-14 bg-primary-50 rounded-xl flex items-center justify-center text-3xl flex-shrink-0">
@@ -152,7 +153,7 @@ function PetCard({ pet, onClick, showActions = false, onEdit, onDelete }) {
           </button>
         </div>
       )}
-    </div>
+    </Card>
   )
   
   // Если передан onClick, оборачиваем в доступный контейнер, иначе в Link

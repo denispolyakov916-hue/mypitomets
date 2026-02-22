@@ -26,13 +26,14 @@ pet-care-platform/
 │       ├── payments/    # Единая система платежей
 │       └── reviews/     # Отзывы на товары и курсы
 └── frontend/src/
-    ├── api/             # Модули API (client.js — Axios с interceptors, модули по доменам)
-    ├── store/           # Zustand stores (authStore, cartStore, favoritesStore, toastStore)
-    ├── pages/           # Страницы по фичам: pages/{Feature}/{Feature}.jsx
+    ├── api/             # Модули API (client.js, baseApi.js — фабрики CRUD, модули по доменам)
+    ├── store/           # Zustand stores (authStore, cartStore, favoritesStore, toastStore, baseStore)
+    ├── pages/           # Страницы: pages/{Feature}/{Feature}.jsx + pages/{Feature}/components/
     ├── components/      # Переиспользуемые компоненты (Layout, ProductCard, PrivateRoute)
-    ├── hooks/           # Кастомные хуки (useProducts, usePets)
-    ├── utils/           # Утилиты (apiCache.js — кэш запросов с TTL и дедупликацией)
-    └── admin/           # React админ-панель (отдельное приложение, доступ is_staff)
+    │   └── ui/          # UI Kit: Button, Card, Modal, Input, Badge, Progress, EmptyState, Skeleton, Alert, FormField
+    ├── hooks/           # Хуки (useProducts, usePets, useCourses, useCourse, useOrders, useFormValidation)
+    ├── utils/           # Утилиты (apiCache.js, format.js — formatPrice)
+    └── admin/           # React админ-панель (использует ui/ компоненты)
 ```
 
 ## Модель User

@@ -155,7 +155,7 @@ const ProgressBar = ({ currentStep, totalSteps }) => {
               ${currentStep > step.id 
                 ? 'bg-green-500 text-white' 
                 : currentStep === step.id 
-                  ? 'bg-purple-600 text-white ring-4 ring-purple-100' 
+                  ? 'bg-primary-600 text-white ring-4 ring-primary-100' 
                   : 'bg-gray-100 text-gray-400'
               }
             `}>
@@ -203,11 +203,11 @@ const PetPreviewCard = React.memo(({ formData, completeness }) => {
     <motion.div
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
-      className="bg-gradient-to-br from-purple-50 to-orange-50 rounded-2xl p-5 border border-purple-100"
+      className="bg-gradient-to-br from-primary-50 to-accent-50 rounded-2xl p-5 border border-primary-100"
     >
       <div className="flex items-center gap-2 mb-4">
-        <Sparkles className="w-4 h-4 text-purple-500" />
-        <span className="text-sm font-medium text-purple-700">Превью профиля</span>
+        <Sparkles className="w-4 h-4 text-primary-500" />
+        <span className="text-sm font-medium text-primary-700">Превью профиля</span>
       </div>
       
       {/* Аватар */}
@@ -251,7 +251,7 @@ const PetPreviewCard = React.memo(({ formData, completeness }) => {
       <div className="bg-white rounded-xl p-3">
         <div className="flex justify-between items-center mb-2">
           <span className="text-sm text-gray-600">Первичный профиль</span>
-          <span className="text-sm font-bold text-purple-600">{displayCompleteness}%</span>
+          <span className="text-sm font-bold text-primary-600">{displayCompleteness}%</span>
         </div>
         <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
           <motion.div
@@ -260,7 +260,7 @@ const PetPreviewCard = React.memo(({ formData, completeness }) => {
             transition={{ duration: 0.5, ease: 'easeOut' }}
             className={`h-full rounded-full ${
               displayCompleteness >= 100 ? 'bg-green-500' : 
-              displayCompleteness >= 50 ? 'bg-yellow-500' : 'bg-purple-500'
+              displayCompleteness >= 50 ? 'bg-yellow-500' : 'bg-primary-500'
             }`}
           />
         </div>
@@ -301,10 +301,10 @@ const SuccessModal = ({ petName, onClose, onExtend }) => {
         </p>
 
         {/* Предложение расширить профиль */}
-        <div className="bg-gradient-to-r from-purple-50 to-orange-50 rounded-2xl p-5 mb-6 text-left">
+        <div className="bg-gradient-to-r from-primary-50 to-accent-50 rounded-2xl p-5 mb-6 text-left">
           <div className="flex items-start gap-3">
-            <div className="w-10 h-10 rounded-xl bg-purple-100 flex items-center justify-center flex-shrink-0">
-              <Heart className="w-5 h-5 text-purple-600" />
+            <div className="w-10 h-10 rounded-xl bg-primary-100 flex items-center justify-center flex-shrink-0">
+              <Heart className="w-5 h-5 text-primary-600" />
             </div>
             <div>
               <h4 className="font-semibold text-gray-800 mb-1">
@@ -327,7 +327,7 @@ const SuccessModal = ({ petName, onClose, onExtend }) => {
           </button>
           <button
             onClick={onExtend}
-            className="flex-1 px-5 py-3 rounded-xl bg-gradient-to-r from-purple-600 to-orange-500 text-white font-medium hover:shadow-lg transition-all flex items-center justify-center gap-2"
+            className="flex-1 px-5 py-3 rounded-xl bg-gradient-to-r from-primary-600 to-accent-500 text-white font-medium hover:shadow-lg transition-all flex items-center justify-center gap-2"
           >
             Заполнить
             <ArrowRight className="w-4 h-4" />
@@ -366,8 +366,8 @@ const Step1Species = ({ formData, onChange, errors }) => {
               className={`
                 relative p-6 rounded-2xl border-2 transition-all text-center
                 ${formData.species === option.value
-                  ? 'border-purple-500 bg-purple-50 shadow-lg'
-                  : 'border-gray-200 bg-white hover:border-purple-200 hover:bg-purple-50/50'
+                  ? 'border-primary-500 bg-primary-50 shadow-lg'
+                  : 'border-gray-200 bg-white hover:border-primary-200 hover:bg-primary-50/50'
                 }
               `}
             >
@@ -375,7 +375,7 @@ const Step1Species = ({ formData, onChange, errors }) => {
                 <motion.div
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
-                  className="absolute top-3 right-3 w-6 h-6 bg-purple-500 rounded-full flex items-center justify-center"
+                  className="absolute top-3 right-3 w-6 h-6 bg-primary-500 rounded-full flex items-center justify-center"
                 >
                   <Check className="w-4 h-4 text-white" />
                 </motion.div>
@@ -386,7 +386,7 @@ const Step1Species = ({ formData, onChange, errors }) => {
           ))}
         </div>
         {errors.species && (
-          <p className="mt-2 text-sm text-red-500 flex items-center gap-1">
+          <p className="mt-2 text-sm text-red-600 flex items-center gap-1">
             <AlertCircle className="w-4 h-4" /> {errors.species}
           </p>
         )}
@@ -415,18 +415,18 @@ const Step1Species = ({ formData, onChange, errors }) => {
           maxLength={50}
           className={`
             w-full px-4 py-3.5 rounded-xl border-2 transition-all text-lg
-            focus:outline-none focus:ring-4 focus:ring-purple-500/20
+            focus:outline-none focus:ring-4 focus:ring-primary-500/20
             ${errors.name 
               ? 'border-red-300 bg-red-50' 
               : formData.name && formData.name.trim().length >= 2
                 ? 'border-green-300 bg-green-50' 
-                : 'border-gray-200 focus:border-purple-500'
+                : 'border-gray-200 focus:border-primary-500'
             }
           `}
         />
         <div className="flex justify-between mt-1">
           {errors.name ? (
-            <p className="text-sm text-red-500 flex items-center gap-1">
+            <p className="text-sm text-red-600 flex items-center gap-1">
               <AlertCircle className="w-4 h-4" /> {errors.name}
             </p>
           ) : formData.name && formData.name.trim().length >= 2 ? (
@@ -451,7 +451,7 @@ const Step1Species = ({ formData, onChange, errors }) => {
               <img 
                 src={formData.photoPreview} 
                 alt="Preview" 
-                className="w-24 h-24 rounded-2xl object-cover border-2 border-purple-200"
+                className="w-24 h-24 rounded-2xl object-cover border-2 border-primary-200"
               />
               <button
                 type="button"
@@ -465,7 +465,7 @@ const Step1Species = ({ formData, onChange, errors }) => {
               </button>
             </div>
           ) : (
-            <label className="w-24 h-24 rounded-2xl border-2 border-dashed border-gray-300 flex flex-col items-center justify-center cursor-pointer hover:border-purple-400 hover:bg-purple-50 transition-all">
+            <label className="w-24 h-24 rounded-2xl border-2 border-dashed border-gray-300 flex flex-col items-center justify-center cursor-pointer hover:border-primary-400 hover:bg-primary-50 transition-all">
               <Camera className="w-6 h-6 text-gray-400 mb-1" />
               <span className="text-xs text-gray-400">Добавить</span>
               <input
@@ -647,7 +647,7 @@ const Step2Info = ({ formData, onChange, errors, breeds, loadingBreeds, onBreedS
                   key={breed.id}
                   type="button"
                   onClick={() => handleBreedSelect(breed)}
-                  className="px-3 py-1.5 text-sm bg-purple-50 text-purple-700 rounded-full hover:bg-purple-100 transition-colors"
+                  className="px-3 py-1.5 text-sm bg-primary-50 text-primary-700 rounded-full hover:bg-primary-100 transition-colors"
                 >
                   {breed.name}
                 </button>
@@ -674,12 +674,12 @@ const Step2Info = ({ formData, onChange, errors, breeds, loadingBreeds, onBreedS
             placeholder={loadingBreeds ? 'Загрузка пород...' : 'Начните вводить или выберите из списка'}
             className={`
               w-full pl-10 pr-10 py-3 rounded-xl border-2 transition-all
-              focus:outline-none focus:ring-4 focus:ring-purple-500/20
+              focus:outline-none focus:ring-4 focus:ring-primary-500/20
               ${errors.breed 
                 ? 'border-red-300 bg-red-50' 
                 : formData.breed 
                   ? 'border-green-300 bg-green-50' 
-                  : 'border-gray-200 focus:border-purple-500'
+                  : 'border-gray-200 focus:border-primary-500'
               }
             `}
             role="combobox"
@@ -738,7 +738,7 @@ const Step2Info = ({ formData, onChange, errors, breeds, loadingBreeds, onBreedS
               <X className="w-4 h-4 text-gray-400" />
             </button>
           ) : loadingBreeds ? (
-            <div className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />
+            <div className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 border-2 border-primary-500 border-t-transparent rounded-full animate-spin" />
           ) : null}
         </div>
 
@@ -767,15 +767,15 @@ const Step2Info = ({ formData, onChange, errors, breeds, loadingBreeds, onBreedS
                     className={`
                       w-full px-4 py-2.5 text-left transition-colors flex items-center justify-between
                       ${activeBreedIndex === index
-                        ? 'bg-purple-100 text-purple-700'
+                        ? 'bg-primary-100 text-primary-700'
                         : formData.breed === breed.name
-                          ? 'bg-purple-50'
+                          ? 'bg-primary-50'
                           : 'hover:bg-gray-50'}
                     `}
                   >
                     <span className="font-medium text-gray-700">{breed.name}</span>
                     {formData.breed === breed.name && (
-                      <Check className="w-4 h-4 text-purple-500" />
+                      <Check className="w-4 h-4 text-primary-500" />
                     )}
                   </button>
                 ))
@@ -789,7 +789,7 @@ const Step2Info = ({ formData, onChange, errors, breeds, loadingBreeds, onBreedS
         </AnimatePresence>
         
         {errors.breed && (
-          <p className="mt-2 text-sm text-red-500 flex items-center gap-1">
+          <p className="mt-2 text-sm text-red-600 flex items-center gap-1">
             <AlertCircle className="w-4 h-4" /> {errors.breed}
           </p>
         )}
@@ -814,8 +814,8 @@ const Step2Info = ({ formData, onChange, errors, breeds, loadingBreeds, onBreedS
                 className={`
                   p-3 rounded-xl border-2 transition-all flex items-center justify-center gap-2
                   ${formData.gender === option.value
-                    ? 'border-purple-500 bg-purple-50'
-                    : 'border-gray-200 hover:border-purple-200'
+                    ? 'border-primary-500 bg-primary-50'
+                    : 'border-gray-200 hover:border-primary-200'
                   }
                 `}
               >
@@ -825,7 +825,7 @@ const Step2Info = ({ formData, onChange, errors, breeds, loadingBreeds, onBreedS
             ))}
           </div>
           {errors.gender && (
-            <p className="mt-2 text-sm text-red-500">{errors.gender}</p>
+            <p className="mt-2 text-sm text-red-600">{errors.gender}</p>
           )}
         </div>
 
@@ -847,12 +847,12 @@ const Step2Info = ({ formData, onChange, errors, breeds, loadingBreeds, onBreedS
               dropdownMode="select"
               className={`
                 w-full px-4 py-3 rounded-xl border-2 transition-all
-                focus:outline-none focus:ring-4 focus:ring-purple-500/20
+                focus:outline-none focus:ring-4 focus:ring-primary-500/20
                 ${errors.date_of_birth 
                   ? 'border-red-300 bg-red-50' 
                   : formData.date_of_birth 
                     ? 'border-green-300 bg-green-50' 
-                    : 'border-gray-200 focus:border-purple-500'
+                    : 'border-gray-200 focus:border-primary-500'
                 }
               `}
             />
@@ -865,7 +865,7 @@ const Step2Info = ({ formData, onChange, errors, breeds, loadingBreeds, onBreedS
             </p>
           )}
           {errors.date_of_birth && (
-            <p className="mt-2 text-sm text-red-500">{errors.date_of_birth}</p>
+            <p className="mt-2 text-sm text-red-600">{errors.date_of_birth}</p>
           )}
         </div>
       </div>
@@ -892,14 +892,14 @@ const Step2Info = ({ formData, onChange, errors, breeds, loadingBreeds, onBreedS
             placeholder={formData.species === 'cat' ? 'От 0.3 до 20 кг' : 'От 0.3 до 100 кг'}
             className={`
               w-full px-4 py-3 rounded-xl border-2 transition-all
-              focus:outline-none focus:ring-4 focus:ring-purple-500/20
+              focus:outline-none focus:ring-4 focus:ring-primary-500/20
               ${weightValidation?.type === 'error'
                 ? 'border-red-300 bg-red-50'
                 : weightValidation?.type === 'warning'
                   ? 'border-yellow-300 bg-yellow-50'
                   : weightValidation?.type === 'success' && weightValidation?.message
                     ? 'border-green-300 bg-green-50'
-                    : 'border-gray-200 focus:border-purple-500'
+                    : 'border-gray-200 focus:border-primary-500'
               }
             `}
           />
@@ -907,7 +907,7 @@ const Step2Info = ({ formData, onChange, errors, breeds, loadingBreeds, onBreedS
         </div>
         {weightValidation?.message && (
           <p className={`mt-2 text-sm flex items-center gap-1 ${
-            weightValidation.type === 'error' ? 'text-red-500' :
+            weightValidation.type === 'error' ? 'text-red-600' :
             weightValidation.type === 'warning' ? 'text-yellow-600' :
             'text-green-600'
           }`}>
@@ -916,7 +916,7 @@ const Step2Info = ({ formData, onChange, errors, breeds, loadingBreeds, onBreedS
           </p>
         )}
         {errors.weight && !weightValidation?.message && (
-          <p className="mt-2 text-sm text-red-500">{errors.weight}</p>
+          <p className="mt-2 text-sm text-red-600">{errors.weight}</p>
         )}
       </div>
     </div>
@@ -990,7 +990,7 @@ const Step3Health = ({
             className={`
               px-4 py-3 rounded-xl border-2 transition-all
               ${formData.health_issues.length > 0 && !formData.health_issues.includes('none')
-                ? 'border-orange-500 bg-orange-50'
+                ? 'border-accent-500 bg-accent-50'
                 : 'border-gray-200 hover:border-gray-300'
               }
             `}
@@ -1024,7 +1024,7 @@ const Step3Health = ({
                     className={`
                       w-full px-4 py-2.5 rounded-xl border transition-all flex items-center gap-3 text-left
                       ${formData.health_issues.includes(option.value)
-                        ? 'border-purple-500 bg-purple-50'
+                        ? 'border-primary-500 bg-primary-50'
                         : 'border-gray-200 hover:bg-gray-50'
                       }
                     `}
@@ -1032,7 +1032,7 @@ const Step3Health = ({
                     <div className={`
                       w-5 h-5 rounded-md border-2 flex items-center justify-center
                       ${formData.health_issues.includes(option.value)
-                        ? 'border-purple-500 bg-purple-500'
+                        ? 'border-primary-500 bg-primary-500'
                         : 'border-gray-300'
                       }
                     `}>
@@ -1049,7 +1049,7 @@ const Step3Health = ({
         </AnimatePresence>
         
         {errors.health_issues && (
-          <p className="mt-2 text-sm text-red-500 flex items-center gap-1">
+          <p className="mt-2 text-sm text-red-600 flex items-center gap-1">
             <AlertCircle className="w-4 h-4" /> {errors.health_issues}
           </p>
         )}
@@ -1082,7 +1082,7 @@ const Step3Health = ({
             className={`
               px-4 py-3 rounded-xl border-2 transition-all
               ${formData.excluded_ingredients.length > 0 && !formData.excluded_ingredients.includes('none')
-                ? 'border-orange-500 bg-orange-50'
+                ? 'border-accent-500 bg-accent-50'
                 : 'border-gray-200 hover:border-gray-300'
               }
             `}
@@ -1115,7 +1115,7 @@ const Step3Health = ({
                     className={`
                       px-3 py-2 rounded-xl border transition-all flex items-center gap-2 text-sm
                       ${formData.excluded_ingredients.includes(option.value)
-                        ? 'border-purple-500 bg-purple-50'
+                        ? 'border-primary-500 bg-primary-50'
                         : 'border-gray-200 hover:bg-gray-50'
                       }
                     `}
@@ -1123,7 +1123,7 @@ const Step3Health = ({
                     <div className={`
                       w-4 h-4 rounded border flex items-center justify-center
                       ${formData.excluded_ingredients.includes(option.value)
-                        ? 'border-purple-500 bg-purple-500'
+                        ? 'border-primary-500 bg-primary-500'
                         : 'border-gray-300'
                       }
                     `}>
@@ -1140,7 +1140,7 @@ const Step3Health = ({
         </AnimatePresence>
 
         {errors.excluded_ingredients && (
-          <p className="mt-2 text-sm text-red-500 flex items-center gap-1">
+          <p className="mt-2 text-sm text-red-600 flex items-center gap-1">
             <AlertCircle className="w-4 h-4" /> {errors.excluded_ingredients}
           </p>
         )}
@@ -1170,8 +1170,8 @@ const Step3Health = ({
                   className={`
                     p-2 rounded-xl border-2 transition-all text-center
                     ${formData.activity_level === option.value
-                      ? 'border-purple-500 bg-purple-50'
-                      : 'border-gray-200 hover:border-purple-200'
+                      ? 'border-primary-500 bg-primary-50'
+                      : 'border-gray-200 hover:border-primary-200'
                     }
                   `}
                 >
@@ -1184,7 +1184,7 @@ const Step3Health = ({
             })}
           </div>
           {errors.activity_level && (
-            <p className="mt-2 text-sm text-red-500">{errors.activity_level}</p>
+            <p className="mt-2 text-sm text-red-600">{errors.activity_level}</p>
           )}
         </div>
       ) : formData.species === 'cat' ? (
@@ -1201,8 +1201,8 @@ const Step3Health = ({
                 className={`
                   p-3 rounded-xl border-2 transition-all text-center
                   ${formData.housing_type === option.value
-                    ? 'border-purple-500 bg-purple-50'
-                    : 'border-gray-200 hover:border-purple-200'
+                    ? 'border-primary-500 bg-primary-50'
+                    : 'border-gray-200 hover:border-primary-200'
                   }
                 `}
               >
@@ -1216,7 +1216,7 @@ const Step3Health = ({
             ))}
           </div>
           {errors.housing_type && (
-            <p className="mt-2 text-sm text-red-500">{errors.housing_type}</p>
+            <p className="mt-2 text-sm text-red-600">{errors.housing_type}</p>
           )}
         </div>
       ) : null}
@@ -1276,7 +1276,7 @@ const Step4Behavior = ({ formData, onChange, errors }) => {
             className={`
               px-4 py-3 rounded-xl border-2 transition-all
               ${formData.behavioral_problems.length > 0 && !formData.behavioral_problems.includes('Нет проблем')
-                ? 'border-orange-500 bg-orange-50'
+                ? 'border-accent-500 bg-accent-50'
                 : 'border-gray-200 hover:border-gray-300'
               }
             `}
@@ -1304,7 +1304,7 @@ const Step4Behavior = ({ formData, onChange, errors }) => {
                   className={`
                     px-3 py-2.5 rounded-xl border transition-all flex items-center gap-2 text-sm text-left
                     ${formData.behavioral_problems.includes(problem)
-                      ? 'border-purple-500 bg-purple-50'
+                      ? 'border-primary-500 bg-primary-50'
                       : 'border-gray-200 hover:bg-gray-50'
                     }
                   `}
@@ -1312,7 +1312,7 @@ const Step4Behavior = ({ formData, onChange, errors }) => {
                   <div className={`
                     w-4 h-4 rounded border flex-shrink-0 flex items-center justify-center
                     ${formData.behavioral_problems.includes(problem)
-                      ? 'border-purple-500 bg-purple-500'
+                      ? 'border-primary-500 bg-primary-500'
                       : 'border-gray-300'
                     }
                   `}>
@@ -1328,16 +1328,16 @@ const Step4Behavior = ({ formData, onChange, errors }) => {
         </AnimatePresence>
 
         {errors.behavioral_problems && (
-          <p className="mt-2 text-sm text-red-500 flex items-center gap-1">
+          <p className="mt-2 text-sm text-red-600 flex items-center gap-1">
             <AlertCircle className="w-4 h-4" /> {errors.behavioral_problems}
           </p>
         )}
       </div>
 
       {/* Итоговая информация */}
-      <div className="bg-gradient-to-r from-purple-50 to-orange-50 rounded-2xl p-5 border border-purple-100">
+      <div className="bg-gradient-to-r from-primary-50 to-accent-50 rounded-2xl p-5 border border-primary-100">
         <div className="flex items-center gap-2 mb-3">
-          <Heart className="w-5 h-5 text-purple-500" />
+          <Heart className="w-5 h-5 text-primary-500" />
           <span className="font-semibold text-gray-800">Почти готово!</span>
         </div>
         <p className="text-sm text-gray-600 mb-3">
@@ -1966,7 +1966,7 @@ export default function PetWizard({ onClose, onSubmit, isLoading, editingDraft =
           className="bg-white rounded-3xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col"
         >
           {/* Header */}
-          <div className="relative bg-gradient-to-r from-purple-600 to-orange-500 px-6 py-5 text-white">
+          <div className="relative bg-gradient-to-r from-primary-600 to-accent-500 px-6 py-5 text-white">
             <button
               onClick={handleClose}
               className="absolute top-4 right-4 p-2 hover:bg-white/20 rounded-full transition-colors"
@@ -2092,7 +2092,7 @@ export default function PetWizard({ onClose, onSubmit, isLoading, editingDraft =
               
               {/* Preview Card - Mobile (simplified) */}
               <div className="lg:hidden mt-6">
-                <div className="bg-gradient-to-r from-purple-50 to-orange-50 rounded-xl p-4 border border-purple-100">
+                <div className="bg-gradient-to-r from-primary-50 to-accent-50 rounded-xl p-4 border border-primary-100">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <span className="text-2xl">
@@ -2104,7 +2104,7 @@ export default function PetWizard({ onClose, onSubmit, isLoading, editingDraft =
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="text-sm font-bold text-purple-600">{Math.min(calculateCompleteness, 100)}%</p>
+                      <p className="text-sm font-bold text-primary-600">{Math.min(calculateCompleteness, 100)}%</p>
                       <p className="text-xs text-gray-400">заполнено</p>
                     </div>
                   </div>
@@ -2155,7 +2155,7 @@ export default function PetWizard({ onClose, onSubmit, isLoading, editingDraft =
                   type="button"
                   onClick={currentStep === 4 ? handleSubmit : handleNext}
                   disabled={isLoading || isSubmittingFinal}
-                  className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-orange-500 text-white font-medium hover:shadow-lg transition-all disabled:opacity-50"
+                  className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-gradient-to-r from-primary-600 to-accent-500 text-white font-medium hover:shadow-lg transition-all disabled:opacity-50"
                 >
                   {(isLoading || isSubmittingFinal) ? (
                     <>
@@ -2211,7 +2211,7 @@ export default function PetWizard({ onClose, onSubmit, isLoading, editingDraft =
                 <button
                   onClick={handleConfirmSaveDraft}
                   disabled={isSavingDraft}
-                  className="w-full py-3 rounded-xl bg-gradient-to-r from-purple-600 to-orange-500 text-white font-medium hover:shadow-lg transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                  className="w-full py-3 rounded-xl bg-gradient-to-r from-primary-600 to-accent-500 text-white font-medium hover:shadow-lg transition-all disabled:opacity-50 flex items-center justify-center gap-2"
                 >
                   {isSavingDraft ? (
                     <>

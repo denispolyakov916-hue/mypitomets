@@ -26,7 +26,9 @@ import { Eye, EyeOff } from 'lucide-react'
  */
 function Register() {
   const navigate = useNavigate()
-  const { register, activateByCode, resendActivationCode, isLoading, error, clearError } = useAuthStore()
+  const isLoading = useAuthStore(s => s.isLoading)
+  const error = useAuthStore(s => s.error)
+  const { register, activateByCode, resendActivationCode, clearError } = useAuthStore()
   
   // Состояние формы регистрации
   const [formData, setFormData] = useState({
@@ -229,12 +231,12 @@ function Register() {
   }
   
   return (
-    <div className="min-h-screen flex items-center justify-center relative overflow-hidden bg-gradient-to-br from-purple-600 via-purple-500 to-purple-600 px-4 py-8">
+    <div className="min-h-screen flex items-center justify-center relative overflow-hidden bg-gradient-to-br from-primary-600 via-primary-500 to-primary-600 px-4 py-8">
       {/* Animated background elements - same as Home page */}
       <div className="absolute inset-0">
         {/* Primary gradient orbs */}
         <motion.div
-          className="absolute top-20 left-20 w-64 h-64 bg-orange-400/10 rounded-full blur-3xl"
+          className="absolute top-20 left-20 w-64 h-64 bg-accent-400/10 rounded-full blur-3xl"
           animate={{
             scale: [1, 1.3, 1],
             opacity: [0.3, 0.6, 0.3],
@@ -246,7 +248,7 @@ function Register() {
           }}
         />
         <motion.div
-          className="absolute bottom-20 right-20 w-80 h-80 bg-purple-400/10 rounded-full blur-3xl"
+          className="absolute bottom-20 right-20 w-80 h-80 bg-primary-400/10 rounded-full blur-3xl"
           animate={{
             scale: [1.3, 1, 1.3],
             opacity: [0.4, 0.7, 0.4],
@@ -259,7 +261,7 @@ function Register() {
           }}
         />
         <motion.div
-          className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-gradient-to-r from-purple-300/5 to-orange-300/5 rounded-full blur-3xl"
+          className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-gradient-to-r from-primary-300/5 to-accent-300/5 rounded-full blur-3xl"
           animate={{
             scale: [1, 1.2, 1],
             rotate: [0, 180, 360],
@@ -273,7 +275,7 @@ function Register() {
 
         {/* Additional decorative orbs */}
         <motion.div
-          className="absolute top-1/4 right-1/4 w-32 h-32 bg-orange-300/8 rounded-full blur-2xl"
+          className="absolute top-1/4 right-1/4 w-32 h-32 bg-accent-300/8 rounded-full blur-2xl"
           animate={{
             scale: [1, 1.5, 1],
             opacity: [0.2, 0.5, 0.2],
@@ -286,7 +288,7 @@ function Register() {
           }}
         />
         <motion.div
-          className="absolute bottom-1/4 left-1/4 w-40 h-40 bg-purple-300/6 rounded-full blur-2xl"
+          className="absolute bottom-1/4 left-1/4 w-40 h-40 bg-primary-300/6 rounded-full blur-2xl"
           animate={{
             scale: [1.2, 1, 1.2],
             opacity: [0.3, 0.6, 0.3],
@@ -387,7 +389,7 @@ function Register() {
           <motion.div
             key={`dot-register-${i}`}
             className={`absolute w-2 h-2 rounded-full ${
-              i % 4 === 0 ? 'bg-purple-200' : i % 4 === 1 ? 'bg-orange-200' : i % 4 === 2 ? 'bg-purple-100' : 'bg-white/20'
+              i % 4 === 0 ? 'bg-primary-200' : i % 4 === 1 ? 'bg-accent-200' : i % 4 === 2 ? 'bg-primary-100' : 'bg-white/20'
             }`}
             style={{
               left: `${Math.random() * 100}%`,
@@ -425,15 +427,15 @@ function Register() {
             className="inline-flex items-center gap-3 mb-6"
             whileHover={{ scale: 1.05 }}
           >
-            <div className="bg-gradient-to-br from-purple-500 to-orange-500 p-3 rounded-2xl shadow-lg shadow-purple-500/30">
+            <div className="bg-gradient-to-br from-primary-500 to-accent-500 p-3 rounded-2xl shadow-lg shadow-primary-500/30">
               <span className="text-3xl">🐾</span>
             </div>
-            <span className="text-3xl bg-gradient-to-r from-purple-600 to-orange-500 bg-clip-text text-transparent font-bold">
+            <span className="text-3xl bg-gradient-to-r from-primary-600 to-accent-500 bg-clip-text text-transparent font-bold">
               Питомец+
             </span>
           </motion.div>
 
-          <h1 className="text-4xl sm:text-5xl font-bold bg-gradient-to-r from-purple-600 to-orange-500 bg-clip-text text-transparent mb-4">
+          <h1 className="text-4xl sm:text-5xl font-bold bg-gradient-to-r from-primary-600 to-accent-500 bg-clip-text text-transparent mb-4">
             {registrationSuccess ? 'Подтвердите email' : 'Создать аккаунт'}
           </h1>
           <p className="text-lg text-gray-600 leading-relaxed">
@@ -501,8 +503,8 @@ function Register() {
                   name="email"
                   value={formData.email}
                   onChange={handleChange}
-                  className={`w-full px-4 py-3 border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent transition-all duration-200 text-white placeholder-white/60 bg-white/10 backdrop-blur-sm ${
-                    validationErrors.email ? 'border-red-400 bg-red-500/20' : 'border-white/30 hover:border-orange-400/60'
+                  className={`w-full px-4 py-3 border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent-400 focus:border-transparent transition-all duration-200 text-white placeholder-white/60 bg-white/10 backdrop-blur-sm ${
+                    validationErrors.email ? 'border-red-400 bg-red-500/20' : 'border-white/30 hover:border-accent-400/60'
                   }`}
                   placeholder="your@email.com"
                   autoComplete="email"
@@ -510,7 +512,7 @@ function Register() {
                 />
                 {validationErrors.email && (
                   <motion.p
-                    className="text-sm text-red-500 mt-1"
+                    className="text-sm text-red-600 mt-1"
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ duration: 0.3 }}
@@ -535,8 +537,8 @@ function Register() {
                   name="firstName"
                   value={formData.firstName}
                   onChange={handleChange}
-                  className={`w-full px-4 py-3 border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent transition-all duration-200 text-white placeholder-white/60 bg-white/10 backdrop-blur-sm ${
-                    validationErrors.firstName ? 'border-red-400 bg-red-500/20' : 'border-white/30 hover:border-orange-400/60'
+                  className={`w-full px-4 py-3 border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent-400 focus:border-transparent transition-all duration-200 text-white placeholder-white/60 bg-white/10 backdrop-blur-sm ${
+                    validationErrors.firstName ? 'border-red-400 bg-red-500/20' : 'border-white/30 hover:border-accent-400/60'
                   }`}
                   placeholder="Ваше имя"
                   autoComplete="given-name"
@@ -544,7 +546,7 @@ function Register() {
                 />
                 {validationErrors.firstName && (
                   <motion.p
-                    className="text-sm text-red-500 mt-1"
+                    className="text-sm text-red-600 mt-1"
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ duration: 0.3 }}
@@ -569,8 +571,8 @@ function Register() {
                   name="lastName"
                   value={formData.lastName}
                   onChange={handleChange}
-                  className={`w-full px-4 py-3 border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent transition-all duration-200 text-white placeholder-white/60 bg-white/10 backdrop-blur-sm ${
-                    validationErrors.lastName ? 'border-red-400 bg-red-500/20' : 'border-white/30 hover:border-orange-400/60'
+                  className={`w-full px-4 py-3 border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent-400 focus:border-transparent transition-all duration-200 text-white placeholder-white/60 bg-white/10 backdrop-blur-sm ${
+                    validationErrors.lastName ? 'border-red-400 bg-red-500/20' : 'border-white/30 hover:border-accent-400/60'
                   }`}
                   placeholder="Ваша фамилия"
                   autoComplete="family-name"
@@ -578,7 +580,7 @@ function Register() {
                 />
                 {validationErrors.lastName && (
                   <motion.p
-                    className="text-sm text-red-500 mt-1"
+                    className="text-sm text-red-600 mt-1"
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ duration: 0.3 }}
@@ -604,8 +606,8 @@ function Register() {
                     name="password"
                     value={formData.password}
                     onChange={handleChange}
-                    className={`w-full px-4 py-3 pr-12 border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent transition-all duration-200 text-white placeholder-white/60 bg-white/10 backdrop-blur-sm ${
-                      validationErrors.password ? 'border-red-400 bg-red-500/20' : 'border-white/30 hover:border-orange-400/60'
+                    className={`w-full px-4 py-3 pr-12 border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent-400 focus:border-transparent transition-all duration-200 text-white placeholder-white/60 bg-white/10 backdrop-blur-sm ${
+                      validationErrors.password ? 'border-red-400 bg-red-500/20' : 'border-white/30 hover:border-accent-400/60'
                     }`}
                     placeholder="Минимум 8 символов"
                     autoComplete="new-password"
@@ -614,7 +616,7 @@ function Register() {
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-white/60 hover:text-orange-300 transition-colors"
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-white/60 hover:text-accent-300 transition-colors"
                   >
                     {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                   </button>
@@ -676,7 +678,7 @@ function Register() {
                 
                 {validationErrors.password && (
                   <motion.p
-                    className="text-sm text-red-500 mt-1"
+                    className="text-sm text-red-600 mt-1"
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ duration: 0.3 }}
@@ -702,8 +704,8 @@ function Register() {
                     name="passwordConfirm"
                     value={formData.passwordConfirm}
                     onChange={handleChange}
-                    className={`w-full px-4 py-3 pr-12 border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent transition-all duration-200 text-white placeholder-white/60 bg-white/10 backdrop-blur-sm ${
-                      validationErrors.passwordConfirm ? 'border-red-400 bg-red-500/20' : 'border-white/30 hover:border-orange-400/60'
+                    className={`w-full px-4 py-3 pr-12 border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent-400 focus:border-transparent transition-all duration-200 text-white placeholder-white/60 bg-white/10 backdrop-blur-sm ${
+                      validationErrors.passwordConfirm ? 'border-red-400 bg-red-500/20' : 'border-white/30 hover:border-accent-400/60'
                     }`}
                     placeholder="Повторите пароль"
                     autoComplete="new-password"
@@ -712,14 +714,14 @@ function Register() {
                   <button
                     type="button"
                     onClick={() => setShowPasswordConfirm(!showPasswordConfirm)}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-white/60 hover:text-orange-300 transition-colors"
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-white/60 hover:text-accent-300 transition-colors"
                   >
                     {showPasswordConfirm ? <EyeOff size={20} /> : <Eye size={20} />}
                   </button>
                 </div>
                 {validationErrors.passwordConfirm && (
                   <motion.p
-                    className="text-sm text-red-500 mt-1"
+                    className="text-sm text-red-600 mt-1"
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ duration: 0.3 }}
@@ -732,7 +734,7 @@ function Register() {
               {/* Кнопка отправки - same style as Home page CTA */}
               <motion.button
                 type="submit"
-                className="w-full bg-gradient-to-r from-purple-500 to-orange-500 text-white font-bold py-4 px-8 rounded-2xl hover:shadow-xl hover:shadow-purple-500/50 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3 relative overflow-hidden group"
+                className="w-full bg-gradient-to-r from-primary-500 to-accent-500 text-white font-bold py-4 px-8 rounded-2xl hover:shadow-xl hover:shadow-primary-500/50 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3 relative overflow-hidden group"
                 disabled={isLoading}
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
@@ -773,7 +775,7 @@ function Register() {
               )}
 
               <motion.div
-                className="p-5 bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-200 rounded-xl text-sm text-blue-800"
+                className="p-5 bg-gradient-to-r from-blue-50 to-primary-50 border border-blue-200 rounded-xl text-sm text-blue-800"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: 0.6 }}
@@ -799,8 +801,8 @@ function Register() {
                     setActivationCode(value)
                     setValidationErrors({})
                   }}
-                  className={`w-full px-4 py-4 border-2 rounded-xl text-center text-2xl tracking-widest focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent transition-all duration-200 text-white placeholder-white/60 bg-white/10 backdrop-blur-sm ${
-                    validationErrors.activationCode ? 'border-red-400 bg-red-500/20' : 'border-white/30 hover:border-orange-400/60'
+                  className={`w-full px-4 py-4 border-2 rounded-xl text-center text-2xl tracking-widest focus:outline-none focus:ring-2 focus:ring-accent-400 focus:border-transparent transition-all duration-200 text-white placeholder-white/60 bg-white/10 backdrop-blur-sm ${
+                    validationErrors.activationCode ? 'border-red-400 bg-red-500/20' : 'border-white/30 hover:border-accent-400/60'
                   }`}
                   placeholder="000000"
                   maxLength={6}
@@ -808,7 +810,7 @@ function Register() {
                 />
                 {validationErrors.activationCode && (
                   <motion.p
-                    className="text-sm text-red-500 mt-1"
+                    className="text-sm text-red-600 mt-1"
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ duration: 0.3 }}
@@ -820,7 +822,7 @@ function Register() {
 
               <motion.button
                 type="submit"
-                className="w-full bg-gradient-to-r from-purple-500 to-orange-500 text-white font-bold py-4 px-8 rounded-2xl hover:shadow-xl hover:shadow-purple-500/50 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed relative overflow-hidden group"
+                className="w-full bg-gradient-to-r from-primary-500 to-accent-500 text-white font-bold py-4 px-8 rounded-2xl hover:shadow-xl hover:shadow-primary-500/50 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed relative overflow-hidden group"
                 disabled={isLoading || activationCode.length !== 6}
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
@@ -863,7 +865,7 @@ function Register() {
                   className={`text-sm font-semibold transition-all duration-200 relative group ${
                     resendCooldown > 0 
                       ? 'text-white/50 cursor-not-allowed' 
-                      : 'text-white/80 hover:text-orange-300'
+                      : 'text-white/80 hover:text-accent-300'
                   }`}
                 >
                   {resendCooldown > 0 
@@ -871,7 +873,7 @@ function Register() {
                     : 'Отправить код повторно'
                   }
                   {resendCooldown === 0 && (
-                    <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-orange-400 group-hover:w-full transition-all duration-300"></span>
+                    <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-accent-400 group-hover:w-full transition-all duration-300"></span>
                   )}
                 </button>
               </motion.div>
@@ -885,10 +887,10 @@ function Register() {
                 <button
                   type="button"
                   onClick={() => setRegistrationSuccess(false)}
-                  className="text-white/80 hover:text-orange-300 font-semibold transition-all duration-200 relative group"
+                  className="text-white/80 hover:text-accent-300 font-semibold transition-all duration-200 relative group"
                 >
                   Назад к регистрации
-                  <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-orange-400 group-hover:w-full transition-all duration-300"></span>
+                  <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-accent-400 group-hover:w-full transition-all duration-300"></span>
                 </button>
               </motion.div>
             </form>
@@ -904,10 +906,10 @@ function Register() {
             <span className="text-white/80">Уже есть аккаунт? </span>
             <Link
               to="/login"
-              className="text-white font-semibold hover:text-orange-300 transition-all duration-200 relative group"
+              className="text-white font-semibold hover:text-accent-300 transition-all duration-200 relative group"
             >
               Войти
-              <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-orange-400 group-hover:w-full transition-all duration-300"></span>
+              <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-accent-400 group-hover:w-full transition-all duration-300"></span>
             </Link>
           </motion.div>
 

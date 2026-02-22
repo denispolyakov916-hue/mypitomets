@@ -24,7 +24,7 @@ const CommentsSection = ({
   pageId,
   className = ''
 }) => {
-  const { user } = useAuthStore()
+  const user = useAuthStore(s => s.user)
   const [comments, setComments] = useState([])
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)

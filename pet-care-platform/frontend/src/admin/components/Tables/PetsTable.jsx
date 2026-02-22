@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+﻿import React, { useState, useEffect, useMemo } from 'react';
 
 // Components
 import DataTable from './DataTable';
@@ -112,7 +112,7 @@ const PetsTable = () => {
       render: (value) => {
         const speciesConfig = {
           dog: { label: 'Собака', icon: '🐕', color: 'bg-blue-100 text-blue-800' },
-          cat: { label: 'Кошка', icon: '🐈', color: 'bg-orange-100 text-orange-800' },
+          cat: { label: 'Кошка', icon: '🐈', color: 'bg-accent-100 text-accent-800' },
           bird: { label: 'Птица', icon: '🐦', color: 'bg-yellow-100 text-yellow-800' },
           rodent: { label: 'Грызун', icon: '🐹', color: 'bg-green-100 text-green-800' },
           fish: { label: 'Рыбка', icon: '🐠', color: 'bg-cyan-100 text-cyan-800' },

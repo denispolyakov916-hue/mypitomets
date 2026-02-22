@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 
 // Components
-import Modal from './Modal';
+import Modal from '../../../components/ui/Modal';
 import FormField from './FormField';
 import FormButtons from './FormButtons';
 
@@ -139,6 +139,7 @@ const CourseForm = ({
       onClose={onClose}
       title={isEditing ? 'Редактировать курс' : 'Создать курс'}
       size="xl"
+      className="max-w-4xl"
     >
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Основная информация */}

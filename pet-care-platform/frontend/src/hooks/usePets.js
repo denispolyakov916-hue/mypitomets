@@ -21,7 +21,7 @@ import { useAuthStore } from '../store/authStore'
  *   const { pets, isLoading, error } = usePets()
  */
 export const usePets = () => {
-  const { isAuthenticated } = useAuthStore()
+  const isAuthenticated = useAuthStore(s => s.isAuthenticated)
   const [pets, setPets] = useState([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState(null)

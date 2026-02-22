@@ -44,7 +44,7 @@ const BreedDetailPage = () => {
       very_low: 'bg-blue-100 text-blue-700',
       low: 'bg-green-100 text-green-700',
       medium: 'bg-yellow-100 text-yellow-700',
-      high: 'bg-orange-100 text-orange-700',
+      high: 'bg-accent-100 text-accent-700',
       very_high: 'bg-red-100 text-red-700',
     };
     return colors[level] || 'bg-gray-100 text-gray-700';
@@ -83,7 +83,7 @@ const BreedDetailPage = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Заголовок */}
-      <div className={`${breed.species === 'dog' ? 'bg-gradient-to-r from-amber-500 to-orange-500' : 'bg-gradient-to-r from-purple-500 to-pink-500'} text-white py-12`}>
+      <div className={`${breed.species === 'dog' ? 'bg-gradient-to-r from-amber-500 to-accent-500' : 'bg-gradient-to-r from-primary-500 to-pink-500'} text-white py-12`}>
         <div className="max-w-4xl mx-auto px-4">
           <Link to="/breeds" className="text-white/80 hover:text-white mb-4 inline-block">
             ← Все породы
@@ -121,14 +121,14 @@ const BreedDetailPage = () => {
         {/* Описание */}
         {breed.description && (
           <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
-            <h2 className="text-xl font-semibold text-gray-800 mb-3">О породе</h2>
+            <h2 className="section-title mb-3">О породе</h2>
             <p className="text-gray-600 leading-relaxed">{breed.description}</p>
           </div>
         )}
 
         {/* Основные характеристики */}
         <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
-          <h2 className="text-xl font-semibold text-gray-800 mb-4">Основные характеристики</h2>
+          <h2 className="section-title">Основные характеристики</h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="text-center p-4 bg-gray-50 rounded-lg">
               <p className="text-gray-500 text-sm">Вес</p>
@@ -153,7 +153,7 @@ const BreedDetailPage = () => {
 
         {/* Характер и поведение */}
         <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
-          <h2 className="text-xl font-semibold text-gray-800 mb-4">Характер и поведение</h2>
+          <h2 className="section-title">Характер и поведение</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
               <span className="text-gray-700">Энергичность</span>
@@ -184,7 +184,7 @@ const BreedDetailPage = () => {
 
         {/* Социальные характеристики */}
         <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
-          <h2 className="text-xl font-semibold text-gray-800 mb-4">Социальные характеристики</h2>
+          <h2 className="section-title">Социальные характеристики</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
               <span className="text-gray-700">К детям</span>
@@ -209,7 +209,7 @@ const BreedDetailPage = () => {
 
         {/* Уход */}
         <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
-          <h2 className="text-xl font-semibold text-gray-800 mb-4">Уход</h2>
+          <h2 className="section-title">Уход</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
               <span className="text-gray-700">Груминг</span>
@@ -230,7 +230,7 @@ const BreedDetailPage = () => {
 
         {/* Здоровье */}
         <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
-          <h2 className="text-xl font-semibold text-gray-800 mb-4">Здоровье</h2>
+          <h2 className="section-title">Здоровье</h2>
           <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg mb-4">
             <span className="text-gray-700">Общий уровень риска</span>
             <span className={`px-3 py-1 rounded-full text-sm ${getLevelColor(breed.health_risk_level)}`}>
@@ -259,7 +259,7 @@ const BreedDetailPage = () => {
 
           <div className="mt-4 flex flex-wrap gap-2">
             {breed.brachycephalic && (
-              <span className="px-3 py-1 bg-orange-100 text-orange-700 rounded-full text-sm">
+              <span className="px-3 py-1 bg-accent-100 text-accent-700 rounded-full text-sm">
                 ⚠️ Брахицефал - требует особого внимания к дыханию
               </span>
             )}
@@ -269,7 +269,7 @@ const BreedDetailPage = () => {
         {/* Питание */}
         {breed.nutrition && (
           <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
-            <h2 className="text-xl font-semibold text-gray-800 mb-4">Рекомендации по питанию</h2>
+            <h2 className="section-title">Рекомендации по питанию</h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
               <div className="text-center p-4 bg-blue-50 rounded-lg">
                 <p className="text-gray-500 text-sm">Калории (взрослый)</p>

@@ -13,3 +13,11 @@ export const formatPrice = (price) => {
   }).format(price)
 }
 
+/**
+ * Форматирование цены курса (0 → «Бесплатно»)
+ */
+export const formatCoursePrice = (price) => {
+  if (price === 0) return 'Бесплатно'
+  return formatPrice(price)
+}
+

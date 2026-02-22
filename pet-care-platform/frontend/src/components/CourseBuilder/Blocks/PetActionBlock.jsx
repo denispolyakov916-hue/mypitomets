@@ -1,4 +1,4 @@
-/**
+﻿/**
  * PetActionBlock - Блок действий с питомцем
  *
  * Специализированный блок для создания интерактивных упражнений,
@@ -246,10 +246,10 @@ function PetActionBlock({ content, settings, onChange, mode = 'edit' }) {
 
               {/* Таймер */}
               {timerEnabled && (
-                <div className="bg-orange-50 border border-orange-200 rounded p-3">
+                <div className="bg-accent-50 border border-accent-200 rounded p-3">
                   <div className="flex items-center space-x-2 mb-1">
-                    <Clock className="text-orange-600" size={16} />
-                    <span className="font-medium text-orange-900">
+                    <Clock className="text-accent-600" size={16} />
+                    <span className="font-medium text-accent-900">
                       Время выполнения: {Math.floor(timerDuration / 60)}:{(timerDuration % 60).toString().padStart(2, '0')}
                     </span>
                   </div>

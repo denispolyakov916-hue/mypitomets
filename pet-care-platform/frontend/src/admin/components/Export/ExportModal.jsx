@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 
 // Components
-import Modal from '../Forms/Modal';
+import Modal from '../../../components/ui/Modal';
 import FormField from '../Forms/FormField';
 import FormButtons from '../Forms/FormButtons';
 
@@ -67,7 +67,7 @@ const ExportModal = ({
       isOpen={isOpen}
       onClose={onClose}
       title={`Экспорт данных: ${getModelDisplayName(model)}`}
-      size="md"
+      size="lg"
     >
       <form className="p-6 space-y-6">
         {/* Формат экспорта */}
