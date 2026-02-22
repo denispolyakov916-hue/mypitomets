@@ -145,7 +145,7 @@ class PetBreedComparisonService:
     
     def _analyze_health_risks(self, pet, breed):
         """Анализ рисков здоровья"""
-        breed_risks = list(breed.health_risks.filter(severity__in=['high', 'critical']))
+        breed_risks = list(breed.breed_health_records.filter(severity__in=['high', 'critical']))
         
         age_years = self._calculate_age(pet.date_of_birth) if pet.date_of_birth else None
         
@@ -229,7 +229,7 @@ class PetBreedComparisonService:
             ])
         
         # Риски здоровья
-        high_risks = breed.health_risks.filter(severity='high', prevalence_percent__gte=15)
+        high_risks = breed.breed_health_records.filter(severity='high', prevalence_percent__gte=15)
         for risk in high_risks:
             if 'дисплазия' in risk.condition_name.lower() or 'сустав' in risk.condition_name.lower():
                 recommendations['products'].append('Корм с глюкозамином и хондроитином')

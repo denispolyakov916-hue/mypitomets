@@ -83,10 +83,13 @@ class BreedDetailView(APIView):
         breed = get_object_or_404(Breed, slug=slug)
         
         # Получаем связанные данные
-        health_risks = [h.to_dict() for h in breed.health_risks.all()]
+        health_risks = [h.to_dict() for h in breed.breed_health_records.all()]
         nutrition = None
-        if breed.nutrition_recommendations.exists():
-            nutrition = breed.nutrition_recommendations.first().to_dict()
+        try:
+            if hasattr(breed, 'nutrition') and breed.nutrition:
+                nutrition = breed.nutrition.to_dict()
+        except Exception:
+            pass
         care = [c.to_dict() for c in breed.care_procedures.all()]
         
         data = breed.to_dict()
@@ -107,12 +110,12 @@ class BreedHealthView(APIView):
     
     def get(self, request, slug):
         breed = get_object_or_404(Breed, slug=slug)
-        health_risks = breed.health_risks.all().order_by('-prevalence_percent')
+        health_records = breed.breed_health_records.all().order_by('-prevalence_percent')
         
         return Response({
             'breed': breed.name,
-            'health_risk_level': breed.health_risk_level,
-            'risks': [h.to_dict() for h in health_risks]
+            'health_risk_level': getattr(breed, 'health_risk_level', None),
+            'risks': [h.to_dict() for h in health_records]
         })
 
 
@@ -172,13 +175,16 @@ class PetBreedComparisonView(APIView):
         health_analysis = self._analyze_health(pet, breed)
         housing_analysis = self._analyze_housing(pet, breed)
         
-        # Риски здоровья породы
-        health_risks = [h.to_dict() for h in breed.health_risks.all()[:5]]
+        # Риски здоровья породы (из BreedHealth записей)
+        health_risks = [h.to_dict() for h in breed.breed_health_records.all()[:5]]
         
-        # Рекомендации по питанию породы
+        # Рекомендации по питанию породы (OneToOne BreedNutrition)
         nutrition_info = None
-        if breed.nutrition_recommendations.exists():
-            nutrition_info = breed.nutrition_recommendations.first().to_dict()
+        try:
+            if hasattr(breed, 'nutrition') and breed.nutrition:
+                nutrition_info = breed.nutrition.to_dict()
+        except Exception:
+            pass
         
         # Рекомендации по уходу
         care_info = [c.to_dict() for c in breed.care_procedures.all()[:5]]
@@ -202,28 +208,28 @@ class PetBreedComparisonView(APIView):
                 'name_en': breed.name_en,
                 'slug': breed.slug,
                 'description': breed.short_description,
-                'weight_min': float(breed.weight_min),
-                'weight_max': float(breed.weight_max),
-                'height_min': breed.height_min,
-                'height_max': breed.height_max,
-                'lifespan_min': breed.lifespan_min,
-                'lifespan_max': breed.lifespan_max,
-                'energy_level': breed.energy_level,
-                'energy_level_display': breed.get_energy_level_display(),
+                'weight_min': float(breed.weight_min) if breed.weight_min else None,
+                'weight_max': float(breed.weight_max) if breed.weight_max else None,
+                'height_min': getattr(breed, 'height_min', None),
+                'height_max': getattr(breed, 'height_max', None),
+                'lifespan_min': getattr(breed, 'lifespan_min', None),
+                'lifespan_max': getattr(breed, 'lifespan_max', None),
+                'average_lifespan': breed.average_lifespan,
+                'energy_level': breed.base_activity_level,
                 'size_category': breed.size_category,
                 'trainability': breed.trainability,
-                'intelligence': breed.intelligence,
-                'friendliness_to_children': breed.friendliness_to_children,
-                'friendliness_to_pets': breed.friendliness_to_pets,
-                'grooming_frequency': breed.grooming_frequency,
-                'shedding_level': breed.shedding_level,
+                'intelligence': getattr(breed, 'intelligence', None),
+                'friendliness_to_children': getattr(breed, 'friendliness_to_children', None),
+                'friendliness_to_pets': getattr(breed, 'friendliness_to_pets', None),
+                'grooming_frequency': breed.grooming_needs,
+                'shedding_level': getattr(breed, 'shedding_level', None),
                 'coat_type': breed.coat_type,
-                'health_risk_level': breed.health_risk_level,
-                'apartment_friendly': breed.apartment_friendly,
-                'good_for_novice': breed.good_for_novice,
-                'exercise_needs': breed.exercise_needs,
-                'hypoallergenic': breed.hypoallergenic,
-                'brachycephalic': breed.brachycephalic,
+                'health_risk_level': getattr(breed, 'health_risk_level', None),
+                'apartment_friendly': getattr(breed, 'apartment_friendly', None),
+                'good_for_novice': getattr(breed, 'good_for_novice', None),
+                'exercise_needs': getattr(breed, 'exercise_needs', None),
+                'hypoallergenic': getattr(breed, 'hypoallergenic', None),
+                'brachycephalic': breed.is_brachycephalic,
             },
             'analysis': {
                 'weight': weight_analysis,
@@ -353,7 +359,8 @@ class PetBreedComparisonView(APIView):
         }
         
         pet_level = energy_map.get(pet.activity_level, 3)
-        breed_level = energy_map.get(breed.energy_level, 3)
+        breed_energy = getattr(breed, 'energy_level', None) or breed.base_activity_level
+        breed_level = energy_map.get(breed_energy, 3)
         
         diff = pet_level - breed_level
         
@@ -384,8 +391,8 @@ class PetBreedComparisonView(APIView):
             'status_label': status_labels.get(status, status),
             'pet_activity': pet.activity_level,
             'pet_activity_label': energy_labels.get(pet.activity_level, 'Не указан'),
-            'breed_energy': breed.energy_level,
-            'breed_energy_label': energy_labels.get(breed.energy_level, 'Средняя'),
+            'breed_energy': breed_energy,
+            'breed_energy_label': energy_labels.get(breed_energy, 'Средняя'),
             'message': message,
             'recommendation': recommendation,
             'score': score
@@ -419,16 +426,21 @@ class PetBreedComparisonView(APIView):
             issues.append(f'Учитывайте аллергии: {", ".join(allergies[:3])}')
             score -= 5
         
-        # Получаем рекомендации по питанию породы
-        nutrition_rec = breed.nutrition_recommendations.first()
+        # Получаем рекомендации по питанию породы (OneToOne BreedNutrition)
         recommended_diet = None
-        if nutrition_rec:
-            recommended_diet = {
-                'protein_range': f'{nutrition_rec.protein_min_percent}-{nutrition_rec.protein_max_percent}%',
-                'fat_range': f'{nutrition_rec.fat_min_percent}-{nutrition_rec.fat_max_percent}%',
-                'recommended_ingredients': nutrition_rec.recommended_ingredients or [],
-                'avoid_ingredients': nutrition_rec.avoid_ingredients or [],
-            }
+        try:
+            nutrition_rec = getattr(breed, 'nutrition', None)
+            if nutrition_rec:
+                recommended_diet = {
+                    'protein_need': nutrition_rec.protein_need,
+                    'calorie_density': nutrition_rec.calorie_density,
+                    'diet_type': nutrition_rec.diet_type,
+                    'feeding_frequency': nutrition_rec.feeding_frequency,
+                    'special_considerations': nutrition_rec.special_considerations,
+                    'common_allergens': nutrition_rec.common_allergens or [],
+                }
+        except Exception:
+            pass
         
         if not issues:
             message = 'Питание настроено корректно'
@@ -493,7 +505,7 @@ class PetBreedComparisonView(APIView):
         
         # Проверка социализации
         if pet.social_level:
-            if pet.social_level == 'home_only' and breed.friendliness_to_pets in ['high', 'very_high']:
+            if pet.social_level == 'home_only' and getattr(breed, 'friendliness_to_pets', None) in ['high', 'very_high']:
                 issues.append('Порода хорошо социализируется - рекомендуется больше контактов')
                 score -= 10
         
@@ -551,18 +563,19 @@ class PetBreedComparisonView(APIView):
             warnings.append('Следите за состоянием зубов')
             score -= 5
         
-        # Риски породы
-        breed_risks = list(breed.health_risks.all()[:3])
+        # Риски породы (из BreedHealth записей)
+        breed_risks = list(breed.breed_health_records.all()[:3])
         risk_warnings = []
         for risk in breed_risks:
-            if risk.severity in ['high', 'critical']:
-                risk_warnings.append(f'{risk.condition_name} ({risk.severity})')
+            severity = getattr(risk, 'severity', None) or ''
+            if severity in ['high', 'critical']:
+                risk_warnings.append(f'{risk.condition_name} ({severity})')
         
         if risk_warnings:
             warnings.append(f'Породные риски: {", ".join(risk_warnings)}')
         
         # Брахицефалы требуют особого внимания
-        if breed.brachycephalic:
+        if breed.is_brachycephalic:
             warnings.append('Брахицефальная порода - следите за дыханием в жару')
         
         if not issues and not warnings:
@@ -586,8 +599,8 @@ class PetBreedComparisonView(APIView):
             'status_label': status_labels.get(status, status),
             'health_issues': issues,
             'warnings': warnings,
-            'breed_risk_level': breed.health_risk_level,
-            'is_brachycephalic': breed.brachycephalic,
+            'breed_risk_level': getattr(breed, 'health_risk_level', None),
+            'is_brachycephalic': breed.is_brachycephalic,
             'is_neutered': pet.is_neutered,
             'message': message,
             'score': max(0, score)
@@ -603,17 +616,20 @@ class PetBreedComparisonView(APIView):
         has_children = pet.has_children
         
         # Проверка совместимости с квартирой
-        if housing == 'apartment' and not breed.apartment_friendly:
+        apartment_friendly = getattr(breed, 'apartment_friendly', None)
+        if housing == 'apartment' and apartment_friendly is False:
             issues.append(f'Порода {breed.name} не рекомендуется для содержания в квартире')
             score -= 25
         
         # Проверка наличия двора для активных пород
-        if breed.exercise_needs in ['high', 'very_high'] and not has_yard:
+        exercise_needs = getattr(breed, 'exercise_needs', None) or breed.base_activity_level
+        if exercise_needs in ['high', 'very_high'] and not has_yard:
             issues.append('Для породы с высокой потребностью в нагрузках рекомендуется двор')
             score -= 15
         
         # Проверка совместимости с детьми
-        if has_children and breed.friendliness_to_children in ['low', 'very_low']:
+        friendliness_to_children = getattr(breed, 'friendliness_to_children', None)
+        if has_children and friendliness_to_children in ['low', 'very_low']:
             issues.append('Порода может быть не идеальна для семей с детьми')
             score -= 20
         
@@ -639,9 +655,9 @@ class PetBreedComparisonView(APIView):
             'housing_type': housing,
             'has_yard': has_yard,
             'has_children': has_children,
-            'breed_apartment_friendly': breed.apartment_friendly,
-            'breed_exercise_needs': breed.exercise_needs,
-            'breed_good_for_novice': breed.good_for_novice,
+            'breed_apartment_friendly': apartment_friendly,
+            'breed_exercise_needs': exercise_needs,
+            'breed_good_for_novice': getattr(breed, 'good_for_novice', None),
             'issues': issues,
             'message': message,
             'score': max(0, score)
@@ -785,15 +801,16 @@ class PetBreedComparisonView(APIView):
             })
         
         # По уходу за шерстью
-        if breed.grooming_frequency in ['daily', 'professional']:
+        grooming = getattr(breed, 'grooming_frequency', None) or breed.grooming_needs
+        if grooming in ['daily', 'professional', 'high', 'very_high']:
             recommendations.append({
                 'category': 'grooming',
                 'priority': 'low',
                 'icon': '✂️',
                 'title': 'Уход за шерстью',
-                'description': f'Порода требует {breed.get_grooming_frequency_display().lower()} ухода',
+                'description': f'Порода требует повышенного ухода за шерстью',
                 'actions': [
-                    'Регулярное расчёсывание' if breed.grooming_frequency != 'professional' else 'Профессиональный груминг раз в 1-2 месяца',
+                    'Регулярное расчёсывание',
                     'Следите за состоянием шерсти',
                     'Купание по необходимости'
                 ]

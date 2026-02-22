@@ -1,54 +1,32 @@
 /**
  * ToolboxPanel - Block library for the course builder.
  *
- * Displays available block types organized by category.
- * Blocks can be added by clicking or by dragging onto the canvas.
- * DndContext is in the parent (CourseBuilder).
+ * Blocks are added to the current page by clicking.
+ * No drag from toolbox -- reordering happens only within the canvas.
  */
 
 import { useState } from 'react'
-import { useDraggable } from '@dnd-kit/core'
 
-function DraggableBlock({ blockType, icon, label, description, onClickAdd, disabled }) {
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
-    id: `toolbox-${blockType}`,
-    data: { type: 'block-template', blockType, source: 'toolbox' },
-  })
-
-  const style = transform
-    ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`, zIndex: 100 }
-    : undefined
-
+function BlockItem({ icon, label, description, disabled, onAdd }) {
   return (
-    <div
-      ref={setNodeRef}
-      style={style}
+    <button
+      onClick={onAdd}
+      disabled={disabled}
       className={`
-        flex items-center gap-2.5 px-2.5 py-2 rounded-lg border transition-all cursor-grab
-        ${isDragging
-          ? 'opacity-50 shadow-lg border-blue-300 bg-blue-50'
-          : 'border-gray-200 bg-white hover:border-blue-300 hover:shadow-sm'
+        w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg border text-left transition-all
+        ${disabled
+          ? 'opacity-40 cursor-not-allowed border-gray-100 bg-gray-50'
+          : 'border-gray-200 bg-white hover:border-blue-300 hover:shadow-sm cursor-pointer active:scale-[0.98]'
         }
-        ${disabled ? 'opacity-40 cursor-not-allowed' : ''}
       `}
-      {...listeners}
-      {...attributes}
     >
       <span className="text-lg flex-shrink-0">{icon}</span>
       <div className="flex-1 min-w-0">
         <div className="text-xs font-medium text-gray-800 truncate">{label}</div>
         <div className="text-[10px] text-gray-400 truncate">{description}</div>
       </div>
-      <button
-        onClick={(e) => {
-          e.stopPropagation()
-          if (!disabled) onClickAdd()
-        }}
-        disabled={disabled}
-        className="flex-shrink-0 w-6 h-6 flex items-center justify-center rounded bg-blue-50 text-blue-600 hover:bg-blue-100 text-xs font-bold disabled:opacity-30"
-        title="Добавить на страницу"
-      >+</button>
-    </div>
+      <span className="flex-shrink-0 w-5 h-5 flex items-center justify-center rounded bg-blue-50 text-blue-500 text-[10px] font-bold">+</span>
+    </button>
   )
 }
 
@@ -105,14 +83,13 @@ export default function ToolboxPanel({ currentPageId, onBlockAdd }) {
             {expanded[cat.id] && (
               <div className="mt-1 space-y-1">
                 {cat.blocks.map((block) => (
-                  <DraggableBlock
+                  <BlockItem
                     key={block.type}
-                    blockType={block.type}
                     icon={block.icon}
                     label={block.label}
                     description={block.description}
                     disabled={!hasPage}
-                    onClickAdd={() => onBlockAdd(block.type, currentPageId)}
+                    onAdd={() => onBlockAdd(block.type, currentPageId)}
                   />
                 ))}
               </div>

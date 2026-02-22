@@ -6,9 +6,8 @@
 2. MER (Maintenance Energy Requirement) — дневная потребность
 3. Корректировки по возрасту, размеру, активности, здоровью
 
-Формулы по AAFCO/NRC/FEDIAF стандартам:
-- Собаки: RER = 70 × (вес_кг)^0.75
-- Кошки: RER = 70 × (вес_кг)^0.67
+Формулы по WSAVA/PNA/Tufts стандартам:
+- Собаки и кошки: RER = 70 × (вес_кг)^0.75
 - MER = RER × K_age × K_neutering × K_activity × K_size × K_coat × K_climate × K_health
 
 Коэффициенты загружаются из таблицы nutrition_coefficients в БД.
@@ -127,11 +126,11 @@ class CalorieCalculatorService:
         'homemade': 120,   # Домашняя еда
     }
     
-    # Пропорции мультипитания (по ТЗ)
+    # Пропорции мультипитания: только dry + wet = 100%.
+    # Лакомства не входят в калорийный бюджет — считаются отдельно через _get_treat_ratio.
     MULTI_FEEDING_RATIO = {
         'dry': 0.60,       # 60% калорий из сухого
-        'wet': 0.30,       # 30% калорий из влажного
-        'treats': 0.10,    # 10% калорий из лакомств
+        'wet': 0.40,       # 40% калорий из влажного
     }
     
     # Fallback коэффициенты если БД недоступна (по NRC/FEDIAF 2021)
@@ -252,7 +251,6 @@ class CalorieCalculatorService:
             'size': {'priority': 2, 'max_delta_pct': 10.0},
             'coat': {'priority': 2, 'max_delta_pct': 5.0},
             'climate': {'priority': 2, 'max_delta_pct': 10.0},
-            'housing': {'priority': 2, 'max_delta_pct': 10.0},
             'bcs': {'priority': 1, 'max_delta_pct': None},
             'critical_disease': {'priority': 1, 'max_delta_pct': None},
             'base_disease': {'priority': 0, 'max_delta_pct': None},
@@ -285,6 +283,8 @@ class CalorieCalculatorService:
             'bcs_overweight_7': (0.80, 1.00),
             'bcs_underweight': (1.30, 2.20),
             'critical_disease': (1.00, 1.20),
+            'growth_bcs_obese_8_9': (0.80, 1.20),
+            'growth_bcs_overweight_7': (0.90, 1.30),
         }
         try:
             from .nutrition_models import NutritionCapRule
@@ -654,11 +654,11 @@ class CalorieCalculatorService:
         # Только влажный корм
         result.wet_food_grams = (main_calories / wet_kcal) * 100
         
-        # Мультипитание (адаптивное распределение)
+        # Мультипитание (адаптивное распределение, dry + wet = 100% основного бюджета)
         multi_ratio = self._get_multi_distribution(pet)
-        result.multi_dry_grams = (result.mer * multi_ratio['dry'] / dry_kcal) * 100
-        result.multi_wet_grams = (result.mer * multi_ratio['wet'] / wet_kcal) * 100
-        result.multi_treat_kcal = result.mer * multi_ratio['treats']
+        result.multi_dry_grams = (main_calories * multi_ratio['dry'] / dry_kcal) * 100
+        result.multi_wet_grams = (main_calories * multi_ratio['wet'] / wet_kcal) * 100
+        result.multi_treat_kcal = result.treat_kcal_per_day
         
         # 13. Оценка полноты данных и рекомендации
         result.data_completeness = self._calculate_data_completeness(pet)
@@ -667,13 +667,10 @@ class CalorieCalculatorService:
         return result
 
     def _get_treat_ratio(self, pet) -> float:
-        """Базовая доля лакомств для dry/wet планов."""
-        ratio = 0.05
+        """Базовая доля лакомств (от MER) для dry/wet планов."""
         age_months = pet.age_months or 24
-        if age_months < 12 or age_months >= 84:
-            ratio = min(ratio, 0.05)
-        if getattr(pet, 'activity_level', None) in ['high', 'very_high']:
-            ratio = max(ratio, 0.05)
+        activity = getattr(pet, 'activity_level', None)
+
         try:
             from .nutrition_models import PetHealthCondition
             has_gi = PetHealthCondition.objects.filter(
@@ -683,9 +680,16 @@ class CalorieCalculatorService:
             ).exists()
         except Exception:
             has_gi = False
+
         if has_gi:
-            ratio = min(ratio, 0.03)
-        return ratio
+            return 0.02
+        if age_months < 12:
+            return 0.03
+        if age_months >= 84:
+            return 0.03
+        if activity in ['high', 'very_high']:
+            return 0.08
+        return 0.05
 
     def _get_macro_targets(self, pet) -> Dict[str, Dict[str, float]]:
         """
@@ -801,21 +805,32 @@ class CalorieCalculatorService:
         rule = self._find_best_macro_rule(species, contexts_to_check, age_months)
 
         if rule:
+            p_min = float(rule.protein_min) if rule.protein_min else 22
+            p_max = float(rule.protein_max) if rule.protein_max else 35
+            f_min = float(rule.fat_min) if rule.fat_min else 10
+            f_max = float(rule.fat_max) if rule.fat_max else 25
+            fb_min = float(rule.fiber_min) if rule.fiber_min else 2
+            fb_max = float(rule.fiber_max) if rule.fiber_max else 10
+
+            # MacroTargetRule хранит значения в DM basis (% на сухое вещество).
+            # Для as-fed пересчитываем через среднюю влажность корма.
+            if not dm_basis:
+                avg_moisture = 12 if species == 'dog' else 12
+                as_fed_factor = (100 - avg_moisture) / 100
+                p_min = round(p_min * as_fed_factor, 1)
+                p_max = round(p_max * as_fed_factor, 1)
+                f_min = round(f_min * as_fed_factor, 1)
+                f_max = round(f_max * as_fed_factor, 1)
+                fb_min = round(fb_min * as_fed_factor, 1)
+                fb_max = round(fb_max * as_fed_factor, 1)
+
             result = {
-                'protein': {
-                    'min': float(rule.protein_min) if rule.protein_min else 22,
-                    'max': float(rule.protein_max) if rule.protein_max else 35,
-                },
-                'fat': {
-                    'min': float(rule.fat_min) if rule.fat_min else 10,
-                    'max': float(rule.fat_max) if rule.fat_max else 25,
-                },
-                'fiber': {
-                    'min': float(rule.fiber_min) if rule.fiber_min else 2,
-                    'max': float(rule.fiber_max) if rule.fiber_max else 10,
-                },
+                'protein': {'min': p_min, 'max': p_max},
+                'fat': {'min': f_min, 'max': f_max},
+                'fiber': {'min': fb_min, 'max': fb_max},
                 '_source': rule.context_key,
                 '_priority': rule.priority,
+                '_basis': 'dm' if dm_basis else 'as_fed',
             }
             return result
 
@@ -888,24 +903,21 @@ class CalorieCalculatorService:
     def _get_multi_distribution(self, pet) -> Dict[str, float]:
         """
         Адаптивное распределение калорий для мультипитания.
+        Возвращает только dry + wet, сумма = 1.0.
+        Лакомства считаются отдельно через _get_treat_ratio.
         """
         distribution = dict(self.MULTI_FEEDING_RATIO)
-        distribution['treats'] = self._get_treat_ratio(pet)
-        age_months = pet.age_months or 24
         species = pet.species or 'dog'
         activity = pet.activity_level or 'moderate'
 
-        # Видовые корректировки
         if species == 'cat':
             distribution['wet'] += 0.10
             distribution['dry'] = max(0.0, distribution['dry'] - 0.10)
 
-        # Активность (больше энергии днём)
         if activity in ['high', 'very_high']:
             distribution['dry'] += 0.05
             distribution['wet'] = max(0.0, distribution['wet'] - 0.05)
 
-        # ЖКТ проблемы: настраиваем долю влажного корма
         try:
             from .nutrition_models import PetHealthCondition
             has_gi = PetHealthCondition.objects.filter(
@@ -1407,6 +1419,19 @@ class CalorieCalculatorService:
                 "Для гигантских пород важны корма с хондропротекторами для суставов"
             )
         
+        # Водный баланс
+        if pet.weight:
+            species = pet.species or 'dog'
+            ml_per_kg = 60 if species == 'dog' else 50
+            water_ml = round(float(pet.weight) * ml_per_kg)
+            recommendations.append(
+                f"Обеспечьте доступ к свежей воде (~{water_ml} мл/день)"
+            )
+            if species == 'cat':
+                recommendations.append(
+                    "Кошки пьют мало — рассмотрите влажный корм или питьевой фонтанчик"
+                )
+        
         return recommendations
     
     def calculate_feeding_plan(
@@ -1584,11 +1609,15 @@ class CalorieCalculatorService:
         dry_kcal = self.FOOD_CALORIE_DENSITY['dry']
         wet_kcal = self.FOOD_CALORIE_DENSITY['wet']
         
-        result.dry_food_grams = (result.mer / dry_kcal) * 100
-        result.wet_food_grams = (result.mer / wet_kcal) * 100
-        result.multi_dry_grams = (result.mer * 0.60 / dry_kcal) * 100
-        result.multi_wet_grams = (result.mer * 0.30 / wet_kcal) * 100
-        result.multi_treat_kcal = result.mer * 0.10
+        treat_ratio = self._get_treat_ratio(pet)
+        main_calories = result.mer * (1 - treat_ratio)
+        result.dry_food_grams = (main_calories / dry_kcal) * 100
+        result.wet_food_grams = (main_calories / wet_kcal) * 100
+
+        multi_ratio = self._get_multi_distribution(pet)
+        result.multi_dry_grams = (main_calories * multi_ratio['dry'] / dry_kcal) * 100
+        result.multi_wet_grams = (main_calories * multi_ratio['wet'] / wet_kcal) * 100
+        result.multi_treat_kcal = result.mer * treat_ratio
         
         result.coefficients_applied['extra_activities'] = {
             'total_extra_kcal': round(extra_kcal, 0),

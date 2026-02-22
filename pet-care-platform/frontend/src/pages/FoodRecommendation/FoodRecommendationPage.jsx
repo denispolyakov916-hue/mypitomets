@@ -728,21 +728,15 @@ const RationComponentCard = ({
     ? 'supplement' 
     : (componentType || component?.product_type || 'dry_food');
   
-  // Процент по фактическим калориям этого компонента (совпадает с порцией)
-  const totalKcal = Number(dailyCalories) || 0;
-  const componentKcal = Number(component?.daily_kcal) || 0;
-  const actualPct = totalKcal > 0 && componentKcal > 0
-    ? Math.round((componentKcal / totalKcal) * 100)
-    : null;
-  const fallbackDry = Math.round((calorieDistribution?.dry_food ?? 0.6) * 100);
-  const fallbackWet = Math.round((calorieDistribution?.wet_food ?? 0.4) * 100);
-  const displayPct = actualPct ?? (baseType === 'dry_food_multi' ? fallbackDry : baseType === 'wet_food_multi' ? fallbackWet : 0);
+  // Проценты берём из calorie_distribution (серверное значение с учётом всех корректировок)
+  const dryPct = Math.round((calorieDistribution?.dry_food ?? 0.6) * 100);
+  const wetPct = Math.round((calorieDistribution?.wet_food ?? 0.4) * 100);
   
   const typeLabels = {
     'dry_food': 'Сухой корм',
-    'dry_food_multi': `Сухой корм (${baseType === 'dry_food_multi' ? displayPct : fallbackDry}%)`,
+    'dry_food_multi': `Сухой корм (${dryPct}%)`,
     'wet_food': 'Влажный корм',
-    'wet_food_multi': `Влажный корм (${baseType === 'wet_food_multi' ? displayPct : fallbackWet}%)`,
+    'wet_food_multi': `Влажный корм (${wetPct}%)`,
     'treat': 'Лакомства',
     'supplement': labelOverride || 'Добавка',
   };

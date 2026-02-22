@@ -245,8 +245,8 @@ class BreedHealthRisksView(APIView):
     def get(self, request, breed_id):
         breed = get_object_or_404(Breed, id=breed_id)
         
-        # Фильтры
-        risks = breed.health_risks.all()
+        # Фильтры (BreedHealth записи, не JSONField)
+        risks = breed.breed_health_records.all()
         
         severity = request.query_params.get('severity')
         if severity:

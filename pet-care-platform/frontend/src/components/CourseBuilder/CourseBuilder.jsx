@@ -449,26 +449,15 @@ function CourseBuilder({ course, onSave, onPublish, saving }) {
     const { active, over } = event
     if (!over || active.id === over.id) return
 
-    const dragData = active.data.current
-    const overData = over.data.current
-
-    // 1. Toolbox block dropped onto the page
-    if (dragData?.source === 'toolbox' && currentPageId) {
-      handleBlockAdd(dragData.blockType, currentPageId)
-      return
-    }
-
-    // 2. Block sortable reorder within the same page
-    if (dragData?.sortable && String(active.id).startsWith('block-')) {
-      if (overData?.sortable && String(over.id).startsWith('block-')) {
-        const oldIndex = blockIds.indexOf(active.id)
-        const newIndex = blockIds.indexOf(over.id)
-        if (oldIndex !== -1 && newIndex !== -1 && oldIndex !== newIndex) {
-          const newOrder = arrayMove(blockIds, oldIndex, newIndex).map(id =>
-            parseInt(id.replace('block-', ''))
-          )
-          handleBlockReorder(currentPageId, newOrder)
-        }
+    // Sortable reorder within the same page (only DnD use case)
+    if (String(active.id).startsWith('block-') && String(over.id).startsWith('block-')) {
+      const oldIndex = blockIds.indexOf(active.id)
+      const newIndex = blockIds.indexOf(over.id)
+      if (oldIndex !== -1 && newIndex !== -1 && oldIndex !== newIndex) {
+        const newOrder = arrayMove(blockIds, oldIndex, newIndex).map(id =>
+          parseInt(id.replace('block-', ''))
+        )
+        handleBlockReorder(currentPageId, newOrder)
       }
       return
     }

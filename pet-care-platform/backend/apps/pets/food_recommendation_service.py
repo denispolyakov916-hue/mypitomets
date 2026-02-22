@@ -12,6 +12,7 @@ FoodRecommendationService - Сервис подбора корма для пит
 
 import logging
 import math
+import re
 from dataclasses import dataclass, field
 from typing import List, Optional, Dict, Any, Tuple, Iterable
 from decimal import Decimal
@@ -500,6 +501,9 @@ class FoodSearchFilters:
     calorie_distribution: Dict[str, float] = field(default_factory=dict)
     has_gi_issues: bool = False
     macro_targets: Optional[Dict[str, Dict[str, float]]] = None
+    bcs: Optional[int] = None
+    reproductive_state: Optional[str] = None
+    override_age_group: Optional[str] = None
     warnings: List[str] = field(default_factory=list)
 
 
@@ -707,21 +711,26 @@ class FoodRecommendationService:
 
         return product_age_group == pet_age_group
 
-    def _apply_age_filters(self, queryset, species: str, age_months: Optional[int]):
-        """Фильтры по возрасту на уровне БД + строгий age_group."""
+    def _apply_age_filters(self, queryset, species: str, age_months: Optional[int],
+                           override_age_group: Optional[str] = None):
+        """Фильтры по возрасту на уровне БД + строгий age_group.
+
+        override_age_group позволяет расширить допустимые возрастные группы
+        (например, для беременных/лактирующих допускаются puppy/kitten корма).
+        """
         if age_months is None:
             return queryset
 
-        # min/max возраст
         queryset = queryset.filter(
             Q(food_details__age_min_months__isnull=True) | Q(food_details__age_min_months__lte=age_months)
         ).filter(
             Q(food_details__age_max_months__isnull=True) | Q(food_details__age_max_months__gte=age_months)
         )
 
-        # age_group: жёсткое соответствие
         pet_age_group = self._get_age_category(species, age_months)
         allowed_groups = ['all', pet_age_group]
+        if override_age_group and override_age_group not in allowed_groups:
+            allowed_groups.append(override_age_group)
         return queryset.filter(Q(age_group__in=allowed_groups) | Q(age_group__isnull=True))
 
     def _has_gi_issues(self, filters: FoodSearchFilters) -> bool:
@@ -969,18 +978,21 @@ class FoodRecommendationService:
                     try:
                         from apps.shop.models import Product
                         product = Product.objects.select_related('food_details').get(id=comp.product_id)
+                        protein_t = calorie_result.macro_targets.get('protein', {})
+                        fat_t = calorie_result.macro_targets.get('fat', {})
+                        fiber_t = calorie_result.macro_targets.get('fiber', {})
                         macro_targets_for_score = {
                             'protein': {
-                                'min': float(calorie_result.macro_targets.get('protein_min', 20)),
-                                'max': float(calorie_result.macro_targets.get('protein_max', 40))
+                                'min': float(protein_t.get('min', 20)),
+                                'max': float(protein_t.get('max', 40))
                             },
                             'fat': {
-                                'min': float(calorie_result.macro_targets.get('fat_min', 10)),
-                                'max': float(calorie_result.macro_targets.get('fat_max', 25))
+                                'min': float(fat_t.get('min', 10)),
+                                'max': float(fat_t.get('max', 25))
                             },
                             'fiber': {
-                                'min': float(calorie_result.macro_targets.get('fiber_min', 1)),
-                                'max': float(calorie_result.macro_targets.get('fiber_max', 10))
+                                'min': float(fiber_t.get('min', 1)),
+                                'max': float(fiber_t.get('max', 10))
                             }
                         }
                         score = ration_balancer.score_product(
@@ -1092,12 +1104,18 @@ class FoodRecommendationService:
         Построить фильтры на основе данных PetID.
         """
         profile = self._build_nutrition_profile(pet)
+        # BCS
+        bcs_raw = getattr(pet, 'body_condition_score', None)
+        try:
+            bcs_int = int(bcs_raw) if bcs_raw is not None else None
+        except (ValueError, TypeError):
+            bcs_int = None
+
         filters = FoodSearchFilters(
             species=profile.species or 'dog',
             size_category=profile.size_category,
             age_months=profile.age_months,
             nutrition_profile=profile,
-            # Сохраняем обратную совместимость: старые поля остаются заполненными
             allergy_codes=list(profile.food_allergy_codes),
             food_allergy_codes=list(profile.food_allergy_codes),
             excluded_ingredients=[e.ingredient_name for e in (profile.exclusions or [])],
@@ -1105,6 +1123,8 @@ class FoodRecommendationService:
             hard_exclusion_tokens=list(profile.hard_exclusion_tokens),
             soft_exclusion_tokens=list(profile.soft_exclusion_tokens),
             requires_hypoallergenic=bool(profile.food_allergy_codes),
+            bcs=bcs_int,
+            reproductive_state=profile.reproductive_state,
         )
         
         # Добавляем породные риски аллергий
@@ -1115,11 +1135,19 @@ class FoodRecommendationService:
                     code = risk.get('allergen_code')
                     if code:
                         normalized = self._normalize_allergy_code(filters.species, code)
-                        # Породный риск = предупреждение, не hard-filter.
                         if normalized and normalized not in filters.allergy_codes:
                             filters.warnings.append(
                                 f"Породный риск аллергии: {normalized}"
                             )
+
+        # Беременность/лактация: допускаем puppy/kitten корма
+        if profile.reproductive_state in ('pregnant', 'lactating'):
+            juvenile_group = 'puppy' if filters.species == 'dog' else 'kitten'
+            filters.override_age_group = juvenile_group
+            filters.warnings.append(
+                f"Для беременных/лактирующих допускаются {juvenile_group} корма "
+                "(повышенная калорийность и белок)"
+            )
         
         return filters
 
@@ -1216,7 +1244,10 @@ class FoodRecommendationService:
         queryset = base_queryset
         
         # Фильтрация по возрасту - КРИТИЧНО для правильного подбора
-        queryset = self._apply_age_filters(queryset, filters.species, filters.age_months)
+        queryset = self._apply_age_filters(
+            queryset, filters.species, filters.age_months,
+            override_age_group=getattr(filters, 'override_age_group', None)
+        )
         
         # Фильтрация по размеру для собак
         if filters.species == 'dog' and filters.size_category:
@@ -1451,26 +1482,6 @@ class FoodRecommendationService:
                 float(item.price or 0),
             )
 
-        def bju_sort_key(item):
-            breakdown = item.score_breakdown or {}
-            bju_valid = breakdown.get('bju_valid')
-            bju_over = breakdown.get('bju_over')
-            bju_delta = breakdown.get('bju_delta')
-            kcal_delta = breakdown.get('kcal_delta_pct')
-            delta = bju_delta if bju_delta is not None else 999
-            kcal_abs = abs(kcal_delta) if kcal_delta is not None else 999
-            kcal_in_range = kcal_abs <= 15
-            return (
-                0 if bju_valid else 1,
-                0 if not bju_over else 1,
-                delta,
-                0 if kcal_in_range else 1,
-                kcal_abs,
-                -float(breakdown.get('bju_score') or 0),
-                -item.match_score,
-                float(item.price or 0),
-            )
-
         scored.sort(key=bju_sort_key)
         
         # Возвращаем лучший + считаем альтернативы
@@ -1501,7 +1512,10 @@ class FoodRecommendationService:
         queryset = base_queryset
         
         # Фильтрация по возрасту
-        queryset = self._apply_age_filters(queryset, filters.species, filters.age_months)
+        queryset = self._apply_age_filters(
+            queryset, filters.species, filters.age_months,
+            override_age_group=getattr(filters, 'override_age_group', None)
+        )
         
         # Фильтрация по размеру для собак
         if filters.species == 'dog' and filters.size_category:
@@ -1517,6 +1531,9 @@ class FoodRecommendationService:
                 | (Q(food_details__target_size__isnull=True) & size_group_match)
             )
 
+        general_queryset = queryset
+        gi_applied = False
+
         # ЖКТ-режим: подбираем специализированные корма
         if filters.has_gi_issues:
             gi_codes = self._expand_category_codes_for_species(['food.diet', 'food.hypoallergenic'], filters.species)
@@ -1527,6 +1544,7 @@ class FoodRecommendationService:
             )
             if gi_queryset.exists():
                 queryset = gi_queryset
+                gi_applied = True
             else:
                 filters.warnings.append(
                     "Не найдены специализированные ЖКТ-корма, использован общий подбор"
@@ -1684,7 +1702,62 @@ class FoodRecommendationService:
                     component.days_supply = filters.period_days
                 
                 scored.append(component)
-        
+
+        # Guided relax для ЖКТ: если GI-режим не дал результатов — откат к общему подбору
+        if not scored and gi_applied:
+            filters.warnings.append("ЖКТ-режим ослаблен (wet): не найдено подходящих кормов с учетом возраста/размера")
+            queryset = general_queryset
+            if getattr(filters, "requires_hypoallergenic", False):
+                queryset = queryset.filter(
+                    Q(food_details__is_hypoallergenic=True)
+                    | Q(is_hypoallergenic=True)
+                    | Q(food_details__compatibility_group="hypoallergenic")
+                )
+            hard_tokens2 = getattr(filters, "hard_exclusion_tokens", None) or []
+            if hard_tokens2:
+                queryset = queryset.exclude(food_details__ingredients__overlap=hard_tokens2).exclude(
+                    food_details__allergens__overlap=hard_tokens2
+                )
+            priced_qs2 = apply_price(queryset)
+            if not ((filters.min_price or filters.max_price) and not priced_qs2.exists()):
+                queryset = priced_qs2
+
+            avg_price2 = queryset.aggregate(avg=Avg('price'))['avg'] or Decimal('200')
+            filters.avg_price = avg_price2
+            products2 = list(queryset.order_by('price')[:100])
+            for product in products2:
+                score_val, reasons2, warnings2, badges2, breakdown2 = self._evaluate_product(product, filters)
+                if score_val > 0:
+                    kcal_per_100g = self._get_product_kcal(product, 'wet')
+                    if not kcal_per_100g:
+                        continue
+                    calorie_percent = (filters.calorie_distribution or {}).get('wet_food', 0.90)
+                    comp_kcal = (filters.daily_calories or 0) * calorie_percent
+                    if comp_kcal and kcal_per_100g:
+                        raw_grams = (comp_kcal / kcal_per_100g) * 100
+                        daily_grams = round(raw_grams / 10) * 10
+                    else:
+                        daily_grams = None
+                    nutrition = self._get_nutrition_data(product)
+                    scored.append(FoodComponent(
+                        product_id=product.id,
+                        product_name=product.name,
+                        product_type='wet_food',
+                        match_score=score_val,
+                        daily_grams=daily_grams,
+                        daily_kcal=round(comp_kcal) if comp_kcal else None,
+                        price=product.price,
+                        weight_grams=self._get_product_weight_grams(product),
+                        reasons=reasons2,
+                        warnings=warnings2,
+                        badges=badges2,
+                        short_description=self._get_short_description(product),
+                        image_url=getattr(product, 'image_url', None) or getattr(product, 'image', None),
+                        shop_url=f"/shop/product/{product.id}",
+                        kcal_per_100g=kcal_per_100g,
+                        **nutrition,
+                    ))
+
         # Сортируем по score (desc), затем по цене (asc)
         def bju_sort_key(item):
             breakdown = item.score_breakdown or {}
@@ -2543,7 +2616,7 @@ class FoodRecommendationService:
                     ing = ingredient.lower()
                     if ing in structured_tokens:
                         return (0, [], [f"Содержит аллерген: {ingredient}"], [], breakdown)
-                    if not structured_tokens and ing in full_text:
+                    if not structured_tokens and re.search(r'(?<!\w)' + re.escape(ing) + r'(?!\w)', full_text):
                         return (0, [], [f"Содержит аллерген: {ingredient}"], [], breakdown)
 
         # 1.1 HARD: непереносимость/медицинские исключения/противопоказания
@@ -2554,7 +2627,7 @@ class FoodRecommendationService:
                 continue
             if t in structured_tokens:
                 return (0, [], [f"Содержит исключённый ингредиент: {token}"], [], breakdown)
-            if not structured_tokens and t in full_text:
+            if not structured_tokens and re.search(r'(?<!\w)' + re.escape(t) + r'(?!\w)', full_text):
                 return (0, [], [f"Содержит исключённый ингредиент: {token}"], [], breakdown)
         
         # 2. SOFT: предпочтения/исключения (можно ослаблять)
@@ -2564,7 +2637,8 @@ class FoodRecommendationService:
             t = _norm_token(token)
             if not t:
                 continue
-            if t in structured_tokens or (not structured_tokens and t in full_text):
+            text_match = (not structured_tokens and re.search(r'(?<!\w)' + re.escape(t) + r'(?!\w)', full_text))
+            if t in structured_tokens or text_match:
                 soft_penalty += 1
                 warnings.append(f"Содержит нежелательный ингредиент: {token}")
         
@@ -2646,7 +2720,61 @@ class FoodRecommendationService:
             if macro_checks:
                 macro_fit = max(0.0, min(1.0, macro_hits / macro_checks))
         breakdown["macro_fit"] = round(macro_fit, 3)
-        
+
+        # 4.3 Брахицефалы: бонус/штраф по размеру гранулы
+        breed = getattr(filters, '_pet_breed', None)
+        if breed is None:
+            try:
+                profile = getattr(filters, 'nutrition_profile', None)
+                breed = getattr(profile, '_breed_obj', None) if profile else None
+            except Exception:
+                pass
+        if breed and getattr(breed, 'is_brachycephalic', False) and details:
+            kibble = getattr(details, 'kibble_size', None)
+            if kibble == 'small':
+                base_match_brachy_bonus = 0.05
+                reasons.append("Мелкие гранулы для брахицефалов")
+            elif kibble == 'large':
+                base_match_brachy_bonus = -0.10
+                warnings.append("Крупные гранулы не рекомендуются для брахицефалов")
+            else:
+                base_match_brachy_bonus = 0.0
+        else:
+            base_match_brachy_bonus = 0.0
+
+        # 4.4 Таурин для кошек
+        if filters.species == 'cat':
+            taurine_found = (
+                'taurine' in structured_tokens
+                or 'таурин' in structured_tokens
+                or 'taurine' in full_text
+                or 'таурин' in full_text
+            )
+            if taurine_found:
+                health_fit = min(1.0, health_fit + 0.05)
+            elif not structured_tokens:
+                warnings.append("Убедитесь, что корм содержит таурин (незаменим для кошек)")
+
+        # 4.5 Ca:P warning для щенков крупных пород
+        if (filters.age_months is not None and filters.age_months < 12
+                and filters.species == 'dog'
+                and filters.size_category in ['large', 'giant']):
+            warnings.append(
+                "Для щенков крупных пород важно соотношение Ca:P (1.2-1.5:1), проверьте состав корма"
+            )
+
+        # 4.6 BCS >= 7: бонус за diet/light/weight_management корма
+        bcs_val = getattr(filters, 'bcs', None)
+        if bcs_val is not None and bcs_val >= 7 and details:
+            compat = getattr(details, 'compatibility_group', '') or ''
+            special = set(_norm_token_list(getattr(details, 'special_diet', None) or []))
+            if compat == 'therapeutic_weight' or 'weight_control' in special:
+                health_fit = min(1.0, health_fit + 0.15)
+                reasons.append("Подходит для контроля веса")
+                badges.append("Контроль веса")
+
+        breakdown["health_fit"] = round(health_fit, 3)
+
         # 5. Соответствие возрасту
         age_fit = 0.6
         if filters.age_months is not None:
@@ -2684,39 +2812,29 @@ class FoodRecommendationService:
                     reasons.append(f"Для {filters.size_category}")
                     break
         
-        # 7. Приоритетные бренды
-        brand_name = (product.brand.name if product.brand else '').lower()
-        if filters.priority_brands:
-            for brand in filters.priority_brands:
-                if brand.lower() in brand_name:
-                    score += 10
-                    badges.append("Приоритет")
-                    break
-        
-        # 8. Холистик бонус
+        # 7. Холистик бонус
         if 'holistic' in category_code:
             badges.append("Холистик")
 
-        # 9. price_fit (0..1)
+        # 8. price_fit (0..1): предпочтение среднего/выше среднего ценового диапазона (качество)
         price_fit = 0.5
         
         avg_price = getattr(filters, 'avg_price', None)
         if avg_price and product.price:
             price_ratio = float(product.price) / float(avg_price)
             if price_ratio > 2:
-                price_fit = 0.2
-                warnings.append("Выше среднего ценового диапазона")
-            elif price_ratio > 1.5:
-                price_fit = 0.35
+                price_fit = 0.3
+            elif price_ratio > 1.3:
+                price_fit = 0.5
             elif price_ratio < 0.5:
-                price_fit = 0.6
-                warnings.append("Значительно ниже среднего")
+                price_fit = 0.3
+                warnings.append("Значительно ниже среднего ценового диапазона")
             else:
-                price_fit = 0.7
+                price_fit = 0.6
         breakdown["price_fit"] = round(price_fit, 3)
 
         # base_match объединяет возраст/размер как базовый слой (вид/возраст/размер уже gated)
-        base_match = max(0.0, min(1.0, (age_fit * 0.55 + size_fit * 0.45)))
+        base_match = max(0.0, min(1.0, (age_fit * 0.55 + size_fit * 0.45) + base_match_brachy_bonus))
         breakdown["base_match"] = round(base_match, 3)
 
         # Итог: веса (эволюционно, без package_fit — добавим в todo4)
@@ -2727,6 +2845,15 @@ class FoodRecommendationService:
             + 0.10 * macro_fit
             + 0.10 * price_fit
         )
+
+        # Приоритетные бренды — бонус после вычисления final
+        brand_name = (product.brand.name if product.brand else '').lower()
+        if filters.priority_brands:
+            for brand in filters.priority_brands:
+                if brand.lower() in brand_name:
+                    final = min(1.0, final + 0.10)
+                    badges.append("Приоритет")
+                    break
 
         # Soft penalties (предпочтения) — уменьшают итог, но не приводят к hard drop
         if soft_penalty:
@@ -3090,8 +3217,9 @@ class FoodRecommendationService:
         fiber_dm = (total_fiber_g / total_grams * 100 * dm_factor) if total_grams > 0 else 0
         
         def get_coverage(actual: float, target_key: str) -> Dict[str, Any]:
-            min_val = float(macro_targets.get(f'{target_key}_min', 0))
-            max_val = float(macro_targets.get(f'{target_key}_max', 100))
+            target = macro_targets.get(target_key, {})
+            min_val = float(target.get('min', 0)) if isinstance(target, dict) else 0
+            max_val = float(target.get('max', 100)) if isinstance(target, dict) else 100
             mid = (min_val + max_val) / 2 if min_val and max_val else 30
             
             if mid == 0:

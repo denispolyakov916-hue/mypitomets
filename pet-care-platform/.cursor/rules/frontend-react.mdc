@@ -1,0 +1,119 @@
+---
+description: Конвенции React фронтенда — компоненты, Zustand, API, Tailwind, роутинг
+globs: frontend/**/*.jsx
+alwaysApply: false
+---
+
+# Конвенции фронтенда (React)
+
+## Компоненты
+
+- Только функциональные компоненты
+- `memo()` для компонентов с частым перерендером (списки, карточки)
+- PascalCase для имён компонентов и файлов компонентов
+- camelCase для переменных, функций, хуков
+
+## State Management — Zustand
+
+Stores в `src/store/`. НЕ использовать Redux или Context API для глобального состояния.
+
+```javascript
+import { create } from 'zustand';
+
+const useMyStore = create((set, get) => ({
+  items: [],
+  isLoading: false,
+  error: null,
+
+  loadItems: async () => {
+    set({ isLoading: true, error: null });
+    try {
+      const data = await myApi.getItems();
+      set({ items: data, isLoading: false });
+    } catch (err) {
+      set({ error: err.message, isLoading: false });
+    }
+  },
+}));
+```
+
+Существующие stores: `useAuthStore`, `useCartStore`, `useFavoritesStore`, `useToastStore`.
+
+## API вызовы
+
+- HTTP клиент: Axios в `src/api/client.js` (автоматический JWT injection и refresh)
+- Модули по доменам: `src/api/auth.js`, `src/api/pets.js`, `src/api/shop.js` и т.д.
+- Реэкспорт из `src/api/index.js`
+- Кэширование: `apiCache` из `src/utils/apiCache.js` — TTL-кэш с дедупликацией запросов
+
+```javascript
+import { apiCache } from '../utils/apiCache';
+const data = await apiCache.get('cache-key', () => api.fetchData(), ttlMs);
+```
+
+## Стили — Tailwind CSS
+
+- Utility-first подход, без CSS-модулей
+- Кастомные цвета: `primary` (purple), `secondary` (green), `accent` (orange)
+- Шрифт: Inter
+- Анимации: Framer Motion (`motion.div`, `AnimatePresence`)
+- Иконки: Lucide React (`import { Icon } from 'lucide-react'`)
+
+## Роутинг — React Router v6
+
+- Ленивая загрузка страниц через `React.lazy()` + `Suspense`
+- `PrivateRoute` для аутентифицированных пользователей
+- `AdminRoute` для пользователей с `is_staff`
+- Фильтры/поиск — через URL search params (`useSearchParams`)
+
+## Оптимизации
+
+- `useMemo` / `useCallback` для дорогих вычислений и колбэков
+- `IntersectionObserver` для ленивой загрузки изображений
+- Debounce 300ms для фильтров и поиска
+- Кастомные хуки в `src/hooks/` для переиспользуемой логики (`useProducts`, `usePets`)
+
+## Админ-панель React
+
+Отдельная структура в `src/admin/`:
+
+```
+src/admin/
+├── AdminApp.jsx              # Корневой компонент админки
+├── components/               # Компоненты админки (таблицы, формы, графики)
+├── utils/api.js              # Отдельный API клиент для admin endpoints
+└── store/adminStore.js       # Zustand store для админки
+```
+
+Доступ через `AdminRoute` (проверка `is_staff`), API: `/api/admin/*`
+
+## Дополнительные библиотеки
+
+- **TipTap** (`@tiptap/react`, `@tiptap/starter-kit`): rich text editor для конструктора курсов
+- **Chart.js** (`chart.js`, `react-chartjs-2`): графики и визуализация данных
+- **D3** (`d3`): продвинутые визуализации
+- **DnD Kit** (`@dnd-kit/core`, `@dnd-kit/sortable`): drag & drop для конструктора курсов
+- **React Player** (`react-player`): встраивание видео
+
+## Формы и валидация
+
+- Контролируемые инпуты через `useState`
+- Валидация в `onSubmit`: проверка полей → `setErrors({})` → отправка
+- Ошибки с бэкенда отображаются через `useToastStore`
+
+## Responsive
+
+- Mobile-first подход, Tailwind breakpoints: `sm:` (640px), `md:` (768px), `lg:` (1024px), `xl:` (1280px)
+- Мобильные модалки для фильтров (`useState` + overlay)
+- `hidden md:block` / `md:hidden` для адаптивных элементов
+
+## Структура файлов
+
+```
+src/pages/{Feature}/{Feature}.jsx     — страница фичи
+src/components/{Component}.jsx        — переиспользуемый компонент
+src/hooks/use{Feature}.js             — кастомный хук
+src/store/{feature}Store.js           — Zustand store
+src/api/{feature}.js                  — API модуль
+src/admin/                            — React админ-панель (отдельная структура)
+```

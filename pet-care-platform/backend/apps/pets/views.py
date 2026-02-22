@@ -406,16 +406,18 @@ class BreedSuggestionsView(APIView):
         except Breed.DoesNotExist:
             raise ApiError.not_found("Порода не найдена")
 
-        # Получаем связанные риски здоровья
-        health_risks = list(breed.health_risks.values_list('condition_name', flat=True)[:5])
+        # Получаем связанные риски здоровья (из BreedHealth записей)
+        health_risks = list(
+            breed.breed_health_records.values_list('condition_name', flat=True)[:5]
+        )
 
         suggestions = {
-            'activity_level': breed.energy_level,
+            'activity_level': getattr(breed, 'energy_level', None) or breed.base_activity_level,
             'size': breed.size_category,
             'trainability': breed.trainability,
-            'grooming_needs': breed.grooming_frequency,
-            'good_for_apartment': breed.apartment_friendly,
-            'good_for_novice': breed.good_for_novice,
+            'grooming_needs': getattr(breed, 'grooming_frequency', None) or breed.grooming_needs,
+            'good_for_apartment': getattr(breed, 'apartment_friendly', None),
+            'good_for_novice': getattr(breed, 'good_for_novice', None),
         }
 
         return Response({
@@ -564,12 +566,12 @@ class PetAnalysisView(APIView):
         if pet.breed:
             try:
                 breed = Breed.objects.get(name__iexact=pet.breed, species=pet.species)
-                if breed.health_risk_level == 'high':
+                if getattr(breed, 'health_risk_level', None) == 'high':
                     risks.append({
                         'type': 'breed',
                         'level': 'high',
                         'message': f'Порода {breed.name} имеет повышенные риски здоровья',
-                        'genetic_risks': breed.genetic_risks
+                        'genetic_risks': breed.health_risks or []
                     })
             except Breed.DoesNotExist:
                 pass

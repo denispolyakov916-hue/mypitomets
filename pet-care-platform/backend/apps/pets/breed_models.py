@@ -190,6 +190,16 @@ class Breed(models.Model):
     def __str__(self):
         return f"{self.name} ({self.get_species_display()})"
     
+    @property
+    def is_brachycephalic(self) -> bool:
+        """Определяет брахицефальность по health_risks JSON."""
+        brachy_codes = {'brachycephalic_syndrome', 'boas', 'brachycephalic'}
+        for risk in (self.health_risks or []):
+            code = (risk.get('condition_code') or '').lower()
+            if code in brachy_codes or 'brachycephal' in code:
+                return True
+        return False
+
     def save(self, *args, **kwargs):
         """Автогенерация slug если не задан."""
         if not self.slug:
