@@ -68,6 +68,18 @@ jobs:
           DB_PORT: 5432
         run: python manage.py test --verbosity=2 --parallel
 
+      - name: Стресс-тест подбора корма
+        working-directory: backend
+        env:
+          DJANGO_SECRET_KEY: test-secret-key-for-ci
+          DEBUG: 'True'
+          DB_NAME: pitomets_test
+          DB_USER: pitomets
+          DB_PASSWORD: test_password
+          DB_HOST: localhost
+          DB_PORT: 5432
+        run: python manage.py test apps.pets.tests.stress_test_food --verbosity=2
+
   # ===========================================================================
   # Сборка frontend
   # ===========================================================================

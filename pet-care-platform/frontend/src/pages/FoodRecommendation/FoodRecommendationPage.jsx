@@ -9,7 +9,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  ArrowLeft, UtensilsCrossed, Loader2, AlertCircle, RefreshCw,
+  UtensilsCrossed, Loader2, AlertCircle, RefreshCw,
   ChevronLeft, ChevronRight, ShoppingCart, Sparkles,
   Check, Zap, Award, Download, Info, TrendingUp, ChevronDown
 } from 'lucide-react';
@@ -728,15 +728,15 @@ const RationComponentCard = ({
     ? 'supplement' 
     : (componentType || component?.product_type || 'dry_food');
   
-  // Проценты берём из calorie_distribution (серверное значение с учётом всех корректировок)
-  const dryPct = Math.round((calorieDistribution?.dry_food ?? 0.6) * 100);
-  const wetPct = Math.round((calorieDistribution?.wet_food ?? 0.4) * 100);
+  // Проценты берём из calorie_distribution (серверное значение, точно соответствует выбранному пресету)
+  const dryPct = calorieDistribution?.dry_food != null ? Math.round(calorieDistribution.dry_food * 100) : null;
+  const wetPct = calorieDistribution?.wet_food != null ? Math.round(calorieDistribution.wet_food * 100) : null;
   
   const typeLabels = {
     'dry_food': 'Сухой корм',
-    'dry_food_multi': `Сухой корм (${dryPct}%)`,
+    'dry_food_multi': dryPct != null ? `Сухой корм (${dryPct}%)` : 'Сухой корм',
     'wet_food': 'Влажный корм',
-    'wet_food_multi': `Влажный корм (${wetPct}%)`,
+    'wet_food_multi': wetPct != null ? `Влажный корм (${wetPct}%)` : 'Влажный корм',
     'treat': 'Лакомства',
     'supplement': labelOverride || 'Добавка',
   };
@@ -1973,17 +1973,6 @@ export default function FoodRecommendationPage() {
   
   return (
     <div className="page-container animate-fadeIn pb-8">
-      {/* Кнопка назад — компактно над контентом */}
-      <div className="mb-4">
-        <button
-          onClick={() => navigate(-1)}
-          className="p-2 hover:bg-gray-100 rounded-xl transition-colors"
-          aria-label="Назад"
-        >
-          <ArrowLeft className="w-5 h-5 text-gray-600" />
-        </button>
-      </div>
-      
       {/* Ошибка */}
       <AnimatePresence>
         {error && (

@@ -765,10 +765,9 @@ class FoodRecommendationService:
         """
         Распределение калорий ТОЛЬКО между сухим и влажным кормом (сумма 100%).
         Лакомства в расчёт не входят — опциональная добавка по желанию.
+        Соотношение точно соответствует выбранному пресету пользователя.
         """
         species = (filters.species or 'dog').strip().lower()
-        age_group = self._get_age_category(species, filters.age_months)
-        activity = getattr(pet, 'activity_level', 'moderate') or 'moderate'
 
         if filters.food_type == 'dry':
             return {'dry_food': 1.0}
@@ -785,21 +784,7 @@ class FoodRecommendationService:
             if species == 'cat':
                 distribution['dry_food'], distribution['wet_food'] = 0.50, 0.50
 
-        # Корректировки только между сухим и влажным (без лакомств)
-        if age_group == 'senior' and 'wet_food' in distribution:
-            distribution['wet_food'] += 0.05
-            distribution['dry_food'] = max(0.0, distribution['dry_food'] - 0.05)
-        if activity in ['high', 'very_high'] and 'dry_food' in distribution:
-            distribution['dry_food'] += 0.05
-            distribution['wet_food'] = max(0.0, distribution['wet_food'] - 0.05)
-        if filters.has_gi_issues and 'wet_food' in distribution:
-            distribution['wet_food'] += 0.05
-            distribution['dry_food'] = max(0.0, distribution['dry_food'] - 0.05)
-
-        total = sum(distribution.values())
-        if total <= 0:
-            return distribution
-        return {k: round(v / total, 3) for k, v in distribution.items()}
+        return distribution
 
     def _get_transition_plan(self, current_type: Optional[str], target_type: str) -> Optional[Dict[str, Any]]:
         """План перехода на новый тип кормления."""
