@@ -30,7 +30,7 @@ export const useAnalytics = (autoRefresh = false, refreshInterval = 300000) => {
           label: 'Выручка (₽)',
           data: [],
           borderColor: 'rgb(59, 130, 246)',
-          backgroundColor: 'rgba(59, 130, 246, 0.1)',
+          backgroundColor: 'rgba(200, 107, 250, 0.1)',
         },
         {
           label: 'Заказы',
@@ -55,7 +55,7 @@ export const useAnalytics = (autoRefresh = false, refreshInterval = 300000) => {
         label: 'Пользователи',
         data: [totalUsers, activeUsers, staffUsers],
         backgroundColor: [
-          'rgba(59, 130, 246, 0.8)',
+          'rgba(200, 107, 250, 0.8)',
           'rgba(16, 185, 129, 0.8)',
           'rgba(245, 158, 11, 0.8)'
         ],
@@ -75,7 +75,7 @@ export const useAnalytics = (autoRefresh = false, refreshInterval = 300000) => {
     const labels = Object.keys(speciesCount);
     const data = Object.values(speciesCount);
     const colors = [
-      'rgba(59, 130, 246, 0.8)',
+      'rgba(200, 107, 250, 0.8)',
       'rgba(16, 185, 129, 0.8)',
       'rgba(245, 158, 11, 0.8)',
       'rgba(239, 68, 68, 0.8)',
@@ -113,7 +113,7 @@ export const useAnalytics = (autoRefresh = false, refreshInterval = 300000) => {
     const data = Object.values(statusCount);
     const colors = [
       'rgba(245, 158, 11, 0.8)',   // pending - желтый
-      'rgba(59, 130, 246, 0.8)',   // processing - синий
+      'rgba(200, 107, 250, 0.8)',   // processing - синий
       'rgba(139, 92, 246, 0.8)',   // shipped - фиолетовый
       'rgba(16, 185, 129, 0.8)',   // delivered - зеленый
       'rgba(239, 68, 68, 0.8)',    // cancelled - красный

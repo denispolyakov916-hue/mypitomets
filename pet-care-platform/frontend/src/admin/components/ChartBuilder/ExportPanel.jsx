@@ -44,7 +44,7 @@ const ExportPanel = ({ config, data, onExport, disabled }) => {
   return (
     <div className="relative">
       <button
-        className="px-4 py-2 bg-blue-500 text-white border-none rounded-md text-sm font-medium cursor-pointer transition-colors duration-200 flex items-center gap-1.5 hover:bg-blue-600 disabled:bg-slate-300 disabled:cursor-not-allowed"
+        className="px-4 py-2 bg-primary-500 text-white border-none rounded-md text-sm font-medium cursor-pointer transition-colors duration-200 flex items-center gap-1.5 hover:bg-primary-600 disabled:bg-slate-300 disabled:cursor-not-allowed"
         onClick={() => setIsOpen(!isOpen)}
         disabled={disabled}
       >
@@ -56,7 +56,7 @@ const ExportPanel = ({ config, data, onExport, disabled }) => {
           <div className="fixed inset-0 bg-black/50 z-[1000]" onClick={() => setIsOpen(false)} />
           <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-xl shadow-[0_20px_25px_-5px_rgba(0,0,0,0.1),0_10px_10px_-5px_rgba(0,0,0,0.04)] z-[1001] max-w-[500px] w-[90%] max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center px-6 py-5 border-b border-slate-200">
-              <h3 className="m-0 text-lg font-semibold text-slate-800">Экспорт графика</h3>
+              <h3 className="m-0 text-lg font-semibold text-primary-800">Экспорт графика</h3>
               <button className="w-8 h-8 border-none bg-gray-100 rounded-full cursor-pointer text-lg flex items-center justify-center transition-colors duration-200 hover:bg-gray-200" onClick={() => setIsOpen(false)}>×</button>
             </div>
 
@@ -75,9 +75,9 @@ const ExportPanel = ({ config, data, onExport, disabled }) => {
                 <div className="mb-4">
                   <label className="block mb-1.5 text-sm font-medium text-gray-700">Размеры:</label>
                   <div className="flex items-center gap-2">
-                    <input type="number" value={exportSettings.width} onChange={(e) => handleSettingChange('width', parseInt(e.target.value))} min="400" max="4096" placeholder="Ширина" className="w-20 px-2 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:border-blue-500" />
+                    <input type="number" value={exportSettings.width} onChange={(e) => handleSettingChange('width', parseInt(e.target.value))} min="400" max="4096" placeholder="Ширина" className="w-20 px-2 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:border-primary-500" />
                     <span className="text-gray-500 font-medium">×</span>
-                    <input type="number" value={exportSettings.height} onChange={(e) => handleSettingChange('height', parseInt(e.target.value))} min="300" max="2160" placeholder="Высота" className="w-20 px-2 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:border-blue-500" />
+                    <input type="number" value={exportSettings.height} onChange={(e) => handleSettingChange('height', parseInt(e.target.value))} min="300" max="2160" placeholder="Высота" className="w-20 px-2 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:border-primary-500" />
                     <span className="text-gray-500 font-medium">px</span>
                   </div>
                 </div>
@@ -104,15 +104,15 @@ const ExportPanel = ({ config, data, onExport, disabled }) => {
                 <div className="flex flex-col gap-2">
                   <div className="flex justify-between items-center">
                     <span className="text-sm text-gray-500 font-medium">Формат:</span>
-                    <span className="text-sm text-slate-800 font-semibold">{formatOptions.find(f => f.value === exportSettings.format)?.label}</span>
+                    <span className="text-sm text-primary-800 font-semibold">{formatOptions.find(f => f.value === exportSettings.format)?.label}</span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-sm text-gray-500 font-medium">Размер:</span>
-                    <span className="text-sm text-slate-800 font-semibold">{exportSettings.width}×{exportSettings.height}px</span>
+                    <span className="text-sm text-primary-800 font-semibold">{exportSettings.width}×{exportSettings.height}px</span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-sm text-gray-500 font-medium">Примерный размер файла:</span>
-                    <span className="text-sm text-slate-800 font-semibold">{getFileSizeEstimate()}</span>
+                    <span className="text-sm text-primary-800 font-semibold">{getFileSizeEstimate()}</span>
                   </div>
                 </div>
               </div>

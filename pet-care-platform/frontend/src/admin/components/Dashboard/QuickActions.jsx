@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import { Link } from 'react-router-dom';
 
 const QuickActions = () => {
@@ -15,7 +15,7 @@ const QuickActions = () => {
       description: 'Добавить, редактировать или удалить товары',
       href: '/admin-panel/products',
       icon: '📦',
-      color: 'bg-blue-50 border-blue-200 text-blue-700',
+      color: 'bg-primary-50 border-primary-200 text-primary-700',
     },
     {
       title: 'Аналитика платежей',
@@ -29,7 +29,7 @@ const QuickActions = () => {
       description: 'Просмотреть и редактировать профили пользователей',
       href: '/admin-panel/users',
       icon: '👥',
-      color: 'bg-blue-50 border-blue-200 text-blue-700',
+      color: 'bg-primary-50 border-primary-200 text-primary-700',
     },
     {
       title: 'База питомцев',
@@ -43,7 +43,7 @@ const QuickActions = () => {
       description: 'Управление образовательным контентом',
       href: '/admin-panel/courses',
       icon: '🎓',
-      color: 'bg-indigo-50 border-indigo-200 text-indigo-700',
+      color: 'bg-primary-50 border-primary-200 text-primary-700',
     },
   ];
 

@@ -89,10 +89,10 @@ const variants = {
     disabled:bg-green-300
   `,
   warning: `
-    bg-amber-500 text-white 
-    hover:bg-amber-600 
-    focus:ring-amber-500
-    disabled:bg-amber-300
+    bg-secondary-500 text-white 
+    hover:bg-secondary-600 
+    focus:ring-secondary-500
+    disabled:bg-secondary-300
   `,
   link: `
     text-primary-600 bg-transparent underline-offset-4

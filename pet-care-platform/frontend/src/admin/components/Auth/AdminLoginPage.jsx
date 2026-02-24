@@ -195,12 +195,12 @@ const AdminLoginPage = () => {
   }, [authError, localError, isSubmitting]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-blue-900 to-slate-800">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-900 via-primary-900 to-primary-800">
       {/* Декоративные элементы фона */}
       <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-blue-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse"></div>
+        <div className="absolute -top-40 -right-40 w-80 h-80 bg-primary-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse"></div>
         <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-primary-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse" style={{ animationDelay: '2s' }}></div>
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-indigo-500 rounded-full mix-blend-multiply filter blur-3xl opacity-10"></div>
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-primary-500 rounded-full mix-blend-multiply filter blur-3xl opacity-10"></div>
       </div>
 
       {/* Форма входа */}
@@ -210,19 +210,19 @@ const AdminLoginPage = () => {
           {/* Заголовок */}
           <div className="text-center mb-8">
             {/* Логотип/Иконка */}
-            <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-blue-500 to-primary-600 rounded-2xl mb-4 shadow-lg">
+            <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-primary-500 to-primary-600 rounded-2xl mb-4 shadow-lg">
               <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
               </svg>
             </div>
             <h1 className="text-2xl font-bold text-white mb-2">Админ-панель</h1>
-            <p className="text-blue-200 text-sm">Питомец+ | Система управления</p>
+            <p className="text-primary-200 text-sm">Питомец+ | Система управления</p>
           </div>
 
           {/* Сообщение о редиректе */}
           {redirectMessage && (
-            <div className="mb-6 p-3 bg-blue-500/20 border border-blue-400/30 rounded-lg">
-              <p className="text-blue-200 text-sm text-center">{redirectMessage}</p>
+            <div className="mb-6 p-3 bg-primary-500/20 border border-primary-400/30 rounded-lg">
+              <p className="text-primary-200 text-sm text-center">{redirectMessage}</p>
             </div>
           )}
 
@@ -249,12 +249,12 @@ const AdminLoginPage = () => {
           <form onSubmit={handleSubmit} className="space-y-5" noValidate>
             {/* Email */}
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-blue-200 mb-2">
+              <label htmlFor="email" className="block text-sm font-medium text-primary-200 mb-2">
                 Email
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <svg className="w-5 h-5 text-blue-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-5 h-5 text-primary-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207" />
                   </svg>
                 </div>
@@ -265,7 +265,7 @@ const AdminLoginPage = () => {
                   onChange={handleEmailChange}
                   placeholder="admin@example.com"
                   disabled={isSubmitting || showSuccess}
-                  className="w-full pl-10 pr-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-blue-300/50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all disabled:opacity-50"
+                  className="w-full pl-10 pr-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-primary-300/50 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all disabled:opacity-50"
                   autoComplete="email"
                 />
               </div>
@@ -273,12 +273,12 @@ const AdminLoginPage = () => {
 
             {/* Password */}
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-blue-200 mb-2">
+              <label htmlFor="password" className="block text-sm font-medium text-primary-200 mb-2">
                 Пароль
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <svg className="w-5 h-5 text-blue-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-5 h-5 text-primary-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                   </svg>
                 </div>
@@ -289,7 +289,7 @@ const AdminLoginPage = () => {
                   onChange={handlePasswordChange}
                   placeholder="••••••••"
                   disabled={isSubmitting || showSuccess}
-                  className="w-full pl-10 pr-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-blue-300/50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all disabled:opacity-50"
+                  className="w-full pl-10 pr-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-primary-300/50 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all disabled:opacity-50"
                   autoComplete="current-password"
                 />
               </div>
@@ -299,7 +299,7 @@ const AdminLoginPage = () => {
             <button
               type="submit"
               disabled={isSubmitting || showSuccess}
-              className="w-full py-3 px-4 bg-gradient-to-r from-blue-600 to-primary-600 hover:from-blue-700 hover:to-primary-700 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2"
+              className="w-full py-3 px-4 bg-gradient-to-r from-primary-600 to-primary-600 hover:from-primary-700 hover:to-primary-700 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2"
             >
               {isSubmitting ? (
                 <>
@@ -329,7 +329,7 @@ const AdminLoginPage = () => {
 
           {/* Разделитель */}
           <div className="mt-8 pt-6 border-t border-white/10">
-            <p className="text-center text-blue-200/60 text-sm">
+            <p className="text-center text-primary-200/60 text-sm">
               Для доступа требуются права администратора
             </p>
           </div>
@@ -338,7 +338,7 @@ const AdminLoginPage = () => {
           <div className="mt-4 text-center">
             <a
               href="/"
-              className="text-blue-300 hover:text-white text-sm transition-colors inline-flex items-center gap-1"
+              className="text-primary-300 hover:text-white text-sm transition-colors inline-flex items-center gap-1"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
@@ -349,7 +349,7 @@ const AdminLoginPage = () => {
         </div>
 
         {/* Подпись */}
-        <p className="text-center text-blue-300/40 text-xs mt-6">
+        <p className="text-center text-primary-300/40 text-xs mt-6">
           Питомец+ © 2025 | Версия 0.4.0
         </p>
       </div>

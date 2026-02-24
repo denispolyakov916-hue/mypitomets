@@ -189,10 +189,10 @@ function RecommendationCourseCard({ course, showReason = false }) {
   return (
     <Link 
       to={`/courses/${course.id}`}
-      className="group bg-white rounded-xl shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden flex flex-col h-full border border-gray-100 hover:border-amber-200"
+      className="group bg-white rounded-xl shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden flex flex-col h-full border border-gray-100 hover:border-secondary-200"
     >
       {/* Изображение */}
-      <div className="aspect-video bg-gradient-to-br from-amber-50 to-accent-50 relative overflow-hidden">
+      <div className="aspect-video bg-gradient-to-br from-secondary-50 to-accent-50 relative overflow-hidden">
         {mainImage ? (
           <img
             src={mainImage}
@@ -217,7 +217,7 @@ function RecommendationCourseCard({ course, showReason = false }) {
         <div className={`absolute top-2 right-2 px-2 py-0.5 rounded-full text-xs font-bold ${
           course.is_free || course.price === 0
             ? 'bg-green-500 text-white'
-            : 'bg-amber-500 text-white'
+            : 'bg-secondary-500 text-white'
         }`}>
           {course.is_free || course.price === 0 ? 'Бесплатно' : formatPrice(course.effective_price || course.price)}
         </div>
@@ -234,7 +234,7 @@ function RecommendationCourseCard({ course, showReason = false }) {
       
       {/* Информация */}
       <div className="flex-1 flex flex-col p-3">
-        <h4 className="font-medium text-gray-900 text-sm line-clamp-2 leading-snug group-hover:text-amber-600 transition-colors mb-2">
+        <h4 className="font-medium text-gray-900 text-sm line-clamp-2 leading-snug group-hover:text-secondary-600 transition-colors mb-2">
           {course.title}
         </h4>
         

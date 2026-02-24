@@ -61,7 +61,7 @@ const Header = ({ onMenuClick }) => {
             </div>
 
             {/* Аватар */}
-            <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white text-sm font-medium">
+            <div className="w-8 h-8 bg-primary-600 rounded-full flex items-center justify-center text-white text-sm font-medium">
               {user?.first_name?.[0] || user?.email?.[0]?.toUpperCase() || 'A'}
             </div>
 

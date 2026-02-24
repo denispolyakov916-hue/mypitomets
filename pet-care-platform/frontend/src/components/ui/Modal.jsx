@@ -255,7 +255,7 @@ export const ConfirmModal = ({
 }) => {
   const variantClasses = {
     danger: 'bg-red-600 hover:bg-red-700 focus:ring-red-500',
-    warning: 'bg-amber-500 hover:bg-amber-600 focus:ring-amber-500',
+    warning: 'bg-secondary-500 hover:bg-secondary-600 focus:ring-secondary-500',
     success: 'bg-green-600 hover:bg-green-700 focus:ring-green-500',
     primary: 'bg-primary-600 hover:bg-primary-700 focus:ring-primary-500',
   }

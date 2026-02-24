@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 
 // Components
 import DataTable from './DataTable';
@@ -111,7 +111,7 @@ const PetsTable = () => {
       sortable: true,
       render: (value) => {
         const speciesConfig = {
-          dog: { label: 'Собака', icon: '🐕', color: 'bg-blue-100 text-blue-800' },
+          dog: { label: 'Собака', icon: '🐕', color: 'bg-primary-100 text-primary-800' },
           cat: { label: 'Кошка', icon: '🐈', color: 'bg-accent-100 text-accent-800' },
           bird: { label: 'Птица', icon: '🐦', color: 'bg-yellow-100 text-yellow-800' },
           rodent: { label: 'Грызун', icon: '🐹', color: 'bg-green-100 text-green-800' },
@@ -146,7 +146,7 @@ const PetsTable = () => {
       sortable: true,
       render: (value) => {
         const genderConfig = {
-          male: { label: 'Самец', icon: '♂️', color: 'bg-blue-100 text-blue-800' },
+          male: { label: 'Самец', icon: '♂️', color: 'bg-primary-100 text-primary-800' },
           female: { label: 'Самка', icon: '♀️', color: 'bg-pink-100 text-pink-800' },
           unknown: { label: 'Не указан', icon: '❓', color: 'bg-gray-100 text-gray-800' }
         };
@@ -213,7 +213,7 @@ const PetsTable = () => {
       render: (value) => {
         const activityConfig = {
           low: { label: 'Низкая', color: 'bg-gray-100 text-gray-800' },
-          medium: { label: 'Средняя', color: 'bg-blue-100 text-blue-800' },
+          medium: { label: 'Средняя', color: 'bg-primary-100 text-primary-800' },
           high: { label: 'Высокая', color: 'bg-red-100 text-red-800' }
         };
 

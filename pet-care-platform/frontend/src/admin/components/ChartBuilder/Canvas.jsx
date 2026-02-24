@@ -92,7 +92,7 @@ const Canvas = forwardRef(({ config, data, loading, styleConfig, selectedMetrics
     const metricStyles = styleConfig?.metricStyles || {};
     const legendLabels = styleConfig?.legendLabels || {};
     const russianLabels = styleConfig?.russianLabels || {};
-    const colors = styleConfig?.colors || ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
+    const colors = styleConfig?.colors || ['#C86BFA', '#22c55e', '#f59e0b', '#ef4444', '#C86BFA'];
     const gridConfig = styleConfig?.grid || { show: true, color: '#e5e7eb', opacity: 0.5, style: 'dashed' };
     const legendConfig = styleConfig?.legend || { show: true, position: 'top' };
     const xAxisConfig = styleConfig?.xAxis || {};
@@ -408,7 +408,7 @@ const Canvas = forwardRef(({ config, data, loading, styleConfig, selectedMetrics
     <div className="relative w-full h-full min-h-[350px] flex items-center justify-center bg-white rounded-xl shadow-sm overflow-hidden" ref={containerRef}>
       {loading && (
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center gap-3 z-10 bg-white/95 px-10 py-8 rounded-xl">
-          <div className="w-10 h-10 border-[3px] border-gray-200 border-t-blue-500 rounded-full animate-spin"></div>
+          <div className="w-10 h-10 border-[3px] border-gray-200 border-t-primary-500 rounded-full animate-spin"></div>
           <span className="text-sm text-gray-500 font-medium">Загрузка данных...</span>
         </div>
       )}
@@ -416,7 +416,7 @@ const Canvas = forwardRef(({ config, data, loading, styleConfig, selectedMetrics
       {isRendering && !loading && (
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center gap-3 z-10 bg-white/95 px-10 py-8 rounded-xl min-w-[200px]">
           <div className="w-full h-1.5 bg-gray-200 rounded-sm overflow-hidden">
-            <div className="h-full bg-gradient-to-r from-blue-500 to-cyan-500 rounded-sm transition-[width] duration-200 ease-out" style={{ width: `${renderProgress}%` }}></div>
+            <div className="h-full bg-gradient-to-r from-primary-500 to-primary-300 rounded-sm transition-[width] duration-200 ease-out" style={{ width: `${renderProgress}%` }}></div>
           </div>
           <span className="text-[13px] text-gray-500">Построение графика... {renderProgress}%</span>
         </div>

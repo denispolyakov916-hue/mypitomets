@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Компонент Badge (значок/бейдж)
  * 
  * Используется для отображения статусов, меток и счётчиков.
@@ -19,7 +19,7 @@ const variants = {
   primary: 'bg-primary-100 text-primary-800',
   secondary: 'bg-gray-100 text-gray-600',
   success: 'bg-green-100 text-green-800',
-  warning: 'bg-amber-100 text-amber-800',
+  warning: 'bg-secondary-100 text-secondary-800',
   danger: 'bg-red-100 text-red-800',
   info: 'bg-blue-100 text-blue-800',
   purple: 'bg-primary-100 text-primary-800',
@@ -33,7 +33,7 @@ const solidVariants = {
   primary: 'bg-primary-600 text-white',
   secondary: 'bg-gray-500 text-white',
   success: 'bg-green-600 text-white',
-  warning: 'bg-amber-500 text-white',
+  warning: 'bg-secondary-500 text-white',
   danger: 'bg-red-600 text-white',
   info: 'bg-blue-600 text-white',
   purple: 'bg-primary-600 text-white',
@@ -47,7 +47,7 @@ const outlineVariants = {
   primary: 'border border-primary-300 text-primary-700 bg-transparent',
   secondary: 'border border-gray-300 text-gray-600 bg-transparent',
   success: 'border border-green-300 text-green-700 bg-transparent',
-  warning: 'border border-amber-300 text-amber-700 bg-transparent',
+  warning: 'border border-secondary-300 text-secondary-700 bg-transparent',
   danger: 'border border-red-300 text-red-700 bg-transparent',
   info: 'border border-blue-300 text-blue-700 bg-transparent',
   purple: 'border border-primary-300 text-primary-700 bg-transparent',
@@ -71,7 +71,7 @@ const dotColors = {
   primary: 'bg-primary-600',
   secondary: 'bg-gray-400',
   success: 'bg-green-500',
-  warning: 'bg-amber-500',
+  warning: 'bg-secondary-500',
   danger: 'bg-red-500',
   info: 'bg-blue-500',
   purple: 'bg-primary-500',

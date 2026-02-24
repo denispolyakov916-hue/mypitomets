@@ -78,7 +78,7 @@ const ReminderCard = ({ reminder, onComplete }) => {
       reminder.is_overdue 
         ? 'bg-red-50 border border-red-200' 
         : reminder.is_upcoming 
-          ? 'bg-amber-50 border border-amber-200'
+          ? 'bg-secondary-50 border border-secondary-200'
           : 'bg-gray-50 hover:bg-gray-100'
     }`}>
       <span className="text-2xl">{icon}</span>

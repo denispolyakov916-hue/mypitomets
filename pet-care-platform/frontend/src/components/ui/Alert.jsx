@@ -28,9 +28,9 @@ const variantConfig = {
     iconColor: 'text-green-500',
   },
   warning: {
-    container: 'bg-amber-50 border-amber-200 text-amber-800',
+    container: 'bg-secondary-50 border-secondary-200 text-secondary-800',
     icon: AlertTriangle,
-    iconColor: 'text-amber-500',
+    iconColor: 'text-secondary-500',
   },
   info: {
     container: 'bg-blue-50 border-blue-200 text-blue-800',

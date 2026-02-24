@@ -87,7 +87,7 @@ export default function CreateCourseModal({ isOpen, onClose, onCreated }) {
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="Например: Базовые команды для собак"
-            className="block w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+            className="block w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
             autoFocus
           />
         </div>
@@ -98,7 +98,7 @@ export default function CreateCourseModal({ isOpen, onClose, onCreated }) {
             <select
               value={category}
               onChange={(e) => setCategory(e.target.value)}
-              className="block w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white"
+              className="block w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none bg-white"
             >
               {categoryOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
             </select>
@@ -108,7 +108,7 @@ export default function CreateCourseModal({ isOpen, onClose, onCreated }) {
             <select
               value={level}
               onChange={(e) => setLevel(e.target.value)}
-              className="block w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white"
+              className="block w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none bg-white"
             >
               {levelOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
             </select>
@@ -120,7 +120,7 @@ export default function CreateCourseModal({ isOpen, onClose, onCreated }) {
           <select
             value={petType}
             onChange={(e) => setPetType(e.target.value)}
-            className="block w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white"
+            className="block w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none bg-white"
           >
             {petTypeOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
           </select>
@@ -137,7 +137,7 @@ export default function CreateCourseModal({ isOpen, onClose, onCreated }) {
           <button
             type="submit"
             disabled={submitting}
-            className="px-4 py-2 text-sm text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50"
+            className="px-4 py-2 text-sm text-white bg-primary-600 rounded-lg hover:bg-primary-700 disabled:opacity-50"
           >
             {submitting ? 'Создание...' : 'Создать курс'}
           </button>

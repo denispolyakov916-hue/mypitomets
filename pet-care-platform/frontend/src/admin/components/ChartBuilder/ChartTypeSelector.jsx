@@ -126,7 +126,7 @@ const ChartTypeSelector = ({ currentType, onTypeChange, onConfigChange, config }
       case 'heatmap':
         return { ...baseConfig, style: { ...baseConfig.style, colorScheme: 'RdYlBu', showValues: false } };
       case 'candlestick':
-        return { ...baseConfig, style: { ...baseConfig.style, bullColor: '#10b981', bearColor: '#ef4444', wickColor: '#374151' } };
+        return { ...baseConfig, style: { ...baseConfig.style, bullColor: '#22c55e', bearColor: '#ef4444', wickColor: '#374151' } };
       default:
         return baseConfig;
     }
@@ -157,7 +157,7 @@ const ChartTypeSelector = ({ currentType, onTypeChange, onConfigChange, config }
       <div className="flex flex-col gap-2">
         <label className="text-sm font-semibold text-gray-700">Тип графика:</label>
         <div
-          className="flex items-center gap-2 py-2.5 px-3 bg-white border border-gray-300 rounded-md cursor-pointer transition-all duration-200 hover:border-blue-500 hover:shadow-[0_0_0_3px_rgba(59,130,246,0.1)]"
+          className="flex items-center gap-2 py-2.5 px-3 bg-white border border-gray-300 rounded-md cursor-pointer transition-all duration-200 hover:border-primary-500 hover:shadow-[0_0_0_3px_rgba(200,107,250,0.1)]"
           onClick={() => setIsOpen(!isOpen)}
           role="combobox"
           tabIndex={0}
@@ -177,7 +177,7 @@ const ChartTypeSelector = ({ currentType, onTypeChange, onConfigChange, config }
           }}
         >
           <span className="text-base">{currentChartType?.icon}</span>
-          <span className="flex-1 font-medium text-slate-800">{currentChartType?.name || 'Выберите тип'}</span>
+          <span className="flex-1 font-medium text-primary-800">{currentChartType?.name || 'Выберите тип'}</span>
           <span className={`text-xs text-gray-500 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}>▼</span>
         </div>
       </div>
@@ -200,13 +200,13 @@ const ChartTypeSelector = ({ currentType, onTypeChange, onConfigChange, config }
                       role="option"
                       aria-selected={activeIndex === typeIndexMap[type.id]}
                       className={`flex items-center gap-3 px-4 py-3 cursor-pointer transition-colors duration-200 border-l-[3px] border-l-transparent hover:bg-slate-50 ${
-                        activeIndex === typeIndexMap[type.id] ? '!bg-indigo-50 !border-l-indigo-500' : ''
+                        activeIndex === typeIndexMap[type.id] ? '!bg-primary-50 !border-l-primary-500' : ''
                       } ${type.id === currentType ? '!bg-emerald-50 !border-l-emerald-500' : ''}`}
                       onClick={() => handleTypeSelect(type.id)}
                     >
                       <div className="text-2xl w-8 text-center">{type.icon}</div>
                       <div className="flex-1 min-w-0">
-                        <div className="font-semibold text-slate-800 mb-0.5">{type.name}</div>
+                        <div className="font-semibold text-primary-800 mb-0.5">{type.name}</div>
                         <div className="text-xs text-gray-500 mb-1 leading-snug">{type.description}</div>
                         <div className="text-[11px] text-gray-400 italic">
                           Лучше всего для: {type.bestFor.join(', ')}

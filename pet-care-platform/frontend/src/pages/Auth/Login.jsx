@@ -217,9 +217,9 @@ function Login() {
             />
             <defs>
               <linearGradient id="auth-gradient-purple" x1="0%" y1="0%" x2="100%" y2="0%">
-                <stop offset="0%" stopColor="#d8b4fe" stopOpacity="0.8" />
-                <stop offset="50%" stopColor="#d8b4fe" stopOpacity="0.6" />
-                <stop offset="100%" stopColor="#d8b4fe" stopOpacity="0.8" />
+                <stop offset="0%" stopColor="#d9bfff" stopOpacity="0.8" />
+                <stop offset="50%" stopColor="#d9bfff" stopOpacity="0.6" />
+                <stop offset="100%" stopColor="#d9bfff" stopOpacity="0.8" />
               </linearGradient>
             </defs>
           </svg>
@@ -257,9 +257,9 @@ function Login() {
             />
             <defs>
               <linearGradient id="auth-gradient-orange" x1="0%" y1="0%" x2="100%" y2="0%">
-                <stop offset="0%" stopColor="#fdba74" stopOpacity="0.6" />
-                <stop offset="50%" stopColor="#fdba74" stopOpacity="0.4" />
-                <stop offset="100%" stopColor="#fdba74" stopOpacity="0.6" />
+                <stop offset="0%" stopColor="#F0EB93" stopOpacity="0.6" />
+                <stop offset="50%" stopColor="#F0EB93" stopOpacity="0.4" />
+                <stop offset="100%" stopColor="#F0EB93" stopOpacity="0.6" />
               </linearGradient>
             </defs>
           </svg>

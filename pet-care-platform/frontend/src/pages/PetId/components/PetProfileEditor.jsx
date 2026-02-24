@@ -74,9 +74,9 @@ const SECTIONS = [
 
 // ===== ФУНКЦИИ ДЛЯ ЦВЕТА ШКАЛЫ =====
 const getProgressColor = (percent) => {
-  if (percent <= 25) return { from: '#f97316', to: '#fb923c' };
-  if (percent <= 50) return { from: '#fb923c', to: '#facc15' };
-  if (percent <= 75) return { from: '#facc15', to: '#84cc16' };
+  if (percent <= 25) return { from: '#fbba2d', to: '#fbba2d' };
+  if (percent <= 50) return { from: '#fbba2d', to: '#fbba2d' };
+  if (percent <= 75) return { from: '#fbba2d', to: '#84cc16' };
   return { from: '#84cc16', to: '#22c55e' };
 };
 

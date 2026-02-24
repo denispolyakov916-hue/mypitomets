@@ -27,7 +27,7 @@ const RecentPets = ({ pets }) => {
 
   const getGenderColor = (gender) => {
     const colors = {
-      male: 'bg-blue-100 text-blue-800',
+      male: 'bg-primary-100 text-primary-800',
       female: 'bg-pink-100 text-pink-800',
       unknown: 'bg-gray-100 text-gray-800'
     };
@@ -40,7 +40,7 @@ const RecentPets = ({ pets }) => {
         <h2 className="text-lg font-semibold text-gray-900">🐾 Последние питомцы</h2>
         <Link
           to="/admin-panel/pets"
-          className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+          className="text-sm text-primary-600 hover:text-primary-800 font-medium"
         >
           Все питомцы →
         </Link>

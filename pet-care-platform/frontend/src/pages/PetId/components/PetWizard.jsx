@@ -2196,8 +2196,8 @@ export default function PetWizard({ onClose, onSubmit, isLoading, editingDraft =
               className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6"
             >
               <div className="text-center mb-6">
-                <div className="w-16 h-16 mx-auto mb-4 bg-amber-100 rounded-full flex items-center justify-center">
-                  <AlertCircle className="w-8 h-8 text-amber-500" />
+                <div className="w-16 h-16 mx-auto mb-4 bg-secondary-100 rounded-full flex items-center justify-center">
+                  <AlertCircle className="w-8 h-8 text-secondary-500" />
                 </div>
                 <h3 className="text-lg font-bold text-gray-800 mb-2">
                   Сохранить черновик?

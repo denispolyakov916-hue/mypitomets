@@ -20,11 +20,11 @@ const ChartStyleConfigurator = ({ config, onChange }) => {
   };
 
   const colorPalettes = [
-    { name: 'Default', colors: ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#06b6d4'] },
-    { name: 'Blues', colors: ['#dbeafe', '#bfdbfe', '#93c5fd', '#60a5fa', '#3b82f6', '#2563eb'] },
+    { name: 'Default', colors: ['#C86BFA', '#ef4444', '#22c55e', '#f59e0b', '#C86BFA', '#06b6d4'] },
+    { name: 'Blues', colors: ['#dbeafe', '#bfdbfe', '#93c5fd', '#60a5fa', '#C86BFA', '#522f81'] },
     { name: 'Reds', colors: ['#fef2f2', '#fecaca', '#fca5a5', '#f87171', '#ef4444', '#dc2626'] },
     { name: 'Greens', colors: ['#f0fdf4', '#dcfce7', '#bbf7d0', '#86efac', '#4ade80', '#22c55e'] },
-    { name: 'Purples', colors: ['#faf5ff', '#f3e8ff', '#e9d5ff', '#d8b4fe', '#c084fc', '#a855f7'] }
+    { name: 'Purples', colors: ['#faf5ff', '#f3e8ff', '#e9d5ff', '#d8b4fe', '#c084fc', '#C86BFA'] }
   ];
 
   const themes = [
@@ -37,7 +37,7 @@ const ChartStyleConfigurator = ({ config, onChange }) => {
     onChange({ ...config, canvas: { ...config.canvas, ...theme.canvas }, style: { ...config.style, ...theme.style } });
   };
 
-  const tabClass = (tab) => `flex-1 px-4 py-2 border-none rounded-md text-sm font-medium cursor-pointer transition-all duration-200 ${activeTab === tab ? 'bg-white text-slate-800 shadow-sm' : 'bg-transparent text-gray-500'}`;
+  const tabClass = (tab) => `flex-1 px-4 py-2 border-none rounded-md text-sm font-medium cursor-pointer transition-all duration-200 ${activeTab === tab ? 'bg-white text-primary-800 shadow-sm' : 'bg-transparent text-gray-500'}`;
 
   return (
     <div className="flex flex-col h-full bg-white rounded-lg">
@@ -94,7 +94,7 @@ const ChartStyleConfigurator = ({ config, onChange }) => {
                     <div key={index} className="w-5 h-5 rounded-sm border border-slate-200" style={{ backgroundColor: color }} title={color} />
                   ))}
                 </div>
-                <button className="px-3 py-1.5 bg-blue-500 text-white border-none rounded text-xs cursor-pointer transition-colors duration-200 hover:bg-blue-600" onClick={() => handleStyleChange('style', 'colorPalette', palette.colors)}>Применить</button>
+                <button className="px-3 py-1.5 bg-primary-500 text-white border-none rounded text-xs cursor-pointer transition-colors duration-200 hover:bg-primary-600" onClick={() => handleStyleChange('style', 'colorPalette', palette.colors)}>Применить</button>
               </div>
             ))}
             <div className="mb-4 flex flex-col gap-1.5">
@@ -107,7 +107,7 @@ const ChartStyleConfigurator = ({ config, onChange }) => {
                     handleStyleChange('style', 'customColors', newColors);
                   }} />
                 ))}
-                <button className="w-8 h-8 border border-gray-300 rounded bg-gray-50 cursor-pointer text-lg font-bold text-gray-500 transition-all duration-200 hover:bg-gray-200 hover:border-gray-400" onClick={() => handleStyleChange('style', 'customColors', [...(config.style?.customColors || []), '#3b82f6'])}>+</button>
+                <button className="w-8 h-8 border border-gray-300 rounded bg-gray-50 cursor-pointer text-lg font-bold text-gray-500 transition-all duration-200 hover:bg-gray-200 hover:border-gray-400" onClick={() => handleStyleChange('style', 'customColors', [...(config.style?.customColors || []), '#C86BFA'])}>+</button>
               </div>
             </div>
           </div>

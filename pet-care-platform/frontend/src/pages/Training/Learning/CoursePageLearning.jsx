@@ -54,8 +54,8 @@ const pageTypeConfig = {
   video:       { icon: '▶️', bg: 'bg-red-50',    border: 'border-red-200',    text: 'text-red-700',    label: 'Видео' },
   quiz:        { icon: '❓', bg: 'bg-primary-50', border: 'border-primary-200', text: 'text-primary-700', label: 'Тест' },
   interactive: { icon: '🐾', bg: 'bg-green-50',  border: 'border-green-200',  text: 'text-green-700',  label: 'Упражнение' },
-  assignment:  { icon: '✏️', bg: 'bg-amber-50',  border: 'border-amber-200',  text: 'text-amber-700',  label: 'Задание' },
-  webinar:     { icon: '📡', bg: 'bg-indigo-50', border: 'border-indigo-200', text: 'text-indigo-700', label: 'Вебинар' },
+  assignment:  { icon: '✏️', bg: 'bg-secondary-50',  border: 'border-secondary-200',  text: 'text-secondary-700',  label: 'Задание' },
+  webinar:     { icon: '📡', bg: 'bg-primary-50', border: 'border-primary-200', text: 'text-primary-700', label: 'Вебинар' },
 }
 
 /**
@@ -375,7 +375,7 @@ const CoursePageLearning = () => {
                 <button
                   onClick={handleResetProgress}
                   disabled={isResetting}
-                  className="text-xs text-gray-500 hover:text-amber-600 transition-colors disabled:opacity-50"
+                  className="text-xs text-gray-500 hover:text-secondary-600 transition-colors disabled:opacity-50"
                   title="Начать курс заново"
                 >
                   {isResetting ? 'Сброс...' : '🔄 Начать заново'}
@@ -494,7 +494,7 @@ const CoursePageLearning = () => {
                     Завершить и продолжить
                   </Button>
                   {mandatoryQuizzes.length > 0 && !canCompletePage && (
-                    <p className="text-xs text-amber-600 mt-1 text-center max-w-xs">
+                    <p className="text-xs text-secondary-600 mt-1 text-center max-w-xs">
                       Пройдите обязательный тест для завершения страницы
                     </p>
                   )}

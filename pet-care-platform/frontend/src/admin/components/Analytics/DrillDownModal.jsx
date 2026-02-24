@@ -97,11 +97,11 @@ const DrillDownModal = ({
               datasets: [{
                 data: Object.values(speciesCount),
                 backgroundColor: [
-                  'rgba(59, 130, 246, 0.8)',
+                  'rgba(200, 107, 250, 0.8)',
                   'rgba(16, 185, 129, 0.8)',
                   'rgba(245, 158, 11, 0.8)',
                   'rgba(239, 68, 68, 0.8)',
-                  'rgba(139, 92, 246, 0.8)'
+                  'rgba(82, 47, 129, 0.8)'
                 ].slice(0, labels.length)
               }],
               total: labels.length
@@ -301,7 +301,7 @@ const DrillDownModal = ({
             <select
               value={selectedPeriod}
               onChange={(e) => setSelectedPeriod(e.target.value)}
-              className="block px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm"
+              className="block px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 text-sm"
             >
               <option value="7d">7 дней</option>
               <option value="30d">30 дней</option>
@@ -313,7 +313,7 @@ const DrillDownModal = ({
           <button
             onClick={() => loadDrillDownData(type, selectedPeriod)}
             disabled={loading}
-            className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+            className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50"
           >
             {loading ? 'Загрузка...' : 'Обновить'}
           </button>
@@ -323,7 +323,7 @@ const DrillDownModal = ({
         {loading && (
           <div className="flex items-center justify-center h-96">
             <div className="text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto"></div>
               <p className="mt-4 text-gray-600">Загрузка данных...</p>
             </div>
           </div>
@@ -405,7 +405,7 @@ const DrillDownModal = ({
                     </div>
                     <div>
                       <span className="text-gray-600">Доля топ-категории:</span>
-                      <span className="ml-2 font-medium text-blue-600">
+                      <span className="ml-2 font-medium text-primary-600">
                         {data.summary?.top_category?.share_percentage !== undefined ? `${data.summary.top_category.share_percentage}%` : 'N/A'}
                       </span>
                     </div>

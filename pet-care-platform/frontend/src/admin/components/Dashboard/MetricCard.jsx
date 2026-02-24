@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 
 const MetricCard = ({
   title,
@@ -9,7 +9,7 @@ const MetricCard = ({
   color = 'primary'
 }) => {
   const colorClasses = {
-    primary: 'border-blue-200 bg-blue-50',
+    primary: 'border-primary-200 bg-primary-50',
     success: 'border-green-200 bg-green-50',
     warning: 'border-yellow-200 bg-yellow-50',
     danger: 'border-red-200 bg-red-50',
@@ -17,7 +17,7 @@ const MetricCard = ({
   };
 
   const textColors = {
-    primary: 'text-blue-700',
+    primary: 'text-primary-700',
     success: 'text-green-700',
     warning: 'text-yellow-700',
     danger: 'text-red-700',

@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 
 // Components
@@ -116,7 +116,7 @@ const OrdersTable = () => {
       label: 'ID заказа',
       sortable: true,
       render: (value) => (
-        <span className="font-mono text-sm font-medium text-blue-600">
+        <span className="font-mono text-sm font-medium text-primary-600">
           #{value?.slice(-8)}
         </span>
       )
@@ -157,7 +157,7 @@ const OrdersTable = () => {
       render: (value) => {
         const statusConfig = {
           pending: { label: 'Ожидает', color: 'bg-yellow-100 text-yellow-800', icon: '⏳' },
-          processing: { label: 'В обработке', color: 'bg-blue-100 text-blue-800', icon: '🔄' },
+          processing: { label: 'В обработке', color: 'bg-primary-100 text-primary-800', icon: '🔄' },
           partially_delivered: { label: 'Частично доставлен', color: 'bg-primary-100 text-primary-800', icon: '📦' },
           shipped: { label: 'Отправлен', color: 'bg-primary-100 text-primary-800', icon: '🚚' },
           delivered: { label: 'Доставлен', color: 'bg-green-100 text-green-800', icon: '✅' },

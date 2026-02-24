@@ -109,9 +109,9 @@ const POINT_TYPES = [
 ];
 
 const COLOR_PALETTES = {
-  default: { name: 'Стандартная', colors: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'] },
+  default: { name: 'Стандартная', colors: ['#C86BFA', '#22c55e', '#f59e0b', '#ef4444', '#C86BFA'] },
   ocean: { name: 'Океан', colors: ['#0ea5e9', '#06b6d4', '#14b8a6', '#22c55e', '#84cc16'] },
-  sunset: { name: 'Закат', colors: ['#f97316', '#ef4444', '#ec4899', '#d946ef', '#a855f7'] },
+  sunset: { name: 'Закат', colors: ['#f97316', '#ef4444', '#ec4899', '#d946ef', '#C86BFA'] },
   forest: { name: 'Лес', colors: ['#22c55e', '#16a34a', '#15803d', '#166534', '#14532d'] },
   mono: { name: 'Монохром', colors: ['#111827', '#374151', '#6b7280', '#9ca3af', '#d1d5db'] },
 };
@@ -276,7 +276,7 @@ const ChartBuilder = ({ initialConfig, onSave, onClose }) => {
         <div className="flex items-center gap-3">
           {showSuccess && <span className="text-emerald-600 text-sm font-medium px-3 py-1.5 bg-emerald-50 rounded-md">✓ Сохранено</span>}
           <button className="flex items-center gap-1.5 px-4 py-2.5 border border-gray-300 rounded-lg text-sm font-medium cursor-pointer transition-all duration-200 bg-white text-gray-700 hover:bg-gray-50 hover:border-gray-400 disabled:opacity-50 disabled:cursor-not-allowed" onClick={() => handleExport('png')} disabled={!selectedMetrics.length || dataLoading}>📥 Экспорт</button>
-          <button className="flex items-center gap-1.5 px-4 py-2.5 border-none rounded-lg text-sm font-medium cursor-pointer transition-all duration-200 bg-gradient-to-br from-blue-500 to-blue-600 text-white hover:from-blue-600 hover:to-blue-700 hover:-translate-y-px disabled:opacity-50 disabled:cursor-not-allowed" onClick={handleSave} disabled={isLoading || !selectedMetrics.length}>{isLoading ? '⏳' : '💾'} Сохранить</button>
+          <button className="flex items-center gap-1.5 px-4 py-2.5 border-none rounded-lg text-sm font-medium cursor-pointer transition-all duration-200 bg-gradient-to-br from-primary-500 to-primary-600 text-white hover:from-primary-600 hover:to-primary-700 hover:-translate-y-px disabled:opacity-50 disabled:cursor-not-allowed" onClick={handleSave} disabled={isLoading || !selectedMetrics.length}>{isLoading ? '⏳' : '💾'} Сохранить</button>
         </div>
       </div>
 
@@ -298,7 +298,7 @@ const ChartBuilder = ({ initialConfig, onSave, onClose }) => {
             {CHART_TEMPLATES.map(template => (
               <button
                 key={template.id}
-                className="flex items-center gap-2.5 w-full p-2.5 bg-white border border-gray-200 rounded-lg cursor-pointer text-left transition-all duration-200 hover:border-blue-500 hover:bg-slate-50 hover:-translate-y-px hover:shadow-[0_2px_8px_rgba(59,130,246,0.1)]"
+                className="flex items-center gap-2.5 w-full p-2.5 bg-white border border-gray-200 rounded-lg cursor-pointer text-left transition-all duration-200 hover:border-primary-500 hover:bg-slate-50 hover:-translate-y-px hover:shadow-[0_2px_8px_rgba(200,107,250,0.1)]"
                 onClick={() => {
                   setChartType(template.type);
                   setTimeRange(template.timeRange);
@@ -340,7 +340,7 @@ const ChartBuilder = ({ initialConfig, onSave, onClose }) => {
                 <button key={range.id} className={`px-3 py-1.5 border-none rounded-md cursor-pointer text-[13px] transition-all duration-200 ${timeRange === range.id ? 'bg-white text-gray-800 font-medium shadow-sm' : 'bg-transparent text-gray-500 hover:bg-gray-200 hover:text-gray-700'}`} onClick={() => setTimeRange(range.id)} disabled={!isTimeBased}>{range.name}</button>
               ))}
             </div>
-            <select className="px-3 py-2 border border-gray-200 rounded-lg text-[13px] text-gray-700 bg-white cursor-pointer focus:outline-none focus:border-blue-500" value={groupBy} onChange={(e) => setGroupBy(e.target.value)} disabled={!isTimeBased}>
+            <select className="px-3 py-2 border border-gray-200 rounded-lg text-[13px] text-gray-700 bg-white cursor-pointer focus:outline-none focus:border-primary-500" value={groupBy} onChange={(e) => setGroupBy(e.target.value)} disabled={!isTimeBased}>
               <option value="day">По дням</option><option value="week">По неделям</option><option value="month">По месяцам</option>
             </select>
             <button className="px-3 py-2 border border-gray-200 rounded-lg bg-white cursor-pointer text-base transition-all duration-200 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed" onClick={refetch} disabled={dataLoading || !selectedMetrics.length}>{dataLoading ? '⏳' : '🔄'}</button>
@@ -370,7 +370,7 @@ const ChartBuilder = ({ initialConfig, onSave, onClose }) => {
         <div className="bg-white flex flex-col overflow-hidden min-w-[280px] max-w-[320px]">
           <div className="flex-1 overflow-y-auto overflow-x-hidden p-2.5 flex flex-col gap-1.5 scrollbar-thin">
 
-            <button className="w-full px-4 py-3 border-none rounded-[10px] bg-gradient-to-br from-blue-500 to-blue-600 text-white text-[13px] font-semibold cursor-pointer transition-all duration-200 mb-2 shadow-[0_2px_8px_rgba(59,130,246,0.25)] hover:from-blue-600 hover:to-blue-700 hover:-translate-y-px hover:shadow-[0_4px_12px_rgba(59,130,246,0.35)] disabled:opacity-50 disabled:cursor-not-allowed" onClick={addChart} disabled={charts.length >= 5}>
+            <button className="w-full px-4 py-3 border-none rounded-[10px] bg-gradient-to-br from-primary-500 to-primary-600 text-white text-[13px] font-semibold cursor-pointer transition-all duration-200 mb-2 shadow-[0_2px_8px_rgba(200,107,250,0.25)] hover:from-primary-600 hover:to-primary-700 hover:-translate-y-px hover:shadow-[0_4px_12px_rgba(200,107,250,0.35)] disabled:opacity-50 disabled:cursor-not-allowed" onClick={addChart} disabled={charts.length >= 5}>
               ➕ Добавить график ({charts.length}/5)
             </button>
 
@@ -401,7 +401,7 @@ const ChartBuilder = ({ initialConfig, onSave, onClose }) => {
                             <span className="text-xs text-gray-400 italic">График #{idx + 1}</span>
                           )}
                         </div>
-                        <span className={`text-[10px] transition-transform duration-200 ${isExpanded ? 'text-blue-500' : 'text-gray-400'}`}>{isExpanded ? '▼' : '▶'}</span>
+                        <span className={`text-[10px] transition-transform duration-200 ${isExpanded ? 'text-primary-500' : 'text-gray-400'}`}>{isExpanded ? '▼' : '▶'}</span>
                         <button className="bg-transparent border-none text-gray-400 cursor-pointer text-lg leading-none px-1.5 py-1 rounded transition-all duration-200 hover:text-red-500 hover:bg-red-50" onClick={(e) => { e.stopPropagation(); removeChart(chart.id); }}>×</button>
                       </div>
 
@@ -410,13 +410,13 @@ const ChartBuilder = ({ initialConfig, onSave, onClose }) => {
                           {/* Metric Selection */}
                           <div className="mb-3 pb-3 border-b border-gray-200">
                             <div className="flex items-center justify-between text-[11px] font-semibold text-gray-700 mb-2 uppercase tracking-[0.3px]">📊 Метрика (Ось Y)</div>
-                            <input type="text" placeholder="🔍 Поиск..." value={chartSearchQuery} onChange={(e) => setChartSearchQuery(e.target.value)} className="w-full px-2.5 py-2 border border-gray-300 rounded-md text-[11px] bg-white mb-2 focus:outline-none focus:border-blue-500 focus:shadow-[0_0_0_2px_rgba(59,130,246,0.1)]" />
+                            <input type="text" placeholder="🔍 Поиск..." value={chartSearchQuery} onChange={(e) => setChartSearchQuery(e.target.value)} className="w-full px-2.5 py-2 border border-gray-300 rounded-md text-[11px] bg-white mb-2 focus:outline-none focus:border-primary-500 focus:shadow-[0_0_0_2px_rgba(200,107,250,0.1)]" />
                             <div className="flex flex-wrap gap-1">
                               {(chartSearchQuery ? allMetrics.filter(m => m.name.toLowerCase().includes(chartSearchQuery.toLowerCase())) : allMetrics).slice(0, 8).map(metric => {
                                 const isActive = chart.metric?.id === metric.id;
                                 const alreadyUsed = charts.some(c => c.metric?.id === metric.id && c.id !== chart.id);
                                 return (
-                                  <button key={metric.id} className={`px-2.5 py-1.5 border rounded-2xl bg-white text-[10px] cursor-pointer transition-all duration-200 whitespace-nowrap ${isActive ? 'border-blue-500 bg-blue-50 text-blue-700 font-medium' : 'border-gray-200 hover:border-blue-500 hover:bg-sky-50'} ${alreadyUsed ? 'opacity-50 cursor-not-allowed' : ''}`} onClick={() => !alreadyUsed && setChartMetric(chart.id, metric)} disabled={alreadyUsed}>
+                                  <button key={metric.id} className={`px-2.5 py-1.5 border rounded-2xl bg-white text-[10px] cursor-pointer transition-all duration-200 whitespace-nowrap ${isActive ? 'border-primary-500 bg-primary-50 text-primary-700 font-medium' : 'border-gray-200 hover:border-primary-500 hover:bg-sky-50'} ${alreadyUsed ? 'opacity-50 cursor-not-allowed' : ''}`} onClick={() => !alreadyUsed && setChartMetric(chart.id, metric)} disabled={alreadyUsed}>
                                     {metric.icon} {metric.name}
                                   </button>
                                 );
@@ -432,11 +432,11 @@ const ChartBuilder = ({ initialConfig, onSave, onClose }) => {
                                 <div className="grid grid-cols-2 gap-2">
                                   <div className="flex flex-col gap-0.5">
                                     <label className="text-[10px] text-gray-500">Тип</label>
-                                    <select value={style.lineStyle || 'solid'} onChange={(e) => updateMetricStyle(chart.metric.id, 'lineStyle', e.target.value)} className="px-2 py-1.5 border border-gray-200 rounded text-[11px] bg-white focus:outline-none focus:border-blue-500">{LINE_STYLES.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select>
+                                    <select value={style.lineStyle || 'solid'} onChange={(e) => updateMetricStyle(chart.metric.id, 'lineStyle', e.target.value)} className="px-2 py-1.5 border border-gray-200 rounded text-[11px] bg-white focus:outline-none focus:border-primary-500">{LINE_STYLES.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select>
                                   </div>
                                   <div className="flex flex-col gap-0.5">
                                     <label className="text-[10px] text-gray-500">Сглаживание</label>
-                                    <select value={style.curveType || 'smooth'} onChange={(e) => updateMetricStyle(chart.metric.id, 'curveType', e.target.value)} className="px-2 py-1.5 border border-gray-200 rounded text-[11px] bg-white focus:outline-none focus:border-blue-500">{CURVE_TYPES.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
+                                    <select value={style.curveType || 'smooth'} onChange={(e) => updateMetricStyle(chart.metric.id, 'curveType', e.target.value)} className="px-2 py-1.5 border border-gray-200 rounded text-[11px] bg-white focus:outline-none focus:border-primary-500">{CURVE_TYPES.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
                                   </div>
                                   <div className="flex flex-col gap-0.5">
                                     <label className="text-[10px] text-gray-500">Толщина: {style.lineWidth || 2}px</label>
@@ -455,14 +455,14 @@ const ChartBuilder = ({ initialConfig, onSave, onClose }) => {
                                   <span>● Точки</span>
                                   <label className="relative inline-block w-8 h-[18px]">
                                     <input type="checkbox" checked={style.showPoints !== false} onChange={(e) => updateMetricStyle(chart.metric.id, 'showPoints', e.target.checked)} className="opacity-0 w-0 h-0 peer" />
-                                    <span className="absolute cursor-pointer inset-0 bg-gray-300 rounded-full transition-colors duration-200 before:content-[''] before:absolute before:h-3.5 before:w-3.5 before:left-0.5 before:bottom-0.5 before:bg-white before:rounded-full before:transition-transform before:duration-200 before:shadow-sm peer-checked:bg-blue-500 peer-checked:before:translate-x-3.5"></span>
+                                    <span className="absolute cursor-pointer inset-0 bg-gray-300 rounded-full transition-colors duration-200 before:content-[''] before:absolute before:h-3.5 before:w-3.5 before:left-0.5 before:bottom-0.5 before:bg-white before:rounded-full before:transition-transform before:duration-200 before:shadow-sm peer-checked:bg-primary-500 peer-checked:before:translate-x-3.5"></span>
                                   </label>
                                 </div>
                                 {style.showPoints !== false && (
                                   <div className="grid grid-cols-2 gap-2">
                                     <div className="flex flex-col gap-0.5">
                                       <label className="text-[10px] text-gray-500">Форма</label>
-                                      <select value={style.pointType || 'circle'} onChange={(e) => updateMetricStyle(chart.metric.id, 'pointType', e.target.value)} className="px-2 py-1.5 border border-gray-200 rounded text-[11px] bg-white focus:outline-none focus:border-blue-500">{POINT_TYPES.map(p => <option key={p.id} value={p.id}>{p.symbol} {p.name}</option>)}</select>
+                                      <select value={style.pointType || 'circle'} onChange={(e) => updateMetricStyle(chart.metric.id, 'pointType', e.target.value)} className="px-2 py-1.5 border border-gray-200 rounded text-[11px] bg-white focus:outline-none focus:border-primary-500">{POINT_TYPES.map(p => <option key={p.id} value={p.id}>{p.symbol} {p.name}</option>)}</select>
                                     </div>
                                     <div className="flex flex-col gap-0.5">
                                       <label className="text-[10px] text-gray-500">Размер: {style.pointSize || 4}px</label>
@@ -476,9 +476,9 @@ const ChartBuilder = ({ initialConfig, onSave, onClose }) => {
                               <div className="mb-3 pb-3 border-b border-gray-200">
                                 <div className="text-[11px] font-semibold text-gray-700 mb-2 uppercase tracking-[0.3px]">📏 Ось Y</div>
                                 <div className="grid grid-cols-2 gap-2">
-                                  <div className="flex flex-col gap-0.5"><label className="text-[10px] text-gray-500">Масштаб</label><select value={style.yAxisScale || 'auto'} onChange={(e) => updateMetricStyle(chart.metric.id, 'yAxisScale', e.target.value)} className="px-2 py-1.5 border border-gray-200 rounded text-[11px] bg-white focus:outline-none focus:border-blue-500"><option value="auto">Авто</option><option value="linear">Линейный</option><option value="log">Логарифм</option><option value="manual">Ручной</option></select></div>
-                                  <div className="flex flex-col gap-0.5"><label className="text-[10px] text-gray-500">Формат</label><select value={style.yFormat || 'auto'} onChange={(e) => updateMetricStyle(chart.metric.id, 'yFormat', e.target.value)} className="px-2 py-1.5 border border-gray-200 rounded text-[11px] bg-white focus:outline-none focus:border-blue-500"><option value="auto">Авто</option><option value="integer">Целые</option><option value="decimal">Десятичные</option><option value="currency">₽ Валюта</option><option value="percent">% Проценты</option><option value="compact">Компактный (K/M)</option></select></div>
-                                  {style.yAxisScale === 'manual' && (<><div className="flex flex-col gap-0.5"><label className="text-[10px] text-gray-500">Минимум</label><input type="number" value={style.yMin || ''} onChange={(e) => updateMetricStyle(chart.metric.id, 'yMin', e.target.value)} placeholder="Авто" className="px-2 py-1.5 border border-gray-200 rounded text-[11px] bg-white focus:outline-none focus:border-blue-500" /></div><div className="flex flex-col gap-0.5"><label className="text-[10px] text-gray-500">Максимум</label><input type="number" value={style.yMax || ''} onChange={(e) => updateMetricStyle(chart.metric.id, 'yMax', e.target.value)} placeholder="Авто" className="px-2 py-1.5 border border-gray-200 rounded text-[11px] bg-white focus:outline-none focus:border-blue-500" /></div></>)}
+                                  <div className="flex flex-col gap-0.5"><label className="text-[10px] text-gray-500">Масштаб</label><select value={style.yAxisScale || 'auto'} onChange={(e) => updateMetricStyle(chart.metric.id, 'yAxisScale', e.target.value)} className="px-2 py-1.5 border border-gray-200 rounded text-[11px] bg-white focus:outline-none focus:border-primary-500"><option value="auto">Авто</option><option value="linear">Линейный</option><option value="log">Логарифм</option><option value="manual">Ручной</option></select></div>
+                                  <div className="flex flex-col gap-0.5"><label className="text-[10px] text-gray-500">Формат</label><select value={style.yFormat || 'auto'} onChange={(e) => updateMetricStyle(chart.metric.id, 'yFormat', e.target.value)} className="px-2 py-1.5 border border-gray-200 rounded text-[11px] bg-white focus:outline-none focus:border-primary-500"><option value="auto">Авто</option><option value="integer">Целые</option><option value="decimal">Десятичные</option><option value="currency">₽ Валюта</option><option value="percent">% Проценты</option><option value="compact">Компактный (K/M)</option></select></div>
+                                  {style.yAxisScale === 'manual' && (<><div className="flex flex-col gap-0.5"><label className="text-[10px] text-gray-500">Минимум</label><input type="number" value={style.yMin || ''} onChange={(e) => updateMetricStyle(chart.metric.id, 'yMin', e.target.value)} placeholder="Авто" className="px-2 py-1.5 border border-gray-200 rounded text-[11px] bg-white focus:outline-none focus:border-primary-500" /></div><div className="flex flex-col gap-0.5"><label className="text-[10px] text-gray-500">Максимум</label><input type="number" value={style.yMax || ''} onChange={(e) => updateMetricStyle(chart.metric.id, 'yMax', e.target.value)} placeholder="Авто" className="px-2 py-1.5 border border-gray-200 rounded text-[11px] bg-white focus:outline-none focus:border-primary-500" /></div></>)}
                                   <div className="flex flex-col gap-0.5"><label className="text-[10px] text-gray-500">Делений: {style.yTicks || 5}</label><input type="range" min="2" max="10" value={style.yTicks || 5} onChange={(e) => updateMetricStyle(chart.metric.id, 'yTicks', parseInt(e.target.value))} className="w-full cursor-pointer h-1" /></div>
                                 </div>
                               </div>
@@ -489,7 +489,7 @@ const ChartBuilder = ({ initialConfig, onSave, onClose }) => {
                                   <span>🎨 Заливка</span>
                                   <label className="relative inline-block w-8 h-[18px]">
                                     <input type="checkbox" checked={style.showFill === true} onChange={(e) => updateMetricStyle(chart.metric.id, 'showFill', e.target.checked)} className="opacity-0 w-0 h-0 peer" />
-                                    <span className="absolute cursor-pointer inset-0 bg-gray-300 rounded-full transition-colors duration-200 before:content-[''] before:absolute before:h-3.5 before:w-3.5 before:left-0.5 before:bottom-0.5 before:bg-white before:rounded-full before:transition-transform before:duration-200 before:shadow-sm peer-checked:bg-blue-500 peer-checked:before:translate-x-3.5"></span>
+                                    <span className="absolute cursor-pointer inset-0 bg-gray-300 rounded-full transition-colors duration-200 before:content-[''] before:absolute before:h-3.5 before:w-3.5 before:left-0.5 before:bottom-0.5 before:bg-white before:rounded-full before:transition-transform before:duration-200 before:shadow-sm peer-checked:bg-primary-500 peer-checked:before:translate-x-3.5"></span>
                                   </label>
                                 </div>
                                 {style.showFill && (
@@ -503,7 +503,7 @@ const ChartBuilder = ({ initialConfig, onSave, onClose }) => {
                               {/* Legend Label */}
                               <div className="mb-0">
                                 <div className="text-[11px] font-semibold text-gray-700 mb-2 uppercase tracking-[0.3px]">🏷️ Подпись</div>
-                                <input type="text" value={legendLabels[chart.metric.id] || ''} onChange={(e) => updateLegendLabel(chart.metric.id, e.target.value)} placeholder={chart.metric.name} className="w-full px-2.5 py-2 border border-gray-200 rounded-md text-xs bg-white focus:outline-none focus:border-blue-500" />
+                                <input type="text" value={legendLabels[chart.metric.id] || ''} onChange={(e) => updateLegendLabel(chart.metric.id, e.target.value)} placeholder={chart.metric.name} className="w-full px-2.5 py-2 border border-gray-200 rounded-md text-xs bg-white focus:outline-none focus:border-primary-500" />
                               </div>
                             </>
                           )}
@@ -524,14 +524,14 @@ const ChartBuilder = ({ initialConfig, onSave, onClose }) => {
             <div className="bg-[#f0f4f8] rounded-[10px] p-3 border border-gray-300 flex flex-col gap-3">
               <div className="flex flex-col gap-1.5">
                 <label className="text-[11px] font-semibold text-gray-700">📝 Название графика</label>
-                <input type="text" value={styleConfig.title || ''} onChange={(e) => setStyleConfig(prev => ({ ...prev, title: e.target.value }))} placeholder="Мой график" className="w-full px-2.5 py-2 border border-gray-300 rounded-md text-xs bg-white focus:outline-none focus:border-blue-500" />
+                <input type="text" value={styleConfig.title || ''} onChange={(e) => setStyleConfig(prev => ({ ...prev, title: e.target.value }))} placeholder="Мой график" className="w-full px-2.5 py-2 border border-gray-300 rounded-md text-xs bg-white focus:outline-none focus:border-primary-500" />
               </div>
 
               <div className="flex flex-col gap-1.5">
                 <label className="text-[11px] font-semibold text-gray-700">📈 Тип диаграммы</label>
                 <div className="flex gap-1">
                   {CHART_TYPES.map(type => (
-                    <button key={type.id} className={`flex-1 py-2.5 px-1.5 border-2 rounded-lg bg-white cursor-pointer text-lg transition-all duration-200 flex justify-center ${chartType === type.id ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-gray-400'}`} onClick={() => setChartType(type.id)} title={type.name}>{type.icon}</button>
+                    <button key={type.id} className={`flex-1 py-2.5 px-1.5 border-2 rounded-lg bg-white cursor-pointer text-lg transition-all duration-200 flex justify-center ${chartType === type.id ? 'border-primary-500 bg-primary-50' : 'border-gray-200 hover:border-gray-400'}`} onClick={() => setChartType(type.id)} title={type.name}>{type.icon}</button>
                   ))}
                 </div>
               </div>
@@ -540,7 +540,7 @@ const ChartBuilder = ({ initialConfig, onSave, onClose }) => {
                 <label className="text-[11px] font-semibold text-gray-700">🎨 Цветовая схема</label>
                 <div className="flex gap-1">
                   {Object.entries(COLOR_PALETTES).map(([id, palette]) => (
-                    <button key={id} className={`flex-1 flex gap-px p-1 border-2 rounded-md bg-white cursor-pointer transition-all duration-200 ${styleConfig.colorPalette === id ? 'border-blue-500' : 'border-gray-200 hover:border-gray-400'}`} onClick={() => setStyleConfig(prev => ({ ...prev, colorPalette: id }))} title={palette.name}>
+                    <button key={id} className={`flex-1 flex gap-px p-1 border-2 rounded-md bg-white cursor-pointer transition-all duration-200 ${styleConfig.colorPalette === id ? 'border-primary-500' : 'border-gray-200 hover:border-gray-400'}`} onClick={() => setStyleConfig(prev => ({ ...prev, colorPalette: id }))} title={palette.name}>
                       {palette.colors.slice(0, 4).map((c, i) => <span key={i} className="flex-1 h-3.5 rounded-sm" style={{ background: c }}></span>)}
                     </button>
                   ))}
@@ -549,27 +549,27 @@ const ChartBuilder = ({ initialConfig, onSave, onClose }) => {
 
               <div className="flex flex-col gap-1.5">
                 <label className="text-[11px] font-semibold text-gray-700">📏 Ось X — Группировка</label>
-                <select className="w-full px-2.5 py-2 border border-gray-300 rounded-md text-xs bg-white cursor-pointer focus:outline-none focus:border-blue-500" value={xAxisDimension} onChange={(e) => setXAxisDimension(e.target.value)}>
+                <select className="w-full px-2.5 py-2 border border-gray-300 rounded-md text-xs bg-white cursor-pointer focus:outline-none focus:border-primary-500" value={xAxisDimension} onChange={(e) => setXAxisDimension(e.target.value)}>
                   {Object.entries(X_AXIS_DIMENSIONS).map(([catId, category]) => (
                     <optgroup key={catId} label={category.name}>{category.options.map(option => <option key={option.id} value={option.id}>{option.icon} {option.name}</option>)}</optgroup>
                   ))}
                 </select>
                 <div className="flex gap-1.5 items-center mt-1.5">
-                  <input type="text" value={styleConfig.xAxis.label} onChange={(e) => updateXAxisConfig('label', e.target.value)} placeholder="Название оси" className="flex-1 px-2 py-1.5 border border-gray-300 rounded text-[11px] bg-white min-w-0 focus:outline-none focus:border-blue-500" />
-                  <input type="number" value={styleConfig.xAxis.rotation} onChange={(e) => updateXAxisConfig('rotation', parseInt(e.target.value) || 0)} placeholder="Угол°" className="px-2 py-1.5 border border-gray-300 rounded text-[11px] bg-white focus:outline-none focus:border-blue-500" style={{ width: '60px' }} />
+                  <input type="text" value={styleConfig.xAxis.label} onChange={(e) => updateXAxisConfig('label', e.target.value)} placeholder="Название оси" className="flex-1 px-2 py-1.5 border border-gray-300 rounded text-[11px] bg-white min-w-0 focus:outline-none focus:border-primary-500" />
+                  <input type="number" value={styleConfig.xAxis.rotation} onChange={(e) => updateXAxisConfig('rotation', parseInt(e.target.value) || 0)} placeholder="Угол°" className="px-2 py-1.5 border border-gray-300 rounded text-[11px] bg-white focus:outline-none focus:border-primary-500" style={{ width: '60px' }} />
                 </div>
               </div>
 
               <div className="flex flex-col gap-1.5">
                 <label className="text-[11px] font-semibold text-gray-700">📐 Ось Y — Общие значения</label>
                 <div className="flex gap-1.5 items-center mt-1.5">
-                  <input type="text" value={styleConfig.yAxis.label} onChange={(e) => updateYAxisConfig('label', e.target.value)} placeholder="Название оси" className="flex-1 px-2 py-1.5 border border-gray-300 rounded text-[11px] bg-white min-w-0 focus:outline-none focus:border-blue-500" />
-                  <select value={styleConfig.yAxis.format} onChange={(e) => updateYAxisConfig('format', e.target.value)} className="px-2 py-1.5 border border-gray-300 rounded text-[11px] bg-white cursor-pointer focus:outline-none focus:border-blue-500"><option value="auto">Авто</option><option value="integer">123</option><option value="currency">₽</option><option value="percent">%</option><option value="compact">K/M</option></select>
+                  <input type="text" value={styleConfig.yAxis.label} onChange={(e) => updateYAxisConfig('label', e.target.value)} placeholder="Название оси" className="flex-1 px-2 py-1.5 border border-gray-300 rounded text-[11px] bg-white min-w-0 focus:outline-none focus:border-primary-500" />
+                  <select value={styleConfig.yAxis.format} onChange={(e) => updateYAxisConfig('format', e.target.value)} className="px-2 py-1.5 border border-gray-300 rounded text-[11px] bg-white cursor-pointer focus:outline-none focus:border-primary-500"><option value="auto">Авто</option><option value="integer">123</option><option value="currency">₽</option><option value="percent">%</option><option value="compact">K/M</option></select>
                 </div>
                 <div className="flex gap-1.5 items-center mt-1.5">
-                  <input type="number" value={styleConfig.yAxis.min} onChange={(e) => updateYAxisConfig('min', e.target.value)} placeholder="Мин" className="flex-1 px-2 py-1.5 border border-gray-300 rounded text-[11px] bg-white min-w-0 focus:outline-none focus:border-blue-500" />
+                  <input type="number" value={styleConfig.yAxis.min} onChange={(e) => updateYAxisConfig('min', e.target.value)} placeholder="Мин" className="flex-1 px-2 py-1.5 border border-gray-300 rounded text-[11px] bg-white min-w-0 focus:outline-none focus:border-primary-500" />
                   <span className="text-gray-400 text-xs">—</span>
-                  <input type="number" value={styleConfig.yAxis.max} onChange={(e) => updateYAxisConfig('max', e.target.value)} placeholder="Макс" className="flex-1 px-2 py-1.5 border border-gray-300 rounded text-[11px] bg-white min-w-0 focus:outline-none focus:border-blue-500" />
+                  <input type="number" value={styleConfig.yAxis.max} onChange={(e) => updateYAxisConfig('max', e.target.value)} placeholder="Макс" className="flex-1 px-2 py-1.5 border border-gray-300 rounded text-[11px] bg-white min-w-0 focus:outline-none focus:border-primary-500" />
                 </div>
               </div>
 
@@ -579,14 +579,14 @@ const ChartBuilder = ({ initialConfig, onSave, onClose }) => {
                   <label className="text-[11px] font-semibold text-gray-700">📐 Сетка</label>
                   <label className="relative inline-block w-8 h-[18px]">
                     <input type="checkbox" checked={styleConfig.grid.show} onChange={(e) => updateGridConfig('show', e.target.checked)} className="opacity-0 w-0 h-0 peer" />
-                    <span className="absolute cursor-pointer inset-0 bg-gray-300 rounded-full transition-colors duration-200 before:content-[''] before:absolute before:h-3.5 before:w-3.5 before:left-0.5 before:bottom-0.5 before:bg-white before:rounded-full before:transition-transform before:duration-200 before:shadow-sm peer-checked:bg-blue-500 peer-checked:before:translate-x-3.5"></span>
+                    <span className="absolute cursor-pointer inset-0 bg-gray-300 rounded-full transition-colors duration-200 before:content-[''] before:absolute before:h-3.5 before:w-3.5 before:left-0.5 before:bottom-0.5 before:bg-white before:rounded-full before:transition-transform before:duration-200 before:shadow-sm peer-checked:bg-primary-500 peer-checked:before:translate-x-3.5"></span>
                   </label>
                 </div>
                 {styleConfig.grid.show && (
                   <div className="mt-2 p-2 bg-white rounded-md border border-gray-200">
                     <div className="flex gap-1.5 items-center mt-1.5">
                       <input type="color" value={styleConfig.grid.color} onChange={(e) => updateGridConfig('color', e.target.value)} className="w-8 h-7 border-none rounded cursor-pointer p-0.5 shrink-0" />
-                      <select value={styleConfig.grid.style} onChange={(e) => updateGridConfig('style', e.target.value)} className="px-2 py-1.5 border border-gray-300 rounded text-[11px] bg-white cursor-pointer focus:outline-none focus:border-blue-500"><option value="solid">━━━</option><option value="dashed">╌╌╌</option><option value="dotted">····</option></select>
+                      <select value={styleConfig.grid.style} onChange={(e) => updateGridConfig('style', e.target.value)} className="px-2 py-1.5 border border-gray-300 rounded text-[11px] bg-white cursor-pointer focus:outline-none focus:border-primary-500"><option value="solid">━━━</option><option value="dashed">╌╌╌</option><option value="dotted">····</option></select>
                       <input type="range" min="10" max="100" value={styleConfig.grid.opacity * 100} onChange={(e) => updateGridConfig('opacity', parseInt(e.target.value) / 100)} className="flex-1 cursor-pointer h-1" />
                     </div>
                     <div className="flex gap-3 mt-1.5">
@@ -603,14 +603,14 @@ const ChartBuilder = ({ initialConfig, onSave, onClose }) => {
                   <label className="text-[11px] font-semibold text-gray-700">🏷️ Легенда</label>
                   <label className="relative inline-block w-8 h-[18px]">
                     <input type="checkbox" checked={styleConfig.legend.show} onChange={(e) => updateLegendConfig('show', e.target.checked)} className="opacity-0 w-0 h-0 peer" />
-                    <span className="absolute cursor-pointer inset-0 bg-gray-300 rounded-full transition-colors duration-200 before:content-[''] before:absolute before:h-3.5 before:w-3.5 before:left-0.5 before:bottom-0.5 before:bg-white before:rounded-full before:transition-transform before:duration-200 before:shadow-sm peer-checked:bg-blue-500 peer-checked:before:translate-x-3.5"></span>
+                    <span className="absolute cursor-pointer inset-0 bg-gray-300 rounded-full transition-colors duration-200 before:content-[''] before:absolute before:h-3.5 before:w-3.5 before:left-0.5 before:bottom-0.5 before:bg-white before:rounded-full before:transition-transform before:duration-200 before:shadow-sm peer-checked:bg-primary-500 peer-checked:before:translate-x-3.5"></span>
                   </label>
                 </div>
                 {styleConfig.legend.show && (
                   <div className="mt-2 p-2 bg-white rounded-md border border-gray-200">
                     <div className="flex gap-1">
                       {LEGEND_POSITIONS.filter(p => p.id !== 'none').map(pos => (
-                        <button key={pos.id} className={`flex-1 py-2 px-1 border rounded text-[11px] font-medium cursor-pointer transition-all duration-200 ${styleConfig.legend.position === pos.id ? 'border-blue-500 bg-blue-50 text-blue-500' : 'border-gray-200 bg-white text-gray-500 hover:border-gray-400'}`} onClick={() => updateLegendConfig('position', pos.id)} title={pos.name}>{pos.name.charAt(0)}</button>
+                        <button key={pos.id} className={`flex-1 py-2 px-1 border rounded text-[11px] font-medium cursor-pointer transition-all duration-200 ${styleConfig.legend.position === pos.id ? 'border-primary-500 bg-primary-50 text-primary-500' : 'border-gray-200 bg-white text-gray-500 hover:border-gray-400'}`} onClick={() => updateLegendConfig('position', pos.id)} title={pos.name}>{pos.name.charAt(0)}</button>
                       ))}
                     </div>
                   </div>

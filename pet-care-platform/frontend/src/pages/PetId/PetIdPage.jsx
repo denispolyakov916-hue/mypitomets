@@ -250,7 +250,7 @@ const DraftCard = React.memo(({ draft, onContinue, onDelete }) => {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
-      className="bg-gradient-to-br from-amber-50 to-accent-50 rounded-2xl border-2 border-dashed border-amber-200 overflow-hidden"
+      className="bg-gradient-to-br from-secondary-50 to-accent-50 rounded-2xl border-2 border-dashed border-secondary-200 overflow-hidden"
     >
       <div className="p-5">
         <div className="flex items-start gap-4">
@@ -262,8 +262,8 @@ const DraftCard = React.memo(({ draft, onContinue, onDelete }) => {
           {/* Информация */}
           <div className="flex-1">
             <div className="flex items-center gap-2">
-              <FileEdit className="w-4 h-4 text-amber-500" />
-              <span className="text-xs font-medium text-amber-600 uppercase tracking-wider">
+              <FileEdit className="w-4 h-4 text-secondary-500" />
+              <span className="text-xs font-medium text-secondary-600 uppercase tracking-wider">
                 Черновик
               </span>
             </div>
@@ -276,17 +276,17 @@ const DraftCard = React.memo(({ draft, onContinue, onDelete }) => {
             
             {/* Прогресс */}
             <div className="flex items-center gap-2 mt-3">
-              <div className="flex-1 h-1.5 bg-amber-100 rounded-full overflow-hidden">
+              <div className="flex-1 h-1.5 bg-secondary-100 rounded-full overflow-hidden">
                 <div 
-                  className="h-full bg-gradient-to-r from-amber-400 to-accent-400 transition-all"
+                  className="h-full bg-gradient-to-r from-secondary-400 to-accent-400 transition-all"
                   style={{ width: `${progress}%` }}
                 />
               </div>
-              <span className="text-xs text-amber-600 font-medium">
+              <span className="text-xs text-secondary-600 font-medium">
                 {progress}%
               </span>
             </div>
-            <p className="text-xs text-amber-500 mt-1">
+            <p className="text-xs text-secondary-500 mt-1">
               Шаг {draftStep} из 4
             </p>
           </div>
@@ -296,7 +296,7 @@ const DraftCard = React.memo(({ draft, onContinue, onDelete }) => {
         <div className="flex gap-2 mt-4">
           <button
             onClick={() => onContinue(draft)}
-            className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-gradient-to-r from-amber-500 to-accent-500 text-white rounded-xl hover:shadow-lg transition-all font-medium"
+            className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-gradient-to-r from-secondary-500 to-accent-500 text-white rounded-xl hover:shadow-lg transition-all font-medium"
           >
             Продолжить
             <ChevronRight className="w-4 h-4" />
@@ -685,7 +685,7 @@ export default function PetIdPage() {
                   transition={{ duration: 0.3 }}
                 >
                   <h2 className="section-title text-gray-700 flex items-center gap-2">
-                    <FileEdit className="w-5 h-5 text-amber-500" />
+                    <FileEdit className="w-5 h-5 text-secondary-500" />
                     Незавершённые профили ({drafts.length})
                   </h2>
                   <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">

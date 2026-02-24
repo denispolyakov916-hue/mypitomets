@@ -9,7 +9,7 @@
   background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(20px);
   border-radius: 30px;
-  box-shadow: 0 0 40px rgba(139, 92, 246, 0.3);
+  box-shadow: 0 0 40px rgba(82, 47, 129, 0.3);
   border: 1px solid rgba(255, 255, 255, 0.2);
   overflow: hidden;
   display: flex;
@@ -72,7 +72,7 @@
 .auth-input-box input {
   width: 100%;
   padding: 13px 50px 13px 20px;
-  background: rgba(139, 92, 246, 0.1);
+  background: rgba(82, 47, 129, 0.1);
   border-radius: 8px;
   border: 2px solid transparent;
   outline: none;
@@ -83,13 +83,13 @@
 }
 
 .auth-input-box input:focus {
-  background: rgba(249, 115, 22, 0.2);
-  border-color: #f97316;
-  box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.35);
+  background: rgba(251, 186, 45, 0.2);
+  border-color: #fbba2d;
+  box-shadow: 0 0 0 3px rgba(251, 186, 45, 0.35);
 }
 
 .auth-input-box input::placeholder {
-  color: rgba(139, 92, 246, 0.6);
+  color: rgba(82, 47, 129, 0.6);
   font-weight: 400;
 }
 
@@ -99,7 +99,7 @@
   top: 50%;
   transform: translateY(-50%);
   font-size: 20px;
-  color: rgba(139, 92, 246, 0.6);
+  color: rgba(82, 47, 129, 0.6);
 }
 
 .auth-activation-input {
@@ -147,7 +147,7 @@
 .auth-btn {
   width: 100%;
   height: 48px;
-  background: linear-gradient(135deg, #8B5CF6 0%, #F97316 100%);
+  background: linear-gradient(135deg, #522f81 0%, #fbba2d 100%);
   border-radius: 8px;
   box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
   border: none;
@@ -163,7 +163,7 @@
 }
 
 .auth-btn:hover:not(:disabled) {
-  background: linear-gradient(135deg, #7C3AED 0%, #EA580C 100%);
+  background: linear-gradient(135deg, #C86BFA 0%, #e5a41e 100%);
 }
 
 .auth-btn:disabled {
@@ -181,7 +181,7 @@
   text-align: center;
   margin: 20px 0;
   font-size: 14px;
-  color: rgba(139, 92, 246, 0.8);
+  color: rgba(82, 47, 129, 0.8);
 }
 
 .auth-social-icons {
@@ -193,7 +193,7 @@
 .auth-social-icon {
   display: inline-flex;
   padding: 10px;
-  border: 2px solid rgba(139, 92, 246, 0.3);
+  border: 2px solid rgba(82, 47, 129, 0.3);
   border-radius: 8px;
   font-size: 24px;
   color: #1F2937;
@@ -202,8 +202,8 @@
 }
 
 .auth-social-icon:hover {
-  border-color: #8B5CF6;
-  color: #8B5CF6;
+  border-color: #C86BFA;
+  color: #C86BFA;
   transform: translateY(-2px);
 }
 
@@ -215,7 +215,7 @@
 }
 
 .auth-social-icon:hover .social-text-icon {
-  color: #8B5CF6;
+  color: #C86BFA;
 }
 
 .auth-back-link {
@@ -223,7 +223,7 @@
   width: 100%;
   background: transparent;
   border: none;
-  color: #8B5CF6;
+  color: #C86BFA;
   font-size: 14px;
   cursor: pointer;
   margin-top: 15px;
@@ -243,7 +243,7 @@
   left: -250%;
   width: 300%;
   height: 100%;
-  background: linear-gradient(135deg, #8B5CF6 0%, #F97316 100%);
+  background: linear-gradient(135deg, #522f81 0%, #fbba2d 100%);
   border-radius: 150px;
   z-index: 2;
   transition: left 1.8s ease-in-out;
@@ -423,7 +423,7 @@
     border-radius: 20px;
     background: rgba(255, 255, 255, 0.98);
     backdrop-filter: blur(25px);
-    box-shadow: 0 0 60px rgba(139, 92, 246, 0.4);
+    box-shadow: 0 0 60px rgba(82, 47, 129, 0.4);
     margin-top: 50px;
   }
 
@@ -473,7 +473,7 @@
     top: -270%;
     width: 100%;
     height: 300%;
-    background: linear-gradient(135deg, #8B5CF6 0%, #F97316 100%);
+    background: linear-gradient(135deg, #522f81 0%, #fbba2d 100%);
     border-radius: 20vw;
     z-index: 2;
     transition: top 1.8s ease-in-out;

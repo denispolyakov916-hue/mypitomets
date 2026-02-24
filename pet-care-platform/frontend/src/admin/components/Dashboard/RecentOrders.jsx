@@ -1,11 +1,11 @@
-﻿import React from 'react';
+import React from 'react';
 import { Link } from 'react-router-dom';
 
 const RecentOrders = ({ orders }) => {
   const getStatusColor = (status) => {
     const colors = {
       pending: 'bg-yellow-100 text-yellow-800',
-      processing: 'bg-blue-100 text-blue-800',
+      processing: 'bg-primary-100 text-primary-800',
       partially_delivered: 'bg-primary-100 text-primary-800',
       shipped: 'bg-primary-100 text-primary-800',
       delivered: 'bg-green-100 text-green-800',
@@ -45,7 +45,7 @@ const RecentOrders = ({ orders }) => {
         <h2 className="text-lg font-semibold text-gray-900">Последние заказы</h2>
         <Link
           to="/admin-panel/orders"
-          className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+          className="text-sm text-primary-600 hover:text-primary-800 font-medium"
         >
           Все заказы →
         </Link>

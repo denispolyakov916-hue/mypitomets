@@ -34,7 +34,7 @@ const BreedComparisonWidget = ({ petId }) => {
 
   const getScoreColor = (score) => {
     if (score >= 80) return 'text-green-600';
-    if (score >= 60) return 'text-amber-500';
+    if (score >= 60) return 'text-secondary-500';
     return 'text-red-500';
   };
 
@@ -44,7 +44,7 @@ const BreedComparisonWidget = ({ petId }) => {
   };
 
   const getRiskBorderColor = (severity) => {
-    if (severity === 'medium') return 'border-amber-500';
+    if (severity === 'medium') return 'border-secondary-500';
     if (severity === 'low') return 'border-blue-500';
     return 'border-red-500';
   };

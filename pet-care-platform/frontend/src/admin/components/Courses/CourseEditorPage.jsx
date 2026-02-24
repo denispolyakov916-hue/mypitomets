@@ -186,9 +186,9 @@ export default function CourseEditorPage() {
 
   /* ─── Save status display ─── */
   const getSaveStatus = () => {
-    if (saving) return { text: 'Сохранение...', dot: 'bg-blue-400 animate-pulse' }
+    if (saving) return { text: 'Сохранение...', dot: 'bg-primary-400 animate-pulse' }
     if (saveError) return { text: saveError, dot: 'bg-red-400' }
-    if (isDirty) return { text: 'Несохранённые изменения', dot: 'bg-amber-400' }
+    if (isDirty) return { text: 'Несохранённые изменения', dot: 'bg-secondary-400' }
     if (lastSaved) {
       const secs = Math.round((Date.now() - lastSaved.getTime()) / 1000)
       if (secs < 5) return { text: 'Сохранено', dot: 'bg-green-400' }
@@ -203,7 +203,7 @@ export default function CourseEditorPage() {
     return (
       <div className="flex items-center justify-center h-full">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600 mx-auto" />
+          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary-600 mx-auto" />
           <p className="mt-3 text-sm text-gray-500">Загрузка курса...</p>
         </div>
       </div>
@@ -215,7 +215,7 @@ export default function CourseEditorPage() {
       <div className="flex items-center justify-center h-full">
         <div className="text-center">
           <p className="text-gray-500 text-lg mb-3">Курс не найден</p>
-          <button onClick={() => navigate('/admin-panel/courses')} className="text-blue-600 hover:underline text-sm">
+          <button onClick={() => navigate('/admin-panel/courses')} className="text-primary-600 hover:underline text-sm">
             К списку курсов
           </button>
         </div>
@@ -263,7 +263,7 @@ export default function CourseEditorPage() {
         <div className="flex items-center gap-2 flex-shrink-0">
           <button
             onClick={() => window.open(`/training/courses/${id}/learn`, '_blank', 'noopener,noreferrer')}
-            className="px-3 py-1.5 text-xs font-medium border border-blue-300 text-blue-700 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors"
+            className="px-3 py-1.5 text-xs font-medium border border-primary-300 text-primary-700 bg-primary-50 rounded-lg hover:bg-primary-100 transition-colors"
             title="Предпросмотр курса"
           >
             👁 Предпросмотр
@@ -282,7 +282,7 @@ export default function CourseEditorPage() {
               <button
                 onClick={handleUnpublish}
                 disabled={saving}
-                className="px-3 py-1.5 text-xs font-medium border border-amber-300 text-amber-700 bg-amber-50 rounded-lg hover:bg-amber-100 disabled:opacity-50 transition-colors"
+                className="px-3 py-1.5 text-xs font-medium border border-secondary-300 text-secondary-700 bg-secondary-50 rounded-lg hover:bg-secondary-100 disabled:opacity-50 transition-colors"
               >
                 Снять с публикации
               </button>
@@ -311,7 +311,7 @@ export default function CourseEditorPage() {
               onClick={() => setActiveTab(tab.key)}
               className={`flex items-center gap-1.5 py-2.5 text-sm font-medium border-b-2 transition-colors ${
                 activeTab === tab.key
-                  ? 'border-blue-500 text-blue-600'
+                  ? 'border-primary-500 text-primary-600'
                   : 'border-transparent text-gray-500 hover:text-gray-700'
               }`}
             >

@@ -769,7 +769,7 @@ function ProductDetail() {
                 </span>
               )}
               {product.is_grain_free && (
-                <span className="px-3 py-1 bg-amber-100 text-amber-700 text-xs font-medium rounded-full">
+                <span className="px-3 py-1 bg-secondary-100 text-secondary-700 text-xs font-medium rounded-full">
                   🌾 Беззерновой
                 </span>
               )}
@@ -940,7 +940,7 @@ function ProductDetail() {
               {product.food_details?.ingredients?.slice(0, 24).map((ingredient, idx) => (
                 <span
                   key={idx}
-                  className="px-2.5 py-1 rounded-full text-sm bg-amber-100 text-amber-700"
+                  className="px-2.5 py-1 rounded-full text-sm bg-secondary-100 text-secondary-700"
                 >
                   {ingredient}
                 </span>

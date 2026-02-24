@@ -251,7 +251,7 @@ const CoursesTable = () => {
       sortable: true,
       render: (value) => (
         <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-          value === 'dog' ? 'bg-blue-100 text-blue-800' :
+          value === 'dog' ? 'bg-primary-100 text-primary-800' :
           value === 'cat' ? 'bg-accent-100 text-accent-800' :
           'bg-primary-100 text-primary-800'
         }`}>
@@ -276,7 +276,7 @@ const CoursesTable = () => {
       render: (value) => {
         const levelConfig = {
           beginner: { label: 'Начинающий', color: 'bg-green-100 text-green-800' },
-          intermediate: { label: 'Средний', color: 'bg-blue-100 text-blue-800' },
+          intermediate: { label: 'Средний', color: 'bg-primary-100 text-primary-800' },
           advanced: { label: 'Продвинутый', color: 'bg-accent-100 text-accent-800' },
           expert: { label: 'Эксперт', color: 'bg-red-100 text-red-800' }
         };

@@ -36,7 +36,7 @@ const PetsBySpecies = ({ speciesData }) => {
         <h2 className="text-lg font-semibold text-gray-900">🐾 Питомцы по видам</h2>
         <Link
           to="/admin-panel/pets"
-          className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+          className="text-sm text-primary-600 hover:text-primary-800 font-medium"
         >
           Все питомцы →
         </Link>

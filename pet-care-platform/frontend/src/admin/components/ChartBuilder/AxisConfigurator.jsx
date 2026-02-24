@@ -80,23 +80,23 @@ const AxisConfigurator = ({ axes, metrics, onChange }) => {
   }
 
   function getDefaultColor(index) {
-    const colors = ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#06b6d4'];
+    const colors = ['#C86BFA', '#ef4444', '#22c55e', '#f59e0b', '#C86BFA', '#06b6d4'];
     return colors[index % colors.length];
   }
 
-  const inputClasses = "w-full px-3 py-2 border border-gray-300 rounded-md text-sm bg-white focus:outline-none focus:border-blue-500 focus:shadow-[0_0_0_3px_rgba(59,130,246,0.1)]";
+  const inputClasses = "w-full px-3 py-2 border border-gray-300 rounded-md text-sm bg-white focus:outline-none focus:border-primary-500 focus:shadow-[0_0_0_3px_rgba(200,107,250,0.1)]";
 
   return (
     <div className="flex flex-col h-full bg-white rounded-lg">
       <div className="px-5 py-4 border-b border-slate-200">
-        <h3 className="m-0 text-lg font-semibold text-slate-800">Конфигурация осей</h3>
+        <h3 className="m-0 text-lg font-semibold text-primary-800">Конфигурация осей</h3>
       </div>
 
       <div className="flex mx-5 my-4 bg-slate-50 rounded-lg p-1">
-        <button className={`flex-1 px-4 py-2 border-none rounded-md text-sm font-medium cursor-pointer transition-all duration-200 ${activeAxis === 'x' ? 'bg-white text-slate-800 shadow-sm' : 'bg-transparent text-gray-500'}`} onClick={() => setActiveAxis('x')}>
+        <button className={`flex-1 px-4 py-2 border-none rounded-md text-sm font-medium cursor-pointer transition-all duration-200 ${activeAxis === 'x' ? 'bg-white text-primary-800 shadow-sm' : 'bg-transparent text-gray-500'}`} onClick={() => setActiveAxis('x')}>
           Ось X
         </button>
-        <button className={`flex-1 px-4 py-2 border-none rounded-md text-sm font-medium cursor-pointer transition-all duration-200 ${activeAxis === 'y' ? 'bg-white text-slate-800 shadow-sm' : 'bg-transparent text-gray-500'}`} onClick={() => setActiveAxis('y')}>
+        <button className={`flex-1 px-4 py-2 border-none rounded-md text-sm font-medium cursor-pointer transition-all duration-200 ${activeAxis === 'y' ? 'bg-white text-primary-800 shadow-sm' : 'bg-transparent text-gray-500'}`} onClick={() => setActiveAxis('y')}>
           Ось Y ({axisConfig.y?.length || 0})
         </button>
       </div>
@@ -145,7 +145,7 @@ const AxisConfigurator = ({ axes, metrics, onChange }) => {
             {axisConfig.y && axisConfig.y.map((axis, index) => (
               <div key={axis.id} className="p-4 bg-slate-50 rounded-lg border border-slate-200">
                 <div className="flex justify-between items-center mb-3">
-                  <span className="font-semibold text-slate-800">{axis.label}</span>
+                  <span className="font-semibold text-primary-800">{axis.label}</span>
                   <button className="w-6 h-6 rounded-full border-none bg-red-500 text-white cursor-pointer text-base font-bold flex items-center justify-center transition-colors duration-200 hover:bg-red-600" onClick={() => removeYAxis(index)} title="Удалить ось">×</button>
                 </div>
                 <div className="flex flex-col gap-3">
@@ -170,7 +170,7 @@ const AxisConfigurator = ({ axes, metrics, onChange }) => {
                   <div className="flex gap-3">
                     <div className="flex-1">
                       <label className="block mb-1.5 text-sm font-medium text-gray-700">Цвет:</label>
-                      <input type="color" value={axis.color || '#3b82f6'} onChange={(e) => handleYAxisPropertyChange(index, 'color', e.target.value)} className={inputClasses} />
+                      <input type="color" value={axis.color || '#C86BFA'} onChange={(e) => handleYAxisPropertyChange(index, 'color', e.target.value)} className={inputClasses} />
                     </div>
                     <div className="flex-1">
                       <label className="block mb-1.5 text-sm font-medium text-gray-700">Единицы:</label>

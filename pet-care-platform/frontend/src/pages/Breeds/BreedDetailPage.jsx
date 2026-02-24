@@ -70,7 +70,7 @@ const BreedDetailPage = () => {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <h2 className="text-2xl font-bold text-gray-800 mb-2">{error}</h2>
-          <Link to="/breeds" className="text-indigo-600 hover:text-indigo-800">
+          <Link to="/breeds" className="text-primary-600 hover:text-primary-800">
             ← Вернуться к списку пород
           </Link>
         </div>
@@ -83,7 +83,7 @@ const BreedDetailPage = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Заголовок */}
-      <div className={`${breed.species === 'dog' ? 'bg-gradient-to-r from-amber-500 to-accent-500' : 'bg-gradient-to-r from-primary-500 to-pink-500'} text-white py-12`}>
+      <div className={`${breed.species === 'dog' ? 'bg-gradient-to-r from-secondary-500 to-accent-500' : 'bg-gradient-to-r from-primary-500 to-pink-500'} text-white py-12`}>
         <div className="max-w-4xl mx-auto px-4">
           <Link to="/breeds" className="text-white/80 hover:text-white mb-4 inline-block">
             ← Все породы
@@ -294,7 +294,7 @@ const BreedDetailPage = () => {
         <div className="text-center">
           <Link
             to="/pet-id"
-            className="inline-block px-8 py-3 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 transition"
+            className="inline-block px-8 py-3 bg-primary-600 text-white font-semibold rounded-lg hover:bg-primary-700 transition"
           >
             Добавить питомца этой породы
           </Link>

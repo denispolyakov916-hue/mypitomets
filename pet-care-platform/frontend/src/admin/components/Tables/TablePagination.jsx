@@ -77,7 +77,7 @@ const TablePagination = ({
                   onClick={() => onPageChange(page)}
                   className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
                     page === current_page
-                      ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
+                      ? 'z-10 bg-primary-50 border-primary-500 text-primary-600'
                       : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
                   }`}
                 >
@@ -115,7 +115,7 @@ const TablePagination = ({
                 }
               }
             }}
-            className="w-16 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500"
+            className="w-16 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-primary-500 focus:border-primary-500"
           />
           <span className="text-sm text-gray-500">из {num_pages}</span>
         </div>

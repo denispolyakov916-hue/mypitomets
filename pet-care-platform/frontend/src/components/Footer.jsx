@@ -1,4 +1,4 @@
-﻿import { Facebook, Instagram, Plane } from 'lucide-react';
+import { Facebook, Instagram, Plane } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 export function Footer() {
@@ -73,14 +73,14 @@ export function Footer() {
               />
               <defs>
                 <linearGradient id="gradient-purple-footer" x1="0%" y1="0%" x2="100%" y2="0%">
-                  <stop offset="0%" stopColor="#d8b4fe" stopOpacity="1" />
-                  <stop offset="50%" stopColor="#d8b4fe" stopOpacity="1" />
-                  <stop offset="100%" stopColor="#d8b4fe" stopOpacity="1" />
+                  <stop offset="0%" stopColor="#d9bfff" stopOpacity="1" />
+                  <stop offset="50%" stopColor="#d9bfff" stopOpacity="1" />
+                  <stop offset="100%" stopColor="#d9bfff" stopOpacity="1" />
                 </linearGradient>
                 <linearGradient id="gradient-orange-footer" x1="0%" y1="0%" x2="100%" y2="0%">
-                  <stop offset="0%" stopColor="#fdba74" stopOpacity="1" />
-                  <stop offset="50%" stopColor="#fdba74" stopOpacity="1" />
-                  <stop offset="100%" stopColor="#fdba74" stopOpacity="1" />
+                  <stop offset="0%" stopColor="#F0EB93" stopOpacity="1" />
+                  <stop offset="50%" stopColor="#F0EB93" stopOpacity="1" />
+                  <stop offset="100%" stopColor="#F0EB93" stopOpacity="1" />
                 </linearGradient>
               </defs>
             </svg>

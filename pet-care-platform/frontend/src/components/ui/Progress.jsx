@@ -19,7 +19,7 @@ const variants = {
   primary: 'bg-primary-600',
   secondary: 'bg-gray-500',
   success: 'bg-green-500',
-  warning: 'bg-amber-500',
+  warning: 'bg-secondary-500',
   danger: 'bg-red-500',
   info: 'bg-blue-500',
 }
@@ -31,7 +31,7 @@ const trackVariants = {
   primary: 'bg-primary-100',
   secondary: 'bg-gray-200',
   success: 'bg-green-100',
-  warning: 'bg-amber-100',
+  warning: 'bg-secondary-100',
   danger: 'bg-red-100',
   info: 'bg-blue-100',
 }
@@ -229,7 +229,7 @@ export const CircularProgress = ({
     primary: 'text-primary-600',
     secondary: 'text-gray-500',
     success: 'text-green-500',
-    warning: 'text-amber-500',
+    warning: 'text-secondary-500',
     danger: 'text-red-500',
     info: 'text-blue-500',
   }

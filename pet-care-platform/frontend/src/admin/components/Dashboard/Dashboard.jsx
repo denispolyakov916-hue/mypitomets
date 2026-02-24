@@ -47,7 +47,7 @@ const Dashboard = () => {
         <p className="text-gray-600 mb-4">{error}</p>
         <button
           onClick={refetch}
-          className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+          className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition-colors"
         >
           Попробовать снова
         </button>

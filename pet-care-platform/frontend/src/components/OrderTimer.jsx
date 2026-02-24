@@ -82,7 +82,7 @@ function OrderTimer({ expiresAt, onExpired }) {
       isUrgent 
         ? 'text-red-600' 
         : isWarning 
-          ? 'text-amber-600' 
+          ? 'text-secondary-600' 
           : 'text-gray-700'
     }`}>
       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">

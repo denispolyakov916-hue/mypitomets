@@ -236,7 +236,7 @@ const DataTable = ({
           <p className="text-gray-600 mb-4">{error}</p>
           <button
             onClick={onRefresh}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+            className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition-colors"
           >
             Попробовать снова
           </button>
@@ -255,7 +255,7 @@ const DataTable = ({
           <p className="text-gray-600 mb-4">{error}</p>
           <button
             onClick={onRefresh}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+            className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition-colors"
           >
             Попробовать снова
           </button>
@@ -317,7 +317,7 @@ const DataTable = ({
                 <th scope="col" className="relative w-12 px-6 sm:w-16 sm:px-8">
                   <input
                     type="checkbox"
-                    className="absolute left-4 top-1/2 -mt-2 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 sm:left-6"
+                    className="absolute left-4 top-1/2 -mt-2 h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500 sm:left-6"
                     checked={selectedRows.length === data.length && data.length > 0}
                     onChange={(e) => handleSelectAll(e.target.checked)}
                   />
@@ -366,7 +366,7 @@ const DataTable = ({
                     <td className="relative w-12 px-6 sm:w-16 sm:px-8">
                       <input
                         type="checkbox"
-                        className="absolute left-4 top-1/2 -mt-2 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 sm:left-6"
+                        className="absolute left-4 top-1/2 -mt-2 h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500 sm:left-6"
                         checked={selectedRows.includes(row.id)}
                         onChange={(e) => handleSelectRow(row.id, e.target.checked)}
                       />

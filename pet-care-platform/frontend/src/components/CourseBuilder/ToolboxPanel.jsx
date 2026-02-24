@@ -65,7 +65,7 @@ export default function ToolboxPanel({ currentPageId, onBlockAdd }) {
       <div className="px-3 py-2.5 border-b border-gray-200">
         <h3 className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Блоки</h3>
         {!hasPage && (
-          <p className="text-[10px] text-amber-600 mt-1">Выберите страницу для добавления блоков</p>
+          <p className="text-[10px] text-secondary-600 mt-1">Выберите страницу для добавления блоков</p>
         )}
       </div>
 

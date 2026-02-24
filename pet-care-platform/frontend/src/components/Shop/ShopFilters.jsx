@@ -725,7 +725,7 @@ const BrandClassFilter = memo(function BrandClassFilter({ value, onChange }) {
     const colors = {
       emerald: isSelected ? 'bg-emerald-600 text-white' : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100',
       blue: isSelected ? 'bg-blue-600 text-white' : 'bg-blue-50 text-blue-700 hover:bg-blue-100',
-      amber: isSelected ? 'bg-amber-500 text-white' : 'bg-amber-50 text-amber-700 hover:bg-amber-100',
+      amber: isSelected ? 'bg-secondary-500 text-white' : 'bg-secondary-50 text-secondary-700 hover:bg-secondary-100',
       gray: isSelected ? 'bg-gray-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200',
     }
     return colors[colorName] || colors.gray

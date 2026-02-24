@@ -81,7 +81,7 @@ const BreedInfoWidget = ({ petId }) => {
   return (
     <div className="bg-white rounded-xl shadow-sm overflow-hidden">
       {/* Заголовок с общим скором */}
-      <div className="bg-gradient-to-r from-blue-500 to-indigo-600 p-4 text-white">
+      <div className="bg-gradient-to-r from-blue-500 to-primary-600 p-4 text-white">
         <div className="flex items-center justify-between">
           <div>
             <h3 className="font-semibold text-lg">Анализ породы</h3>

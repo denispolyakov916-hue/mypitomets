@@ -81,9 +81,9 @@ const welfareDomains = [
     icon: '🎾',
     title: 'Активность',
     subtitle: 'Физическая нагрузка',
-    color: 'from-amber-500 to-accent-600',
-    bgColor: 'bg-amber-50',
-    borderColor: 'border-amber-200',
+    color: 'from-secondary-500 to-accent-600',
+    bgColor: 'bg-secondary-50',
+    borderColor: 'border-secondary-200',
     description: 'Физическая активность критична для поддержания здорового веса и профилактики заболеваний.',
     features: [
       'Норма активности по породе',
@@ -99,9 +99,9 @@ const welfareDomains = [
     icon: '🧠',
     title: 'Ментальное здоровье',
     subtitle: 'Психологическое благополучие',
-    color: 'from-violet-500 to-primary-600',
-    bgColor: 'bg-violet-50',
-    borderColor: 'border-violet-200',
+    color: 'from-primary-500 to-primary-600',
+    bgColor: 'bg-primary-50',
+    borderColor: 'border-primary-200',
     description: 'Психическое здоровье так же важно, как физическое. Стресс ведёт к болезням и поведенческим проблемам.',
     features: [
       'Распознавание стресса',
@@ -255,9 +255,9 @@ const FeatureCard = ({ feature, index }) => {
     purple: 'from-primary-500 to-primary-600 bg-primary-50 border-primary-200',
     rose: 'from-rose-500 to-rose-600 bg-rose-50 border-rose-200',
     emerald: 'from-emerald-500 to-emerald-600 bg-emerald-50 border-emerald-200',
-    amber: 'from-amber-500 to-amber-600 bg-amber-50 border-amber-200',
+    amber: 'from-secondary-500 to-secondary-600 bg-secondary-50 border-secondary-200',
     sky: 'from-sky-500 to-sky-600 bg-sky-50 border-sky-200',
-    violet: 'from-violet-500 to-violet-600 bg-violet-50 border-violet-200'
+    violet: 'from-primary-500 to-primary-600 bg-primary-50 border-primary-200'
   }
   
   const [gradient, bg, border] = colorClasses[feature.color].split(' ')
@@ -311,7 +311,7 @@ function Home() {
       {/* ========== HERO SECTION ========== */}
       <section 
         ref={heroRef}
-        className="relative min-h-[90vh] flex items-center bg-gradient-to-br from-primary-900 via-primary-800 to-indigo-900 text-white overflow-hidden"
+        className="relative min-h-[90vh] flex items-center bg-gradient-to-br from-primary-900 via-primary-800 to-primary-900 text-white overflow-hidden"
       >
         {/* Animated background elements */}
         <div className="absolute inset-0 overflow-hidden">
@@ -327,7 +327,7 @@ function Home() {
             transition={{ duration: 10, repeat: Infinity, delay: 2 }}
           />
           <motion.div
-            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-indigo-500/20 rounded-full blur-3xl"
+            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-primary-500/20 rounded-full blur-3xl"
             animate={{ rotate: 360 }}
             transition={{ duration: 60, repeat: Infinity, ease: "linear" }}
           />
@@ -386,7 +386,7 @@ function Home() {
               
               <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black mb-6 leading-tight">
                 <span className="block">Здоровье питомца</span>
-                <span className="block bg-gradient-to-r from-accent-400 via-amber-300 to-yellow-400 bg-clip-text text-transparent">
+                <span className="block bg-gradient-to-r from-accent-400 via-secondary-300 to-yellow-400 bg-clip-text text-transparent">
                   под контролем
                 </span>
               </h1>
@@ -426,7 +426,7 @@ function Home() {
                   <>
                     <Link
                       to="/pet-id"
-                      className="group px-8 py-4 bg-gradient-to-r from-accent-500 to-amber-500 rounded-xl font-bold text-lg hover:shadow-2xl hover:shadow-accent-500/30 transition-all duration-300 text-center"
+                      className="group px-8 py-4 bg-gradient-to-r from-accent-500 to-secondary-500 rounded-xl font-bold text-lg hover:shadow-2xl hover:shadow-accent-500/30 transition-all duration-300 text-center"
                     >
                       Мои питомцы
                       <span className="inline-block ml-2 group-hover:translate-x-1 transition-transform">→</span>
@@ -442,7 +442,7 @@ function Home() {
                   <>
                     <Link
                       to="/register"
-                      className="group px-8 py-4 bg-gradient-to-r from-accent-500 to-amber-500 rounded-xl font-bold text-lg hover:shadow-2xl hover:shadow-accent-500/30 transition-all duration-300 text-center"
+                      className="group px-8 py-4 bg-gradient-to-r from-accent-500 to-secondary-500 rounded-xl font-bold text-lg hover:shadow-2xl hover:shadow-accent-500/30 transition-all duration-300 text-center"
                     >
                       Начать бесплатно
                       <span className="inline-block ml-2 group-hover:translate-x-1 transition-transform">→</span>
@@ -533,7 +533,7 @@ function Home() {
             
             {/* Summary card */}
             <motion.div
-              className="md:col-span-2 lg:col-span-1 bg-gradient-to-br from-primary-600 to-indigo-700 rounded-3xl p-8 text-white"
+              className="md:col-span-2 lg:col-span-1 bg-gradient-to-br from-primary-600 to-primary-700 rounded-3xl p-8 text-white"
               initial={{ opacity: 0, y: 50 }}
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.5 }}
@@ -566,7 +566,7 @@ function Home() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
           >
-            <span className="inline-block px-4 py-1 rounded-full bg-amber-100 text-amber-600 text-sm font-medium mb-4">
+            <span className="inline-block px-4 py-1 rounded-full bg-secondary-100 text-secondary-600 text-sm font-medium mb-4">
               Возможности
             </span>
             <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold mb-6">
@@ -595,7 +595,7 @@ function Home() {
       )}
 
       {/* ========== FINAL CTA SECTION ========== */}
-      <section className="py-24 bg-gradient-to-br from-gray-900 via-primary-900 to-indigo-900 text-white relative overflow-hidden">
+      <section className="py-24 bg-gradient-to-br from-gray-900 via-primary-900 to-primary-900 text-white relative overflow-hidden">
         {/* Animated background */}
         <div className="absolute inset-0">
           <motion.div
@@ -624,7 +624,7 @@ function Home() {
             
             <h2 className="text-4xl sm:text-5xl lg:text-6xl font-bold mb-6">
               Здоровье питомца —<br />
-              <span className="bg-gradient-to-r from-accent-400 to-amber-300 bg-clip-text text-transparent">
+              <span className="bg-gradient-to-r from-accent-400 to-secondary-300 bg-clip-text text-transparent">
                 ваше спокойствие
               </span>
             </h2>
@@ -645,7 +645,7 @@ function Home() {
                 <>
                   <Link
                     to="/pet-id"
-                    className="group px-10 py-5 bg-gradient-to-r from-accent-500 to-amber-500 rounded-2xl font-bold text-xl hover:shadow-2xl hover:shadow-accent-500/30 transition-all"
+                    className="group px-10 py-5 bg-gradient-to-r from-accent-500 to-secondary-500 rounded-2xl font-bold text-xl hover:shadow-2xl hover:shadow-accent-500/30 transition-all"
                   >
                     Перейти к питомцам
                     <span className="inline-block ml-2 group-hover:translate-x-1 transition-transform">→</span>
@@ -661,7 +661,7 @@ function Home() {
                 <>
                   <Link
                     to="/register"
-                    className="group px-10 py-5 bg-gradient-to-r from-accent-500 to-amber-500 rounded-2xl font-bold text-xl hover:shadow-2xl hover:shadow-accent-500/30 transition-all"
+                    className="group px-10 py-5 bg-gradient-to-r from-accent-500 to-secondary-500 rounded-2xl font-bold text-xl hover:shadow-2xl hover:shadow-accent-500/30 transition-all"
                   >
                     Создать аккаунт бесплатно
                     <span className="inline-block ml-2 group-hover:translate-x-1 transition-transform">→</span>

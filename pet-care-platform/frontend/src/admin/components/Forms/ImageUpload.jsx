@@ -130,7 +130,7 @@ const ImageUpload = ({
         className={`
           relative border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors
           ${isDragOver
-            ? 'border-blue-400 bg-blue-50'
+            ? 'border-primary-400 bg-primary-50'
             : 'border-gray-300 hover:border-gray-400'
           }
           ${value.length >= maxFiles ? 'opacity-50 cursor-not-allowed' : ''}
@@ -153,7 +153,7 @@ const ImageUpload = ({
           <div>
             <p className="text-sm text-gray-600">
               Перетащите изображения сюда или{' '}
-              <span className="text-blue-600 hover:text-blue-800 font-medium">
+              <span className="text-primary-600 hover:text-primary-800 font-medium">
                 выберите файлы
               </span>
             </p>

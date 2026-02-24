@@ -102,7 +102,7 @@ const PersonalizedProductsList = ({ petId, petData = null, category = null, limi
               : 'Товары для вашего питомца'}
         </h3>
         {pet?.breed && (
-          <div className="py-1.5 px-4 bg-gradient-to-br from-indigo-500 to-primary-700 text-white rounded-[20px] text-[13px] font-medium">
+          <div className="py-1.5 px-4 bg-gradient-to-br from-primary-500 to-primary-700 text-white rounded-[20px] text-[13px] font-medium">
             ✨ Персональный подбор
           </div>
         )}

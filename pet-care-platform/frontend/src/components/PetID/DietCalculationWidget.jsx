@@ -56,7 +56,7 @@ const DietCalculationWidget = ({ petId }) => {
       {/* Калории */}
       <div className="mb-6">
         <h4 className="mb-4 text-base font-semibold text-gray-800">Дневная потребность в калориях</h4>
-        <div className="p-5 bg-gradient-to-br from-indigo-500 to-primary-700 rounded-xl text-white">
+        <div className="p-5 bg-gradient-to-br from-primary-500 to-primary-700 rounded-xl text-white">
           <div className="flex items-baseline mb-3">
             <span className="text-5xl font-bold">{calories.der}</span>
             <span className="text-lg ml-2 opacity-90">ккал/день</span>
@@ -136,7 +136,7 @@ const DietCalculationWidget = ({ petId }) => {
           </div>
           <div className="flex justify-between items-center py-3 px-4 bg-gray-50 rounded-lg">
             <span className="text-sm text-gray-500 font-medium">Время кормлений:</span>
-            <span className="text-base font-semibold text-purple-500">{portions.feeding_times.join(', ')}</span>
+            <span className="text-base font-semibold text-primary-500">{portions.feeding_times.join(', ')}</span>
           </div>
           <div className="flex justify-between items-center py-3 px-4 bg-gray-50 rounded-lg">
             <span className="text-sm text-gray-500 font-medium">Порция за раз:</span>

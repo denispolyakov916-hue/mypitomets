@@ -509,7 +509,7 @@ function Cart() {
                                 </span>
                               )}
                               {item.sku.flavor_display && (
-                                <span className="inline-flex items-center px-2 py-0.5 bg-amber-50 text-amber-700 text-xs rounded-full">
+                                <span className="inline-flex items-center px-2 py-0.5 bg-secondary-50 text-secondary-700 text-xs rounded-full">
                                   🍖 {item.sku.flavor_display}
                                 </span>
                               )}
@@ -773,7 +773,7 @@ function Cart() {
             </div>
 
             {selectedCount === 0 && (
-              <p className="text-xs text-amber-600 mt-3 text-center">
+              <p className="text-xs text-secondary-600 mt-3 text-center">
                 Выберите товары или курсы для оформления
               </p>
             )}

@@ -1,4 +1,4 @@
-﻿/**
+/**
  * BlockRenderers - Компоненты для отображения блоков контента в режиме просмотра
  *
  * Эти компоненты используются в системе обучения для отображения
@@ -393,7 +393,7 @@ export function QuizRenderer({ block, mode = 'view', onComplete, onProgress }) {
 
           {/* Объяснение после ответа */}
           {submitted && question.explanation && (
-            <div className={`mt-3 p-3 rounded-lg text-sm ${isCorrectQ ? 'bg-green-50 text-green-700' : 'bg-amber-50 text-amber-700'}`}>
+            <div className={`mt-3 p-3 rounded-lg text-sm ${isCorrectQ ? 'bg-green-50 text-green-700' : 'bg-secondary-50 text-secondary-700'}`}>
               <span className="font-medium">Пояснение:</span> {question.explanation}
             </div>
           )}
@@ -422,7 +422,7 @@ export function QuizRenderer({ block, mode = 'view', onComplete, onProgress }) {
           </button>
         </div>
       ) : (
-        <div className={`mt-6 p-5 rounded-xl ${score >= 70 ? 'bg-green-50 border border-green-200' : 'bg-amber-50 border border-amber-200'}`}>
+        <div className={`mt-6 p-5 rounded-xl ${score >= 70 ? 'bg-green-50 border border-green-200' : 'bg-secondary-50 border border-secondary-200'}`}>
           <div className="text-center">
             <div className="text-3xl mb-2">{score >= 70 ? '🎉' : '💪'}</div>
             <h4 className="text-xl font-bold mb-1">{score}%</h4>
@@ -433,7 +433,7 @@ export function QuizRenderer({ block, mode = 'view', onComplete, onProgress }) {
               <p className="text-green-700 font-medium">Отлично! Тест пройден.</p>
             ) : (
               <div>
-                <p className="text-amber-700 font-medium mb-3">Попробуйте ещё раз.</p>
+                <p className="text-secondary-700 font-medium mb-3">Попробуйте ещё раз.</p>
                 <button onClick={handleRetry} className="px-6 py-2 bg-white border border-gray-300 rounded-lg text-sm hover:bg-gray-50">
                   Пройти заново
                 </button>
@@ -591,7 +591,7 @@ export function PetActionRenderer({ block, mode = 'view', onComplete, onProgress
                     {step.text}
                   </p>
                   {step.tip && (
-                    <p className="text-xs text-amber-600 mt-1 flex items-center gap-1">
+                    <p className="text-xs text-secondary-600 mt-1 flex items-center gap-1">
                       <span>💡</span> {step.tip}
                     </p>
                   )}

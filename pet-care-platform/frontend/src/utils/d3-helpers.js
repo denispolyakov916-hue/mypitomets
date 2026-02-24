@@ -250,7 +250,7 @@ function renderScatterLayer(g, data, xScale, yScale, style, config) {
     .attr('cx', d => xAxis.type === 'band' ? xScale(d[xAxis.field]) + xScale.bandwidth() / 2 : xScale(d[xAxis.field]))
     .attr('cy', d => yScale(d[yAxis.field]))
     .attr('r', style?.radius || 4)
-    .attr('fill', style?.fill || '#8b5cf6')
+    .attr('fill', style?.fill || '#C86BFA')
     .attr('stroke', style?.stroke || '#7c3aed')
     .attr('stroke-width', style?.strokeWidth || 1)
     .attr('opacity', style?.opacity || 0.7);
@@ -307,7 +307,7 @@ function renderBubbleLayer(g, data, xScale, yScale, style, config) {
     .attr('cx', d => xAxis.type === 'band' ? xScale(d[xAxis.field]) + xScale.bandwidth() / 2 : xScale(d[xAxis.field]))
     .attr('cy', d => yScale(d[yAxis.field]))
     .attr('r', d => sizeScale(d[sizeField]))
-    .attr('fill', d => colorField ? colorScale(d[colorField]) : (style?.fill || '#8b5cf6'))
+    .attr('fill', d => colorField ? colorScale(d[colorField]) : (style?.fill || '#C86BFA'))
     .attr('stroke', style?.stroke || '#7c3aed')
     .attr('stroke-width', style?.strokeWidth || 1)
     .attr('opacity', style?.opacity || 0.7);

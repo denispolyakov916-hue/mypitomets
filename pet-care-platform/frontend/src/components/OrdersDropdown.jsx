@@ -25,7 +25,7 @@ const formatDate = (dateString) => {
  * Названия статусов заказов
  */
 const statusLabels = {
-  pending: { label: 'Ожидает оплаты', class: 'text-amber-600' },
+  pending: { label: 'Ожидает оплаты', class: 'text-secondary-600' },
   processing: { label: 'В обработке', class: 'text-blue-600' },
   shipped: { label: 'Отправлен', class: 'text-primary-600' },
   partially_delivered: { label: 'Частично доставлен', class: 'text-primary-600' },
@@ -269,7 +269,7 @@ function OrdersDropdown() {
                           {totalItems} {totalItems === 1 ? 'позиция' : totalItems < 5 ? 'позиции' : 'позиций'}
                         </p>
                         {order.status === 'pending' && (
-                          <span className="text-xs text-amber-600 font-medium">
+                          <span className="text-xs text-secondary-600 font-medium">
                             Требуется оплата
                           </span>
                         )}

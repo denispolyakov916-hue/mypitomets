@@ -110,7 +110,7 @@ const NotificationCenter = ({ isOpen, onClose }) => {
       case 'success':
         return 'text-green-600 bg-green-50 border-green-200';
       case 'info':
-        return 'text-blue-600 bg-blue-50 border-blue-200';
+        return 'text-primary-600 bg-primary-50 border-primary-200';
       default:
         return 'text-gray-600 bg-gray-50 border-gray-200';
     }
@@ -162,7 +162,7 @@ const NotificationCenter = ({ isOpen, onClose }) => {
                 onClick={() => setFilter('all')}
                 className={`px-3 py-1 text-sm rounded-full ${
                   filter === 'all'
-                    ? 'bg-blue-100 text-blue-800'
+                    ? 'bg-primary-100 text-primary-800'
                     : 'text-gray-600 hover:bg-gray-100'
                 }`}
               >
@@ -172,7 +172,7 @@ const NotificationCenter = ({ isOpen, onClose }) => {
                 onClick={() => setFilter('unread')}
                 className={`px-3 py-1 text-sm rounded-full ${
                   filter === 'unread'
-                    ? 'bg-blue-100 text-blue-800'
+                    ? 'bg-primary-100 text-primary-800'
                     : 'text-gray-600 hover:bg-gray-100'
                 }`}
               >
@@ -182,7 +182,7 @@ const NotificationCenter = ({ isOpen, onClose }) => {
                 onClick={() => setFilter('alerts')}
                 className={`px-3 py-1 text-sm rounded-full ${
                   filter === 'alerts'
-                    ? 'bg-blue-100 text-blue-800'
+                    ? 'bg-primary-100 text-primary-800'
                     : 'text-gray-600 hover:bg-gray-100'
                 }`}
               >
@@ -193,7 +193,7 @@ const NotificationCenter = ({ isOpen, onClose }) => {
             {notifications.some(n => !n.read) && (
               <button
                 onClick={markAllAsRead}
-                className="text-sm text-blue-600 hover:text-blue-800"
+                className="text-sm text-primary-600 hover:text-primary-800"
               >
                 Отметить все прочитанными
               </button>
@@ -221,7 +221,7 @@ const NotificationCenter = ({ isOpen, onClose }) => {
                       }
                     }}
                     className={`p-4 hover:bg-gray-50 cursor-pointer ${
-                      !notification.read ? 'bg-blue-50' : ''
+                      !notification.read ? 'bg-primary-50' : ''
                     }`}
                   >
                     <div className="flex items-start space-x-3">
@@ -238,7 +238,7 @@ const NotificationCenter = ({ isOpen, onClose }) => {
                           </p>
                           <div className="flex items-center space-x-2">
                             {!notification.read && (
-                              <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
+                              <div className="w-2 h-2 bg-primary-600 rounded-full"></div>
                             )}
                             <button
                               onClick={(e) => {
@@ -266,7 +266,7 @@ const NotificationCenter = ({ isOpen, onClose }) => {
                           {!notification.read && (
                             <button
                               onClick={() => markAsRead(notification.id)}
-                              className="text-xs text-blue-600 hover:text-blue-800"
+                              className="text-xs text-primary-600 hover:text-primary-800"
                             >
                               Отметить прочитанным
                             </button>

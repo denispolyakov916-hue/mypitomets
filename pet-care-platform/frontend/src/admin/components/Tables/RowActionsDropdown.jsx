@@ -58,7 +58,7 @@ const RowActionsDropdown = ({
     danger: 'text-red-700 hover:bg-red-50',
     warning: 'text-yellow-700 hover:bg-yellow-50',
     success: 'text-green-700 hover:bg-green-50',
-    primary: 'text-blue-700 hover:bg-blue-50'
+    primary: 'text-primary-700 hover:bg-primary-50'
   };
 
   const menuContent = isOpen && actions.length > 0 && (
@@ -99,7 +99,7 @@ const RowActionsDropdown = ({
               e.stopPropagation();
               onAction?.(primaryAction.key, row);
             }}
-            className="p-1.5 rounded-md text-gray-400 hover:text-blue-600 hover:bg-blue-50 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="p-1.5 rounded-md text-gray-400 hover:text-primary-600 hover:bg-primary-50 focus:outline-none focus:ring-1 focus:ring-primary-500"
             title={primaryAction.label}
             aria-label={primaryAction.label}
           >
@@ -118,7 +118,7 @@ const RowActionsDropdown = ({
               e.stopPropagation();
               onOpenChange(isOpen ? null : (row.id ?? row.pk));
             }}
-            className="p-1.5 rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="p-1.5 rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100 focus:outline-none focus:ring-1 focus:ring-primary-500"
             title="Действия"
             aria-haspopup="menu"
             aria-expanded={isOpen}

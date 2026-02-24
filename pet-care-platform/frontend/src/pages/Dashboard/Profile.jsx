@@ -592,7 +592,7 @@ function Profile() {
                     </div>
 
                     {missingFields.length > 0 && (
-                      <div className="p-3 mb-4 rounded-xl bg-amber-50 text-amber-800 text-sm border border-amber-100">
+                      <div className="p-3 mb-4 rounded-xl bg-secondary-50 text-secondary-800 text-sm border border-secondary-100">
                         Заполните профиль — так мы сможем лучше подобрать товары и доставку.
                       </div>
                     )}
@@ -1030,7 +1030,7 @@ function Profile() {
                               <span className="text-xs text-gray-500">Прогресс</span>
                               <span className={`text-xs font-bold ${
                                 item.progress >= 100 ? 'text-green-600' : 
-                                item.progress >= 50 ? 'text-primary-600' : 'text-amber-600'
+                                item.progress >= 50 ? 'text-primary-600' : 'text-secondary-600'
                               }`}>
                                 {item.progress}%
                               </span>
@@ -1041,7 +1041,7 @@ function Profile() {
                               className="h-2"
                               indicatorClassName={
                                 item.progress >= 100 ? 'bg-green-500' : 
-                                item.progress >= 50 ? 'bg-primary-500' : 'bg-amber-500'
+                                item.progress >= 50 ? 'bg-primary-500' : 'bg-secondary-500'
                               }
                             />
                           </div>

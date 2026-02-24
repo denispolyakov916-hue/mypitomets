@@ -136,14 +136,14 @@ const CoursePersonalizationWidget = ({
       {/* Предупреждения */}
       {warnings && warnings.length > 0 && (
         <div className="mb-4">
-          <h4 className="text-sm font-medium text-amber-800 mb-2 flex items-center">
+          <h4 className="text-sm font-medium text-secondary-800 mb-2 flex items-center">
             <span className="mr-2">⚠️</span>
             Важные замечания
           </h4>
           <div className="space-y-2">
             {warnings.map((warning, index) => (
-              <div key={index} className="flex items-start text-sm text-amber-700">
-                <span className="text-amber-500 mr-2 mt-0.5">•</span>
+              <div key={index} className="flex items-start text-sm text-secondary-700">
+                <span className="text-secondary-500 mr-2 mt-0.5">•</span>
                 <span>{warning}</span>
               </div>
             ))}

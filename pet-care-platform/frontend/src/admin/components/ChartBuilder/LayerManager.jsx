@@ -25,19 +25,19 @@ const LayerManager = ({ layers, onAdd, onUpdate, onRemove }) => {
     onUpdate(targetLayer.id, { zIndex: currentLayer.zIndex });
   };
 
-  const getLayerColor = (layer) => layer.style?.stroke || layer.style?.fill || '#3b82f6';
+  const getLayerColor = (layer) => layer.style?.stroke || layer.style?.fill || '#C86BFA';
   const getLayerTypeIcon = (type) => layerTypes.find(t => t.value === type)?.icon || '📊';
 
   return (
     <div className="flex flex-col h-full bg-white rounded-lg">
       <div className="flex justify-between items-center px-5 py-4 border-b border-slate-200">
-        <h3 className="m-0 text-lg font-semibold text-slate-800">Слои графика</h3>
-        <span className="bg-blue-500 text-white px-2 py-0.5 rounded-xl text-xs font-semibold">{layers?.length || 0}</span>
+        <h3 className="m-0 text-lg font-semibold text-primary-800">Слои графика</h3>
+        <span className="bg-primary-500 text-white px-2 py-0.5 rounded-xl text-xs font-semibold">{layers?.length || 0}</span>
       </div>
 
       <div className="px-5 py-4 border-b border-slate-200">
         <div className="flex gap-3 items-center">
-          <select value={newLayerType} onChange={(e) => setNewLayerType(e.target.value)} className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm bg-white focus:outline-none focus:border-blue-500 focus:shadow-[0_0_0_3px_rgba(59,130,246,0.1)]">
+          <select value={newLayerType} onChange={(e) => setNewLayerType(e.target.value)} className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm bg-white focus:outline-none focus:border-primary-500 focus:shadow-[0_0_0_3px_rgba(200,107,250,0.1)]">
             {layerTypes.map(type => <option key={type.value} value={type.value}>{type.icon} {type.label}</option>)}
           </select>
           <button className="px-4 py-2 bg-emerald-500 text-white border-none rounded-md text-sm font-medium cursor-pointer transition-colors duration-200 hover:bg-emerald-600" onClick={handleAddLayer}>+ Добавить слой</button>
@@ -58,7 +58,7 @@ const LayerManager = ({ layers, onAdd, onUpdate, onRemove }) => {
                 <div className="flex items-center gap-2">
                   <div className="w-4 h-4 rounded-full border-2 border-white shadow-[0_0_0_1px_rgba(0,0,0,0.1)]" style={{ backgroundColor: getLayerColor(layer) }} />
                   <span className="text-base">{getLayerTypeIcon(layer.type)}</span>
-                  <span className="font-semibold text-slate-800">
+                  <span className="font-semibold text-primary-800">
                     {layer.type === 'line' && 'Линейный график'}
                     {layer.type === 'bar' && 'Столбчатая диаграмма'}
                     {layer.type === 'scatter' && 'Точечная диаграмма'}
@@ -105,8 +105,8 @@ const LayerManager = ({ layers, onAdd, onUpdate, onRemove }) => {
       </div>
 
       {layers && layers.length > 1 && (
-        <div className="mx-5 mb-4 p-3 bg-amber-100 rounded-md border border-amber-500">
-          <p className="m-0 text-xs text-amber-800">🎨 <strong>Порядок слоев:</strong> верхние слои отображаются поверх нижних</p>
+        <div className="mx-5 mb-4 p-3 bg-secondary-100 rounded-md border border-secondary-500">
+          <p className="m-0 text-xs text-secondary-800">🎨 <strong>Порядок слоев:</strong> верхние слои отображаются поверх нижних</p>
         </div>
       )}
     </div>

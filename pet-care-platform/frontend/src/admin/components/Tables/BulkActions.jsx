@@ -28,9 +28,9 @@ const BulkActions = ({
   };
 
   return (
-    <div className="px-6 py-3 bg-blue-50 border-b border-blue-200">
+    <div className="px-6 py-3 bg-primary-50 border-b border-primary-200">
       <div className="flex items-center space-x-4">
-        <span className="text-sm font-medium text-blue-900">
+        <span className="text-sm font-medium text-primary-900">
           Массовые действия ({selectedCount} выбрано):
         </span>
 
@@ -46,7 +46,7 @@ const BulkActions = ({
                   ? 'text-red-700 bg-red-100 hover:bg-red-200 focus:ring-red-500'
                   : action.variant === 'warning'
                   ? 'text-yellow-700 bg-yellow-100 hover:bg-yellow-200 focus:ring-yellow-500'
-                  : 'text-blue-700 bg-blue-100 hover:bg-blue-200 focus:ring-blue-500'
+                  : 'text-primary-700 bg-primary-100 hover:bg-primary-200 focus:ring-primary-500'
                 }
                 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed
               `}
@@ -66,10 +66,10 @@ const BulkActions = ({
         {/* Прогресс выполнения */}
         {isProcessing && (
           <div className="flex-1 ml-4">
-            <div className="w-full bg-blue-200 rounded-full h-2">
-              <div className="bg-blue-600 h-2 rounded-full animate-pulse" style={{ width: '100%' }}></div>
+            <div className="w-full bg-primary-200 rounded-full h-2">
+              <div className="bg-primary-600 h-2 rounded-full animate-pulse" style={{ width: '100%' }}></div>
             </div>
-            <p className="text-xs text-blue-700 mt-1">
+            <p className="text-xs text-primary-700 mt-1">
               Выполняется операция...
             </p>
           </div>

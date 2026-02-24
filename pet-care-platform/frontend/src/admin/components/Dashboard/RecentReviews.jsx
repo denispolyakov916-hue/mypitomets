@@ -21,7 +21,7 @@ const RecentReviews = ({ reviews }) => {
         <h2 className="text-lg font-semibold text-gray-900">💬 Недавние отзывы</h2>
         <Link
           to="/admin-panel/products"
-          className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+          className="text-sm text-primary-600 hover:text-primary-800 font-medium"
         >
           Все товары →
         </Link>

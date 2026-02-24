@@ -50,7 +50,7 @@ const FilterPanel = ({ filters, onChange }) => {
   return (
     <div className="flex flex-col h-full bg-white rounded-lg">
       <div className="flex justify-between items-center px-5 py-4 border-b border-slate-200">
-        <h3 className="m-0 text-lg font-semibold text-slate-800">Фильтры данных</h3>
+        <h3 className="m-0 text-lg font-semibold text-primary-800">Фильтры данных</h3>
         <div className="flex items-center gap-2">
           {activeFiltersCount > 0 && (
             <span className="bg-red-500 text-white px-2 py-0.5 rounded-xl text-xs font-semibold">{activeFiltersCount}</span>
@@ -84,7 +84,7 @@ const FilterPanel = ({ filters, onChange }) => {
                 type="date"
                 value={filterValues.date_range?.start || ''}
                 onChange={(e) => updateComplexFilter('date_range', 'start', e.target.value)}
-                className="max-w-[200px] px-3 py-2 border border-gray-300 rounded-md text-sm bg-white focus:outline-none focus:border-blue-500 focus:shadow-[0_0_0_3px_rgba(59,130,246,0.1)]"
+                className="max-w-[200px] px-3 py-2 border border-gray-300 rounded-md text-sm bg-white focus:outline-none focus:border-primary-500 focus:shadow-[0_0_0_3px_rgba(200,107,250,0.1)]"
               />
             </div>
 
@@ -94,7 +94,7 @@ const FilterPanel = ({ filters, onChange }) => {
                 type="date"
                 value={filterValues.date_range?.end || ''}
                 onChange={(e) => updateComplexFilter('date_range', 'end', e.target.value)}
-                className="max-w-[200px] px-3 py-2 border border-gray-300 rounded-md text-sm bg-white focus:outline-none focus:border-blue-500 focus:shadow-[0_0_0_3px_rgba(59,130,246,0.1)]"
+                className="max-w-[200px] px-3 py-2 border border-gray-300 rounded-md text-sm bg-white focus:outline-none focus:border-primary-500 focus:shadow-[0_0_0_3px_rgba(200,107,250,0.1)]"
               />
             </div>
 
@@ -136,7 +136,7 @@ const FilterPanel = ({ filters, onChange }) => {
           <div className="px-5 pb-5 flex flex-col gap-4">
             <div className="flex flex-col gap-1.5">
               <label className="text-sm font-medium text-gray-700">Категория товара:</label>
-              <select value={filterValues.category || ''} onChange={(e) => updateFilter('category', e.target.value)} className="max-w-[250px] px-3 py-2 border border-gray-300 rounded-md text-sm bg-white focus:outline-none focus:border-blue-500 focus:shadow-[0_0_0_3px_rgba(59,130,246,0.1)]">
+              <select value={filterValues.category || ''} onChange={(e) => updateFilter('category', e.target.value)} className="max-w-[250px] px-3 py-2 border border-gray-300 rounded-md text-sm bg-white focus:outline-none focus:border-primary-500 focus:shadow-[0_0_0_3px_rgba(200,107,250,0.1)]">
                 <option value="">Все категории</option>
                 <option value="food">Корм</option>
                 <option value="pharmacy">Ветаптека</option>
@@ -148,7 +148,7 @@ const FilterPanel = ({ filters, onChange }) => {
             </div>
             <div className="flex flex-col gap-1.5">
               <label className="text-sm font-medium text-gray-700">Вид животного:</label>
-              <select value={filterValues.pet_species || ''} onChange={(e) => updateFilter('pet_species', e.target.value)} className="max-w-[250px] px-3 py-2 border border-gray-300 rounded-md text-sm bg-white focus:outline-none focus:border-blue-500 focus:shadow-[0_0_0_3px_rgba(59,130,246,0.1)]">
+              <select value={filterValues.pet_species || ''} onChange={(e) => updateFilter('pet_species', e.target.value)} className="max-w-[250px] px-3 py-2 border border-gray-300 rounded-md text-sm bg-white focus:outline-none focus:border-primary-500 focus:shadow-[0_0_0_3px_rgba(200,107,250,0.1)]">
                 <option value="">Все виды</option>
                 <option value="dog">Собаки</option>
                 <option value="cat">Кошки</option>
@@ -160,7 +160,7 @@ const FilterPanel = ({ filters, onChange }) => {
             </div>
             <div className="flex flex-col gap-1.5">
               <label className="text-sm font-medium text-gray-700">Статус заказа:</label>
-              <select value={filterValues.order_status || ''} onChange={(e) => updateFilter('order_status', e.target.value)} className="max-w-[250px] px-3 py-2 border border-gray-300 rounded-md text-sm bg-white focus:outline-none focus:border-blue-500 focus:shadow-[0_0_0_3px_rgba(59,130,246,0.1)]">
+              <select value={filterValues.order_status || ''} onChange={(e) => updateFilter('order_status', e.target.value)} className="max-w-[250px] px-3 py-2 border border-gray-300 rounded-md text-sm bg-white focus:outline-none focus:border-primary-500 focus:shadow-[0_0_0_3px_rgba(200,107,250,0.1)]">
                 <option value="">Все статусы</option>
                 <option value="pending">Ожидает</option>
                 <option value="processing">В обработке</option>
@@ -188,15 +188,15 @@ const FilterPanel = ({ filters, onChange }) => {
           <div className="px-5 pb-5 flex flex-col gap-4">
             <div className="flex flex-col gap-1.5">
               <label className="text-sm font-medium text-gray-700">Минимальное значение:</label>
-              <input type="number" value={filterValues.min_value || ''} onChange={(e) => updateFilter('min_value', e.target.value ? parseFloat(e.target.value) : undefined)} placeholder="0" className="max-w-[150px] px-3 py-2 border border-gray-300 rounded-md text-sm bg-white focus:outline-none focus:border-blue-500 focus:shadow-[0_0_0_3px_rgba(59,130,246,0.1)]" />
+              <input type="number" value={filterValues.min_value || ''} onChange={(e) => updateFilter('min_value', e.target.value ? parseFloat(e.target.value) : undefined)} placeholder="0" className="max-w-[150px] px-3 py-2 border border-gray-300 rounded-md text-sm bg-white focus:outline-none focus:border-primary-500 focus:shadow-[0_0_0_3px_rgba(200,107,250,0.1)]" />
             </div>
             <div className="flex flex-col gap-1.5">
               <label className="text-sm font-medium text-gray-700">Максимальное значение:</label>
-              <input type="number" value={filterValues.max_value || ''} onChange={(e) => updateFilter('max_value', e.target.value ? parseFloat(e.target.value) : undefined)} placeholder="1000" className="max-w-[150px] px-3 py-2 border border-gray-300 rounded-md text-sm bg-white focus:outline-none focus:border-blue-500 focus:shadow-[0_0_0_3px_rgba(59,130,246,0.1)]" />
+              <input type="number" value={filterValues.max_value || ''} onChange={(e) => updateFilter('max_value', e.target.value ? parseFloat(e.target.value) : undefined)} placeholder="1000" className="max-w-[150px] px-3 py-2 border border-gray-300 rounded-md text-sm bg-white focus:outline-none focus:border-primary-500 focus:shadow-[0_0_0_3px_rgba(200,107,250,0.1)]" />
             </div>
             <div className="flex flex-col gap-1.5">
               <label className="text-sm font-medium text-gray-700">Тип пользователя:</label>
-              <select value={filterValues.user_type || ''} onChange={(e) => updateFilter('user_type', e.target.value)} className="max-w-[250px] px-3 py-2 border border-gray-300 rounded-md text-sm bg-white focus:outline-none focus:border-blue-500 focus:shadow-[0_0_0_3px_rgba(59,130,246,0.1)]">
+              <select value={filterValues.user_type || ''} onChange={(e) => updateFilter('user_type', e.target.value)} className="max-w-[250px] px-3 py-2 border border-gray-300 rounded-md text-sm bg-white focus:outline-none focus:border-primary-500 focus:shadow-[0_0_0_3px_rgba(200,107,250,0.1)]">
                 <option value="">Все пользователи</option>
                 <option value="new">Новые (до 30 дней)</option>
                 <option value="active">Активные</option>
@@ -206,7 +206,7 @@ const FilterPanel = ({ filters, onChange }) => {
             </div>
             <div className="flex flex-col gap-1.5">
               <label className="text-sm font-medium text-gray-700">Источник трафика:</label>
-              <select value={filterValues.traffic_source || ''} onChange={(e) => updateFilter('traffic_source', e.target.value)} className="max-w-[250px] px-3 py-2 border border-gray-300 rounded-md text-sm bg-white focus:outline-none focus:border-blue-500 focus:shadow-[0_0_0_3px_rgba(59,130,246,0.1)]">
+              <select value={filterValues.traffic_source || ''} onChange={(e) => updateFilter('traffic_source', e.target.value)} className="max-w-[250px] px-3 py-2 border border-gray-300 rounded-md text-sm bg-white focus:outline-none focus:border-primary-500 focus:shadow-[0_0_0_3px_rgba(200,107,250,0.1)]">
                 <option value="">Все источники</option>
                 <option value="organic">Органический</option>
                 <option value="paid">Платный</option>

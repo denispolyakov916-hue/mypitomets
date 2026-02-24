@@ -16,7 +16,7 @@ const PerformanceMonitor = ({ isVisible, onClose, performanceStats, recommendati
     switch (severity) {
       case 'high': return '#ef4444';
       case 'medium': return '#f59e0b';
-      case 'low': return '#10b981';
+      case 'low': return '#22c55e';
       default: return '#6b7280';
     }
   };
@@ -45,7 +45,7 @@ const PerformanceMonitor = ({ isVisible, onClose, performanceStats, recommendati
     switch (severity) {
       case 'high': return 'bg-red-50 border-red-500';
       case 'low': return 'bg-green-50 border-emerald-500';
-      default: return 'bg-amber-100 border-amber-500';
+      default: return 'bg-secondary-100 border-secondary-500';
     }
   };
 
@@ -53,7 +53,7 @@ const PerformanceMonitor = ({ isVisible, onClose, performanceStats, recommendati
     switch (severity) {
       case 'high': return 'text-red-600';
       case 'low': return 'text-emerald-700';
-      default: return 'text-amber-800';
+      default: return 'text-secondary-800';
     }
   };
 
@@ -61,7 +61,7 @@ const PerformanceMonitor = ({ isVisible, onClose, performanceStats, recommendati
     <div className="fixed inset-0 bg-black/50 z-[2000] flex items-center justify-center">
       <div className="bg-white rounded-xl shadow-[0_20px_25px_-5px_rgba(0,0,0,0.1),0_10px_10px_-5px_rgba(0,0,0,0.04)] max-w-[800px] w-[90%] max-h-[90vh] overflow-y-auto">
         <div className="flex justify-between items-center px-6 py-5 border-b border-slate-200">
-          <h3 className="m-0 text-lg font-semibold text-slate-800">Мониторинг производительности</h3>
+          <h3 className="m-0 text-lg font-semibold text-primary-800">Мониторинг производительности</h3>
           <button className="w-8 h-8 border-none bg-gray-100 rounded-full cursor-pointer text-lg flex items-center justify-center transition-colors duration-200 hover:bg-gray-200" onClick={onClose}>×</button>
         </div>
 
@@ -74,7 +74,7 @@ const PerformanceMonitor = ({ isVisible, onClose, performanceStats, recommendati
                   <div className="text-2xl w-10 text-center">⚡</div>
                   <div className="flex-1">
                     <div className="text-sm text-gray-500 mb-1">Время рендеринга</div>
-                    <div className="text-lg font-semibold text-slate-800 mb-0.5">{formatTime(stats.renderTime.average)}</div>
+                    <div className="text-lg font-semibold text-primary-800 mb-0.5">{formatTime(stats.renderTime.average)}</div>
                     <div className="text-xs text-gray-400">Мин: {formatTime(stats.renderTime.min)} | Макс: {formatTime(stats.renderTime.max)}</div>
                   </div>
                 </div>
@@ -84,7 +84,7 @@ const PerformanceMonitor = ({ isVisible, onClose, performanceStats, recommendati
                   <div className="text-2xl w-10 text-center">🔄</div>
                   <div className="flex-1">
                     <div className="text-sm text-gray-500 mb-1">Обработка данных</div>
-                    <div className="text-lg font-semibold text-slate-800 mb-0.5">{formatTime(stats.dataProcessingTime.average)}</div>
+                    <div className="text-lg font-semibold text-primary-800 mb-0.5">{formatTime(stats.dataProcessingTime.average)}</div>
                     <div className="text-xs text-gray-400">Мин: {formatTime(stats.dataProcessingTime.min)} | Макс: {formatTime(stats.dataProcessingTime.max)}</div>
                   </div>
                 </div>
@@ -94,7 +94,7 @@ const PerformanceMonitor = ({ isVisible, onClose, performanceStats, recommendati
                   <div className="text-2xl w-10 text-center">🎯</div>
                   <div className="flex-1">
                     <div className="text-sm text-gray-500 mb-1">FPS</div>
-                    <div className="text-lg font-semibold text-slate-800 mb-0.5">{Math.round(stats.fps.average)}</div>
+                    <div className="text-lg font-semibold text-primary-800 mb-0.5">{Math.round(stats.fps.average)}</div>
                     <div className="text-xs text-gray-400">Мин: {Math.round(stats.fps.min)} | Макс: {Math.round(stats.fps.max)}</div>
                   </div>
                 </div>
@@ -104,7 +104,7 @@ const PerformanceMonitor = ({ isVisible, onClose, performanceStats, recommendati
                   <div className="text-2xl w-10 text-center">💾</div>
                   <div className="flex-1">
                     <div className="text-sm text-gray-500 mb-1">Использование памяти</div>
-                    <div className="text-lg font-semibold text-slate-800 mb-0.5">{formatValue(stats.memoryUsage.average, 'B')}</div>
+                    <div className="text-lg font-semibold text-primary-800 mb-0.5">{formatValue(stats.memoryUsage.average, 'B')}</div>
                     <div className="text-xs text-gray-400">Текущая: {formatValue(stats.memoryUsage.current, 'B')}</div>
                   </div>
                 </div>
@@ -142,7 +142,7 @@ const PerformanceMonitor = ({ isVisible, onClose, performanceStats, recommendati
               ].map(item => (
                 <div key={item.label} className="flex justify-between items-center px-3 py-2 bg-slate-50 rounded-md">
                   <span className="text-sm text-gray-500 font-medium">{item.label}</span>
-                  <span className="text-sm text-slate-800 font-semibold">{item.value}</span>
+                  <span className="text-sm text-primary-800 font-semibold">{item.value}</span>
                 </div>
               ))}
             </div>
@@ -156,7 +156,7 @@ const PerformanceMonitor = ({ isVisible, onClose, performanceStats, recommendati
               Очистить метрики
             </button>
             <button
-              className="px-5 py-2.5 rounded-md text-sm font-medium cursor-pointer transition-all duration-200 border-none bg-blue-500 text-white hover:bg-blue-600"
+              className="px-5 py-2.5 rounded-md text-sm font-medium cursor-pointer transition-all duration-200 border-none bg-primary-500 text-white hover:bg-primary-600"
               onClick={() => {
                 const perfStats = performanceMonitor.getStats();
                 const recommendations = performanceMonitor.getOptimizationRecommendations();

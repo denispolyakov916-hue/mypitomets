@@ -39,7 +39,7 @@ const HealthRiskAlertsWidget = ({ breedId, petAge }) => {
   };
 
   const getRiskBorderColor = (severity) => {
-    if (severity === 'medium') return 'border-amber-500';
+    if (severity === 'medium') return 'border-secondary-500';
     if (severity === 'low') return 'border-blue-500';
     return 'border-red-500';
   };

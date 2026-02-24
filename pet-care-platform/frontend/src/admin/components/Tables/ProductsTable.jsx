@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 
 // Components
 import DataTable from './DataTable';
@@ -143,7 +143,7 @@ const ProductsTable = () => {
       sortable: true,
       render: (value) => (
         <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-          value === 'dog' ? 'bg-blue-100 text-blue-800' :
+          value === 'dog' ? 'bg-primary-100 text-primary-800' :
           value === 'cat' ? 'bg-accent-100 text-accent-800' :
           'bg-gray-100 text-gray-800'
         }`}>

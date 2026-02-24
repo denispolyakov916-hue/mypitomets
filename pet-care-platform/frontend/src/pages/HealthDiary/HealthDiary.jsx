@@ -22,9 +22,9 @@ import SimpleCalendar from './SimpleCalendar'
  */
 const eventTypes = {
   vet: { icon: '🩺', label: 'Ветеринар', color: '#ef4444', bgColor: '#fee2e2' },
-  birthday: { icon: '🎂', label: 'День рождения', color: '#f59e0b', bgColor: '#fef3c7' },
+  birthday: { icon: '🎂', label: 'День рождения', color: '#f59e0b', bgColor: '#fef8e0' },
   vaccine: { icon: '💉', label: 'Прививка', color: '#10b981', bgColor: '#d1fae5' },
-  grooming: { icon: '✂️', label: 'Груминг', color: '#8b5cf6', bgColor: '#e9d5ff' },
+  grooming: { icon: '✂️', label: 'Груминг', color: '#C86BFA', bgColor: '#ede0ff' },
   other: { icon: '❤️', label: 'Другое', color: '#6b7280', bgColor: '#f3f4f6' }
 }
 

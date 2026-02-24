@@ -213,7 +213,7 @@ function ScoreIndicator({ score }) {
           />
           <defs>
             <linearGradient id="scoreGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-              <stop offset="0%" className={`stop-color-${score >= 60 ? 'green' : 'orange'}-400`} style={{stopColor: score >= 60 ? '#4ade80' : '#fb923c'}} />
+              <stop offset="0%" className={`stop-color-${score >= 60 ? 'green' : 'orange'}-400`} style={{stopColor: score >= 60 ? '#4ade80' : '#fbba2d'}} />
               <stop offset="100%" className={`stop-color-${score >= 60 ? 'emerald' : 'red'}-500`} style={{stopColor: score >= 60 ? '#10b981' : '#ef4444'}} />
             </linearGradient>
           </defs>
@@ -356,7 +356,7 @@ export default function PetDetailPage() {
           {pet.weight && (
             <button
               onClick={() => navigate(`/food-recommendation?pet_id=${pet.id}`)}
-              className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-accent-500 to-amber-500 text-white rounded-xl hover:shadow-lg transition-all"
+              className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-accent-500 to-secondary-500 text-white rounded-xl hover:shadow-lg transition-all"
             >
               <UtensilsCrossed className="w-4 h-4" />
               Подбор корма

@@ -63,7 +63,7 @@ function Textarea({ value, onChange, rows = 3, placeholder }) {
       onChange={(e) => onChange(e.target.value)}
       rows={rows}
       placeholder={placeholder}
-      className="block w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition resize-y"
+      className="block w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition resize-y"
     />
   )
 }
@@ -73,7 +73,7 @@ function Select({ value, onChange, options, placeholder }) {
     <select
       value={value || ''}
       onChange={(e) => onChange(e.target.value)}
-      className="block w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition bg-white"
+      className="block w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition bg-white"
     >
       {placeholder && <option value="">{placeholder}</option>}
       {options.map(opt => (

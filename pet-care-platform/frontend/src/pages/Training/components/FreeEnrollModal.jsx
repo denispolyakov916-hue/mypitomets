@@ -81,9 +81,9 @@ function FreeEnrollModal({
           )}
 
           {/* Условия использования */}
-          <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg mb-6">
-            <h4 className="font-medium text-amber-800 mb-2">Условия использования</h4>
-            <p className="text-sm text-amber-700 mb-4">
+          <div className="p-4 bg-secondary-50 border border-secondary-200 rounded-lg mb-6">
+            <h4 className="font-medium text-secondary-800 mb-2">Условия использования</h4>
+            <p className="text-sm text-secondary-700 mb-4">
               Записываясь на курс, вы подтверждаете, что понимаете и соглашаетесь с тем, 
               что мы не гарантируем стопроцентного результата. Результаты обучения зависят от 
               индивидуальных особенностей питомца, усердия в выполнении рекомендаций и других факторов.

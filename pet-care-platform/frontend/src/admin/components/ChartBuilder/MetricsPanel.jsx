@@ -56,8 +56,8 @@ const MetricsPanel = ({ metrics, categories, selectedMetrics, onMetricAdd, onMet
   return (
     <div className="flex flex-col h-full bg-white rounded-lg">
       <div className="flex justify-between items-center px-5 py-4 border-b border-slate-200">
-        <h3 className="m-0 text-lg font-semibold text-slate-800">Метрики</h3>
-        <span className="bg-blue-500 text-white px-2 py-0.5 rounded-xl text-xs font-semibold">{filteredMetrics.length}</span>
+        <h3 className="m-0 text-lg font-semibold text-primary-800">Метрики</h3>
+        <span className="bg-primary-500 text-white px-2 py-0.5 rounded-xl text-xs font-semibold">{filteredMetrics.length}</span>
       </div>
 
       <div className="relative mx-5 my-4">
@@ -66,7 +66,7 @@ const MetricsPanel = ({ metrics, categories, selectedMetrics, onMetricAdd, onMet
           placeholder="Поиск метрик..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full py-2.5 pl-4 pr-10 border border-gray-300 rounded-md text-sm bg-gray-50 focus:outline-none focus:border-blue-500 focus:shadow-[0_0_0_3px_rgba(59,130,246,0.1)]"
+          className="w-full py-2.5 pl-4 pr-10 border border-gray-300 rounded-md text-sm bg-gray-50 focus:outline-none focus:border-primary-500 focus:shadow-[0_0_0_3px_rgba(200,107,250,0.1)]"
         />
         <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 text-base">🔍</span>
       </div>
@@ -75,7 +75,7 @@ const MetricsPanel = ({ metrics, categories, selectedMetrics, onMetricAdd, onMet
         <select
           value={selectedCategory}
           onChange={(e) => setSelectedCategory(e.target.value)}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm bg-white focus:outline-none focus:border-blue-500"
+          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm bg-white focus:outline-none focus:border-primary-500"
         >
           <option value="all">Все категории</option>
           {categories.map(category => (
@@ -171,7 +171,7 @@ const MetricItem = ({ metric, isSelected, onAdd, onRemove, onDragStart }) => {
 
   return (
     <div
-      className={`flex items-center px-4 py-3 mb-2 bg-white border rounded-lg cursor-pointer transition-all duration-200 hover:border-blue-500 hover:shadow-[0_2px_4px_rgba(59,130,246,0.1)] ${
+      className={`flex items-center px-4 py-3 mb-2 bg-white border rounded-lg cursor-pointer transition-all duration-200 hover:border-primary-500 hover:shadow-[0_2px_4px_rgba(200,107,250,0.1)] ${
         isSelected ? 'border-emerald-500 bg-green-50' : 'border-slate-200'
       }`}
       draggable={!isSelected}
@@ -180,7 +180,7 @@ const MetricItem = ({ metric, isSelected, onAdd, onRemove, onDragStart }) => {
       style={{ cursor: !isSelected && metric ? 'grab' : 'pointer' }}
     >
       <div className="flex-1">
-        <div className="font-semibold text-slate-800 mb-1">{metric.display_name || metric.name}</div>
+        <div className="font-semibold text-primary-800 mb-1">{metric.display_name || metric.name}</div>
         <div className="text-xs text-gray-500 mb-1.5 leading-snug">{metric.description || 'Нет описания'}</div>
         <div className="flex gap-2 text-[11px] text-gray-400">
           <span>{metric.data_type}</span>
@@ -194,7 +194,7 @@ const MetricItem = ({ metric, isSelected, onAdd, onRemove, onDragStart }) => {
             ✓
           </button>
         ) : (
-          <button className="w-7 h-7 rounded-full border-none bg-blue-500 text-white cursor-pointer text-sm font-bold flex items-center justify-center transition-colors duration-200 hover:bg-blue-600" title="Добавить">
+          <button className="w-7 h-7 rounded-full border-none bg-primary-500 text-white cursor-pointer text-sm font-bold flex items-center justify-center transition-colors duration-200 hover:bg-primary-600" title="Добавить">
             +
           </button>
         )}

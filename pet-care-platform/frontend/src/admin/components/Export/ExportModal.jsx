@@ -86,7 +86,7 @@ const ExportModal = ({
                 key={format.value}
                 className={`
                   relative flex cursor-pointer rounded-lg border bg-white p-4 shadow-sm focus:outline-none
-                  ${exportParams.format === format.value ? 'border-blue-600 ring-2 ring-blue-600' : 'border-gray-300'}
+                  ${exportParams.format === format.value ? 'border-primary-600 ring-2 ring-primary-600' : 'border-gray-300'}
                 `}
               >
                 <input
@@ -108,7 +108,7 @@ const ExportModal = ({
                   </span>
                 </span>
                 <svg
-                  className={`h-5 w-5 text-blue-600 ${
+                  className={`h-5 w-5 text-primary-600 ${
                     exportParams.format === format.value ? '' : 'invisible'
                   }`}
                   fill="currentColor"

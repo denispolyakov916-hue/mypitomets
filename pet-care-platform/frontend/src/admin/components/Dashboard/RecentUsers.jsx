@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import { Link } from 'react-router-dom';
 
 const RecentUsers = ({ users }) => {
@@ -18,7 +18,7 @@ const RecentUsers = ({ users }) => {
         <h2 className="text-lg font-semibold text-gray-900">👥 Последние пользователи</h2>
         <Link
           to="/admin-panel/users"
-          className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+          className="text-sm text-primary-600 hover:text-primary-800 font-medium"
         >
           Все пользователи →
         </Link>
@@ -38,8 +38,8 @@ const RecentUsers = ({ users }) => {
             >
               <div className="flex-1 min-w-0">
                 <div className="flex items-center space-x-3">
-                  <div className="flex-shrink-0 w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                    <span className="text-sm font-medium text-blue-600">
+                  <div className="flex-shrink-0 w-8 h-8 bg-primary-100 rounded-full flex items-center justify-center">
+                    <span className="text-sm font-medium text-primary-600">
                       {(user.first_name || user.email)[0]?.toUpperCase() || 'U'}
                     </span>
                   </div>
@@ -60,7 +60,7 @@ const RecentUsers = ({ users }) => {
                   user.role === 'admin'
                     ? 'bg-primary-100 text-primary-800'
                     : user.role === 'course_creator'
-                    ? 'bg-blue-100 text-blue-800'
+                    ? 'bg-primary-100 text-primary-800'
                     : 'bg-gray-100 text-gray-800'
                 }`}>
                   {user.role === 'admin' ? 'Админ' : user.role === 'course_creator' ? 'Автор курсов' : 'Пользователь'}

@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 
 // Components
@@ -88,7 +88,7 @@ const AnalyticsDashboard = () => {
           {/* Кнопка конструктора */}
           <Link
             to="/admin-panel/analytics/builder"
-            className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-indigo-500 to-primary-600 text-white text-sm font-medium rounded-lg hover:from-indigo-600 hover:to-primary-700 transition-all shadow-sm"
+            className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-primary-500 to-primary-600 text-white text-sm font-medium rounded-lg hover:from-primary-600 hover:to-primary-700 transition-all shadow-sm"
           >
             <span className="mr-2">🎨</span>
             Конструктор графиков
@@ -100,7 +100,7 @@ const AnalyticsDashboard = () => {
             <select
               value={selectedPeriod}
               onChange={(e) => handlePeriodChange(e.target.value)}
-              className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm"
+              className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 text-sm"
             >
               {periodOptions.map(option => (
                 <option key={option.value} value={option.value}>
@@ -236,11 +236,11 @@ const AnalyticsDashboard = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <button
             onClick={() => openDrillDown('sales_by_products', 'Продажи по товарам')}
-            className="bg-white p-4 rounded-lg border border-gray-200 hover:border-blue-300 hover:shadow-md transition-all duration-200"
+            className="bg-white p-4 rounded-lg border border-gray-200 hover:border-primary-300 hover:shadow-md transition-all duration-200"
           >
             <div className="flex items-center">
-              <div className="bg-blue-100 p-2 rounded-lg">
-                <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="bg-primary-100 p-2 rounded-lg">
+                <svg className="w-6 h-6 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                 </svg>
               </div>

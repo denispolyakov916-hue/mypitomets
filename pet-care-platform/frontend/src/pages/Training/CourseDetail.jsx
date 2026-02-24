@@ -51,8 +51,8 @@ const pageTypeConfig = {
   video:       { icon: '▶️', color: 'bg-red-100 text-red-600', label: 'Видео' },
   quiz:        { icon: '❓', color: 'bg-primary-100 text-primary-600', label: 'Тест' },
   interactive: { icon: '🐾', color: 'bg-green-100 text-green-600', label: 'Упражнение' },
-  assignment:  { icon: '✏️', color: 'bg-amber-100 text-amber-600', label: 'Задание' },
-  webinar:     { icon: '📡', color: 'bg-indigo-100 text-indigo-600', label: 'Вебинар' },
+  assignment:  { icon: '✏️', color: 'bg-secondary-100 text-secondary-600', label: 'Задание' },
+  webinar:     { icon: '📡', color: 'bg-primary-100 text-primary-600', label: 'Вебинар' },
 }
 
 /* ─── Компонент ────────────────────────────────────────── */
@@ -435,7 +435,7 @@ function CourseDetail() {
                   <button
                     onClick={handleResetProgress}
                     disabled={isResetting}
-                    className="w-full py-2 px-4 rounded-lg text-sm text-gray-600 hover:text-amber-600 hover:bg-amber-50 border border-gray-200 transition-colors disabled:opacity-50"
+                    className="w-full py-2 px-4 rounded-lg text-sm text-gray-600 hover:text-secondary-600 hover:bg-secondary-50 border border-gray-200 transition-colors disabled:opacity-50"
                   >
                     {isResetting ? 'Сброс...' : '🔄 Начать курс заново'}
                   </button>
@@ -526,8 +526,8 @@ function CourseDetail() {
               )}
 
               {/* Условия */}
-              <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg mb-5">
-                <p className="text-sm text-amber-700 mb-3">
+              <div className="p-4 bg-secondary-50 border border-secondary-200 rounded-lg mb-5">
+                <p className="text-sm text-secondary-700 mb-3">
                   Записываясь на курс, вы подтверждаете, что мы не гарантируем стопроцентного результата. 
                   Результаты зависят от особенностей питомца и усердия в выполнении рекомендаций.
                 </p>

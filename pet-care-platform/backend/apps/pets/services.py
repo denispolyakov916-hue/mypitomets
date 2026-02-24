@@ -1077,11 +1077,11 @@ class PetService(BaseCRUDService):
         # Добавляем owner к данным
         data['owner'] = user
         
-        # Создание через базовый сервис
-        success, result = self.create(data, user)
-        if not success:
-            raise ValueError(result)
-        return result
+        # Создание через базовый сервис (возвращает ServiceResult)
+        sr = self.create(data, user)
+        if not sr.success:
+            raise ValueError(sr.message or (sr.errors[0] if sr.errors else 'Ошибка создания питомца'))
+        return sr.data
 
     def update_pet_profile(self, pet_id, data, user):
         """
@@ -1092,11 +1092,16 @@ class PetService(BaseCRUDService):
         @param user: Владелец
         @return: Обновленный питомец
         """
-        # Получаем питомца
-        pet = self.get_by_id(pet_id, user)
+        # Получаем питомца (ServiceResult)
+        sr = self.get_by_id(pet_id, user)
+        if not sr.success:
+            raise ValueError(sr.message or 'Питомец не найден')
 
-        # Обновляем данные
-        updated_pet = self.update(pet_id, data, user)
+        # Обновляем данные (ServiceResult)
+        sr = self.update(pet_id, data, user)
+        if not sr.success:
+            raise ValueError(sr.message or (sr.errors[0] if sr.errors else 'Ошибка обновления'))
+        updated_pet = sr.data
 
         # Пересчитываем completeness профиля
         updated_pet.calculate_profile_completeness()
@@ -1112,7 +1117,10 @@ class PetService(BaseCRUDService):
         @param user: Владелец
         @return: True если удалено
         """
-        pet = self.get_by_id(pet_id, user)
+        sr = self.get_by_id(pet_id, user)
+        if not sr.success:
+            raise ValueError(sr.message or 'Питомец не найден')
+        pet = sr.data
 
         # Проверяем, есть ли активные напоминания
         if hasattr(pet, 'calendar_events') and pet.calendar_events.filter(status='scheduled').exists():
@@ -1123,7 +1131,10 @@ class PetService(BaseCRUDService):
         if UserCourse.objects.filter(pet=pet).exists():
             raise ValueError("Нельзя удалить питомца с активными курсами")
 
-        return self.delete(pet_id, user)
+        sr = self.delete(pet_id, user)
+        if not sr.success:
+            raise ValueError(sr.message or (sr.errors[0] if sr.errors else 'Ошибка удаления'))
+        return True
 
 
 class ReminderService(BaseCRUDService):

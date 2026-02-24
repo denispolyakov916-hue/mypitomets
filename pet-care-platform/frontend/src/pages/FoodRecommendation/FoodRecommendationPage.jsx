@@ -444,7 +444,7 @@ const PeriodInput = ({ value, onChange, disabled }) => {
           className={`w-full px-4 py-3 pr-12 border-2 rounded-xl text-sm font-medium transition-all
             ${disabled ? 'opacity-50 cursor-not-allowed bg-gray-50' : 'bg-white'}
             ${isOpen ? 'border-primary-500 ring-4 ring-primary-100' : 'border-gray-200 hover:border-primary-300'}
-            ${showWarning ? 'border-amber-400 ring-4 ring-amber-100' : ''}`}
+            ${showWarning ? 'border-secondary-400 ring-4 ring-secondary-100' : ''}`}
           placeholder="Введите дни..."
           role="combobox"
           aria-expanded={isOpen}
@@ -540,7 +540,7 @@ const PeriodInput = ({ value, onChange, disabled }) => {
             exit={{ opacity: 0, height: 0 }}
             className="overflow-hidden mt-2"
           >
-            <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800">
+            <div className="p-3 bg-secondary-50 border border-secondary-200 rounded-lg text-xs text-secondary-800">
               <p className="font-medium mb-1">📋 Оптимальный период: до 60 дней</p>
               <p>Это позволяет точнее подобрать рацион и при необходимости оперативно скорректировать питание.</p>
             </div>
@@ -872,11 +872,11 @@ const RationComponentCard = ({
               {baseType === 'treat' && (
                 <>
                   {component.daily_grams && (
-                    <span className="bg-amber-50 text-amber-600 px-1.5 py-0.5 rounded">
+                    <span className="bg-secondary-50 text-secondary-600 px-1.5 py-0.5 rounded">
                       {component.daily_grams} г/день
                     </span>
                   )}
-                  <span className="bg-amber-50 text-amber-600 px-1.5 py-0.5 rounded">
+                  <span className="bg-secondary-50 text-secondary-600 px-1.5 py-0.5 rounded">
                     ~{component.pieces_per_day || Math.max(1, Math.round((component.daily_grams || 30) / 10))} шт/день
                   </span>
                 </>
@@ -1031,17 +1031,17 @@ const PdfDownloadButton = ({ plan, pet, selectedComponents, treatFrequencyDays }
             </div>
             <div style="text-align:right;">
               ${c.packages_needed ? `<div style="font-size:12px;color:#6b7280;">${c.packages_needed} уп.</div>` : ''}
-              ${c.price ? `<div style="font-weight:700;color:#7c3aed;">${(parseFloat(c.price) * (c.packages_needed || 1)).toLocaleString('ru-RU')} ₽</div>` : ''}
+              ${c.price ? `<div style="font-weight:700;color:#522f81;">${(parseFloat(c.price) * (c.packages_needed || 1)).toLocaleString('ru-RU')} ₽</div>` : ''}
             </div>
           </div>
         `).join('');
 
       const treatHtml = treat ? `
         <div style="margin-top:24px;">
-          <h3 style="font-size:16px;font-weight:700;margin-bottom:10px;color:#92400e;">🦴 Лакомства</h3>
-          <div style="padding:12px 14px;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;">
+          <h3 style="font-size:16px;font-weight:700;margin-bottom:10px;color:#6d4b0b;">🦴 Лакомства</h3>
+          <div style="padding:12px 14px;background:#fffdf5;border:1px solid #F0EB93;border-radius:8px;">
             <div style="font-weight:600;">${treat.product_name || 'Лакомство'}</div>
-            <div style="font-size:13px;color:#92400e;margin-top:4px;">
+            <div style="font-size:13px;color:#6d4b0b;margin-top:4px;">
               ${treatGrams ? `${treatGrams}г` : ''}${treatPieces ? ` (~${treatPieces} шт)` : ''} • раз в ${treatFreq === 1 ? 'день' : `${treatFreq} дн.`}
             </div>
             <div style="font-size:12px;color:#78716c;margin-top:6px;">💡 Не более 10% от суточной нормы калорий</div>
@@ -1051,12 +1051,12 @@ const PdfDownloadButton = ({ plan, pet, selectedComponents, treatFrequencyDays }
 
       const supplementsHtml = supplements.length > 0 ? `
         <div style="margin-top:24px;">
-          <h3 style="font-size:16px;font-weight:700;margin-bottom:10px;color:#7c3aed;">💊 Добавки и витамины</h3>
+          <h3 style="font-size:16px;font-weight:700;margin-bottom:10px;color:#522f81;">💊 Добавки и витамины</h3>
           ${supplements.map(s => `
-            <div style="padding:10px 14px;background:#f5f3ff;border:1px solid #ddd6fe;border-radius:8px;margin-bottom:6px;">
+            <div style="padding:10px 14px;background:#f6f0ff;border:1px solid #d9bfff;border-radius:8px;margin-bottom:6px;">
               <div style="display:flex;justify-content:space-between;">
                 <span style="font-weight:600;">${s.product_name || 'Добавка'}</span>
-                <span style="font-size:12px;color:#7c3aed;background:#ede9fe;padding:2px 8px;border-radius:4px;">${s.dosage_text || 'По инструкции'}</span>
+                <span style="font-size:12px;color:#522f81;background:#ede0ff;padding:2px 8px;border-radius:4px;">${s.dosage_text || 'По инструкции'}</span>
               </div>
               ${s.intake_time ? `<div style="font-size:12px;color:#6b7280;margin-top:4px;">⏰ ${s.intake_time}${s.intake_instructions ? ` • ${s.intake_instructions}` : ''}</div>` : ''}
             </div>
@@ -1066,7 +1066,7 @@ const PdfDownloadButton = ({ plan, pet, selectedComponents, treatFrequencyDays }
 
       const tipsHtml = tips.length > 0 ? `
         <div style="margin-top:24px;">
-          <h3 style="font-size:16px;font-weight:700;margin-bottom:10px;color:#059669;">💡 Рекомендации</h3>
+          <h3 style="font-size:16px;font-weight:700;margin-bottom:10px;color:#e5a41e;">💡 Рекомендации</h3>
           <ul style="list-style:none;padding:0;margin:0;">
             ${tips.map(t => `<li style="padding:6px 0;font-size:13px;color:#374151;border-bottom:1px solid #f3f4f6;">✅ ${t}</li>`).join('')}
           </ul>
@@ -1075,10 +1075,10 @@ const PdfDownloadButton = ({ plan, pet, selectedComponents, treatFrequencyDays }
 
       const activeDayHtml = plan.active_day ? `
         <div style="margin-top:24px;">
-          <h3 style="font-size:16px;font-weight:700;margin-bottom:10px;color:#d97706;">⚡ Активный день</h3>
-          <div style="padding:12px 14px;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;">
+          <h3 style="font-size:16px;font-weight:700;margin-bottom:10px;color:#c08716;">⚡ Активный день</h3>
+          <div style="padding:12px 14px;background:#fffdf5;border:1px solid #F0EB93;border-radius:8px;">
             <div style="font-size:14px;">${plan.active_day.total_kcal} ккал (+${plan.active_day.extra_percent}%)</div>
-            <div style="font-size:12px;color:#92400e;margin-top:4px;">${plan.active_day.note || 'Увеличьте порцию при повышенной активности'}</div>
+            <div style="font-size:12px;color:#6d4b0b;margin-top:4px;">${plan.active_day.note || 'Увеличьте порцию при повышенной активности'}</div>
           </div>
         </div>
       ` : '';
@@ -1092,23 +1092,23 @@ const PdfDownloadButton = ({ plan, pet, selectedComponents, treatFrequencyDays }
       ];
 
       container.innerHTML = `
-        <div style="border-bottom:3px solid #7c3aed;padding-bottom:20px;margin-bottom:24px;">
-          <h1 style="font-size:24px;font-weight:800;color:#7c3aed;margin:0 0 4px;">План питания</h1>
+        <div style="border-bottom:3px solid #522f81;padding-bottom:20px;margin-bottom:24px;">
+          <h1 style="font-size:24px;font-weight:800;color:#522f81;margin:0 0 4px;">План питания</h1>
           <div style="font-size:18px;font-weight:600;color:#1a1a1a;">${petName}</div>
           <div style="font-size:13px;color:#6b7280;margin-top:6px;">${speciesLabel} • ${breedName} • ${weight} кг • Составлен ${dateStr}</div>
         </div>
 
         <div style="display:flex;gap:16px;margin-bottom:24px;">
-          <div style="flex:1;padding:16px;background:linear-gradient(135deg,#f5f3ff,#ede9fe);border-radius:12px;text-align:center;">
-            <div style="font-size:28px;font-weight:800;color:#7c3aed;">${dailyKcal}</div>
+          <div style="flex:1;padding:16px;background:linear-gradient(135deg,#f6f0ff,#ede0ff);border-radius:12px;text-align:center;">
+            <div style="font-size:28px;font-weight:800;color:#522f81;">${dailyKcal}</div>
             <div style="font-size:12px;color:#6b7280;">ккал/день</div>
           </div>
           <div style="flex:1;padding:16px;background:linear-gradient(135deg,#f0fdf4,#dcfce7);border-radius:12px;text-align:center;">
             <div style="font-size:28px;font-weight:800;color:#16a34a;">${regularDay.meals_count || 2}</div>
             <div style="font-size:12px;color:#6b7280;">кормлений/день</div>
           </div>
-          <div style="flex:1;padding:16px;background:linear-gradient(135deg,#fffbeb,#fef3c7);border-radius:12px;text-align:center;">
-            <div style="font-size:28px;font-weight:800;color:#d97706;">${Math.round(plan.daily_calories || dailyKcal)}</div>
+          <div style="flex:1;padding:16px;background:linear-gradient(135deg,#fffdf5,#fef8e0);border-radius:12px;text-align:center;">
+            <div style="font-size:28px;font-weight:800;color:#c08716;">${Math.round(plan.daily_calories || dailyKcal)}</div>
             <div style="font-size:12px;color:#6b7280;">норма ккал</div>
           </div>
         </div>
@@ -1386,7 +1386,7 @@ const FeedingPlanBlock = ({ plan, isLoading, selectedComponents, treatFrequencyD
       </h3>
       
       {/* Дневная норма */}
-      <div className="bg-gradient-to-r from-accent-50 to-amber-50 rounded-xl p-4 mb-4">
+      <div className="bg-gradient-to-r from-accent-50 to-secondary-50 rounded-xl p-4 mb-4">
         <p className="text-xs text-gray-500 mb-1">Дневная норма</p>
         <p className="text-2xl font-bold text-gray-800">
           {(caloriesForUi?.total ?? regularDay.total_kcal ?? Math.round(plan.daily_calories))}{" "}
@@ -1410,7 +1410,7 @@ const FeedingPlanBlock = ({ plan, isLoading, selectedComponents, treatFrequencyD
                 const covClass = (cov) => {
                   if (!cov) return 'text-gray-400';
                   if (cov.color === 'green') return 'text-green-700';
-                  if (cov.color === 'yellow') return 'text-amber-700';
+                  if (cov.color === 'yellow') return 'text-secondary-700';
                   return 'text-red-700';
                 };
 
@@ -1572,14 +1572,14 @@ const FeedingPlanBlock = ({ plan, isLoading, selectedComponents, treatFrequencyD
                 <div 
                   key={i}
                   className={`p-2.5 rounded-lg text-sm ${
-                    meal.type === 'dry' ? 'bg-amber-50 border border-amber-100' : 'bg-blue-50 border border-blue-100'
+                    meal.type === 'dry' ? 'bg-secondary-50 border border-secondary-100' : 'bg-blue-50 border border-blue-100'
                   }`}
                 >
                   <div className="flex items-center justify-between mb-1">
                     <div className="flex items-center gap-2">
                       <span className="text-xs text-gray-500 font-mono">{meal.time}</span>
                       <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${
-                        meal.type === 'dry' ? 'bg-amber-200 text-amber-800' : 'bg-blue-200 text-blue-800'
+                        meal.type === 'dry' ? 'bg-secondary-200 text-secondary-800' : 'bg-blue-200 text-blue-800'
                       }`}>
                         {meal.label}
                       </span>
@@ -1588,12 +1588,12 @@ const FeedingPlanBlock = ({ plan, isLoading, selectedComponents, treatFrequencyD
                   </div>
                   <div className="flex items-center justify-between">
                     <span className={`text-xs font-medium line-clamp-1 ${
-                      meal.type === 'dry' ? 'text-amber-700' : 'text-blue-700'
+                      meal.type === 'dry' ? 'text-secondary-700' : 'text-blue-700'
                     }`}>
                       {meal.type === 'dry' ? '🥫' : '🍖'} {meal.product}
                     </span>
                     <span className={`font-semibold ${
-                      meal.type === 'dry' ? 'text-amber-700' : 'text-blue-700'
+                      meal.type === 'dry' ? 'text-secondary-700' : 'text-blue-700'
                     }`}>
                       {meal.grams}г
                     </span>
@@ -2273,19 +2273,19 @@ export default function FoodRecommendationPage() {
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-3"
+          className="mb-6 p-4 bg-secondary-50 border border-secondary-200 rounded-xl flex items-start gap-3"
         >
-          <AlertCircle className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
+          <AlertCircle className="w-5 h-5 text-secondary-500 flex-shrink-0 mt-0.5" />
           <div>
-            <p className="font-medium text-amber-800">
+            <p className="font-medium text-secondary-800">
               Профиль заполнен на {selectedPet.profile_completeness || 0}%
             </p>
-            <p className="text-sm text-amber-700 mt-1">
+            <p className="text-sm text-secondary-700 mt-1">
               Для более точного подбора заполните информацию о здоровье и аллергиях.
             </p>
             <button 
               onClick={() => navigate(`/pets/${selectedPet.id}/edit`)}
-              className="mt-2 text-sm text-amber-600 hover:text-amber-800 font-medium"
+              className="mt-2 text-sm text-secondary-600 hover:text-secondary-800 font-medium"
             >
               Заполнить профиль →
             </button>

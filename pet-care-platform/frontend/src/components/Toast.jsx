@@ -60,10 +60,10 @@ const colors = {
     icon: 'text-red-600'
   },
   warning: {
-    bg: 'bg-amber-50',
-    border: 'border-amber-200',
-    text: 'text-amber-800',
-    icon: 'text-amber-600'
+    bg: 'bg-secondary-50',
+    border: 'border-secondary-200',
+    text: 'text-secondary-800',
+    icon: 'text-secondary-600'
   },
   info: {
     bg: 'bg-blue-50',
