@@ -914,8 +914,8 @@ function Register() {
           </motion.div>
 
           <div className="relative z-10"></div>
-        </div>
-      </div>
+        </motion.div>
+      </motion.div>
     </div>
   )
 }

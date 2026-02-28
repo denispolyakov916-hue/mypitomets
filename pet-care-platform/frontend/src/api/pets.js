@@ -772,14 +772,14 @@ export const getFoodStatistics = async (species = 'dog') => {
  */
 export const MULTI_RATIO_PRESET_OPTIONS = {
   dog: [
-    { value: 'more_dry', label: '70% сухой, 30% влажный' },
-    { value: 'balanced', label: '60% сухой, 40% влажный' },
-    { value: 'more_wet', label: '50% сухой, 50% влажный' },
+    { value: 'more_dry', label: '70% / 30%' },
+    { value: 'balanced', label: '60% / 40%' },
+    { value: 'more_wet', label: '50% / 50%' },
   ],
   cat: [
-    { value: 'more_wet', label: '40% сухой, 60% влажный' },
-    { value: 'balanced', label: '50% сухой, 50% влажный' },
-    { value: 'more_dry', label: '60% сухой, 40% влажный' },
+    { value: 'more_wet', label: '40% / 60%' },
+    { value: 'balanced', label: '50% / 50%' },
+    { value: 'more_dry', label: '60% / 40%' },
   ],
 }
 

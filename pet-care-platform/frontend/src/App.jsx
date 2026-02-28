@@ -33,6 +33,9 @@ import Layout from './components/Layout'
 import PrivateRoute from './components/PrivateRoute'
 import AdminRoute from './components/AdminRoute'
 
+// Витрина страниц (для редизайна)
+import PagesRouter from './Страницы/Роутер'
+
 // Страницы ошибок
 import Error404 from './pages/Errors/Error404'
 
@@ -128,6 +131,7 @@ function App() {
             <Routes>
               {/* Публичные маршруты */}
               <Route path="/" element={<Home />} />
+              <Route path="/pages/*" element={<PagesRouter />} />
               <Route
                 path="/login"
                 element={isAuthenticated ? <Navigate to="/pet-id" /> : <AuthModal />}

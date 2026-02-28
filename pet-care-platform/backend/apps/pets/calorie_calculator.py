@@ -1,14 +1,25 @@
 """
 Калькулятор калорийности питания для питомцев.
 
-Реализует логику из документации calculation-nutrition.md:
-1. RER (Resting Energy Requirement) — базовый метаболизм
-2. MER (Maintenance Energy Requirement) — дневная потребность
-3. Корректировки по возрасту, размеру, активности, здоровью
+Стандарт: NRC (2006), WSAVA Global Nutrition Guidelines, FEDIAF (2021).
 
-Формулы по WSAVA/PNA/Tufts стандартам:
-- Собаки и кошки: RER = 70 × (вес_кг)^0.75
-- MER = RER × K_age × K_neutering × K_activity × K_size × K_coat × K_climate × K_health
+Формулы:
+    RER = 70 × (вес_кг)^0.75          — базовый метаболизм (ккал/сутки)
+    MER = RER × K                      — суточная потребность (ккал/сутки)
+
+K — единый коэффициент жизненной стадии (эмпирически выведен, НЕ произведение
+нескольких множителей). Выбирается по приоритету:
+    1. Заболевание (если есть)          — из HealthCondition
+    2. Репродуктивный статус            — беременность / лактация
+    3. Рост (возраст < 12 мес)          — из NutritionCoefficient (age)
+    4. Взрослый / пожилой               — из NutritionCoefficient (neutering)
+
+После выбора K допускается ОДНА суммарная корректировка ±20% от MER
+на основании вторичных факторов (активность, размер, шерсть, климат).
+Корректировка аддитивна (дельты суммируются, не перемножаются).
+
+При BCS >= 7 или критических заболеваниях MER/RER ограничивается
+коридором (cap rules из БД).
 
 Коэффициенты загружаются из таблицы nutrition_coefficients в БД.
 """
@@ -299,56 +310,99 @@ class CalorieCalculatorService:
             logger.warning(f"Error loading cap rules: {e}")
         return rules
 
-    def _apply_limited_modifier(
+    MAX_TOTAL_SECONDARY_DELTA = 0.20  # ±20% суммарно от всех вторичных факторов
+
+    def _collect_secondary_delta(
         self,
-        mer: float,
         raw_multiplier: float,
         factor_key: str,
         factor_rules: Dict[str, Dict[str, Optional[float]]],
-        result: CalorieResult,
-        influences: List[Dict[str, Any]],
         reason: str
-    ) -> float:
+    ) -> Dict[str, Any]:
+        """
+        Рассчитывает дельту одного вторичного фактора (с индивидуальным капом).
+        Возвращает словарь с информацией, но НЕ применяет к MER.
+        """
         if raw_multiplier == 1.0:
-            return mer
+            return {'key': factor_key, 'delta': 0.0, 'reason': reason, 'raw': raw_multiplier, 'capped': False}
+
         max_delta_pct = factor_rules.get(factor_key, {}).get('max_delta_pct')
         delta = raw_multiplier - 1.0
         capped_delta = delta
+        capped = False
         if max_delta_pct is not None:
             cap = float(max_delta_pct) / 100.0
             capped_delta = max(min(delta, cap), -cap)
             if capped_delta != delta:
-                result.warnings.append(
-                    f"{factor_key}: ограничение коррекции до ±{float(max_delta_pct)}%"
-                )
-        applied_multiplier = 1.0 + capped_delta
-        mer_after = mer * applied_multiplier
-        influences.append({
+                capped = True
+        return {
             'key': factor_key,
+            'delta': capped_delta,
             'reason': reason,
-            'multiplier': round(applied_multiplier, 3),
-            'impact_kcal': round(mer_after - mer, 1),
-        })
-        result.coefficients_applied.setdefault('secondary_adjustments', []).append({
-            'key': factor_key,
-            'raw_multiplier': round(raw_multiplier, 3),
-            'applied_multiplier': round(applied_multiplier, 3),
+            'raw': raw_multiplier,
             'max_delta_pct': max_delta_pct,
-            'reason': reason,
-        })
-        return mer_after
+            'capped': capped,
+        }
+
+    def _apply_secondary_adjustments(
+        self,
+        mer: float,
+        deltas: List[Dict[str, Any]],
+        result: CalorieResult,
+        influences: List[Dict[str, Any]],
+    ) -> float:
+        """
+        Суммирует дельты вторичных факторов и применяет ОДНУ корректировку к MER.
+        Общая сумма ограничена ±MAX_TOTAL_SECONDARY_DELTA (±20%).
+        """
+        total_delta = sum(d['delta'] for d in deltas)
+        capped_total = max(min(total_delta, self.MAX_TOTAL_SECONDARY_DELTA), -self.MAX_TOTAL_SECONDARY_DELTA)
+
+        if capped_total != total_delta:
+            result.warnings.append(
+                f"Суммарная вторичная корректировка ограничена до ±{int(self.MAX_TOTAL_SECONDARY_DELTA * 100)}% "
+                f"(до ограничения: {round(total_delta * 100, 1)}%)"
+            )
+
+        adjustments_log = []
+        for d in deltas:
+            if d['delta'] == 0.0:
+                continue
+            adjustments_log.append({
+                'key': d['key'],
+                'raw_multiplier': round(d['raw'], 3),
+                'delta_pct': round(d['delta'] * 100, 1),
+                'max_delta_pct': d.get('max_delta_pct'),
+                'reason': d['reason'],
+            })
+            influences.append({
+                'key': d['key'],
+                'reason': d['reason'],
+                'multiplier': round(1.0 + d['delta'], 3),
+                'impact_kcal': round(mer * d['delta'], 1),
+            })
+
+        if adjustments_log:
+            result.coefficients_applied['secondary_adjustments'] = adjustments_log
+            result.coefficients_applied['secondary_total_delta_pct'] = round(capped_total * 100, 1)
+
+        mer_adjusted = mer * (1.0 + capped_total)
+        return mer_adjusted
     
     def calculate_rer(self, weight_kg: float, species: str = 'dog') -> float:
         """
         Расчёт базового метаболизма (RER).
         
-        Формула:
-        - Собаки: RER = 70 × (вес_кг)^0.75
-        - Кошки: RER = 70 × (вес_кг)^0.67
+        Формула (NRC 2006, WSAVA, FEDIAF):
+            RER = 70 × (вес_кг)^0.75
+        
+        Единая для собак и кошек. Степень 0.75 отражает аллометрическое
+        масштабирование метаболизма по массе тела (закон Клайбера).
+        Индивидуальные отклонения учитываются через K-коэффициент (MER).
         
         Args:
             weight_kg: Вес животного в кг
-            species: dog или cat
+            species: dog или cat (не влияет на формулу)
             
         Returns:
             RER в ккал/день
@@ -356,15 +410,19 @@ class CalorieCalculatorService:
         if weight_kg <= 0:
             raise ValueError("Вес должен быть положительным")
         
-        # Практика вет-калькуляторов (WSAVA/PNA/Tufts): 70 × (BWkg)^0.75 для собак и кошек.
-        # Отклонения по индивидуальному метаболизму далее учитываются коэффициентами/BCS/кейсами.
         return 70 * (weight_kg ** 0.75)
     
     def calculate_daily_calories(self, pet) -> CalorieResult:
         """
         Расчёт дневной нормы калорий для питомца.
         
-        Формула: MER = RER × K_age × K_neutering × K_activity × K_size × K_coat × K_climate × K_health
+        Алгоритм:
+            1. RER = 70 × (вес_кг)^0.75
+            2. K = один коэффициент по приоритету (болезнь > репродукция > рост > adult/neutering)
+            3. MER = RER × K
+            4. Caps: ограничение MER/RER коридором при BCS >= 7 или критических заболеваниях
+            5. Корректировка: суммарная дельта ±20% max от вторичных факторов
+               (активность, размер, шерсть, климат)
         
         Args:
             pet: Объект Pet
@@ -563,63 +621,38 @@ class CalorieCalculatorService:
 
         mer = result.rer * capped_base
 
-        # Secondary adjustments (ограниченные)
+        # Вторичные корректировки: собираем дельты, суммируем, применяем ОДИН раз.
+        secondary_deltas: List[Dict[str, Any]] = []
+
         base_activity = 1.4 if species == 'dog' else 1.2
         if age_months >= 12:
             activity_raw = k_activity / base_activity
-            mer = self._apply_limited_modifier(
-                mer,
-                activity_raw,
-                'activity',
-                factor_rules,
-                result,
-                influences,
+            secondary_deltas.append(self._collect_secondary_delta(
+                activity_raw, 'activity', factor_rules,
                 reason=activity_meta.get('activity_level') or 'activity'
-            )
+            ))
 
         if species == 'dog' and age_months >= 12:
-            mer = self._apply_limited_modifier(
-                mer,
-                k_size,
-                'size',
-                factor_rules,
-                result,
-                influences,
-                reason='size_category'
-            )
+            secondary_deltas.append(self._collect_secondary_delta(
+                k_size, 'size', factor_rules, reason='size_category'
+            ))
 
         if not base_includes_neuter and age_months >= 12:
             standard_neuter_base = 1.8 if species == 'dog' else 1.4
             neuter_raw = k_neutering / standard_neuter_base
-            mer = self._apply_limited_modifier(
-                mer,
-                neuter_raw,
-                'neutering',
-                factor_rules,
-                result,
-                influences,
-                reason=neutering_reason
-            )
+            secondary_deltas.append(self._collect_secondary_delta(
+                neuter_raw, 'neutering', factor_rules, reason=neutering_reason
+            ))
 
-        mer = self._apply_limited_modifier(
-            mer,
-            k_coat,
-            'coat',
-            factor_rules,
-            result,
-            influences,
-            reason='coat_type'
-        )
+        secondary_deltas.append(self._collect_secondary_delta(
+            k_coat, 'coat', factor_rules, reason='coat_type'
+        ))
 
-        mer = self._apply_limited_modifier(
-            mer,
-            k_climate,
-            'climate',
-            factor_rules,
-            result,
-            influences,
-            reason='climate'
-        )
+        secondary_deltas.append(self._collect_secondary_delta(
+            k_climate, 'climate', factor_rules, reason='climate'
+        ))
+
+        mer = self._apply_secondary_adjustments(mer, secondary_deltas, result, influences)
 
         result.mer = round(mer, 1)
         result.coefficients_applied['mer_rer_ratio'] = round((result.mer / result.rer), 3) if result.rer else None
