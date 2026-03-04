@@ -1,0 +1,4607 @@
+[
+  {
+    "id": 1001,
+    "wcf_code": "DSX",
+    "name_en": "Don Sphynx",
+    "name_ru": "Донской сфинкс",
+    "wcf_category": "HAIRLESS",
+    "country_origin": "Russia",
+    "coat_type": "hairless",
+    "size_category": "medium",
+    "average_lifespan": 14,
+    "activity_level": "high",
+    "grooming_needs": "moderate",
+    "short_description_en": "The Don Sphynx, also known as Donskoy, is a Russian hairless breed with warm, wrinkled skin that can range from completely bald to having a velour-like coat. Unlike the Canadian Sphynx, the Don Sphynx's hairlessness is caused by a dominant gene. These cats are highly social, affectionate, and form strong bonds with their owners. They require regular bathing to maintain healthy skin and need protection from extreme temperatures due to their lack of fur.",
+    "short_description_ru": "Донской сфинкс, также известный как Донской, — российская бесшерстная порода с теплой морщинистой кожей, которая может варьироваться от полностью лысой до велюровой. В отличие от канадского сфинкса, бесшерстность донского вызвана доминантным геном. Эти кошки очень общительны, ласковы и образуют крепкие связи с владельцами. Им требуется регулярное купание для поддержания здоровья кожи и защита от экстремальных температур из-за отсутствия шерсти.",
+    "ideal_weight": {
+      "male": {
+        "min": 4.0,
+        "max": 6.0
+      },
+      "female": {
+        "min": 3.0,
+        "max": 5.0
+      }
+    },
+    "health_risks": [
+      {
+        "condition_code": "skin_conditions",
+        "risk_level": "high"
+      },
+      {
+        "condition_code": "dental_disease",
+        "risk_level": "high"
+      },
+      {
+        "condition_code": "heart_disease",
+        "risk_level": "moderate"
+      }
+    ],
+    "allergy_risks": [
+      {
+        "allergen_code": "cat_fish_protein",
+        "risk_level": "common"
+      },
+      {
+        "allergen_code": "cat_beef_protein",
+        "risk_level": "uncommon"
+      }
+    ],
+    "base_activity_level": "high",
+    "trainability": "moderate"
+  },
+  {
+    "id": 1002,
+    "wcf_code": "PBD",
+    "name_en": "Peterbald",
+    "name_ru": "Петерболд",
+    "wcf_category": "HAIRLESS",
+    "country_origin": "Russia",
+    "coat_type": "hairless",
+    "size_category": "medium",
+    "average_lifespan": 13,
+    "activity_level": "high",
+    "grooming_needs": "moderate",
+    "short_description_en": "The Peterbald is an elegant Russian breed created by crossing the Don Sphynx with Oriental Shorthairs, resulting in a sleek, muscular cat with an elongated head and large ears. Peterbalds can have varying degrees of hairlessness, from completely bald to a short velour coat. They are extremely intelligent, curious, and highly social cats that thrive on human companionship. Their Oriental heritage gives them a graceful, athletic build and a vocal, communicative personality.",
+    "short_description_ru": "Петерболд — элегантная российская порода, созданная путем скрещивания донского сфинкса с ориентальными короткошерстными, что привело к появлению изящной мускулистой кошки с удлиненной головой и большими ушами. Петерболды могут иметь различную степень бесшерстности, от полностью лысых до короткой велюровой шерсти. Это чрезвычайно умные, любопытные и очень общительные кошки, которые процветают в человеческой компании. Их ориентальное наследие придает им грациозное атлетическое телосложение и вокальную коммуникативную личность.",
+    "ideal_weight": {
+      "male": {
+        "min": 3.5,
+        "max": 5.5
+      },
+      "female": {
+        "min": 2.5,
+        "max": 4.5
+      }
+    },
+    "health_risks": [
+      {
+        "condition_code": "skin_conditions",
+        "risk_level": "high"
+      },
+      {
+        "condition_code": "dental_disease",
+        "risk_level": "high"
+      },
+      {
+        "condition_code": "heart_disease",
+        "risk_level": "moderate"
+      }
+    ],
+    "allergy_risks": [
+      {
+        "allergen_code": "cat_fish_protein",
+        "risk_level": "common"
+      },
+      {
+        "allergen_code": "cat_beef_protein",
+        "risk_level": "uncommon"
+      }
+    ],
+    "base_activity_level": "high",
+    "trainability": "moderate"
+  },
+  {
+    "id": 1003,
+    "wcf_code": "SPH",
+    "name_en": "Sphynx",
+    "name_ru": "Сфинкс",
+    "wcf_category": "HAIRLESS",
+    "country_origin": "Canada",
+    "coat_type": "hairless",
+    "size_category": "medium",
+    "average_lifespan": 13,
+    "activity_level": "high",
+    "grooming_needs": "moderate",
+    "short_description_en": "The Sphynx is a distinctive hairless breed known for its warm, suede-like skin and affectionate personality. Despite lacking a traditional coat, Sphynx cats require regular bathing to remove oil buildup on their skin. They are highly energetic, playful, and social cats that love human attention and warmth. Their unique appearance, large ears, and wrinkled skin make them instantly recognizable and beloved by enthusiasts worldwide.",
+    "short_description_ru": "Сфинкс — уникальная бесшерстная порода, известная своей теплой кожей, похожей на замшу, и ласковым характером. Несмотря на отсутствие традиционной шерсти, сфинксы нуждаются в регулярном купании для удаления кожного жира. Это очень энергичные, игривые и общительные кошки, которые любят человеческое внимание и тепло. Их уникальная внешность, большие уши и морщинистая кожа делают их мгновенно узнаваемыми и любимыми энтузиастами по всему миру.",
+    "ideal_weight": {
+      "male": {
+        "min": 3.5,
+        "max": 5.5
+      },
+      "female": {
+        "min": 2.5,
+        "max": 4.0
+      }
+    },
+    "health_risks": [
+      {
+        "condition_code": "skin_conditions",
+        "risk_level": "high"
+      },
+      {
+        "condition_code": "dental_disease",
+        "risk_level": "high"
+      },
+      {
+        "condition_code": "heart_disease",
+        "risk_level": "moderate"
+      }
+    ],
+    "allergy_risks": [
+      {
+        "allergen_code": "cat_fish_protein",
+        "risk_level": "common"
+      },
+      {
+        "allergen_code": "cat_beef_protein",
+        "risk_level": "uncommon"
+      }
+    ],
+    "base_activity_level": "high",
+    "trainability": "moderate"
+  },
+  {
+    "id": 2001,
+    "wcf_code": "BLH",
+    "name_en": "British Longhair",
+    "name_ru": "Британская длинношерстная",
+    "wcf_category": "LONGHAIR",
+    "country_origin": "United Kingdom",
+    "coat_type": "long",
+    "size_category": "large",
+    "average_lifespan": 15,
+    "activity_level": "low",
+    "grooming_needs": "moderate",
+    "short_description_en": "The British Longhair is the semi-longhaired variant of the popular British Shorthair, featuring a plush, dense coat and sturdy build. They have the same round face, chubby cheeks, and copper or blue eyes as their shorthaired cousins. British Longhairs are calm, dignified, and independent cats that enjoy affection on their own terms. Their thick, luxurious coat requires regular brushing but is less prone to matting than other longhaired breeds, making them relatively low-maintenance despite their impressive appearance.",
+    "short_description_ru": "Британская длинношерстная — полудлинношерстный вариант популярной британской короткошерстной с плюшевой густой шерстью и крепким телосложением. У них такое же круглое лицо, пухлые щеки и медные или голубые глаза, как у короткошерстных кузенов. Британские длинношерстные — спокойные, достойные и независимые кошки, которые наслаждаются лаской на своих условиях. Их густая роскошная шерсть требует регулярного расчесывания, но менее склонна к образованию колтунов, чем у других длинношерстных пород, что делает их относительно неприхотливыми несмотря на впечатляющий внешний вид.",
+    "ideal_weight": {
+      "male": {
+        "min": 5.0,
+        "max": 8.0
+      },
+      "female": {
+        "min": 3.5,
+        "max": 6.0
+      }
+    },
+    "health_risks": [
+      {
+        "condition_code": "heart_disease",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "hip_dysplasia",
+        "risk_level": "low"
+      },
+      {
+        "condition_code": "obesity_1",
+        "risk_level": "moderate"
+      }
+    ],
+    "allergy_risks": [
+      {
+        "allergen_code": "cat_fish_protein",
+        "risk_level": "common"
+      },
+      {
+        "allergen_code": "cat_beef_protein",
+        "risk_level": "uncommon"
+      }
+    ],
+    "base_activity_level": "low",
+    "trainability": "moderate"
+  },
+  {
+    "id": 2002,
+    "wcf_code": "DLH",
+    "name_en": "Domestic Longhair",
+    "name_ru": "Домашняя длинношерстная",
+    "wcf_category": "LONGHAIR",
+    "country_origin": "Various",
+    "coat_type": "long",
+    "size_category": "medium",
+    "average_lifespan": 15,
+    "activity_level": "moderate",
+    "grooming_needs": "high",
+    "short_description_en": "The Domestic Longhair is not a specific breed but rather a term for mixed-breed cats with long fur. These cats display a wide variety of colors, patterns, and personalities due to their diverse genetic backgrounds. Despite their non-pedigree status, Domestic Longhairs make wonderful companions and can be just as healthy and affectionate as purebred cats. Their long, flowing coats require regular grooming to prevent matting and maintain their beautiful appearance.",
+    "short_description_ru": "Домашняя длинношерстная — это не конкретная порода, а термин для беспородных кошек с длинной шерстью. Эти кошки демонстрируют широкое разнообразие окрасов, рисунков и характеров благодаря своему разнообразному генетическому происхождению. Несмотря на отсутствие родословной, домашние длинношерстные становятся прекрасными компаньонами и могут быть такими же здоровыми и ласковыми, как породистые кошки. Их длинная струящаяся шерсть требует регулярного ухода для предотвращения колтунов и поддержания красивого внешнего вида.",
+    "ideal_weight": {
+      "male": {
+        "min": 4.0,
+        "max": 7.0
+      },
+      "female": {
+        "min": 3.0,
+        "max": 5.5
+      }
+    },
+    "health_risks": [
+      {
+        "condition_code": "obesity_1",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "flutd",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "dental_disease",
+        "risk_level": "low"
+      }
+    ],
+    "allergy_risks": [
+      {
+        "allergen_code": "cat_fish_protein",
+        "risk_level": "common"
+      },
+      {
+        "allergen_code": "cat_beef_protein",
+        "risk_level": "uncommon"
+      }
+    ],
+    "base_activity_level": "moderate",
+    "trainability": "moderate"
+  },
+  {
+    "id": 2003,
+    "wcf_code": "MIL",
+    "name_en": "Maine Coon Longhair",
+    "name_ru": "Мейн-кун длинношерстный",
+    "wcf_category": "LONGHAIR",
+    "country_origin": "United States",
+    "coat_type": "long",
+    "size_category": "large",
+    "average_lifespan": 13,
+    "activity_level": "moderate",
+    "grooming_needs": "moderate",
+    "short_description_en": "The Maine Coon Longhair variant emphasizes the breed's spectacular long, shaggy coat that is water-resistant and adapted to harsh climates. These gentle giants are among the largest domestic cats, known for their tufted ears, bushy tails, and friendly personalities. Maine Coons are intelligent, playful, and sociable, often described as dog-like in their loyalty and willingness to follow their owners. Despite their impressive coat length, their fur is relatively easy to maintain with regular brushing.",
+    "short_description_ru": "Длинношерстный вариант мейн-куна подчеркивает впечатляющую длинную лохматую шерсть породы, которая водоотталкивающая и адаптирована к суровому климату. Эти нежные гиганты входят в число самых крупных домашних кошек, известных своими кисточками на ушах, пушистыми хвостами и дружелюбным характером. Мейн-куны умны, игривы и общительны, их часто описывают как собачьих в своей преданности и готовности следовать за владельцами. Несмотря на впечатляющую длину шерсти, их мех относительно прост в уходе при регулярном расчесывании.",
+    "ideal_weight": {
+      "male": {
+        "min": 6.5,
+        "max": 11.0
+      },
+      "female": {
+        "min": 4.5,
+        "max": 7.0
+      }
+    },
+    "health_risks": [
+      {
+        "condition_code": "heart_disease",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "hip_dysplasia",
+        "risk_level": "low"
+      },
+      {
+        "condition_code": "obesity_1",
+        "risk_level": "moderate"
+      }
+    ],
+    "allergy_risks": [
+      {
+        "allergen_code": "cat_fish_protein",
+        "risk_level": "common"
+      },
+      {
+        "allergen_code": "cat_beef_protein",
+        "risk_level": "uncommon"
+      }
+    ],
+    "base_activity_level": "moderate",
+    "trainability": "moderate"
+  },
+  {
+    "id": 2004,
+    "wcf_code": "PER",
+    "name_en": "Persian",
+    "name_ru": "Персидская",
+    "wcf_category": "LONGHAIR",
+    "country_origin": "Iran",
+    "coat_type": "long",
+    "size_category": "medium",
+    "average_lifespan": 14,
+    "activity_level": "low",
+    "grooming_needs": "high",
+    "short_description_en": "The Persian is one of the oldest and most popular cat breeds, famous for its long, luxurious coat and sweet, gentle temperament. With a distinctive flat face, large round eyes, and stocky build, Persians are calm, laid-back companions who prefer a quiet, stable environment. Their beautiful flowing coat requires daily grooming to prevent matting and tangles. Persians are perfect for those seeking an affectionate, low-energy indoor cat that enjoys lounging and peaceful companionship.",
+    "short_description_ru": "Персидская кошка — одна из старейших и самых популярных пород, знаменитая своей длинной роскошной шерстью и нежным, спокойным характером. С характерной плоской мордочкой, большими круглыми глазами и коренастым телосложением персы — спокойные, расслабленные компаньоны, предпочитающие тихую стабильную обстановку. Их красивая струящаяся шерсть требует ежедневного ухода для предотвращения колтунов и спутывания. Персы идеальны для тех, кто ищет ласковую, малоактивную домашнюю кошку, любящую отдых и спокойное общение.",
+    "ideal_weight": {
+      "male": {
+        "min": 4.0,
+        "max": 7.0
+      },
+      "female": {
+        "min": 3.0,
+        "max": 5.5
+      }
+    },
+    "health_risks": [
+      {
+        "condition_code": "obesity_1",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "flutd",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "dental_disease",
+        "risk_level": "low"
+      }
+    ],
+    "allergy_risks": [
+      {
+        "allergen_code": "cat_fish_protein",
+        "risk_level": "common"
+      },
+      {
+        "allergen_code": "cat_beef_protein",
+        "risk_level": "uncommon"
+      }
+    ],
+    "base_activity_level": "low",
+    "trainability": "moderate"
+  },
+  {
+    "id": 2005,
+    "wcf_code": "SFL",
+    "name_en": "Scottish Fold Longhair",
+    "name_ru": "Шотландская вислоухая длинношерстная",
+    "wcf_category": "LONGHAIR",
+    "country_origin": "Scotland",
+    "coat_type": "long",
+    "size_category": "medium",
+    "average_lifespan": 14,
+    "activity_level": "moderate",
+    "grooming_needs": "moderate",
+    "short_description_en": "The Scottish Fold Longhair, also known as Highland Fold, is distinguished by its unique folded ears and semi-long, plush coat. These cats have round faces with large, expressive eyes that give them an owl-like appearance. Scottish Fold Longhairs are gentle, sweet-natured, and moderately playful, making excellent family pets. They adapt well to different living situations and get along with children and other pets. Their medium-length coat requires regular brushing but is less demanding than fully longhaired breeds.",
+    "short_description_ru": "Шотландская вислоухая длинношерстная, также известная как хайленд-фолд, отличается уникальными загнутыми ушами и полудлинной плюшевой шерстью. У этих кошек круглые мордочки с большими выразительными глазами, придающими им совиный вид. Шотландские вислоухие длинношерстные нежны, добродушны и умеренно игривы, что делает их отличными семейными питомцами. Они хорошо адаптируются к различным условиям жизни и ладят с детьми и другими животными. Их средней длины шерсть требует регулярного расчесывания, но менее требовательна, чем у полностью длинношерстных пород.",
+    "ideal_weight": {
+      "male": {
+        "min": 4.0,
+        "max": 6.0
+      },
+      "female": {
+        "min": 2.7,
+        "max": 4.5
+      }
+    },
+    "health_risks": [
+      {
+        "condition_code": "obesity_1",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "flutd",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "dental_disease",
+        "risk_level": "low"
+      }
+    ],
+    "allergy_risks": [
+      {
+        "allergen_code": "cat_fish_protein",
+        "risk_level": "common"
+      },
+      {
+        "allergen_code": "cat_beef_protein",
+        "risk_level": "uncommon"
+      }
+    ],
+    "base_activity_level": "moderate",
+    "trainability": "moderate"
+  },
+  {
+    "id": 2006,
+    "wcf_code": "SRL",
+    "name_en": "Selkirk Rex Longhair",
+    "name_ru": "Селкирк-рекс длинношерстный",
+    "wcf_category": "LONGHAIR",
+    "country_origin": "United States",
+    "coat_type": "long",
+    "size_category": "large",
+    "average_lifespan": 14,
+    "activity_level": "moderate",
+    "grooming_needs": "high",
+    "short_description_en": "The Selkirk Rex Longhair is unique among rex breeds with its long, luxuriously curly coat that gives it a plush, teddy bear-like appearance. Unlike other rex breeds, the Selkirk has a dominant curly gene affecting both guard hairs and undercoat. These cats are patient, tolerant, and affectionate, making them excellent family companions. Their curly coat requires regular grooming to prevent matting and maintain its distinctive texture. Selkirk Rex are known for their laid-back, easygoing personalities.",
+    "short_description_ru": "Селкирк-рекс длинношерстный уникален среди рексовых пород своей длинной роскошно кудрявой шерстью, придающей ему плюшевый вид плюшевого медведя. В отличие от других рексовых пород, у селкирка доминантный ген курчавости, влияющий как на остевые волосы, так и на подшерсток. Эти кошки терпеливы, толерантны и ласковы, что делает их отличными семейными компаньонами. Их кудрявая шерсть требует регулярного ухода для предотвращения колтунов и поддержания характерной текстуры. Селкирк-рексы известны своим спокойным, покладистым характером.",
+    "ideal_weight": {
+      "male": {
+        "min": 5.0,
+        "max": 7.5
+      },
+      "female": {
+        "min": 3.5,
+        "max": 5.5
+      }
+    },
+    "health_risks": [
+      {
+        "condition_code": "heart_disease",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "hip_dysplasia",
+        "risk_level": "low"
+      },
+      {
+        "condition_code": "obesity_1",
+        "risk_level": "moderate"
+      }
+    ],
+    "allergy_risks": [
+      {
+        "allergen_code": "cat_fish_protein",
+        "risk_level": "common"
+      },
+      {
+        "allergen_code": "cat_beef_protein",
+        "risk_level": "uncommon"
+      }
+    ],
+    "base_activity_level": "moderate",
+    "trainability": "moderate"
+  },
+  {
+    "id": 2007,
+    "wcf_code": "TLH",
+    "name_en": "Turkish Angora Longhair",
+    "name_ru": "Турецкая ангора длинношерстная",
+    "wcf_category": "LONGHAIR",
+    "country_origin": "Turkey",
+    "coat_type": "long",
+    "size_category": "medium",
+    "average_lifespan": 15,
+    "activity_level": "high",
+    "grooming_needs": "moderate",
+    "short_description_en": "The Turkish Angora is an ancient natural breed known for its silky, flowing coat and elegant, athletic build. These cats are highly intelligent, active, and playful, often asserting themselves as the center of attention in their households. Turkish Angoras form strong bonds with their families and can be quite vocal in their communication. Despite their long coat, their single-layer fur is relatively easy to groom and less prone to matting than double-coated breeds.",
+    "short_description_ru": "Турецкая ангора — древняя натуральная порода, известная своей шелковистой струящейся шерстью и элегантным атлетическим телосложением. Эти кошки очень умны, активны и игривы, часто утверждая себя в центре внимания в своих семьях. Турецкие ангоры формируют крепкие связи со своими семьями и могут быть довольно вокальными в общении. Несмотря на длинную шерсть, их однослойный мех относительно прост в уходе и менее склонен к образованию колтунов, чем у пород с двойной шерстью.",
+    "ideal_weight": {
+      "male": {
+        "min": 3.5,
+        "max": 5.5
+      },
+      "female": {
+        "min": 2.5,
+        "max": 4.0
+      }
+    },
+    "health_risks": [
+      {
+        "condition_code": "obesity_1",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "flutd",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "dental_disease",
+        "risk_level": "low"
+      }
+    ],
+    "allergy_risks": [
+      {
+        "allergen_code": "cat_fish_protein",
+        "risk_level": "common"
+      },
+      {
+        "allergen_code": "cat_beef_protein",
+        "risk_level": "uncommon"
+      }
+    ],
+    "base_activity_level": "high",
+    "trainability": "moderate"
+  },
+  {
+    "id": 3001,
+    "wcf_code": "ACL",
+    "name_en": "Asian Longhair",
+    "name_ru": "Азиатская длинношерстная",
+    "wcf_category": "SEMI_LONGHAIR",
+    "country_origin": "United Kingdom",
+    "coat_type": "semi_long",
+    "size_category": "medium",
+    "average_lifespan": 14,
+    "activity_level": "moderate",
+    "grooming_needs": "moderate",
+    "short_description_en": "The Asian Longhair, also known as Tiffanie, is the semi-longhaired variety of the Asian cat group. Developed from Burmese breeding programs, these cats have silky, medium-length coats and elegant builds. Asian Longhairs are gentle, affectionate, and sociable cats that enjoy human companionship and adapt well to family life. They are less vocal than their Burmese relatives but equally devoted and playful. Their semi-long coat is relatively low-maintenance, requiring brushing a few times per week.",
+    "short_description_ru": "Азиатская длинношерстная, также известная как Тиффани, является полудлинношерстной разновидностью азиатской группы кошек. Выведенные из программ разведения бурманских кошек, эти кошки имеют шелковистую шерсть средней длины и элегантное телосложение. Азиатские длинношерстные — нежные, ласковые и общительные кошки, которые наслаждаются человеческой компанией и хорошо адаптируются к семейной жизни. Они менее вокальны, чем их бурманские родственники, но столь же преданы и игривы. Их полудлинная шерсть относительно неприхотлива в уходе, требуя расчесывания несколько раз в неделю.",
+    "ideal_weight": {
+      "male": {
+        "min": 4.0,
+        "max": 6.0
+      },
+      "female": {
+        "min": 3.0,
+        "max": 5.0
+      }
+    },
+    "health_risks": [
+      {
+        "condition_code": "obesity_1",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "flutd",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "dental_disease",
+        "risk_level": "low"
+      }
+    ],
+    "allergy_risks": [
+      {
+        "allergen_code": "cat_fish_protein",
+        "risk_level": "common"
+      },
+      {
+        "allergen_code": "cat_beef_protein",
+        "risk_level": "uncommon"
+      }
+    ],
+    "base_activity_level": "moderate",
+    "trainability": "moderate"
+  },
+  {
+    "id": 3002,
+    "wcf_code": "ABL",
+    "name_en": "American Bobtail Longhair",
+    "name_ru": "Американский бобтейл длинношерстный",
+    "wcf_category": "SEMI_LONGHAIR",
+    "country_origin": "United States",
+    "coat_type": "semi_long",
+    "size_category": "large",
+    "average_lifespan": 13,
+    "activity_level": "moderate",
+    "grooming_needs": "moderate",
+    "short_description_en": "The American Bobtail Longhair is a naturally occurring breed distinguished by its shortened, bobbed tail and shaggy, semi-long coat. These cats have a wild appearance but gentle, dog-like personalities, often enjoying games of fetch and walks on leashes. American Bobtails are intelligent, adaptable, and form strong bonds with their families. Their dense, water-resistant coat requires regular brushing but is surprisingly low-maintenance. They are known for their therapeutic presence and are often used as therapy animals.",
+    "short_description_ru": "Американский бобтейл длинношерстный — естественно возникшая порода, отличающаяся укороченным купированным хвостом и лохматой полудлинной шерстью. У этих кошек дикий внешний вид, но нежный, собачий характер, они часто наслаждаются играми в апорт и прогулками на поводке. Американские бобтейлы умны, адаптивны и формируют крепкие связи со своими семьями. Их густая водоотталкивающая шерсть требует регулярного расчесывания, но удивительно неприхотлива в уходе. Они известны своим терапевтическим присутствием и часто используются в качестве животных для терапии.",
+    "ideal_weight": {
+      "male": {
+        "min": 5.5,
+        "max": 7.5
+      },
+      "female": {
+        "min": 3.5,
+        "max": 5.5
+      }
+    },
+    "health_risks": [
+      {
+        "condition_code": "heart_disease",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "hip_dysplasia",
+        "risk_level": "low"
+      },
+      {
+        "condition_code": "obesity_1",
+        "risk_level": "moderate"
+      }
+    ],
+    "allergy_risks": [
+      {
+        "allergen_code": "cat_fish_protein",
+        "risk_level": "common"
+      },
+      {
+        "allergen_code": "cat_beef_protein",
+        "risk_level": "uncommon"
+      }
+    ],
+    "base_activity_level": "moderate",
+    "trainability": "moderate"
+  },
+  {
+    "id": 3003,
+    "wcf_code": "APL",
+    "name_en": "Aphrodite Giant",
+    "name_ru": "Афродита гигантская",
+    "wcf_category": "SEMI_LONGHAIR",
+    "country_origin": "Cyprus",
+    "coat_type": "semi_long",
+    "size_category": "large",
+    "average_lifespan": 14,
+    "activity_level": "moderate",
+    "grooming_needs": "moderate",
+    "short_description_en": "The Aphrodite Giant is a large, natural breed from Cyprus with a semi-long, silky coat and muscular build. These cats are known for their gentle, affectionate nature despite their impressive size. Aphrodite Giants are highly social, intelligent, and adaptable, making them excellent family companions. They have a slow maturation rate, reaching full size at 3-4 years old. Their coat is relatively easy to maintain with weekly brushing, and they are generally healthy with few breed-specific health issues.",
+    "short_description_ru": "Афродита гигантская — крупная натуральная порода с Кипра с полудлинной шелковистой шерстью и мускулистым телосложением. Эти кошки известны своим нежным ласковым характером, несмотря на впечатляющий размер. Афродиты гигантские очень общительны, умны и адаптивны, что делает их отличными семейными компаньонами. У них медленная скорость созревания, достигающая полного размера в 3-4 года. Их шерсть относительно проста в уходе при еженедельном расчесывании, и они обычно здоровы с немногими породными проблемами со здоровьем.",
+    "ideal_weight": {
+      "male": {
+        "min": 6.0,
+        "max": 11.0
+      },
+      "female": {
+        "min": 4.0,
+        "max": 7.0
+      }
+    },
+    "health_risks": [
+      {
+        "condition_code": "heart_disease",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "hip_dysplasia",
+        "risk_level": "low"
+      },
+      {
+        "condition_code": "obesity_1",
+        "risk_level": "moderate"
+      }
+    ],
+    "allergy_risks": [
+      {
+        "allergen_code": "cat_fish_protein",
+        "risk_level": "common"
+      },
+      {
+        "allergen_code": "cat_beef_protein",
+        "risk_level": "uncommon"
+      }
+    ],
+    "base_activity_level": "moderate",
+    "trainability": "moderate"
+  },
+  {
+    "id": 3004,
+    "wcf_code": "CAM",
+    "name_en": "Chartreux",
+    "name_ru": "Шартрез",
+    "wcf_category": "SEMI_LONGHAIR",
+    "country_origin": "France",
+    "coat_type": "semi_long",
+    "size_category": "large",
+    "average_lifespan": 15,
+    "activity_level": "moderate",
+    "grooming_needs": "low",
+    "short_description_en": "The Chartreux is an ancient French breed with a distinctive blue-gray woolly coat and copper or gold eyes. These robust, muscular cats are known for their quiet, gentle nature and sweet smiling expression. Chartreux are intelligent and observant, often described as dog-like in their devotion to their families. Despite their plush double coat, they are relatively low-maintenance and shed minimally. They are adaptable, patient with children, and make excellent companions for various household types.",
+    "short_description_ru": "Шартрез — древняя французская порода с характерной сине-серой шерстяной шерстью и медными или золотыми глазами. Эти крепкие мускулистые кошки известны своим тихим нежным характером и милой улыбающейся мордочкой. Шартрезы умны и наблюдательны, их часто описывают как собачьих в своей преданности семьям. Несмотря на плюшевую двойную шерсть, они относительно неприхотливы в уходе и линяют минимально. Они адаптивны, терпеливы с детьми и становятся отличными компаньонами для различных типов домохозяйств.",
+    "ideal_weight": {
+      "male": {
+        "min": 5.0,
+        "max": 7.5
+      },
+      "female": {
+        "min": 3.0,
+        "max": 5.0
+      }
+    },
+    "health_risks": [
+      {
+        "condition_code": "heart_disease",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "hip_dysplasia",
+        "risk_level": "low"
+      },
+      {
+        "condition_code": "obesity_1",
+        "risk_level": "moderate"
+      }
+    ],
+    "allergy_risks": [
+      {
+        "allergen_code": "cat_fish_protein",
+        "risk_level": "common"
+      },
+      {
+        "allergen_code": "cat_beef_protein",
+        "risk_level": "uncommon"
+      }
+    ],
+    "base_activity_level": "moderate",
+    "trainability": "moderate"
+  },
+  {
+    "id": 3005,
+    "wcf_code": "CYM",
+    "name_en": "Cymric",
+    "name_ru": "Кимрик",
+    "wcf_category": "SEMI_LONGHAIR",
+    "country_origin": "Isle of Man",
+    "coat_type": "semi_long",
+    "size_category": "medium",
+    "average_lifespan": 14,
+    "activity_level": "moderate",
+    "grooming_needs": "moderate",
+    "short_description_en": "The Cymric is the longhaired variant of the Manx, known for its rounded appearance and lack of a tail or shortened tail. These cats have a thick, double coat that gives them a plush, rabbit-like look. Cymrics are intelligent, playful, and social cats that form strong bonds with their families. They are excellent jumpers despite their tailless state and are known for their dog-like loyalty. Their semi-long coat requires regular brushing to prevent matting, especially during seasonal shedding.",
+    "short_description_ru": "Кимрик — длинношерстный вариант мэнкса, известный своей округлой внешностью и отсутствием хвоста или укороченным хвостом. У этих кошек густая двойная шерсть, придающая им плюшевый, кроличий вид. Кимрики умны, игривы и общительны, формируют крепкие связи со своими семьями. Они отличные прыгуны, несмотря на бесхвостое состояние, и известны своей собачьей преданностью. Их полудлинная шерсть требует регулярного расчесывания для предотвращения колтунов, особенно во время сезонной линьки.",
+    "ideal_weight": {
+      "male": {
+        "min": 4.5,
+        "max": 6.0
+      },
+      "female": {
+        "min": 3.5,
+        "max": 5.0
+      }
+    },
+    "health_risks": [
+      {
+        "condition_code": "obesity_1",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "flutd",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "dental_disease",
+        "risk_level": "low"
+      }
+    ],
+    "allergy_risks": [
+      {
+        "allergen_code": "cat_fish_protein",
+        "risk_level": "common"
+      },
+      {
+        "allergen_code": "cat_beef_protein",
+        "risk_level": "uncommon"
+      }
+    ],
+    "base_activity_level": "moderate",
+    "trainability": "moderate"
+  },
+  {
+    "id": 3006,
+    "wcf_code": "HPL",
+    "name_en": "Highlander Longhair",
+    "name_ru": "Хайлендер длинношерстный",
+    "wcf_category": "SEMI_LONGHAIR",
+    "country_origin": "United States",
+    "coat_type": "semi_long",
+    "size_category": "large",
+    "average_lifespan": 13,
+    "activity_level": "high",
+    "grooming_needs": "moderate",
+    "short_description_en": "The Highlander Longhair is a distinctive breed with curled ears, a shortened tail, and a powerful, muscular build. These cats have a wild appearance but are gentle, playful, and highly social. Highlanders are known for their love of water and their dog-like personalities, often following their owners around the house. Their semi-long coat is surprisingly low-maintenance and doesn't mat easily. They are energetic, intelligent cats that enjoy interactive play and learning tricks.",
+    "short_description_ru": "Хайлендер длинношерстный — характерная порода с закрученными ушами, укороченным хвостом и мощным мускулистым телосложением. У этих кошек дикий внешний вид, но они нежны, игривы и очень общительны. Хайлендеры известны своей любовью к воде и собачьими личностями, часто следуя за владельцами по дому. Их полудлинная шерсть удивительно неприхотлива в уходе и не спутывается легко. Это энергичные умные кошки, которые наслаждаются интерактивной игрой и изучением трюков.",
+    "ideal_weight": {
+      "male": {
+        "min": 6.0,
+        "max": 11.0
+      },
+      "female": {
+        "min": 4.5,
+        "max": 7.5
+      }
+    },
+    "health_risks": [
+      {
+        "condition_code": "heart_disease",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "hip_dysplasia",
+        "risk_level": "low"
+      },
+      {
+        "condition_code": "obesity_1",
+        "risk_level": "moderate"
+      }
+    ],
+    "allergy_risks": [
+      {
+        "allergen_code": "cat_fish_protein",
+        "risk_level": "common"
+      },
+      {
+        "allergen_code": "cat_beef_protein",
+        "risk_level": "uncommon"
+      }
+    ],
+    "base_activity_level": "high",
+    "trainability": "moderate"
+  },
+  {
+    "id": 3007,
+    "wcf_code": "JBL",
+    "name_en": "Japanese Bobtail Longhair",
+    "name_ru": "Японский бобтейл длинношерстный",
+    "wcf_category": "SEMI_LONGHAIR",
+    "country_origin": "Japan",
+    "coat_type": "semi_long",
+    "size_category": "medium",
+    "average_lifespan": 15,
+    "activity_level": "high",
+    "grooming_needs": "moderate",
+    "short_description_en": "The Japanese Bobtail Longhair is an ancient breed from Japan with a distinctive pom-pom tail and silky, semi-long coat. These cats are highly active, intelligent, and vocal, often carrying on conversations with their owners. Japanese Bobtails are social, adaptable, and excellent with children and other pets. Their coat, despite its length, has minimal undercoat and doesn't mat easily, making grooming relatively simple. They are considered good luck symbols in Japanese culture.",
+    "short_description_ru": "Японский бобтейл длинношерстный — древняя порода из Японии с характерным помпоновым хвостом и шелковистой полудлинной шерстью. Эти кошки очень активны, умны и вокальны, часто ведут разговоры с владельцами. Японские бобтейлы общительны, адаптивны и отлично ладят с детьми и другими животными. Их шерсть, несмотря на длину, имеет минимальный подшерсток и не спутывается легко, делая уход относительно простым. Они считаются символами удачи в японской культуре.",
+    "ideal_weight": {
+      "male": {
+        "min": 3.5,
+        "max": 5.0
+      },
+      "female": {
+        "min": 2.5,
+        "max": 4.0
+      }
+    },
+    "health_risks": [
+      {
+        "condition_code": "obesity_1",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "flutd",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "dental_disease",
+        "risk_level": "low"
+      }
+    ],
+    "allergy_risks": [
+      {
+        "allergen_code": "cat_fish_protein",
+        "risk_level": "common"
+      },
+      {
+        "allergen_code": "cat_beef_protein",
+        "risk_level": "uncommon"
+      }
+    ],
+    "base_activity_level": "high",
+    "trainability": "moderate"
+  },
+  {
+    "id": 3008,
+    "wcf_code": "KAL",
+    "name_en": "Karelian Bobtail Longhair",
+    "name_ru": "Карельский бобтейл длинношерстный",
+    "wcf_category": "SEMI_LONGHAIR",
+    "country_origin": "Russia",
+    "coat_type": "semi_long",
+    "size_category": "medium",
+    "average_lifespan": 15,
+    "activity_level": "moderate",
+    "grooming_needs": "moderate",
+    "short_description_en": "The Karelian Bobtail Longhair is a natural breed from the Karelia region with a short, pom-pom tail and dense semi-long coat. These cats are calm, friendly, and adaptable, making them excellent family companions. Karelian Bobtails are known for their quiet nature and gentle personalities, rarely being overly vocal. Their thick coat protects them from harsh climates and requires regular brushing to maintain its condition. They are generally healthy, hardy cats with few genetic health issues.",
+    "short_description_ru": "Карельский бобтейл длинношерстный — натуральная порода из региона Карелии с коротким помпоновым хвостом и густой полудлинной шерстью. Эти кошки спокойны, дружелюбны и адаптивны, что делает их отличными семейными компаньонами. Карельские бобтейлы известны своим тихим характером и нежными личностями, редко будучи чрезмерно вокальными. Их густая шерсть защищает их от сурового климата и требует регулярного расчесывания для поддержания состояния. Они обычно здоровые выносливые кошки с немногими генетическими проблемами со здоровьем.",
+    "ideal_weight": {
+      "male": {
+        "min": 4.0,
+        "max": 6.0
+      },
+      "female": {
+        "min": 3.0,
+        "max": 5.0
+      }
+    },
+    "health_risks": [
+      {
+        "condition_code": "obesity_1",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "flutd",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "dental_disease",
+        "risk_level": "low"
+      }
+    ],
+    "allergy_risks": [
+      {
+        "allergen_code": "cat_fish_protein",
+        "risk_level": "common"
+      },
+      {
+        "allergen_code": "cat_beef_protein",
+        "risk_level": "uncommon"
+      }
+    ],
+    "base_activity_level": "moderate",
+    "trainability": "moderate"
+  },
+  {
+    "id": 3009,
+    "wcf_code": "KBL",
+    "name_en": "Kurilian Bobtail Longhair",
+    "name_ru": "Курильский бобтейл длинношерстный",
+    "wcf_category": "SEMI_LONGHAIR",
+    "country_origin": "Russia",
+    "coat_type": "semi_long",
+    "size_category": "large",
+    "average_lifespan": 15,
+    "activity_level": "high",
+    "grooming_needs": "moderate",
+    "short_description_en": "The Kurilian Bobtail Longhair is a natural breed from the Kuril Islands, distinguished by its fluffy pom-pom tail and thick, weather-resistant coat. These cats are excellent hunters and swimmers, retaining strong wild instincts. Kurilian Bobtails are intelligent, playful, and form deep bonds with their families, often displaying dog-like devotion. Their semi-long coat is relatively easy to maintain despite its density. They are generally healthy, robust cats adapted to harsh climates.",
+    "short_description_ru": "Курильский бобтейл длинношерстный — натуральная порода с Курильских островов, отличающаяся пушистым помпоновым хвостом и густой устойчивой к погоде шерстью. Эти кошки отличные охотники и пловцы, сохраняющие сильные дикие инстинкты. Курильские бобтейлы умны, игривы и формируют глубокие связи со своими семьями, часто проявляя собачью преданность. Их полудлинная шерсть относительно проста в уходе, несмотря на плотность. Они обычно здоровые крепкие кошки, адаптированные к суровому климату.",
+    "ideal_weight": {
+      "male": {
+        "min": 5.5,
+        "max": 7.5
+      },
+      "female": {
+        "min": 3.5,
+        "max": 5.5
+      }
+    },
+    "health_risks": [
+      {
+        "condition_code": "heart_disease",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "hip_dysplasia",
+        "risk_level": "low"
+      },
+      {
+        "condition_code": "obesity_1",
+        "risk_level": "moderate"
+      }
+    ],
+    "allergy_risks": [
+      {
+        "allergen_code": "cat_fish_protein",
+        "risk_level": "common"
+      },
+      {
+        "allergen_code": "cat_beef_protein",
+        "risk_level": "uncommon"
+      }
+    ],
+    "base_activity_level": "high",
+    "trainability": "moderate"
+  },
+  {
+    "id": 3010,
+    "wcf_code": "LPL",
+    "name_en": "LaPerm Longhair",
+    "name_ru": "ЛаПерм длинношерстный",
+    "wcf_category": "SEMI_LONGHAIR",
+    "country_origin": "United States",
+    "coat_type": "semi_long",
+    "size_category": "medium",
+    "average_lifespan": 14,
+    "activity_level": "high",
+    "grooming_needs": "moderate",
+    "short_description_en": "The LaPerm Longhair is a distinctive breed known for its soft, curly coat that can range from loose waves to tight ringlets. These cats are affectionate, people-oriented, and highly interactive, often seeking physical contact with their owners. LaPerms are intelligent and curious, enjoying puzzle toys and interactive play. Their unique coat is surprisingly low-maintenance and sheds less than straight-coated breeds. They are generally healthy with a gentle, inquisitive personality.",
+    "short_description_ru": "ЛаПерм длинношерстный — характерная порода, известная своей мягкой кудрявой шерстью, которая может варьироваться от свободных волн до тугих локонов. Эти кошки ласковы, ориентированы на людей и очень интерактивны, часто ищущие физического контакта с владельцами. ЛаПермы умны и любопытны, наслаждаясь головоломками и интерактивной игрой. Их уникальная шерсть удивительно неприхотлива в уходе и линяет меньше, чем породы с прямой шерстью. Они обычно здоровы с нежной любознательной личностью.",
+    "ideal_weight": {
+      "male": {
+        "min": 3.5,
+        "max": 5.5
+      },
+      "female": {
+        "min": 2.5,
+        "max": 4.5
+      }
+    },
+    "health_risks": [
+      {
+        "condition_code": "obesity_1",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "flutd",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "dental_disease",
+        "risk_level": "low"
+      }
+    ],
+    "allergy_risks": [
+      {
+        "allergen_code": "cat_fish_protein",
+        "risk_level": "common"
+      },
+      {
+        "allergen_code": "cat_beef_protein",
+        "risk_level": "uncommon"
+      }
+    ],
+    "base_activity_level": "high",
+    "trainability": "moderate"
+  },
+  {
+    "id": 3011,
+    "wcf_code": "MCO",
+    "name_en": "Maine Coon",
+    "name_ru": "Мейн-кун",
+    "wcf_category": "SEMI_LONGHAIR",
+    "country_origin": "United States",
+    "coat_type": "semi_long",
+    "size_category": "large",
+    "average_lifespan": 13,
+    "activity_level": "moderate",
+    "grooming_needs": "moderate",
+    "short_description_en": "The Maine Coon is one of the largest domestic cat breeds, originating from North America with a distinctive shaggy coat and tufted ears. Known as gentle giants, they have friendly, sociable personalities and get along well with children and other pets. Their semi-long, water-resistant coat is relatively low-maintenance despite its impressive appearance. Maine Coons are intelligent, playful, and retain kitten-like behavior well into adulthood, making them wonderful family companions with their dog-like loyalty and affectionate nature.",
+    "short_description_ru": "Мейн-кун — одна из крупнейших пород домашних кошек, происходящая из Северной Америки с характерной лохматой шерстью и кисточками на ушах. Известные как нежные гиганты, они обладают дружелюбным, общительным характером и хорошо ладят с детьми и другими животными. Их полудлинная водоотталкивающая шерсть относительно неприхотлива в уходе, несмотря на впечатляющий внешний вид. Мейн-куны умны, игривы и сохраняют котячье поведение до зрелого возраста, что делает их прекрасными семейными компаньонами с собачьей преданностью и ласковым характером.",
+    "ideal_weight": {
+      "male": {
+        "min": 6.0,
+        "max": 11.0
+      },
+      "female": {
+        "min": 4.0,
+        "max": 6.5
+      }
+    },
+    "health_risks": [
+      {
+        "condition_code": "heart_disease",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "hip_dysplasia",
+        "risk_level": "low"
+      },
+      {
+        "condition_code": "obesity_1",
+        "risk_level": "moderate"
+      }
+    ],
+    "allergy_risks": [
+      {
+        "allergen_code": "cat_fish_protein",
+        "risk_level": "common"
+      },
+      {
+        "allergen_code": "cat_beef_protein",
+        "risk_level": "uncommon"
+      }
+    ],
+    "base_activity_level": "moderate",
+    "trainability": "moderate"
+  },
+  {
+    "id": 3012,
+    "wcf_code": "MNL",
+    "name_en": "Munchkin Longhair",
+    "name_ru": "Манчкин длинношерстный",
+    "wcf_category": "SEMI_LONGHAIR",
+    "country_origin": "United States",
+    "coat_type": "semi_long",
+    "size_category": "small",
+    "average_lifespan": 13,
+    "activity_level": "high",
+    "grooming_needs": "moderate",
+    "short_description_en": "The Munchkin Longhair is characterized by its distinctively short legs caused by a natural genetic mutation, combined with a silky semi-long coat. Despite their short stature, these cats are surprisingly agile and playful, with no mobility issues. Munchkins are outgoing, confident, and social cats that enjoy interactive play and human companionship. Their plush coat requires regular brushing to maintain its condition. They are generally healthy and adapt well to various living situations.",
+    "short_description_ru": "Манчкин длинношерстный характеризуется своими характерно короткими ногами, вызванными естественной генетической мутацией, в сочетании с шелковистой полудлинной шерстью. Несмотря на низкий рост, эти кошки удивительно проворны и игривы, без проблем с мобильностью. Манчкины общительны, уверены в себе и социальны, наслаждаются интерактивной игрой и человеческим обществом. Их плюшевая шерсть требует регулярного расчесывания для поддержания состояния. Они обычно здоровы и хорошо адаптируются к различным условиям жизни.",
+    "ideal_weight": {
+      "male": {
+        "min": 3.0,
+        "max": 4.5
+      },
+      "female": {
+        "min": 2.0,
+        "max": 3.5
+      }
+    },
+    "health_risks": [
+      {
+        "condition_code": "dental_disease",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "hyperthyroidism",
+        "risk_level": "low"
+      }
+    ],
+    "allergy_risks": [
+      {
+        "allergen_code": "cat_fish_protein",
+        "risk_level": "common"
+      },
+      {
+        "allergen_code": "cat_beef_protein",
+        "risk_level": "uncommon"
+      }
+    ],
+    "base_activity_level": "high",
+    "trainability": "moderate"
+  },
+  {
+    "id": 3013,
+    "wcf_code": "NEB",
+    "name_en": "Nebelung",
+    "name_ru": "Нибелунг",
+    "wcf_category": "SEMI_LONGHAIR",
+    "country_origin": "United States",
+    "coat_type": "semi_long",
+    "size_category": "medium",
+    "average_lifespan": 16,
+    "activity_level": "moderate",
+    "grooming_needs": "moderate",
+    "short_description_en": "The Nebelung is a rare breed that resembles a longhaired Russian Blue with a silky, blue-gray coat and vivid green eyes. These cats are gentle, quiet, and somewhat reserved with strangers but deeply devoted to their families. Nebelungs are intelligent and playful, though less boisterous than some breeds. Their semi-long coat has a shimmering quality and requires moderate grooming. They thrive in calm, stable environments and form strong bonds with their chosen people.",
+    "short_description_ru": "Нибелунг — редкая порода, напоминающая длинношерстную русскую голубую с шелковистой сине-серой шерстью и яркими зелеными глазами. Эти кошки нежны, тихи и несколько сдержанны с незнакомцами, но глубоко преданы своим семьям. Нибелунги умны и игривы, хотя менее буйны, чем некоторые породы. Их полудлинная шерсть имеет мерцающее качество и требует умеренного ухода. Они процветают в спокойной стабильной обстановке и формируют крепкие связи со своими выбранными людьми.",
+    "ideal_weight": {
+      "male": {
+        "min": 4.5,
+        "max": 6.5
+      },
+      "female": {
+        "min": 3.0,
+        "max": 5.0
+      }
+    },
+    "health_risks": [
+      {
+        "condition_code": "obesity_1",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "flutd",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "dental_disease",
+        "risk_level": "low"
+      }
+    ],
+    "allergy_risks": [
+      {
+        "allergen_code": "cat_fish_protein",
+        "risk_level": "common"
+      },
+      {
+        "allergen_code": "cat_beef_protein",
+        "risk_level": "uncommon"
+      }
+    ],
+    "base_activity_level": "moderate",
+    "trainability": "moderate"
+  },
+  {
+    "id": 3014,
+    "wcf_code": "NFO",
+    "name_en": "Norwegian Forest Cat",
+    "name_ru": "Норвежская лесная",
+    "wcf_category": "SEMI_LONGHAIR",
+    "country_origin": "Norway",
+    "coat_type": "semi_long",
+    "size_category": "large",
+    "average_lifespan": 14,
+    "activity_level": "moderate",
+    "grooming_needs": "moderate",
+    "short_description_en": "The Norwegian Forest Cat is a large, natural breed with a thick, water-repellent double coat adapted to harsh Scandinavian climates. These cats have a triangular head, tufted ears, and a bushy tail. Norwegian Forest Cats are gentle, patient, and friendly, maintaining their independence while being affectionate with family. They are excellent climbers and hunters with strong instincts. Despite their thick coat, they require moderate grooming and experience heavy seasonal shedding.",
+    "short_description_ru": "Норвежская лесная кошка — крупная натуральная порода с густой водоотталкивающей двойной шерстью, адаптированной к суровым скандинавским климатам. У этих кошек треугольная голова, кисточки на ушах и пушистый хвост. Норвежские лесные кошки нежны, терпеливы и дружелюбны, сохраняя независимость, будучи ласковыми с семьей. Они отличные альпинисты и охотники с сильными инстинктами. Несмотря на густую шерсть, они требуют умеренного ухода и испытывают сильную сезонную линьку.",
+    "ideal_weight": {
+      "male": {
+        "min": 6.0,
+        "max": 9.0
+      },
+      "female": {
+        "min": 4.0,
+        "max": 6.0
+      }
+    },
+    "health_risks": [
+      {
+        "condition_code": "heart_disease",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "hip_dysplasia",
+        "risk_level": "low"
+      },
+      {
+        "condition_code": "obesity_1",
+        "risk_level": "moderate"
+      }
+    ],
+    "allergy_risks": [
+      {
+        "allergen_code": "cat_fish_protein",
+        "risk_level": "common"
+      },
+      {
+        "allergen_code": "cat_beef_protein",
+        "risk_level": "uncommon"
+      }
+    ],
+    "base_activity_level": "moderate",
+    "trainability": "moderate"
+  },
+  {
+    "id": 3015,
+    "wcf_code": "PXL",
+    "name_en": "Pixiebob Longhair",
+    "name_ru": "Пиксибоб длинношерстный",
+    "wcf_category": "SEMI_LONGHAIR",
+    "country_origin": "United States",
+    "coat_type": "semi_long",
+    "size_category": "large",
+    "average_lifespan": 13,
+    "activity_level": "moderate",
+    "grooming_needs": "moderate",
+    "short_description_en": "The Pixiebob Longhair is a domestic breed bred to resemble the North American Bobcat, with a wild appearance, spotted coat, and shortened tail. Despite their fierce looks, these cats are gentle, loyal, and dog-like in their devotion to family. Pixiebobs are intelligent, trainable, and enjoy interactive play. Some individuals are polydactyl, having extra toes. Their thick, woolly coat requires regular grooming to prevent matting and maintain its rustic appearance.",
+    "short_description_ru": "Пиксибоб длинношерстный — домашняя порода, выведенная для сходства с североамериканской рысью, с диким внешним видом, пятнистой шерстью и укороченным хвостом. Несмотря на свирепый вид, эти кошки нежны, преданы и собачьи в своей преданности семье. Пиксибобы умны, обучаемы и наслаждаются интерактивной игрой. Некоторые особи полидактильны, имея дополнительные пальцы. Их густая шерстяная шерсть требует регулярного ухода для предотвращения колтунов и поддержания деревенского вида.",
+    "ideal_weight": {
+      "male": {
+        "min": 5.5,
+        "max": 8.0
+      },
+      "female": {
+        "min": 4.0,
+        "max": 6.0
+      }
+    },
+    "health_risks": [
+      {
+        "condition_code": "heart_disease",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "hip_dysplasia",
+        "risk_level": "low"
+      },
+      {
+        "condition_code": "obesity_1",
+        "risk_level": "moderate"
+      }
+    ],
+    "allergy_risks": [
+      {
+        "allergen_code": "cat_fish_protein",
+        "risk_level": "common"
+      },
+      {
+        "allergen_code": "cat_beef_protein",
+        "risk_level": "uncommon"
+      }
+    ],
+    "base_activity_level": "moderate",
+    "trainability": "moderate"
+  },
+  {
+    "id": 3016,
+    "wcf_code": "RAG",
+    "name_en": "Ragdoll",
+    "name_ru": "Рэгдолл",
+    "wcf_category": "SEMI_LONGHAIR",
+    "country_origin": "United States",
+    "coat_type": "semi_long",
+    "size_category": "large",
+    "average_lifespan": 15,
+    "activity_level": "low",
+    "grooming_needs": "moderate",
+    "short_description_en": "The Ragdoll is a large, gentle breed known for its striking blue eyes, color-point pattern, and docile temperament. These cats often go limp when picked up, giving them their name. Ragdolls are extremely affectionate, following their owners from room to room and enjoying being held. They have calm, relaxed personalities and are excellent with children and other pets. Their silky coat has minimal undercoat and is surprisingly easy to maintain despite its length.",
+    "short_description_ru": "Рэгдолл — крупная нежная порода, известная своими поразительными голубыми глазами, колор-пойнтовым рисунком и покорным темпераментом. Эти кошки часто обмякают, когда их поднимают, давая им название. Рэгдоллы чрезвычайно ласковы, следуют за владельцами из комнаты в комнату и наслаждаются тем, что их держат. У них спокойный расслабленный характер, и они отлично ладят с детьми и другими животными. Их шелковистая шерсть имеет минимальный подшерсток и удивительно проста в уходе, несмотря на длину.",
+    "ideal_weight": {
+      "male": {
+        "min": 6.0,
+        "max": 9.0
+      },
+      "female": {
+        "min": 4.5,
+        "max": 7.0
+      }
+    },
+    "health_risks": [
+      {
+        "condition_code": "heart_disease",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "hip_dysplasia",
+        "risk_level": "low"
+      },
+      {
+        "condition_code": "obesity_1",
+        "risk_level": "moderate"
+      }
+    ],
+    "allergy_risks": [
+      {
+        "allergen_code": "cat_fish_protein",
+        "risk_level": "common"
+      },
+      {
+        "allergen_code": "cat_beef_protein",
+        "risk_level": "uncommon"
+      }
+    ],
+    "base_activity_level": "low",
+    "trainability": "moderate"
+  },
+  {
+    "id": 3017,
+    "wcf_code": "RGM",
+    "name_en": "Ragamuffin",
+    "name_ru": "Рагамаффин",
+    "wcf_category": "SEMI_LONGHAIR",
+    "country_origin": "United States",
+    "coat_type": "semi_long",
+    "size_category": "large",
+    "average_lifespan": 15,
+    "activity_level": "low",
+    "grooming_needs": "moderate",
+    "short_description_en": "The Ragamuffin is a large, teddy bear-like breed closely related to the Ragdoll, with a thick, plush coat in various colors and patterns. These cats are exceptionally sweet-natured, patient, and gentle, making them perfect family pets. Ragamuffins are highly people-oriented and enjoy being held and cuddled. They mature slowly, reaching full size at around 4 years old. Despite their luxurious coat, they have minimal undercoat and don't mat easily with regular brushing.",
+    "short_description_ru": "Рагамаффин — крупная порода, похожая на плюшевого медведя, тесно связанная с рэгдоллом, с густой плюшевой шерстью в различных цветах и рисунках. Эти кошки исключительно добродушны, терпеливы и нежны, что делает их идеальными семейными питомцами. Рагамаффины очень ориентированы на людей и наслаждаются тем, что их держат и обнимают. Они медленно созревают, достигая полного размера примерно в 4 года. Несмотря на роскошную шерсть, у них минимальный подшерсток, и они не спутываются легко при регулярном расчесывании.",
+    "ideal_weight": {
+      "male": {
+        "min": 6.5,
+        "max": 9.0
+      },
+      "female": {
+        "min": 4.5,
+        "max": 7.0
+      }
+    },
+    "health_risks": [
+      {
+        "condition_code": "heart_disease",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "hip_dysplasia",
+        "risk_level": "low"
+      },
+      {
+        "condition_code": "obesity_1",
+        "risk_level": "moderate"
+      }
+    ],
+    "allergy_risks": [
+      {
+        "allergen_code": "cat_fish_protein",
+        "risk_level": "common"
+      },
+      {
+        "allergen_code": "cat_beef_protein",
+        "risk_level": "uncommon"
+      }
+    ],
+    "base_activity_level": "low",
+    "trainability": "moderate"
+  },
+  {
+    "id": 3018,
+    "wcf_code": "SBI",
+    "name_en": "Sacred Birman",
+    "name_ru": "Священная бирманская",
+    "wcf_category": "SEMI_LONGHAIR",
+    "country_origin": "Myanmar",
+    "coat_type": "semi_long",
+    "size_category": "medium",
+    "average_lifespan": 14,
+    "activity_level": "moderate",
+    "grooming_needs": "moderate",
+    "short_description_en": "The Sacred Birman, or Birman, is a beautiful breed with striking blue eyes, color-point pattern, and distinctive white 'gloves' on all four paws. These cats have silky, semi-long coats with minimal undercoat. Birmans are gentle, affectionate, and social, enjoying companionship while maintaining a calm demeanor. They are excellent with children and other pets, making them ideal family cats. Their coat is relatively easy to maintain and doesn't mat as readily as other longhaired breeds.",
+    "short_description_ru": "Священная бирманская, или бирманская кошка, — красивая порода с поразительными голубыми глазами, колор-пойнтовым рисунком и характерными белыми 'перчатками' на всех четырех лапах. У этих кошек шелковистая полудлинная шерсть с минимальным подшерстком. Бирманы нежны, ласковы и общительны, наслаждаясь компанией, сохраняя спокойное поведение. Они отлично ладят с детьми и другими животными, что делает их идеальными семейными кошками. Их шерсть относительно проста в уходе и не спутывается так легко, как у других длинношерстных пород.",
+    "ideal_weight": {
+      "male": {
+        "min": 4.5,
+        "max": 6.5
+      },
+      "female": {
+        "min": 3.0,
+        "max": 5.0
+      }
+    },
+    "health_risks": [
+      {
+        "condition_code": "obesity_1",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "flutd",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "dental_disease",
+        "risk_level": "low"
+      }
+    ],
+    "allergy_risks": [
+      {
+        "allergen_code": "cat_fish_protein",
+        "risk_level": "common"
+      },
+      {
+        "allergen_code": "cat_beef_protein",
+        "risk_level": "uncommon"
+      }
+    ],
+    "base_activity_level": "moderate",
+    "trainability": "moderate"
+  },
+  {
+    "id": 3019,
+    "wcf_code": "SIB",
+    "name_en": "Siberian",
+    "name_ru": "Сибирская",
+    "wcf_category": "SEMI_LONGHAIR",
+    "country_origin": "Russia",
+    "coat_type": "semi_long",
+    "size_category": "large",
+    "average_lifespan": 15,
+    "activity_level": "moderate",
+    "grooming_needs": "moderate",
+    "short_description_en": "The Siberian is a powerful, natural breed from Russia with a thick, triple-layer coat designed to withstand extreme cold. These cats are large, muscular, and agile, known for their excellent jumping abilities. Siberians are gentle, affectionate, and highly intelligent, forming strong bonds with their families. They are playful and retain kitten-like energy well into adulthood. Interestingly, many Siberians produce lower levels of the Fel d 1 allergen, making them a potential choice for some allergy sufferers.",
+    "short_description_ru": "Сибирская кошка — мощная натуральная порода из России с густой трехслойной шерстью, предназначенной для выдерживания экстремального холода. Эти кошки крупные, мускулистые и проворные, известные своими отличными прыжковыми способностями. Сибиряки нежны, ласковы и очень умны, формируют крепкие связи со своими семьями. Они игривы и сохраняют котячью энергию до зрелого возраста. Интересно, что многие сибиряки производят более низкие уровни аллергена Fel d 1, что делает их потенциальным выбором для некоторых аллергиков.",
+    "ideal_weight": {
+      "male": {
+        "min": 5.5,
+        "max": 8.0
+      },
+      "female": {
+        "min": 4.0,
+        "max": 6.0
+      }
+    },
+    "health_risks": [
+      {
+        "condition_code": "heart_disease",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "hip_dysplasia",
+        "risk_level": "low"
+      },
+      {
+        "condition_code": "obesity_1",
+        "risk_level": "moderate"
+      }
+    ],
+    "allergy_risks": [
+      {
+        "allergen_code": "cat_fish_protein",
+        "risk_level": "common"
+      },
+      {
+        "allergen_code": "cat_beef_protein",
+        "risk_level": "uncommon"
+      }
+    ],
+    "base_activity_level": "moderate",
+    "trainability": "moderate"
+  },
+  {
+    "id": 3020,
+    "wcf_code": "SOM",
+    "name_en": "Somali",
+    "name_ru": "Сомалийская",
+    "wcf_category": "SEMI_LONGHAIR",
+    "country_origin": "Somalia",
+    "coat_type": "semi_long",
+    "size_category": "medium",
+    "average_lifespan": 13,
+    "activity_level": "high",
+    "grooming_needs": "moderate",
+    "short_description_en": "The Somali is the longhaired variety of the Abyssinian, featuring a fox-like bushy tail and a ticked, semi-long coat. These cats are extremely active, intelligent, and playful, often described as acrobatic with their love of heights. Somalis are social and affectionate but can be mischievous, enjoying interactive toys and games. Their silky coat, despite its length, has minimal undercoat and is relatively easy to maintain. They are curious, inquisitive cats that thrive on attention and activity.",
+    "short_description_ru": "Сомалийская кошка — длинношерстная разновидность абиссинской, с лисьим пушистым хвостом и тикированной полудлинной шерстью. Эти кошки чрезвычайно активны, умны и игривы, их часто описывают как акробатических с их любовью к высоте. Сомалийцы общительны и ласковы, но могут быть озорными, наслаждаясь интерактивными игрушками и играми. Их шелковистая шерсть, несмотря на длину, имеет минимальный подшерсток и относительно проста в уходе. Это любопытные пытливые кошки, которые процветают на внимании и активности.",
+    "ideal_weight": {
+      "male": {
+        "min": 3.5,
+        "max": 5.5
+      },
+      "female": {
+        "min": 2.5,
+        "max": 4.5
+      }
+    },
+    "health_risks": [
+      {
+        "condition_code": "obesity_1",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "flutd",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "dental_disease",
+        "risk_level": "low"
+      }
+    ],
+    "allergy_risks": [
+      {
+        "allergen_code": "cat_fish_protein",
+        "risk_level": "common"
+      },
+      {
+        "allergen_code": "cat_beef_protein",
+        "risk_level": "uncommon"
+      }
+    ],
+    "base_activity_level": "high",
+    "trainability": "moderate"
+  },
+  {
+    "id": 3021,
+    "wcf_code": "TUA",
+    "name_en": "Turkish Angora",
+    "name_ru": "Турецкая ангора",
+    "wcf_category": "SEMI_LONGHAIR",
+    "country_origin": "Turkey",
+    "coat_type": "semi_long",
+    "size_category": "medium",
+    "average_lifespan": 15,
+    "activity_level": "high",
+    "grooming_needs": "moderate",
+    "short_description_en": "The Turkish Angora is an ancient natural breed known for its silky, flowing coat and elegant, athletic build. These cats are highly intelligent, active, and playful, often asserting themselves as the center of attention in their households. Turkish Angoras form strong bonds with their families and can be quite vocal in their communication. Despite their long coat, their single-layer fur is relatively easy to groom and less prone to matting than double-coated breeds.",
+    "short_description_ru": "Турецкая ангора — древняя натуральная порода, известная своей шелковистой струящейся шерстью и элегантным атлетическим телосложением. Эти кошки очень умны, активны и игривы, часто утверждая себя в центре внимания в своих семьях. Турецкие ангоры формируют крепкие связи со своими семьями и могут быть довольно вокальными в общении. Несмотря на длинную шерсть, их однослойный мех относительно прост в уходе и менее склонен к образованию колтунов, чем у пород с двойной шерстью.",
+    "ideal_weight": {
+      "male": {
+        "min": 3.5,
+        "max": 5.5
+      },
+      "female": {
+        "min": 2.5,
+        "max": 4.0
+      }
+    },
+    "health_risks": [
+      {
+        "condition_code": "obesity_1",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "flutd",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "dental_disease",
+        "risk_level": "low"
+      }
+    ],
+    "allergy_risks": [
+      {
+        "allergen_code": "cat_fish_protein",
+        "risk_level": "common"
+      },
+      {
+        "allergen_code": "cat_beef_protein",
+        "risk_level": "uncommon"
+      }
+    ],
+    "base_activity_level": "high",
+    "trainability": "moderate"
+  },
+  {
+    "id": 3022,
+    "wcf_code": "TUV",
+    "name_en": "Turkish Van",
+    "name_ru": "Турецкий ван",
+    "wcf_category": "SEMI_LONGHAIR",
+    "country_origin": "Turkey",
+    "coat_type": "semi_long",
+    "size_category": "large",
+    "average_lifespan": 15,
+    "activity_level": "high",
+    "grooming_needs": "moderate",
+    "short_description_en": "The Turkish Van is a large, athletic breed known for its love of water and distinctive color pattern with color restricted to the head and tail. These cats have a cashmere-like, semi-long coat that is water-resistant. Turkish Vans are energetic, playful, and highly intelligent, often enjoying swimming and playing in water. They are affectionate with their chosen people but can be independent. Their single-layer coat is easy to maintain and sheds minimally except during seasonal changes.",
+    "short_description_ru": "Турецкий ван — крупная атлетическая порода, известная своей любовью к воде и характерным цветным рисунком с цветом, ограниченным головой и хвостом. У этих кошек кашемироподобная полудлинная шерсть, которая водоотталкивающая. Турецкие ваны энергичны, игривы и очень умны, часто наслаждаясь плаванием и игрой в воде. Они ласковы со своими избранными людьми, но могут быть независимыми. Их однослойная шерсть проста в уходе и линяет минимально, кроме сезонных изменений.",
+    "ideal_weight": {
+      "male": {
+        "min": 5.0,
+        "max": 8.0
+      },
+      "female": {
+        "min": 4.0,
+        "max": 6.0
+      }
+    },
+    "health_risks": [
+      {
+        "condition_code": "heart_disease",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "hip_dysplasia",
+        "risk_level": "low"
+      },
+      {
+        "condition_code": "obesity_1",
+        "risk_level": "moderate"
+      }
+    ],
+    "allergy_risks": [
+      {
+        "allergen_code": "cat_fish_protein",
+        "risk_level": "common"
+      },
+      {
+        "allergen_code": "cat_beef_protein",
+        "risk_level": "uncommon"
+      }
+    ],
+    "base_activity_level": "high",
+    "trainability": "moderate"
+  },
+  {
+    "id": 3023,
+    "wcf_code": "URL",
+    "name_en": "Ural Rex Longhair",
+    "name_ru": "Уральский рекс длинношерстный",
+    "wcf_category": "SEMI_LONGHAIR",
+    "country_origin": "Russia",
+    "coat_type": "semi_long",
+    "size_category": "medium",
+    "average_lifespan": 14,
+    "activity_level": "moderate",
+    "grooming_needs": "moderate",
+    "short_description_en": "The Ural Rex Longhair is a natural breed from the Ural Mountains featuring a distinctive wavy or curly coat. These cats are friendly, gentle, and adaptable, making them excellent companions for various households. Ural Rex are known for their patience and tolerance, particularly with children. Their unique curly coat requires regular grooming to maintain its wave pattern and prevent matting. They are generally healthy, robust cats with few breed-specific health concerns.",
+    "short_description_ru": "Уральский рекс длинношерстный — натуральная порода с Уральских гор с характерной волнистой или кудрявой шерстью. Эти кошки дружелюбны, нежны и адаптивны, что делает их отличными компаньонами для различных семей. Уральские рексы известны своим терпением и толерантностью, особенно с детьми. Их уникальная кудрявая шерсть требует регулярного ухода для поддержания волнового рисунка и предотвращения колтунов. Они обычно здоровые крепкие кошки с немногими породными проблемами со здоровьем.",
+    "ideal_weight": {
+      "male": {
+        "min": 4.0,
+        "max": 6.0
+      },
+      "female": {
+        "min": 3.0,
+        "max": 5.0
+      }
+    },
+    "health_risks": [
+      {
+        "condition_code": "obesity_1",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "flutd",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "dental_disease",
+        "risk_level": "low"
+      }
+    ],
+    "allergy_risks": [
+      {
+        "allergen_code": "cat_fish_protein",
+        "risk_level": "common"
+      },
+      {
+        "allergen_code": "cat_beef_protein",
+        "risk_level": "uncommon"
+      }
+    ],
+    "base_activity_level": "moderate",
+    "trainability": "moderate"
+  },
+  {
+    "id": 3024,
+    "wcf_code": "YOR",
+    "name_en": "York Chocolate",
+    "name_ru": "Йорк шоколадная",
+    "wcf_category": "SEMI_LONGHAIR",
+    "country_origin": "United States",
+    "coat_type": "semi_long",
+    "size_category": "large",
+    "average_lifespan": 14,
+    "activity_level": "moderate",
+    "grooming_needs": "moderate",
+    "short_description_en": "The York Chocolate is a rare breed known for its rich chocolate or lavender-colored semi-long coat. These cats are gentle, affectionate, and highly people-oriented, enjoying interactive play and companionship. York Chocolates are intelligent and adaptable, making them suitable for various living situations. They have a moderate energy level and enjoy both playtime and relaxation. Their silky coat requires regular brushing but is relatively low-maintenance despite its length.",
+    "short_description_ru": "Йорк шоколадная — редкая порода, известная своей насыщенной шоколадной или лавандовой полудлинной шерстью. Эти кошки нежны, ласковы и очень ориентированы на людей, наслаждаясь интерактивной игрой и компанией. Йорк шоколадные умны и адаптивны, что делает их подходящими для различных условий жизни. У них умеренный уровень энергии, и они наслаждаются как игровым временем, так и отдыхом. Их шелковистая шерсть требует регулярного расчесывания, но относительно неприхотлива в уходе, несмотря на длину.",
+    "ideal_weight": {
+      "male": {
+        "min": 6.0,
+        "max": 8.0
+      },
+      "female": {
+        "min": 4.5,
+        "max": 6.5
+      }
+    },
+    "health_risks": [
+      {
+        "condition_code": "heart_disease",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "hip_dysplasia",
+        "risk_level": "low"
+      },
+      {
+        "condition_code": "obesity_1",
+        "risk_level": "moderate"
+      }
+    ],
+    "allergy_risks": [
+      {
+        "allergen_code": "cat_fish_protein",
+        "risk_level": "common"
+      },
+      {
+        "allergen_code": "cat_beef_protein",
+        "risk_level": "uncommon"
+      }
+    ],
+    "base_activity_level": "moderate",
+    "trainability": "moderate"
+  },
+  {
+    "id": 4001,
+    "wcf_code": "ABY",
+    "name_en": "Abyssinian",
+    "name_ru": "Абиссинская",
+    "wcf_category": "SHORTHAIR",
+    "country_origin": "Ethiopia",
+    "coat_type": "short",
+    "size_category": "medium",
+    "average_lifespan": 14,
+    "activity_level": "high",
+    "grooming_needs": "low",
+    "short_description_en": "The Abyssinian is one of the oldest known cat breeds, characterized by its ticked tabby coat and slender, athletic build. These cats are extremely active, intelligent, and curious, often referred to as the 'clowns of the cat kingdom' for their playful antics. Abyssinians are highly social and thrive on interaction with their families. Their short, fine coat requires minimal grooming and comes in various warm colors including ruddy, red, blue, and fawn.",
+    "short_description_ru": "Абиссинская кошка — одна из древнейших известных пород, характеризующаяся тикированной табби-шерстью и стройным атлетическим телосложением. Эти кошки чрезвычайно активны, умны и любопытны, их часто называют 'клоунами кошачьего царства' за игривые выходки. Абиссинцы очень социальны и процветают на взаимодействии со своими семьями. Их короткая тонкая шерсть требует минимального ухода и бывает в различных теплых цветах, включая рыжий, красный, голубой и палевый.",
+    "ideal_weight": {
+      "male": {
+        "min": 3.5,
+        "max": 5.5
+      },
+      "female": {
+        "min": 2.5,
+        "max": 4.0
+      }
+    },
+    "health_risks": [
+      {
+        "condition_code": "obesity_1",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "flutd",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "dental_disease",
+        "risk_level": "low"
+      }
+    ],
+    "allergy_risks": [
+      {
+        "allergen_code": "cat_fish_protein",
+        "risk_level": "common"
+      },
+      {
+        "allergen_code": "cat_beef_protein",
+        "risk_level": "uncommon"
+      }
+    ],
+    "base_activity_level": "high",
+    "trainability": "moderate"
+  },
+  {
+    "id": 4002,
+    "wcf_code": "ACS",
+    "name_en": "Asian Shorthair",
+    "name_ru": "Азиатская короткошерстная",
+    "wcf_category": "SHORTHAIR",
+    "country_origin": "United Kingdom",
+    "coat_type": "short",
+    "size_category": "medium",
+    "average_lifespan": 15,
+    "activity_level": "moderate",
+    "grooming_needs": "low",
+    "short_description_en": "The Asian Shorthair is a group of cat breeds similar to the Burmese but in different coat patterns and colors. These cats are intelligent, affectionate, and moderately active, making excellent family companions. Asian Shorthairs are social and enjoy human interaction, often following their owners around the house. Their short, silky coat is easy to maintain with minimal grooming. They are generally healthy cats with few breed-specific health concerns.",
+    "short_description_ru": "Азиатская короткошерстная — группа пород кошек, похожих на бурманских, но с различными рисунками и цветами шерсти. Эти кошки умны, ласковы и умеренно активны, становясь отличными семейными компаньонами. Азиатские короткошерстные общительны и наслаждаются взаимодействием с людьми, часто следуя за владельцами по дому. Их короткая шелковистая шерсть проста в уходе с минимальным грумингом. Они обычно здоровые кошки с немногими породными проблемами со здоровьем.",
+    "ideal_weight": {
+      "male": {
+        "min": 4.0,
+        "max": 6.0
+      },
+      "female": {
+        "min": 3.0,
+        "max": 5.0
+      }
+    },
+    "health_risks": [
+      {
+        "condition_code": "obesity_1",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "flutd",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "dental_disease",
+        "risk_level": "low"
+      }
+    ],
+    "allergy_risks": [
+      {
+        "allergen_code": "cat_fish_protein",
+        "risk_level": "common"
+      },
+      {
+        "allergen_code": "cat_beef_protein",
+        "risk_level": "uncommon"
+      }
+    ],
+    "base_activity_level": "moderate",
+    "trainability": "moderate"
+  },
+  {
+    "id": 4003,
+    "wcf_code": "ABT",
+    "name_en": "American Bobtail Shorthair",
+    "name_ru": "Американский бобтейл короткошерстный",
+    "wcf_category": "SHORTHAIR",
+    "country_origin": "United States",
+    "coat_type": "short",
+    "size_category": "large",
+    "average_lifespan": 13,
+    "activity_level": "moderate",
+    "grooming_needs": "low",
+    "short_description_en": "The American Bobtail Shorthair features a naturally short tail and a dense, resilient short coat. These cats combine a wild appearance with a gentle, dog-like temperament, often enjoying interactive play and walks on leashes. American Bobtails are intelligent, adaptable, and form strong family bonds. Their short coat is low-maintenance and weather-resistant. They are known for their calm demeanor and therapeutic presence, often used as therapy animals.",
+    "short_description_ru": "Американский бобтейл короткошерстный имеет естественно короткий хвост и густую упругую короткую шерсть. Эти кошки сочетают дикий внешний вид с нежным, собачьим темпераментом, часто наслаждаясь интерактивной игрой и прогулками на поводке. Американские бобтейлы умны, адаптивны и формируют крепкие семейные связи. Их короткая шерсть неприхотлива в уходе и устойчива к погоде. Они известны своим спокойным поведением и терапевтическим присутствием, часто используются в качестве терапевтических животных.",
+    "ideal_weight": {
+      "male": {
+        "min": 5.5,
+        "max": 7.5
+      },
+      "female": {
+        "min": 3.5,
+        "max": 5.5
+      }
+    },
+    "health_risks": [
+      {
+        "condition_code": "heart_disease",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "hip_dysplasia",
+        "risk_level": "low"
+      },
+      {
+        "condition_code": "obesity_1",
+        "risk_level": "moderate"
+      }
+    ],
+    "allergy_risks": [
+      {
+        "allergen_code": "cat_fish_protein",
+        "risk_level": "common"
+      },
+      {
+        "allergen_code": "cat_beef_protein",
+        "risk_level": "uncommon"
+      }
+    ],
+    "base_activity_level": "moderate",
+    "trainability": "moderate"
+  },
+  {
+    "id": 4004,
+    "wcf_code": "AUB",
+    "name_en": "American Burmese",
+    "name_ru": "Американская бурманская",
+    "wcf_category": "SHORTHAIR",
+    "country_origin": "United States",
+    "coat_type": "short",
+    "size_category": "medium",
+    "average_lifespan": 16,
+    "activity_level": "moderate",
+    "grooming_needs": "low",
+    "short_description_en": "The American Burmese is a compact, muscular cat with a silky short coat and rounded features. These cats are known for their affectionate, people-oriented personalities and playful nature that persists into adulthood. American Burmese are highly social and don't like being left alone for long periods. Their glossy coat requires minimal grooming and comes in various colors including sable, champagne, blue, and platinum.",
+    "short_description_ru": "Американская бурманская — компактная мускулистая кошка с шелковистой короткой шерстью и округлыми чертами. Эти кошки известны своими ласковыми, ориентированными на людей личностями и игривым характером, сохраняющимся до зрелости. Американские бурманские очень социальны и не любят оставаться в одиночестве надолго. Их глянцевая шерсть требует минимального ухода и бывает в различных цветах, включая соболиный, шампань, голубой и платиновый.",
+    "ideal_weight": {
+      "male": {
+        "min": 4.5,
+        "max": 6.0
+      },
+      "female": {
+        "min": 3.0,
+        "max": 4.5
+      }
+    },
+    "health_risks": [
+      {
+        "condition_code": "obesity_1",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "flutd",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "dental_disease",
+        "risk_level": "low"
+      }
+    ],
+    "allergy_risks": [
+      {
+        "allergen_code": "cat_fish_protein",
+        "risk_level": "common"
+      },
+      {
+        "allergen_code": "cat_beef_protein",
+        "risk_level": "uncommon"
+      }
+    ],
+    "base_activity_level": "moderate",
+    "trainability": "moderate"
+  },
+  {
+    "id": 4005,
+    "wcf_code": "ANA",
+    "name_en": "Anatoli",
+    "name_ru": "Анатолийская",
+    "wcf_category": "SHORTHAIR",
+    "country_origin": "Turkey",
+    "coat_type": "short",
+    "size_category": "medium",
+    "average_lifespan": 15,
+    "activity_level": "high",
+    "grooming_needs": "low",
+    "short_description_en": "The Anatoli is a natural breed from Turkey with a short, fine coat and athletic build. These cats are highly energetic, playful, and vocal, often chirping and chattering with their owners. Anatolian cats are intelligent and curious, enjoying climbing and exploring. Their coat is easy to maintain with occasional brushing. They are generally healthy, robust cats that adapt well to various living conditions.",
+    "short_description_ru": "Анатолийская кошка — натуральная порода из Турции с короткой тонкой шерстью и атлетическим телосложением. Эти кошки очень энергичны, игривы и вокальны, часто щебечут и болтают с владельцами. Анатолийские кошки умны и любопытны, наслаждаясь лазанием и исследованием. Их шерсть проста в уходе с периодическим расчесыванием. Они обычно здоровые крепкие кошки, хорошо адаптирующиеся к различным условиям жизни.",
+    "ideal_weight": {
+      "male": {
+        "min": 4.0,
+        "max": 6.0
+      },
+      "female": {
+        "min": 3.0,
+        "max": 5.0
+      }
+    },
+    "health_risks": [
+      {
+        "condition_code": "obesity_1",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "flutd",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "dental_disease",
+        "risk_level": "low"
+      }
+    ],
+    "allergy_risks": [
+      {
+        "allergen_code": "cat_fish_protein",
+        "risk_level": "common"
+      },
+      {
+        "allergen_code": "cat_beef_protein",
+        "risk_level": "uncommon"
+      }
+    ],
+    "base_activity_level": "high",
+    "trainability": "moderate"
+  },
+  {
+    "id": 4006,
+    "wcf_code": "APS",
+    "name_en": "Aphrodite Shorthair",
+    "name_ru": "Афродита короткошерстная",
+    "wcf_category": "SHORTHAIR",
+    "country_origin": "Cyprus",
+    "coat_type": "short",
+    "size_category": "large",
+    "average_lifespan": 14,
+    "activity_level": "moderate",
+    "grooming_needs": "low",
+    "short_description_en": "The Aphrodite Shorthair is the short-coated variety of the Aphrodite Giant, a large natural breed from Cyprus. These cats are gentle, affectionate, and highly social despite their impressive size. Aphrodite Shorthairs are intelligent and adaptable, making them excellent family companions. Their short coat is easy to maintain with weekly brushing. They have a slow maturation rate and are generally healthy cats.",
+    "short_description_ru": "Афродита короткошерстная — короткошерстная разновидность Афродиты гигантской, крупной натуральной породы с Кипра. Эти кошки нежны, ласковы и очень общительны, несмотря на впечатляющий размер. Афродиты короткошерстные умны и адаптивны, что делает их отличными семейными компаньонами. Их короткая шерсть проста в уходе при еженедельном расчесывании. У них медленная скорость созревания, и они обычно здоровые кошки.",
+    "ideal_weight": {
+      "male": {
+        "min": 6.0,
+        "max": 11.0
+      },
+      "female": {
+        "min": 4.0,
+        "max": 7.0
+      }
+    },
+    "health_risks": [
+      {
+        "condition_code": "heart_disease",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "hip_dysplasia",
+        "risk_level": "low"
+      },
+      {
+        "condition_code": "obesity_1",
+        "risk_level": "moderate"
+      }
+    ],
+    "allergy_risks": [
+      {
+        "allergen_code": "cat_fish_protein",
+        "risk_level": "common"
+      },
+      {
+        "allergen_code": "cat_beef_protein",
+        "risk_level": "uncommon"
+      }
+    ],
+    "base_activity_level": "moderate",
+    "trainability": "moderate"
+  },
+  {
+    "id": 4007,
+    "wcf_code": "ARM",
+    "name_en": "American Ringtail",
+    "name_ru": "Американский рингтейл",
+    "wcf_category": "SHORTHAIR",
+    "country_origin": "United States",
+    "coat_type": "short",
+    "size_category": "medium",
+    "average_lifespan": 14,
+    "activity_level": "moderate",
+    "grooming_needs": "low",
+    "short_description_en": "The American Ringtail is a rare breed characterized by its distinctive tail that curls over the back in a ring shape. These cats are friendly, social, and affectionate, making excellent family pets. American Ringtails are playful and intelligent, enjoying interactive toys and games. Their short coat requires minimal grooming. The curled tail is caused by a genetic mutation and doesn't affect the cat's health or mobility.",
+    "short_description_ru": "Американский рингтейл — редкая порода, характеризующаяся характерным хвостом, который закручивается кольцом над спиной. Эти кошки дружелюбны, общительны и ласковы, становясь отличными семейными питомцами. Американские рингтейлы игривы и умны, наслаждаясь интерактивными игрушками и играми. Их короткая шерсть требует минимального ухода. Закрученный хвост вызван генетической мутацией и не влияет на здоровье или мобильность кошки.",
+    "ideal_weight": {
+      "male": {
+        "min": 4.0,
+        "max": 6.0
+      },
+      "female": {
+        "min": 3.0,
+        "max": 5.0
+      }
+    },
+    "health_risks": [
+      {
+        "condition_code": "obesity_1",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "flutd",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "dental_disease",
+        "risk_level": "low"
+      }
+    ],
+    "allergy_risks": [
+      {
+        "allergen_code": "cat_fish_protein",
+        "risk_level": "common"
+      },
+      {
+        "allergen_code": "cat_beef_protein",
+        "risk_level": "uncommon"
+      }
+    ],
+    "base_activity_level": "moderate",
+    "trainability": "moderate"
+  },
+  {
+    "id": 4008,
+    "wcf_code": "ASH",
+    "name_en": "American Shorthair",
+    "name_ru": "Американская короткошерстная",
+    "wcf_category": "SHORTHAIR",
+    "country_origin": "United States",
+    "coat_type": "short",
+    "size_category": "large",
+    "average_lifespan": 15,
+    "activity_level": "moderate",
+    "grooming_needs": "low",
+    "short_description_en": "The American Shorthair is a classic breed known for its robust health, even temperament, and versatile appearance. These cats are muscular and powerful, originally bred as working cats to control rodent populations. American Shorthairs are friendly, adaptable, and good with children and other pets. Their dense, hard-textured coat requires minimal grooming and comes in over 80 different color and pattern combinations.",
+    "short_description_ru": "Американская короткошерстная — классическая порода, известная своим крепким здоровьем, ровным темпераментом и универсальной внешностью. Эти кошки мускулистые и мощные, изначально выведенные как рабочие кошки для контроля популяции грызунов. Американские короткошерстные дружелюбны, адаптивны и хорошо ладят с детьми и другими животными. Их густая шерсть твердой текстуры требует минимального ухода и представлена в более чем 80 различных цветовых и рисуночных комбинациях.",
+    "ideal_weight": {
+      "male": {
+        "min": 5.0,
+        "max": 7.0
+      },
+      "female": {
+        "min": 3.5,
+        "max": 5.5
+      }
+    },
+    "health_risks": [
+      {
+        "condition_code": "heart_disease",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "hip_dysplasia",
+        "risk_level": "low"
+      },
+      {
+        "condition_code": "obesity_1",
+        "risk_level": "moderate"
+      }
+    ],
+    "allergy_risks": [
+      {
+        "allergen_code": "cat_fish_protein",
+        "risk_level": "common"
+      },
+      {
+        "allergen_code": "cat_beef_protein",
+        "risk_level": "uncommon"
+      }
+    ],
+    "base_activity_level": "moderate",
+    "trainability": "moderate"
+  },
+  {
+    "id": 4009,
+    "wcf_code": "AUM",
+    "name_en": "Australian Mist",
+    "name_ru": "Австралийский мист",
+    "wcf_category": "SHORTHAIR",
+    "country_origin": "Australia",
+    "coat_type": "short",
+    "size_category": "medium",
+    "average_lifespan": 15,
+    "activity_level": "moderate",
+    "grooming_needs": "low",
+    "short_description_en": "The Australian Mist is a breed developed in Australia, featuring a delicate spotted or marbled pattern on a misty background. These cats are friendly, relaxed, and ideal for indoor living. Australian Mists are people-oriented and tolerant, making them excellent companions for children and elderly. Their short, glossy coat is low-maintenance and comes in various colors including brown, blue, chocolate, lilac, gold, and peach.",
+    "short_description_ru": "Австралийский мист — порода, выведенная в Австралии, с нежным пятнистым или мраморным рисунком на туманном фоне. Эти кошки дружелюбны, расслаблены и идеальны для жизни в помещении. Австралийские мисты ориентированы на людей и толерантны, что делает их отличными компаньонами для детей и пожилых. Их короткая глянцевая шерсть неприхотлива в уходе и представлена в различных цветах, включая коричневый, голубой, шоколадный, лиловый, золотой и персиковый.",
+    "ideal_weight": {
+      "male": {
+        "min": 4.0,
+        "max": 6.0
+      },
+      "female": {
+        "min": 3.0,
+        "max": 5.0
+      }
+    },
+    "health_risks": [
+      {
+        "condition_code": "obesity_1",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "flutd",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "dental_disease",
+        "risk_level": "low"
+      }
+    ],
+    "allergy_risks": [
+      {
+        "allergen_code": "cat_fish_protein",
+        "risk_level": "common"
+      },
+      {
+        "allergen_code": "cat_beef_protein",
+        "risk_level": "uncommon"
+      }
+    ],
+    "base_activity_level": "moderate",
+    "trainability": "moderate"
+  },
+  {
+    "id": 4010,
+    "wcf_code": "AWH",
+    "name_en": "American Wirehair",
+    "name_ru": "Американская жесткошерстная",
+    "wcf_category": "SHORTHAIR",
+    "country_origin": "United States",
+    "coat_type": "short",
+    "size_category": "medium",
+    "average_lifespan": 14,
+    "activity_level": "moderate",
+    "grooming_needs": "low",
+    "short_description_en": "The American Wirehair is distinguished by its unique springy, crimped coat that feels coarse to the touch. This rare breed originated from a spontaneous mutation in upstate New York. American Wirehairs are affectionate, playful, and adaptable cats that get along well with families. Despite their unusual coat texture, they require minimal grooming as brushing can damage the wire texture. They are generally healthy, robust cats.",
+    "short_description_ru": "Американская жесткошерстная отличается уникальной упругой гофрированной шерстью, которая на ощупь грубая. Эта редкая порода возникла в результате спонтанной мутации в северной части штата Нью-Йорк. Американские жесткошерстные ласковы, игривы и адаптивны, хорошо ладящие с семьями. Несмотря на необычную текстуру шерсти, они требуют минимального ухода, так как расчесывание может повредить жесткую текстуру. Они обычно здоровые крепкие кошки.",
+    "ideal_weight": {
+      "male": {
+        "min": 4.5,
+        "max": 6.5
+      },
+      "female": {
+        "min": 3.5,
+        "max": 5.0
+      }
+    },
+    "health_risks": [
+      {
+        "condition_code": "obesity_1",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "flutd",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "dental_disease",
+        "risk_level": "low"
+      }
+    ],
+    "allergy_risks": [
+      {
+        "allergen_code": "cat_fish_protein",
+        "risk_level": "common"
+      },
+      {
+        "allergen_code": "cat_beef_protein",
+        "risk_level": "uncommon"
+      }
+    ],
+    "base_activity_level": "moderate",
+    "trainability": "moderate"
+  },
+  {
+    "id": 4011,
+    "wcf_code": "BEN",
+    "name_en": "Bengal",
+    "name_ru": "Бенгальская",
+    "wcf_category": "SHORTHAIR",
+    "country_origin": "United States",
+    "coat_type": "short",
+    "size_category": "large",
+    "average_lifespan": 14,
+    "activity_level": "high",
+    "grooming_needs": "low",
+    "short_description_en": "The Bengal is a striking breed developed by crossing domestic cats with Asian Leopard Cats, resulting in a wild-looking spotted or marbled coat. These cats are highly energetic, intelligent, and playful, requiring significant mental and physical stimulation. Bengals are known for their love of water and climbing. Their short, dense coat has a unique silky feel and requires minimal grooming. They are vocal, interactive cats that form strong bonds with their families.",
+    "short_description_ru": "Бенгальская кошка — поразительная порода, выведенная путем скрещивания домашних кошек с азиатскими леопардовыми кошками, в результате чего появилась дико выглядящая пятнистая или мраморная шерсть. Эти кошки очень энергичны, умны и игривы, требующие значительной умственной и физической стимуляции. Бенгалы известны своей любовью к воде и лазанию. Их короткая густая шерсть имеет уникальное шелковистое ощущение и требует минимального ухода. Это вокальные интерактивные кошки, формирующие крепкие связи со своими семьями.",
+    "ideal_weight": {
+      "male": {
+        "min": 5.5,
+        "max": 8.0
+      },
+      "female": {
+        "min": 3.5,
+        "max": 5.5
+      }
+    },
+    "health_risks": [
+      {
+        "condition_code": "heart_disease",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "hip_dysplasia",
+        "risk_level": "low"
+      },
+      {
+        "condition_code": "obesity_1",
+        "risk_level": "moderate"
+      }
+    ],
+    "allergy_risks": [
+      {
+        "allergen_code": "cat_fish_protein",
+        "risk_level": "common"
+      },
+      {
+        "allergen_code": "cat_beef_protein",
+        "risk_level": "uncommon"
+      }
+    ],
+    "base_activity_level": "high",
+    "trainability": "moderate"
+  },
+  {
+    "id": 4012,
+    "wcf_code": "BOM",
+    "name_en": "Bombay",
+    "name_ru": "Бомбейская",
+    "wcf_category": "SHORTHAIR",
+    "country_origin": "United States",
+    "coat_type": "short",
+    "size_category": "medium",
+    "average_lifespan": 15,
+    "activity_level": "moderate",
+    "grooming_needs": "low",
+    "short_description_en": "The Bombay is a sleek, muscular cat bred to resemble a miniature black panther with its glossy jet-black coat and copper eyes. These cats are affectionate, people-oriented, and often described as 'velcro cats' for their tendency to stick close to their owners. Bombays are intelligent and playful, adapting well to various households. Their short, satin-like coat is easy to maintain with weekly brushing. They are generally healthy cats with outgoing, friendly personalities.",
+    "short_description_ru": "Бомбейская кошка — изящная мускулистая кошка, выведенная для сходства с миниатюрной черной пантерой с глянцевой угольно-черной шерстью и медными глазами. Эти кошки ласковы, ориентированы на людей и часто описываются как 'липучки' за их склонность держаться близко к владельцам. Бомбеи умны и игривы, хорошо адаптируясь к различным домохозяйствам. Их короткая атласная шерсть проста в уходе при еженедельном расчесывании. Они обычно здоровые кошки с общительными дружелюбными личностями.",
+    "ideal_weight": {
+      "male": {
+        "min": 4.0,
+        "max": 6.0
+      },
+      "female": {
+        "min": 3.0,
+        "max": 5.0
+      }
+    },
+    "health_risks": [
+      {
+        "condition_code": "obesity_1",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "flutd",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "dental_disease",
+        "risk_level": "low"
+      }
+    ],
+    "allergy_risks": [
+      {
+        "allergen_code": "cat_fish_protein",
+        "risk_level": "common"
+      },
+      {
+        "allergen_code": "cat_beef_protein",
+        "risk_level": "uncommon"
+      }
+    ],
+    "base_activity_level": "moderate",
+    "trainability": "moderate"
+  },
+  {
+    "id": 4013,
+    "wcf_code": "BRI",
+    "name_en": "British Shorthair",
+    "name_ru": "Британская короткошерстная",
+    "wcf_category": "SHORTHAIR",
+    "country_origin": "United Kingdom",
+    "coat_type": "short",
+    "size_category": "large",
+    "average_lifespan": 15,
+    "activity_level": "low",
+    "grooming_needs": "low",
+    "short_description_en": "The British Shorthair is one of the oldest and most popular breeds, known for its dense, plush coat and round, chubby-cheeked face. These cats are calm, easygoing, and independent, making them ideal for busy households. British Shorthairs are affectionate but not overly demanding, preferring to stay nearby rather than on laps. Their thick double coat requires minimal grooming. They mature slowly and are generally healthy, robust cats with a teddy bear-like appearance.",
+    "short_description_ru": "Британская короткошерстная — одна из старейших и самых популярных пород, известная своей густой плюшевой шерстью и круглой мордочкой с пухлыми щеками. Эти кошки спокойны, покладисты и независимы, что делает их идеальными для занятых домохозяйств. Британские короткошерстные ласковы, но не чрезмерно требовательны, предпочитая оставаться поблизости, а не на коленях. Их густая двойная шерсть требует минимального ухода. Они медленно созревают и обычно здоровые крепкие кошки с внешностью плюшевого медведя.",
+    "ideal_weight": {
+      "male": {
+        "min": 5.5,
+        "max": 9.0
+      },
+      "female": {
+        "min": 4.0,
+        "max": 7.0
+      }
+    },
+    "health_risks": [
+      {
+        "condition_code": "heart_disease",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "hip_dysplasia",
+        "risk_level": "low"
+      },
+      {
+        "condition_code": "obesity_1",
+        "risk_level": "moderate"
+      }
+    ],
+    "allergy_risks": [
+      {
+        "allergen_code": "cat_fish_protein",
+        "risk_level": "common"
+      },
+      {
+        "allergen_code": "cat_beef_protein",
+        "risk_level": "uncommon"
+      }
+    ],
+    "base_activity_level": "low",
+    "trainability": "moderate"
+  },
+  {
+    "id": 4014,
+    "wcf_code": "BUR",
+    "name_en": "Burmese",
+    "name_ru": "Бурманская",
+    "wcf_category": "SHORTHAIR",
+    "country_origin": "Myanmar",
+    "coat_type": "short",
+    "size_category": "medium",
+    "average_lifespan": 16,
+    "activity_level": "moderate",
+    "grooming_needs": "low",
+    "short_description_en": "The Burmese is a medium-sized cat with a muscular body and silky, short coat that comes in various solid colors. These cats are exceptionally affectionate, people-oriented, and playful throughout their lives. Burmese are known for their dog-like devotion to their families and their soft, sweet voices. Their glossy coat requires minimal grooming. They are social cats that don't like being left alone and thrive in active households.",
+    "short_description_ru": "Бурманская кошка — кошка среднего размера с мускулистым телом и шелковистой короткой шерстью в различных сплошных цветах. Эти кошки исключительно ласковы, ориентированы на людей и игривы на протяжении всей жизни. Бурманцы известны своей собачьей преданностью семьям и мягкими сладкими голосами. Их глянцевая шерсть требует минимального ухода. Это социальные кошки, которые не любят оставаться в одиночестве и процветают в активных домохозяйствах.",
+    "ideal_weight": {
+      "male": {
+        "min": 4.5,
+        "max": 6.5
+      },
+      "female": {
+        "min": 3.0,
+        "max": 5.0
+      }
+    },
+    "health_risks": [
+      {
+        "condition_code": "obesity_1",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "flutd",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "dental_disease",
+        "risk_level": "low"
+      }
+    ],
+    "allergy_risks": [
+      {
+        "allergen_code": "cat_fish_protein",
+        "risk_level": "common"
+      },
+      {
+        "allergen_code": "cat_beef_protein",
+        "risk_level": "uncommon"
+      }
+    ],
+    "base_activity_level": "moderate",
+    "trainability": "moderate"
+  },
+  {
+    "id": 4015,
+    "wcf_code": "CEY",
+    "name_en": "Ceylon",
+    "name_ru": "Цейлонская",
+    "wcf_category": "SHORTHAIR",
+    "country_origin": "Sri Lanka",
+    "coat_type": "short",
+    "size_category": "small",
+    "average_lifespan": 15,
+    "activity_level": "high",
+    "grooming_needs": "low",
+    "short_description_en": "The Ceylon is a rare natural breed from Sri Lanka with a short, silky coat and ticked tabby pattern. These cats are small, elegant, and highly active, retaining kitten-like playfulness throughout their lives. Ceylons are affectionate and social, forming strong bonds with their families. Their fine coat requires minimal grooming. They are generally healthy cats with few breed-specific health issues, adapted to warm climates.",
+    "short_description_ru": "Цейлонская кошка — редкая натуральная порода из Шри-Ланки с короткой шелковистой шерстью и тикированным табби-рисунком. Эти кошки маленькие, элегантные и очень активные, сохраняющие котячью игривость на протяжении всей жизни. Цейлонцы ласковы и общительны, формируют крепкие связи со своими семьями. Их тонкая шерсть требует минимального ухода. Они обычно здоровые кошки с немногими породными проблемами со здоровьем, адаптированные к теплому климату.",
+    "ideal_weight": {
+      "male": {
+        "min": 3.0,
+        "max": 5.0
+      },
+      "female": {
+        "min": 2.5,
+        "max": 4.0
+      }
+    },
+    "health_risks": [
+      {
+        "condition_code": "dental_disease",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "hyperthyroidism",
+        "risk_level": "low"
+      }
+    ],
+    "allergy_risks": [
+      {
+        "allergen_code": "cat_fish_protein",
+        "risk_level": "common"
+      },
+      {
+        "allergen_code": "cat_beef_protein",
+        "risk_level": "uncommon"
+      }
+    ],
+    "base_activity_level": "high",
+    "trainability": "moderate"
+  },
+  {
+    "id": 4016,
+    "wcf_code": "CHA",
+    "name_en": "Chartreux Shorthair",
+    "name_ru": "Шартрез короткошерстный",
+    "wcf_category": "SHORTHAIR",
+    "country_origin": "France",
+    "coat_type": "short",
+    "size_category": "large",
+    "average_lifespan": 15,
+    "activity_level": "moderate",
+    "grooming_needs": "low",
+    "short_description_en": "The Chartreux Shorthair is the short-coated variety with a distinctive blue-gray woolly coat and copper or gold eyes. These robust, muscular cats are known for their quiet, gentle nature and sweet smiling expression. Chartreux are intelligent and observant, often described as dog-like in their devotion to their families. Despite their thick coat, they are relatively low-maintenance and shed minimally. They are adaptable, patient with children, and make excellent companions.",
+    "short_description_ru": "Шартрез короткошерстный — короткошерстная разновидность с характерной сине-серой шерстяной шерстью и медными или золотыми глазами. Эти крепкие мускулистые кошки известны своим тихим нежным характером и милой улыбающейся мордочкой. Шартрезы умны и наблюдательны, их часто описывают как собачьих в своей преданности семьям. Несмотря на густую шерсть, они относительно неприхотливы в уходе и линяют минимально. Они адаптивны, терпеливы с детьми и становятся отличными компаньонами.",
+    "ideal_weight": {
+      "male": {
+        "min": 5.0,
+        "max": 7.5
+      },
+      "female": {
+        "min": 3.0,
+        "max": 5.0
+      }
+    },
+    "health_risks": [
+      {
+        "condition_code": "heart_disease",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "hip_dysplasia",
+        "risk_level": "low"
+      },
+      {
+        "condition_code": "obesity_1",
+        "risk_level": "moderate"
+      }
+    ],
+    "allergy_risks": [
+      {
+        "allergen_code": "cat_fish_protein",
+        "risk_level": "common"
+      },
+      {
+        "allergen_code": "cat_beef_protein",
+        "risk_level": "uncommon"
+      }
+    ],
+    "base_activity_level": "moderate",
+    "trainability": "moderate"
+  },
+  {
+    "id": 4017,
+    "wcf_code": "CHS",
+    "name_en": "Chausie",
+    "name_ru": "Чаузи",
+    "wcf_category": "SHORTHAIR",
+    "country_origin": "United States",
+    "coat_type": "short",
+    "size_category": "large",
+    "average_lifespan": 14,
+    "activity_level": "high",
+    "grooming_needs": "low",
+    "short_description_en": "The Chausie is a hybrid breed developed from crossing domestic cats with Jungle Cats, resulting in a large, athletic cat with a wild appearance. These cats are extremely active, intelligent, and require significant space and stimulation. Chausies are social and bond closely with their families but need experienced owners who can meet their high energy needs. Their short coat is low-maintenance. They are generally healthy but require a proper diet due to their wild ancestry.",
+    "short_description_ru": "Чаузи — гибридная порода, выведенная путем скрещивания домашних кошек с камышовыми котами, в результате чего появилась крупная атлетическая кошка с диким внешним видом. Эти кошки чрезвычайно активны, умны и требуют значительного пространства и стимуляции. Чаузи социальны и тесно связываются со своими семьями, но нуждаются в опытных владельцах, которые могут удовлетворить их высокие энергетические потребности. Их короткая шерсть неприхотлива в уходе. Они обычно здоровы, но требуют правильного питания из-за дикого происхождения.",
+    "ideal_weight": {
+      "male": {
+        "min": 6.0,
+        "max": 11.0
+      },
+      "female": {
+        "min": 4.5,
+        "max": 7.0
+      }
+    },
+    "health_risks": [
+      {
+        "condition_code": "heart_disease",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "hip_dysplasia",
+        "risk_level": "low"
+      },
+      {
+        "condition_code": "obesity_1",
+        "risk_level": "moderate"
+      }
+    ],
+    "allergy_risks": [
+      {
+        "allergen_code": "cat_fish_protein",
+        "risk_level": "common"
+      },
+      {
+        "allergen_code": "cat_beef_protein",
+        "risk_level": "uncommon"
+      }
+    ],
+    "base_activity_level": "high",
+    "trainability": "moderate"
+  },
+  {
+    "id": 4018,
+    "wcf_code": "CRX",
+    "name_en": "Cornish Rex",
+    "name_ru": "Корниш-рекс",
+    "wcf_category": "SHORTHAIR",
+    "country_origin": "United Kingdom",
+    "coat_type": "short",
+    "size_category": "small",
+    "average_lifespan": 14,
+    "activity_level": "high",
+    "grooming_needs": "low",
+    "short_description_en": "The Cornish Rex is characterized by its distinctive soft, wavy coat and slender, elegant build. These cats are extremely playful, acrobatic, and maintain kitten-like energy throughout their lives. Cornish Rex are highly social, affectionate, and love being the center of attention. Their unique curly coat feels like warm suede and requires minimal grooming. They are generally healthy cats but may need protection from cold due to their thin coat.",
+    "short_description_ru": "Корниш-рекс характеризуется характерной мягкой волнистой шерстью и стройным элегантным телосложением. Эти кошки чрезвычайно игривы, акробатичны и сохраняют котячью энергию на протяжении всей жизни. Корниш-рексы очень социальны, ласковы и любят быть в центре внимания. Их уникальная кудрявая шерсть ощущается как теплая замша и требует минимального ухода. Они обычно здоровые кошки, но могут нуждаться в защите от холода из-за тонкой шерсти.",
+    "ideal_weight": {
+      "male": {
+        "min": 3.5,
+        "max": 5.0
+      },
+      "female": {
+        "min": 2.5,
+        "max": 4.0
+      }
+    },
+    "health_risks": [
+      {
+        "condition_code": "dental_disease",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "hyperthyroidism",
+        "risk_level": "low"
+      }
+    ],
+    "allergy_risks": [
+      {
+        "allergen_code": "cat_fish_protein",
+        "risk_level": "common"
+      },
+      {
+        "allergen_code": "cat_beef_protein",
+        "risk_level": "uncommon"
+      }
+    ],
+    "base_activity_level": "high",
+    "trainability": "moderate"
+  },
+  {
+    "id": 4019,
+    "wcf_code": "DRX",
+    "name_en": "Devon Rex",
+    "name_ru": "Девон-рекс",
+    "wcf_category": "SHORTHAIR",
+    "country_origin": "United Kingdom",
+    "coat_type": "short",
+    "size_category": "small",
+    "average_lifespan": 14,
+    "activity_level": "high",
+    "grooming_needs": "low",
+    "short_description_en": "The Devon Rex has a distinctive pixie-like appearance with large ears, wavy coat, and slender body. These cats are highly intelligent, mischievous, and extremely people-oriented, often called 'monkeys in cat suits'. Devon Rex are playful and energetic, enjoying interactive toys and high perches. Their soft, wavy coat requires minimal grooming but they may need frequent ear cleaning. They are social cats that thrive on companionship and don't like being alone.",
+    "short_description_ru": "Девон-рекс имеет характерную эльфийскую внешность с большими ушами, волнистой шерстью и стройным телом. Эти кошки очень умны, озорны и чрезвычайно ориентированы на людей, их часто называют 'обезьянами в кошачьих костюмах'. Девон-рексы игривы и энергичны, наслаждаясь интерактивными игрушками и высокими насестами. Их мягкая волнистая шерсть требует минимального ухода, но им может потребоваться частая чистка ушей. Это социальные кошки, которые процветают на компании и не любят оставаться в одиночестве.",
+    "ideal_weight": {
+      "male": {
+        "min": 3.5,
+        "max": 5.0
+      },
+      "female": {
+        "min": 2.5,
+        "max": 4.0
+      }
+    },
+    "health_risks": [
+      {
+        "condition_code": "dental_disease",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "hyperthyroidism",
+        "risk_level": "low"
+      }
+    ],
+    "allergy_risks": [
+      {
+        "allergen_code": "cat_fish_protein",
+        "risk_level": "common"
+      },
+      {
+        "allergen_code": "cat_beef_protein",
+        "risk_level": "uncommon"
+      }
+    ],
+    "base_activity_level": "high",
+    "trainability": "moderate"
+  },
+  {
+    "id": 4020,
+    "wcf_code": "EXO",
+    "name_en": "Exotic Shorthair",
+    "name_ru": "Экзотическая короткошерстная",
+    "wcf_category": "SHORTHAIR",
+    "country_origin": "United States",
+    "coat_type": "short",
+    "size_category": "medium",
+    "average_lifespan": 13,
+    "activity_level": "low",
+    "grooming_needs": "moderate",
+    "short_description_en": "The Exotic Shorthair is essentially a short-haired Persian, combining the Persian's distinctive flat face with an easier-to-maintain plush coat. These cats are gentle, calm, and affectionate, making them ideal lap cats. Exotics are more playful and curious than Persians but still maintain a relaxed demeanor. Their dense, plush coat requires regular brushing but is much easier to care for than a Persian's long coat. They may have breathing issues due to their flat faces.",
+    "short_description_ru": "Экзотическая короткошерстная — по сути короткошерстная персидская, сочетающая характерную плоскую мордочку персов с более легкой в уходе плюшевой шерстью. Эти кошки нежны, спокойны и ласковы, что делает их идеальными кошками для колен. Экзоты более игривы и любопытны, чем персы, но все еще сохраняют расслабленное поведение. Их густая плюшевая шерсть требует регулярного расчесывания, но гораздо проще в уходе, чем длинная шерсть персов. У них могут быть проблемы с дыханием из-за плоских мордочек.",
+    "ideal_weight": {
+      "male": {
+        "min": 4.5,
+        "max": 7.0
+      },
+      "female": {
+        "min": 3.0,
+        "max": 5.5
+      }
+    },
+    "health_risks": [
+      {
+        "condition_code": "obesity_1",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "flutd",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "dental_disease",
+        "risk_level": "low"
+      }
+    ],
+    "allergy_risks": [
+      {
+        "allergen_code": "cat_fish_protein",
+        "risk_level": "common"
+      },
+      {
+        "allergen_code": "cat_beef_protein",
+        "risk_level": "uncommon"
+      }
+    ],
+    "base_activity_level": "low",
+    "trainability": "moderate"
+  },
+  {
+    "id": 4021,
+    "wcf_code": "GRX",
+    "name_en": "German Rex",
+    "name_ru": "Немецкий рекс",
+    "wcf_category": "SHORTHAIR",
+    "country_origin": "Germany",
+    "coat_type": "short",
+    "size_category": "medium",
+    "average_lifespan": 14,
+    "activity_level": "high",
+    "grooming_needs": "low",
+    "short_description_en": "The German Rex is one of the oldest rex breeds, featuring a soft, wavy coat and medium build. These cats are friendly, affectionate, and playful, making them excellent companions. German Rex are intelligent and curious, enjoying interactive play and exploration. Their curly coat is soft to the touch and requires minimal grooming. They are generally healthy cats that adapt well to various living situations and get along with children and other pets.",
+    "short_description_ru": "Немецкий рекс — одна из старейших рексовых пород с мягкой волнистой шерстью и средним телосложением. Эти кошки дружелюбны, ласковы и игривы, что делает их отличными компаньонами. Немецкие рексы умны и любопытны, наслаждаясь интерактивной игрой и исследованием. Их кудрявая шерсть мягкая на ощупь и требует минимального ухода. Они обычно здоровые кошки, хорошо адаптирующиеся к различным условиям жизни и ладящие с детьми и другими животными.",
+    "ideal_weight": {
+      "male": {
+        "min": 3.5,
+        "max": 5.0
+      },
+      "female": {
+        "min": 2.5,
+        "max": 4.0
+      }
+    },
+    "health_risks": [
+      {
+        "condition_code": "obesity_1",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "flutd",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "dental_disease",
+        "risk_level": "low"
+      }
+    ],
+    "allergy_risks": [
+      {
+        "allergen_code": "cat_fish_protein",
+        "risk_level": "common"
+      },
+      {
+        "allergen_code": "cat_beef_protein",
+        "risk_level": "uncommon"
+      }
+    ],
+    "base_activity_level": "high",
+    "trainability": "moderate"
+  },
+  {
+    "id": 4022,
+    "wcf_code": "HPS",
+    "name_en": "Household Pet Shorthair",
+    "name_ru": "Домашняя короткошерстная",
+    "wcf_category": "SHORTHAIR",
+    "country_origin": "Various",
+    "coat_type": "short",
+    "size_category": "medium",
+    "average_lifespan": 15,
+    "activity_level": "moderate",
+    "grooming_needs": "low",
+    "short_description_en": "The Household Pet Shorthair is not a specific breed but rather a term for mixed-breed cats with short fur. These cats display a wide variety of colors, patterns, and personalities due to their diverse genetic backgrounds. Despite their non-pedigree status, Household Pet Shorthairs make wonderful companions and can be just as healthy and affectionate as purebred cats. Their short coat requires minimal grooming and they are generally hardy, adaptable cats.",
+    "short_description_ru": "Домашняя короткошерстная — это не конкретная порода, а термин для беспородных кошек с короткой шерстью. Эти кошки демонстрируют широкое разнообразие окрасов, рисунков и характеров благодаря своему разнообразному генетическому происхождению. Несмотря на отсутствие родословной, домашние короткошерстные становятся прекрасными компаньонами и могут быть такими же здоровыми и ласковыми, как породистые кошки. Их короткая шерсть требует минимального ухода, и они обычно выносливые адаптивные кошки.",
+    "ideal_weight": {
+      "male": {
+        "min": 3.5,
+        "max": 5.5
+      },
+      "female": {
+        "min": 2.5,
+        "max": 4.5
+      }
+    },
+    "health_risks": [
+      {
+        "condition_code": "obesity_1",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "flutd",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "dental_disease",
+        "risk_level": "low"
+      }
+    ],
+    "allergy_risks": [
+      {
+        "allergen_code": "cat_fish_protein",
+        "risk_level": "common"
+      },
+      {
+        "allergen_code": "cat_beef_protein",
+        "risk_level": "uncommon"
+      }
+    ],
+    "base_activity_level": "moderate",
+    "trainability": "moderate"
+  },
+  {
+    "id": 4023,
+    "wcf_code": "JBT",
+    "name_en": "Japanese Bobtail Shorthair",
+    "name_ru": "Японский бобтейл короткошерстный",
+    "wcf_category": "SHORTHAIR",
+    "country_origin": "Japan",
+    "coat_type": "short",
+    "size_category": "medium",
+    "average_lifespan": 15,
+    "activity_level": "high",
+    "grooming_needs": "low",
+    "short_description_en": "The Japanese Bobtail Shorthair is an ancient breed from Japan with a distinctive pom-pom tail and short, silky coat. These cats are highly active, intelligent, and vocal, often engaging in conversations with their owners. Japanese Bobtails are social, adaptable, and excellent with children and other pets. Their short coat requires minimal grooming. They are considered good luck symbols in Japanese culture and are known for their playful, outgoing personalities.",
+    "short_description_ru": "Японский бобтейл короткошерстный — древняя порода из Японии с характерным помпоновым хвостом и короткой шелковистой шерстью. Эти кошки очень активны, умны и вокальны, часто ведут разговоры с владельцами. Японские бобтейлы общительны, адаптивны и отлично ладят с детьми и другими животными. Их короткая шерсть требует минимального ухода. Они считаются символами удачи в японской культуре и известны своими игривыми общительными личностями.",
+    "ideal_weight": {
+      "male": {
+        "min": 3.5,
+        "max": 5.0
+      },
+      "female": {
+        "min": 2.5,
+        "max": 4.0
+      }
+    },
+    "health_risks": [
+      {
+        "condition_code": "obesity_1",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "flutd",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "dental_disease",
+        "risk_level": "low"
+      }
+    ],
+    "allergy_risks": [
+      {
+        "allergen_code": "cat_fish_protein",
+        "risk_level": "common"
+      },
+      {
+        "allergen_code": "cat_beef_protein",
+        "risk_level": "uncommon"
+      }
+    ],
+    "base_activity_level": "high",
+    "trainability": "moderate"
+  },
+  {
+    "id": 4024,
+    "wcf_code": "KAN",
+    "name_en": "Kanaani",
+    "name_ru": "Ханаани",
+    "wcf_category": "SHORTHAIR",
+    "country_origin": "Israel",
+    "coat_type": "short",
+    "size_category": "medium",
+    "average_lifespan": 14,
+    "activity_level": "high",
+    "grooming_needs": "low",
+    "short_description_en": "The Kanaani is a spotted breed developed in Israel to resemble wild desert cats. These cats are highly energetic, intelligent, and athletic, requiring significant space and stimulation. Kanaani cats are social and affectionate with their families but can be reserved with strangers. Their short, ticked coat is low-maintenance and adapted to warm climates. They are generally healthy, active cats that enjoy climbing and exploring.",
+    "short_description_ru": "Ханаани — пятнистая порода, выведенная в Израиле для сходства с дикими пустынными кошками. Эти кошки очень энергичны, умны и атлетичны, требующие значительного пространства и стимуляции. Кошки ханаани социальны и ласковы со своими семьями, но могут быть сдержанными с незнакомцами. Их короткая тикированная шерсть неприхотлива в уходе и адаптирована к теплому климату. Они обычно здоровые активные кошки, которые наслаждаются лазанием и исследованием.",
+    "ideal_weight": {
+      "male": {
+        "min": 4.0,
+        "max": 6.0
+      },
+      "female": {
+        "min": 3.0,
+        "max": 5.0
+      }
+    },
+    "health_risks": [
+      {
+        "condition_code": "obesity_1",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "flutd",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "dental_disease",
+        "risk_level": "low"
+      }
+    ],
+    "allergy_risks": [
+      {
+        "allergen_code": "cat_fish_protein",
+        "risk_level": "common"
+      },
+      {
+        "allergen_code": "cat_beef_protein",
+        "risk_level": "uncommon"
+      }
+    ],
+    "base_activity_level": "high",
+    "trainability": "moderate"
+  },
+  {
+    "id": 4025,
+    "wcf_code": "KAS",
+    "name_en": "Karelian Bobtail Shorthair",
+    "name_ru": "Карельский бобтейл короткошерстный",
+    "wcf_category": "SHORTHAIR",
+    "country_origin": "Russia",
+    "coat_type": "short",
+    "size_category": "medium",
+    "average_lifespan": 15,
+    "activity_level": "moderate",
+    "grooming_needs": "low",
+    "short_description_en": "The Karelian Bobtail Shorthair is a natural breed from the Karelia region with a short, pom-pom tail and dense short coat. These cats are calm, friendly, and adaptable, making them excellent family companions. Karelian Bobtails are known for their quiet nature and gentle personalities, rarely being overly vocal. Their short coat requires minimal grooming to maintain its condition. They are generally healthy, hardy cats with few genetic health issues.",
+    "short_description_ru": "Карельский бобтейл короткошерстный — натуральная порода из региона Карелии с коротким помпоновым хвостом и густой короткой шерстью. Эти кошки спокойны, дружелюбны и адаптивны, что делает их отличными семейными компаньонами. Карельские бобтейлы известны своим тихим характером и нежными личностями, редко будучи чрезмерно вокальными. Их короткая шерсть требует минимального ухода для поддержания состояния. Они обычно здоровые выносливые кошки с немногими генетическими проблемами со здоровьем.",
+    "ideal_weight": {
+      "male": {
+        "min": 4.0,
+        "max": 6.0
+      },
+      "female": {
+        "min": 3.0,
+        "max": 5.0
+      }
+    },
+    "health_risks": [
+      {
+        "condition_code": "obesity_1",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "flutd",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "dental_disease",
+        "risk_level": "low"
+      }
+    ],
+    "allergy_risks": [
+      {
+        "allergen_code": "cat_fish_protein",
+        "risk_level": "common"
+      },
+      {
+        "allergen_code": "cat_beef_protein",
+        "risk_level": "uncommon"
+      }
+    ],
+    "base_activity_level": "moderate",
+    "trainability": "moderate"
+  },
+  {
+    "id": 4026,
+    "wcf_code": "KBS",
+    "name_en": "Kurilian Bobtail Shorthair",
+    "name_ru": "Курильский бобтейл короткошерстный",
+    "wcf_category": "SHORTHAIR",
+    "country_origin": "Russia",
+    "coat_type": "short",
+    "size_category": "large",
+    "average_lifespan": 15,
+    "activity_level": "high",
+    "grooming_needs": "low",
+    "short_description_en": "The Kurilian Bobtail Shorthair is a natural breed from the Kuril Islands with a distinctive pom-pom tail and dense short coat. These cats are excellent hunters and swimmers, retaining strong wild instincts. Kurilian Bobtails are intelligent, playful, and form deep bonds with their families, often displaying dog-like devotion. Their short coat is easy to maintain despite its density. They are generally healthy, robust cats adapted to harsh climates.",
+    "short_description_ru": "Курильский бобтейл короткошерстный — натуральная порода с Курильских островов с характерным помпоновым хвостом и густой короткой шерстью. Эти кошки отличные охотники и пловцы, сохраняющие сильные дикие инстинкты. Курильские бобтейлы умны, игривы и формируют глубокие связи со своими семьями, часто проявляя собачью преданность. Их короткая шерсть проста в уходе, несмотря на плотность. Они обычно здоровые крепкие кошки, адаптированные к суровому климату.",
+    "ideal_weight": {
+      "male": {
+        "min": 5.5,
+        "max": 7.5
+      },
+      "female": {
+        "min": 3.5,
+        "max": 5.5
+      }
+    },
+    "health_risks": [
+      {
+        "condition_code": "heart_disease",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "hip_dysplasia",
+        "risk_level": "low"
+      },
+      {
+        "condition_code": "obesity_1",
+        "risk_level": "moderate"
+      }
+    ],
+    "allergy_risks": [
+      {
+        "allergen_code": "cat_fish_protein",
+        "risk_level": "common"
+      },
+      {
+        "allergen_code": "cat_beef_protein",
+        "risk_level": "uncommon"
+      }
+    ],
+    "base_activity_level": "high",
+    "trainability": "moderate"
+  },
+  {
+    "id": 4027,
+    "wcf_code": "KKH",
+    "name_en": "Khao Manee",
+    "name_ru": "Као мани",
+    "wcf_category": "SHORTHAIR",
+    "country_origin": "Thailand",
+    "coat_type": "short",
+    "size_category": "medium",
+    "average_lifespan": 15,
+    "activity_level": "high",
+    "grooming_needs": "low",
+    "short_description_en": "The Khao Manee is an ancient Thai breed known for its pure white coat and jewel-like eyes that can be blue, gold, or odd-colored. These cats are intelligent, playful, and highly social, seeking constant interaction with their families. Khao Manees are vocal and communicative, often engaging in conversations. Their short, white coat is easy to maintain with weekly brushing. They are generally healthy cats that make devoted, affectionate companions.",
+    "short_description_ru": "Као мани — древняя тайская порода, известная своей чисто белой шерстью и драгоценными глазами, которые могут быть голубыми, золотыми или разноцветными. Эти кошки умны, игривы и очень социальны, ищут постоянного взаимодействия со своими семьями. Као мани вокальны и коммуникативны, часто ведут разговоры. Их короткая белая шерсть проста в уходе при еженедельном расчесывании. Они обычно здоровые кошки, которые становятся преданными ласковыми компаньонами.",
+    "ideal_weight": {
+      "male": {
+        "min": 3.5,
+        "max": 5.5
+      },
+      "female": {
+        "min": 2.5,
+        "max": 4.5
+      }
+    },
+    "health_risks": [
+      {
+        "condition_code": "obesity_1",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "flutd",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "dental_disease",
+        "risk_level": "low"
+      }
+    ],
+    "allergy_risks": [
+      {
+        "allergen_code": "cat_fish_protein",
+        "risk_level": "common"
+      },
+      {
+        "allergen_code": "cat_beef_protein",
+        "risk_level": "uncommon"
+      }
+    ],
+    "base_activity_level": "high",
+    "trainability": "moderate"
+  },
+  {
+    "id": 4028,
+    "wcf_code": "KOR",
+    "name_en": "Korat",
+    "name_ru": "Корат",
+    "wcf_category": "SHORTHAIR",
+    "country_origin": "Thailand",
+    "coat_type": "short",
+    "size_category": "small",
+    "average_lifespan": 15,
+    "activity_level": "moderate",
+    "grooming_needs": "low",
+    "short_description_en": "The Korat is an ancient Thai breed with a distinctive silver-blue coat and heart-shaped face. These cats are intelligent, loyal, and form strong bonds with their families, often bonding more closely with one or two people. Korats are active and playful but can be sensitive to loud noises and sudden changes. Their short, fine coat requires minimal grooming. They are considered good luck symbols in Thailand and are generally healthy, long-lived cats.",
+    "short_description_ru": "Корат — древняя тайская порода с характерной серебристо-голубой шерстью и мордочкой в форме сердца. Эти кошки умны, преданны и формируют крепкие связи со своими семьями, часто более тесно привязываясь к одному или двум людям. Кораты активны и игривы, но могут быть чувствительны к громким звукам и внезапным изменениям. Их короткая тонкая шерсть требует минимального ухода. Они считаются символами удачи в Таиланде и обычно здоровые долгоживущие кошки.",
+    "ideal_weight": {
+      "male": {
+        "min": 3.5,
+        "max": 5.0
+      },
+      "female": {
+        "min": 2.5,
+        "max": 4.0
+      }
+    },
+    "health_risks": [
+      {
+        "condition_code": "dental_disease",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "hyperthyroidism",
+        "risk_level": "low"
+      }
+    ],
+    "allergy_risks": [
+      {
+        "allergen_code": "cat_fish_protein",
+        "risk_level": "common"
+      },
+      {
+        "allergen_code": "cat_beef_protein",
+        "risk_level": "uncommon"
+      }
+    ],
+    "base_activity_level": "moderate",
+    "trainability": "moderate"
+  },
+  {
+    "id": 4029,
+    "wcf_code": "LPS",
+    "name_en": "LaPerm Shorthair",
+    "name_ru": "ЛаПерм короткошерстный",
+    "wcf_category": "SHORTHAIR",
+    "country_origin": "United States",
+    "coat_type": "short",
+    "size_category": "medium",
+    "average_lifespan": 14,
+    "activity_level": "high",
+    "grooming_needs": "low",
+    "short_description_en": "The LaPerm Shorthair features soft, curly or wavy short coat ranging from loose waves to tight curls. These cats are affectionate, people-oriented, and highly interactive, often seeking physical contact with their owners. LaPerms are intelligent and curious, enjoying puzzle toys and interactive play. Their unique curly coat is surprisingly low-maintenance and sheds less than straight-coated breeds. They are generally healthy with a gentle, inquisitive personality.",
+    "short_description_ru": "ЛаПерм короткошерстный имеет мягкую кудрявую или волнистую короткую шерсть от свободных волн до тугих локонов. Эти кошки ласковы, ориентированы на людей и очень интерактивны, часто ищущие физического контакта с владельцами. ЛаПермы умны и любопытны, наслаждаясь головоломками и интерактивной игрой. Их уникальная кудрявая шерсть удивительно неприхотлива в уходе и линяет меньше, чем породы с прямой шерстью. Они обычно здоровы с нежной любознательной личностью.",
+    "ideal_weight": {
+      "male": {
+        "min": 3.5,
+        "max": 5.5
+      },
+      "female": {
+        "min": 2.5,
+        "max": 4.5
+      }
+    },
+    "health_risks": [
+      {
+        "condition_code": "obesity_1",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "flutd",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "dental_disease",
+        "risk_level": "low"
+      }
+    ],
+    "allergy_risks": [
+      {
+        "allergen_code": "cat_fish_protein",
+        "risk_level": "common"
+      },
+      {
+        "allergen_code": "cat_beef_protein",
+        "risk_level": "uncommon"
+      }
+    ],
+    "base_activity_level": "high",
+    "trainability": "moderate"
+  },
+  {
+    "id": 4030,
+    "wcf_code": "LYK",
+    "name_en": "Lykoi",
+    "name_ru": "Ликои",
+    "wcf_category": "SHORTHAIR",
+    "country_origin": "United States",
+    "coat_type": "short",
+    "size_category": "medium",
+    "average_lifespan": 13,
+    "activity_level": "high",
+    "grooming_needs": "low",
+    "short_description_en": "The Lykoi, also known as the 'werewolf cat', has a unique partially hairless coat with a roan pattern that gives it a distinctive wolf-like appearance. These cats are intelligent, friendly, and playful, displaying dog-like hunting behaviors. Lykoi are social with their families but can be wary of strangers initially. Their unusual coat requires minimal grooming but they may need skin care. They are a relatively new breed and generally healthy.",
+    "short_description_ru": "Ликои, также известный как 'кошка-оборотень', имеет уникальную частично безволосую шерсть с чалым рисунком, придающим характерную волчью внешность. Эти кошки умны, дружелюбны и игривы, демонстрируя собачье охотничье поведение. Ликои социальны со своими семьями, но могут быть осторожными с незнакомцами сначала. Их необычная шерсть требует минимального ухода, но им может потребоваться уход за кожей. Они относительно новая порода и обычно здоровы.",
+    "ideal_weight": {
+      "male": {
+        "min": 3.5,
+        "max": 5.5
+      },
+      "female": {
+        "min": 2.5,
+        "max": 4.5
+      }
+    },
+    "health_risks": [
+      {
+        "condition_code": "obesity_1",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "flutd",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "dental_disease",
+        "risk_level": "low"
+      }
+    ],
+    "allergy_risks": [
+      {
+        "allergen_code": "cat_fish_protein",
+        "risk_level": "common"
+      },
+      {
+        "allergen_code": "cat_beef_protein",
+        "risk_level": "uncommon"
+      }
+    ],
+    "base_activity_level": "high",
+    "trainability": "moderate"
+  },
+  {
+    "id": 4031,
+    "wcf_code": "MAU",
+    "name_en": "Egyptian Mau",
+    "name_ru": "Египетская мау",
+    "wcf_category": "SHORTHAIR",
+    "country_origin": "Egypt",
+    "coat_type": "short",
+    "size_category": "medium",
+    "average_lifespan": 15,
+    "activity_level": "high",
+    "grooming_needs": "low",
+    "short_description_en": "The Egyptian Mau is one of the few naturally spotted domestic cat breeds, featuring a distinctive spotted coat and gooseberry-green eyes. These cats are extremely fast runners, reaching speeds up to 30 mph. Egyptian Maus are loyal, affectionate with their families, but can be reserved with strangers. Their short, silky coat requires minimal grooming. They are intelligent, playful cats that enjoy climbing and interactive toys.",
+    "short_description_ru": "Египетская мау — одна из немногих естественно пятнистых домашних пород кошек с характерной пятнистой шерстью и крыжовниково-зелеными глазами. Эти кошки чрезвычайно быстрые бегуны, развивающие скорость до 48 км/ч. Египетские мау преданны, ласковы со своими семьями, но могут быть сдержанными с незнакомцами. Их короткая шелковистая шерсть требует минимального ухода. Это умные игривые кошки, которые наслаждаются лазанием и интерактивными игрушками.",
+    "ideal_weight": {
+      "male": {
+        "min": 4.0,
+        "max": 6.0
+      },
+      "female": {
+        "min": 3.0,
+        "max": 5.0
+      }
+    },
+    "health_risks": [
+      {
+        "condition_code": "obesity_1",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "flutd",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "dental_disease",
+        "risk_level": "low"
+      }
+    ],
+    "allergy_risks": [
+      {
+        "allergen_code": "cat_fish_protein",
+        "risk_level": "common"
+      },
+      {
+        "allergen_code": "cat_beef_protein",
+        "risk_level": "uncommon"
+      }
+    ],
+    "base_activity_level": "high",
+    "trainability": "moderate"
+  },
+  {
+    "id": 4032,
+    "wcf_code": "MAN",
+    "name_en": "Manx",
+    "name_ru": "Мэнкс",
+    "wcf_category": "SHORTHAIR",
+    "country_origin": "Isle of Man",
+    "coat_type": "short",
+    "size_category": "medium",
+    "average_lifespan": 14,
+    "activity_level": "moderate",
+    "grooming_needs": "low",
+    "short_description_en": "The Manx is known for its rounded appearance and lack of a tail or shortened tail. These cats have a double coat despite being short-haired. Manx are intelligent, playful, and social cats that form strong bonds with their families. They are excellent jumpers despite their tailless state and are known for their dog-like loyalty. Their short, thick coat requires regular brushing, especially during seasonal shedding.",
+    "short_description_ru": "Мэнкс известен своей округлой внешностью и отсутствием хвоста или укороченным хвостом. У этих кошек двойная шерсть, несмотря на короткошерстность. Мэнксы умны, игривы и общительны, формируют крепкие связи со своими семьями. Они отличные прыгуны, несмотря на бесхвостое состояние, и известны своей собачьей преданностью. Их короткая густая шерсть требует регулярного расчесывания, особенно во время сезонной линьки.",
+    "ideal_weight": {
+      "male": {
+        "min": 4.5,
+        "max": 6.0
+      },
+      "female": {
+        "min": 3.5,
+        "max": 5.0
+      }
+    },
+    "health_risks": [
+      {
+        "condition_code": "obesity_1",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "flutd",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "dental_disease",
+        "risk_level": "low"
+      }
+    ],
+    "allergy_risks": [
+      {
+        "allergen_code": "cat_fish_protein",
+        "risk_level": "common"
+      },
+      {
+        "allergen_code": "cat_beef_protein",
+        "risk_level": "uncommon"
+      }
+    ],
+    "base_activity_level": "moderate",
+    "trainability": "moderate"
+  },
+  {
+    "id": 4033,
+    "wcf_code": "MNS",
+    "name_en": "Munchkin Shorthair",
+    "name_ru": "Манчкин короткошерстный",
+    "wcf_category": "SHORTHAIR",
+    "country_origin": "United States",
+    "coat_type": "short",
+    "size_category": "small",
+    "average_lifespan": 13,
+    "activity_level": "high",
+    "grooming_needs": "low",
+    "short_description_en": "The Munchkin Shorthair is characterized by its distinctively short legs caused by a natural genetic mutation. Despite their short stature, these cats are surprisingly agile and playful, with no mobility issues. Munchkins are outgoing, confident, and social cats that enjoy interactive play and human companionship. Their short coat is easy to maintain with weekly brushing. They are generally healthy and adapt well to various living situations.",
+    "short_description_ru": "Манчкин короткошерстный характеризуется своими характерно короткими ногами, вызванными естественной генетической мутацией. Несмотря на низкий рост, эти кошки удивительно проворны и игривы, без проблем с мобильностью. Манчкины общительны, уверены в себе и социальны, наслаждаются интерактивной игрой и человеческим обществом. Их короткая шерсть проста в уходе при еженедельном расчесывании. Они обычно здоровы и хорошо адаптируются к различным условиям жизни.",
+    "ideal_weight": {
+      "male": {
+        "min": 3.0,
+        "max": 4.5
+      },
+      "female": {
+        "min": 2.0,
+        "max": 3.5
+      }
+    },
+    "health_risks": [
+      {
+        "condition_code": "dental_disease",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "hyperthyroidism",
+        "risk_level": "low"
+      }
+    ],
+    "allergy_risks": [
+      {
+        "allergen_code": "cat_fish_protein",
+        "risk_level": "common"
+      },
+      {
+        "allergen_code": "cat_beef_protein",
+        "risk_level": "uncommon"
+      }
+    ],
+    "base_activity_level": "high",
+    "trainability": "moderate"
+  },
+  {
+    "id": 4034,
+    "wcf_code": "OCI",
+    "name_en": "Ocicat",
+    "name_ru": "Оцикет",
+    "wcf_category": "SHORTHAIR",
+    "country_origin": "United States",
+    "coat_type": "short",
+    "size_category": "large",
+    "average_lifespan": 15,
+    "activity_level": "high",
+    "grooming_needs": "low",
+    "short_description_en": "The Ocicat is a domestic breed bred to resemble wild cats with its distinctive spotted coat, despite having no wild DNA. These cats are highly social, outgoing, and dog-like in their devotion to their families. Ocicats are intelligent, trainable, and enjoy interactive play. Their short, satiny coat is easy to maintain with weekly brushing. They are generally healthy, active cats that get along well with children and other pets.",
+    "short_description_ru": "Оцикет — домашняя порода, выведенная для сходства с дикими кошками с характерной пятнистой шерстью, несмотря на отсутствие дикой ДНК. Эти кошки очень социальны, общительны и собачьи в своей преданности семьям. Оцикеты умны, обучаемы и наслаждаются интерактивной игрой. Их короткая атласная шерсть проста в уходе при еженедельном расчесывании. Они обычно здоровые активные кошки, хорошо ладящие с детьми и другими животными.",
+    "ideal_weight": {
+      "male": {
+        "min": 5.5,
+        "max": 7.0
+      },
+      "female": {
+        "min": 4.0,
+        "max": 6.0
+      }
+    },
+    "health_risks": [
+      {
+        "condition_code": "heart_disease",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "hip_dysplasia",
+        "risk_level": "low"
+      },
+      {
+        "condition_code": "obesity_1",
+        "risk_level": "moderate"
+      }
+    ],
+    "allergy_risks": [
+      {
+        "allergen_code": "cat_fish_protein",
+        "risk_level": "common"
+      },
+      {
+        "allergen_code": "cat_beef_protein",
+        "risk_level": "uncommon"
+      }
+    ],
+    "base_activity_level": "high",
+    "trainability": "moderate"
+  },
+  {
+    "id": 4035,
+    "wcf_code": "PXS",
+    "name_en": "Pixiebob Shorthair",
+    "name_ru": "Пиксибоб короткошерстный",
+    "wcf_category": "SHORTHAIR",
+    "country_origin": "United States",
+    "coat_type": "short",
+    "size_category": "large",
+    "average_lifespan": 13,
+    "activity_level": "moderate",
+    "grooming_needs": "low",
+    "short_description_en": "The Pixiebob Shorthair is a domestic breed bred to resemble the North American Bobcat, with a wild appearance, spotted coat, and shortened tail. Despite their fierce looks, these cats are gentle, loyal, and dog-like in their devotion to family. Pixiebobs are intelligent, trainable, and enjoy interactive play. Some individuals are polydactyl, having extra toes. Their short, woolly coat requires minimal grooming to maintain its rustic appearance.",
+    "short_description_ru": "Пиксибоб короткошерстный — домашняя порода, выведенная для сходства с североамериканской рысью, с диким внешним видом, пятнистой шерстью и укороченным хвостом. Несмотря на свирепый вид, эти кошки нежны, преданны и собачьи в своей преданности семье. Пиксибобы умны, обучаемы и наслаждаются интерактивной игрой. Некоторые особи полидактильны, имея дополнительные пальцы. Их короткая шерстяная шерсть требует минимального ухода для поддержания деревенского вида.",
+    "ideal_weight": {
+      "male": {
+        "min": 5.5,
+        "max": 8.0
+      },
+      "female": {
+        "min": 4.0,
+        "max": 6.0
+      }
+    },
+    "health_risks": [
+      {
+        "condition_code": "heart_disease",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "hip_dysplasia",
+        "risk_level": "low"
+      },
+      {
+        "condition_code": "obesity_1",
+        "risk_level": "moderate"
+      }
+    ],
+    "allergy_risks": [
+      {
+        "allergen_code": "cat_fish_protein",
+        "risk_level": "common"
+      },
+      {
+        "allergen_code": "cat_beef_protein",
+        "risk_level": "uncommon"
+      }
+    ],
+    "base_activity_level": "moderate",
+    "trainability": "moderate"
+  },
+  {
+    "id": 4036,
+    "wcf_code": "RUS",
+    "name_en": "Russian Blue",
+    "name_ru": "Русская голубая",
+    "wcf_category": "SHORTHAIR",
+    "country_origin": "Russia",
+    "coat_type": "short",
+    "size_category": "medium",
+    "average_lifespan": 16,
+    "activity_level": "moderate",
+    "grooming_needs": "low",
+    "short_description_en": "The Russian Blue is distinguished by its silvery-blue double coat and vivid green eyes. These cats are gentle, quiet, and somewhat reserved with strangers but deeply devoted to their families. Russian Blues are intelligent and playful, though less boisterous than some breeds. Their plush double coat has a unique texture and requires minimal grooming. They are generally healthy, long-lived cats that thrive in calm, stable environments.",
+    "short_description_ru": "Русская голубая отличается своей серебристо-голубой двойной шерстью и яркими зелеными глазами. Эти кошки нежны, тихи и несколько сдержанны с незнакомцами, но глубоко преданы своим семьям. Русские голубые умны и игривы, хотя менее буйны, чем некоторые породы. Их плюшевая двойная шерсть имеет уникальную текстуру и требует минимального ухода. Они обычно здоровые долгоживущие кошки, которые процветают в спокойной стабильной обстановке.",
+    "ideal_weight": {
+      "male": {
+        "min": 4.0,
+        "max": 6.0
+      },
+      "female": {
+        "min": 3.0,
+        "max": 5.0
+      }
+    },
+    "health_risks": [
+      {
+        "condition_code": "obesity_1",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "flutd",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "dental_disease",
+        "risk_level": "low"
+      }
+    ],
+    "allergy_risks": [
+      {
+        "allergen_code": "cat_fish_protein",
+        "risk_level": "common"
+      },
+      {
+        "allergen_code": "cat_beef_protein",
+        "risk_level": "uncommon"
+      }
+    ],
+    "base_activity_level": "moderate",
+    "trainability": "moderate"
+  },
+  {
+    "id": 4037,
+    "wcf_code": "SAV",
+    "name_en": "Savannah",
+    "name_ru": "Саванна",
+    "wcf_category": "SHORTHAIR",
+    "country_origin": "United States",
+    "coat_type": "short",
+    "size_category": "large",
+    "average_lifespan": 14,
+    "activity_level": "high",
+    "grooming_needs": "low",
+    "short_description_en": "The Savannah is a hybrid breed created by crossing domestic cats with African Servals, resulting in a large, exotic-looking cat. These cats are extremely energetic, intelligent, and require experienced owners who can provide significant space and stimulation. Savannahs are social and loyal but retain strong wild instincts. Their short, spotted coat is low-maintenance. They are known for their jumping ability and love of water.",
+    "short_description_ru": "Саванна — гибридная порода, созданная путем скрещивания домашних кошек с африканскими сервалами, в результате чего появилась крупная экзотически выглядящая кошка. Эти кошки чрезвычайно энергичны, умны и требуют опытных владельцев, которые могут обеспечить значительное пространство и стимуляцию. Саванны социальны и преданны, но сохраняют сильные дикие инстинкты. Их короткая пятнистая шерсть неприхотлива в уходе. Они известны своей способностью к прыжкам и любовью к воде.",
+    "ideal_weight": {
+      "male": {
+        "min": 6.0,
+        "max": 11.0
+      },
+      "female": {
+        "min": 4.5,
+        "max": 8.0
+      }
+    },
+    "health_risks": [
+      {
+        "condition_code": "heart_disease",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "hip_dysplasia",
+        "risk_level": "low"
+      },
+      {
+        "condition_code": "obesity_1",
+        "risk_level": "moderate"
+      }
+    ],
+    "allergy_risks": [
+      {
+        "allergen_code": "cat_fish_protein",
+        "risk_level": "common"
+      },
+      {
+        "allergen_code": "cat_beef_protein",
+        "risk_level": "uncommon"
+      }
+    ],
+    "base_activity_level": "high",
+    "trainability": "moderate"
+  },
+  {
+    "id": 4038,
+    "wcf_code": "SFS",
+    "name_en": "Scottish Fold Shorthair",
+    "name_ru": "Шотландская вислоухая короткошерстная",
+    "wcf_category": "SHORTHAIR",
+    "country_origin": "Scotland",
+    "coat_type": "short",
+    "size_category": "medium",
+    "average_lifespan": 14,
+    "activity_level": "moderate",
+    "grooming_needs": "low",
+    "short_description_en": "The Scottish Fold Shorthair is distinguished by its unique folded ears and round, expressive face that gives it an owl-like appearance. These cats are gentle, sweet-natured, and moderately playful, making excellent family pets. Scottish Folds are affectionate and adapt well to different living situations. Their short, dense coat requires minimal grooming with weekly brushing. They are generally healthy but the fold gene can sometimes cause joint issues.",
+    "short_description_ru": "Шотландская вислоухая короткошерстная отличается уникальными загнутыми ушами и круглой выразительной мордочкой, придающей ей совиный вид. Эти кошки нежны, добродушны и умеренно игривы, что делает их отличными семейными питомцами. Шотландские вислоухие ласковы и хорошо адаптируются к различным условиям жизни. Их короткая густая шерсть требует минимального ухода при еженедельном расчесывании. Они обычно здоровы, но ген вислоухости иногда может вызывать проблемы с суставами.",
+    "ideal_weight": {
+      "male": {
+        "min": 4.0,
+        "max": 6.0
+      },
+      "female": {
+        "min": 2.7,
+        "max": 4.5
+      }
+    },
+    "health_risks": [
+      {
+        "condition_code": "obesity_1",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "flutd",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "dental_disease",
+        "risk_level": "low"
+      }
+    ],
+    "allergy_risks": [
+      {
+        "allergen_code": "cat_fish_protein",
+        "risk_level": "common"
+      },
+      {
+        "allergen_code": "cat_beef_protein",
+        "risk_level": "uncommon"
+      }
+    ],
+    "base_activity_level": "moderate",
+    "trainability": "moderate"
+  },
+  {
+    "id": 4039,
+    "wcf_code": "SRS",
+    "name_en": "Selkirk Rex Shorthair",
+    "name_ru": "Селкирк-рекс короткошерстный",
+    "wcf_category": "SHORTHAIR",
+    "country_origin": "United States",
+    "coat_type": "short",
+    "size_category": "large",
+    "average_lifespan": 14,
+    "activity_level": "moderate",
+    "grooming_needs": "moderate",
+    "short_description_en": "The Selkirk Rex Shorthair features a distinctive curly short coat that gives it a plush, teddy bear-like appearance. Unlike other rex breeds, the Selkirk has a dominant curly gene affecting both guard hairs and undercoat. These cats are patient, tolerant, and affectionate, making them excellent family companions. Their curly coat requires regular grooming to prevent matting and maintain its distinctive texture. Selkirk Rex are known for their laid-back, easygoing personalities.",
+    "short_description_ru": "Селкирк-рекс короткошерстный имеет характерную кудрявую короткую шерсть, придающую ему плюшевый вид плюшевого медведя. В отличие от других рексовых пород, у селкирка доминантный ген курчавости, влияющий как на остевые волосы, так и на подшерсток. Эти кошки терпеливы, толерантны и ласковы, что делает их отличными семейными компаньонами. Их кудрявая шерсть требует регулярного ухода для предотвращения колтунов и поддержания характерной текстуры. Селкирк-рексы известны своим спокойным, покладистым характером.",
+    "ideal_weight": {
+      "male": {
+        "min": 5.0,
+        "max": 7.5
+      },
+      "female": {
+        "min": 3.5,
+        "max": 5.5
+      }
+    },
+    "health_risks": [
+      {
+        "condition_code": "heart_disease",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "hip_dysplasia",
+        "risk_level": "low"
+      },
+      {
+        "condition_code": "obesity_1",
+        "risk_level": "moderate"
+      }
+    ],
+    "allergy_risks": [
+      {
+        "allergen_code": "cat_fish_protein",
+        "risk_level": "common"
+      },
+      {
+        "allergen_code": "cat_beef_protein",
+        "risk_level": "uncommon"
+      }
+    ],
+    "base_activity_level": "moderate",
+    "trainability": "moderate"
+  },
+  {
+    "id": 4040,
+    "wcf_code": "SIN",
+    "name_en": "Singapura",
+    "name_ru": "Сингапура",
+    "wcf_category": "SHORTHAIR",
+    "country_origin": "Singapore",
+    "coat_type": "short",
+    "size_category": "small",
+    "average_lifespan": 15,
+    "activity_level": "high",
+    "grooming_needs": "low",
+    "short_description_en": "The Singapura is one of the smallest cat breeds, featuring large eyes, ears, and a sepia-toned ticked coat. These cats are highly energetic, curious, and affectionate, often described as extroverted. Singapuras love being involved in household activities and seek attention from their families. Their short, fine coat requires minimal grooming. Despite their small size, they are muscular and athletic cats that enjoy climbing and playing.",
+    "short_description_ru": "Сингапура — одна из самых маленьких пород кошек с большими глазами, ушами и сепиево-тонированной тикированной шерстью. Эти кошки очень энергичны, любопытны и ласковы, их часто описывают как экстравертов. Сингапуры любят участвовать в домашних делах и ищут внимания от своих семей. Их короткая тонкая шерсть требует минимального ухода. Несмотря на малый размер, это мускулистые и атлетичные кошки, которые наслаждаются лазанием и игрой.",
+    "ideal_weight": {
+      "male": {
+        "min": 2.7,
+        "max": 4.0
+      },
+      "female": {
+        "min": 2.0,
+        "max": 3.5
+      }
+    },
+    "health_risks": [
+      {
+        "condition_code": "dental_disease",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "hyperthyroidism",
+        "risk_level": "low"
+      }
+    ],
+    "allergy_risks": [
+      {
+        "allergen_code": "cat_fish_protein",
+        "risk_level": "common"
+      },
+      {
+        "allergen_code": "cat_beef_protein",
+        "risk_level": "uncommon"
+      }
+    ],
+    "base_activity_level": "high",
+    "trainability": "moderate"
+  },
+  {
+    "id": 4041,
+    "wcf_code": "SNO",
+    "name_en": "Snowshoe",
+    "name_ru": "Сноушу",
+    "wcf_category": "SHORTHAIR",
+    "country_origin": "United States",
+    "coat_type": "short",
+    "size_category": "medium",
+    "average_lifespan": 14,
+    "activity_level": "moderate",
+    "grooming_needs": "low",
+    "short_description_en": "The Snowshoe is a distinctive breed with color-point markings and characteristic white 'boots' on all four paws. These cats are intelligent, social, and vocal, often engaging in conversations with their owners. Snowshoes are affectionate and people-oriented but maintain an independent streak. Their short coat requires minimal grooming. They are active, playful cats that enjoy water and interactive toys, making them entertaining family companions.",
+    "short_description_ru": "Сноушу — характерная порода с колор-пойнтовыми отметинами и характерными белыми 'сапожками' на всех четырех лапах. Эти кошки умны, общительны и вокальны, часто ведут разговоры с владельцами. Сноушу ласковы и ориентированы на людей, но сохраняют независимую полосу. Их короткая шерсть требует минимального ухода. Это активные игривые кошки, которые наслаждаются водой и интерактивными игрушками, что делает их развлекательными семейными компаньонами.",
+    "ideal_weight": {
+      "male": {
+        "min": 4.0,
+        "max": 6.0
+      },
+      "female": {
+        "min": 3.0,
+        "max": 5.0
+      }
+    },
+    "health_risks": [
+      {
+        "condition_code": "obesity_1",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "flutd",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "dental_disease",
+        "risk_level": "low"
+      }
+    ],
+    "allergy_risks": [
+      {
+        "allergen_code": "cat_fish_protein",
+        "risk_level": "common"
+      },
+      {
+        "allergen_code": "cat_beef_protein",
+        "risk_level": "uncommon"
+      }
+    ],
+    "base_activity_level": "moderate",
+    "trainability": "moderate"
+  },
+  {
+    "id": 4042,
+    "wcf_code": "SOK",
+    "name_en": "Sokoke",
+    "name_ru": "Сококе",
+    "wcf_category": "SHORTHAIR",
+    "country_origin": "Kenya",
+    "coat_type": "short",
+    "size_category": "medium",
+    "average_lifespan": 15,
+    "activity_level": "high",
+    "grooming_needs": "low",
+    "short_description_en": "The Sokoke is a rare natural breed from Kenya with a distinctive wood-grain tabby pattern. These cats are highly active, intelligent, and social, forming strong bonds with their families. Sokokes are excellent climbers and swimmers, retaining strong natural instincts. Their short, glossy coat requires minimal grooming. They are generally healthy cats adapted to warm climates and make engaging, interactive companions for active households.",
+    "short_description_ru": "Сококе — редкая натуральная порода из Кении с характерным табби-рисунком древесной текстуры. Эти кошки очень активны, умны и общительны, формируют крепкие связи со своими семьями. Сококе отличные альпинисты и пловцы, сохраняющие сильные природные инстинкты. Их короткая глянцевая шерсть требует минимального ухода. Они обычно здоровые кошки, адаптированные к теплому климату, и становятся привлекательными интерактивными компаньонами для активных домохозяйств.",
+    "ideal_weight": {
+      "male": {
+        "min": 3.5,
+        "max": 5.5
+      },
+      "female": {
+        "min": 2.5,
+        "max": 4.5
+      }
+    },
+    "health_risks": [
+      {
+        "condition_code": "obesity_1",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "flutd",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "dental_disease",
+        "risk_level": "low"
+      }
+    ],
+    "allergy_risks": [
+      {
+        "allergen_code": "cat_fish_protein",
+        "risk_level": "common"
+      },
+      {
+        "allergen_code": "cat_beef_protein",
+        "risk_level": "uncommon"
+      }
+    ],
+    "base_activity_level": "high",
+    "trainability": "moderate"
+  },
+  {
+    "id": 4043,
+    "wcf_code": "SRX",
+    "name_en": "Skookum",
+    "name_ru": "Скукум",
+    "wcf_category": "SHORTHAIR",
+    "country_origin": "United States",
+    "coat_type": "short",
+    "size_category": "small",
+    "average_lifespan": 14,
+    "activity_level": "high",
+    "grooming_needs": "low",
+    "short_description_en": "The Skookum is a dwarf breed combining the short legs of the Munchkin with the curly coat of the LaPerm. These small cats are highly energetic, playful, and affectionate. Skookums are intelligent and social, enjoying interactive play and human companionship. Their short, curly coat requires minimal grooming despite its unique texture. They are generally healthy cats that adapt well to various living situations despite their small size.",
+    "short_description_ru": "Скукум — карликовая порода, сочетающая короткие ноги манчкина с кудрявой шерстью лаперма. Эти маленькие кошки очень энергичны, игривы и ласковы. Скукумы умны и общительны, наслаждаясь интерактивной игрой и человеческим обществом. Их короткая кудрявая шерсть требует минимального ухода, несмотря на уникальную текстуру. Они обычно здоровые кошки, хорошо адаптирующиеся к различным условиям жизни, несмотря на малый размер.",
+    "ideal_weight": {
+      "male": {
+        "min": 2.5,
+        "max": 4.0
+      },
+      "female": {
+        "min": 2.0,
+        "max": 3.5
+      }
+    },
+    "health_risks": [
+      {
+        "condition_code": "dental_disease",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "hyperthyroidism",
+        "risk_level": "low"
+      }
+    ],
+    "allergy_risks": [
+      {
+        "allergen_code": "cat_fish_protein",
+        "risk_level": "common"
+      },
+      {
+        "allergen_code": "cat_beef_protein",
+        "risk_level": "uncommon"
+      }
+    ],
+    "base_activity_level": "high",
+    "trainability": "moderate"
+  },
+  {
+    "id": 4044,
+    "wcf_code": "URX",
+    "name_en": "Ural Rex Shorthair",
+    "name_ru": "Уральский рекс короткошерстный",
+    "wcf_category": "SHORTHAIR",
+    "country_origin": "Russia",
+    "coat_type": "short",
+    "size_category": "medium",
+    "average_lifespan": 14,
+    "activity_level": "moderate",
+    "grooming_needs": "low",
+    "short_description_en": "The Ural Rex Shorthair is a natural breed from the Ural Mountains featuring a distinctive wavy or curly short coat. These cats are friendly, gentle, and adaptable, making them excellent companions for various households. Ural Rex are known for their patience and tolerance, particularly with children. Their unique curly coat requires minimal grooming to maintain its wave pattern. They are generally healthy, robust cats with few breed-specific health concerns.",
+    "short_description_ru": "Уральский рекс короткошерстный — натуральная порода с Уральских гор с характерной волнистой или кудрявой короткой шерстью. Эти кошки дружелюбны, нежны и адаптивны, что делает их отличными компаньонами для различных семей. Уральские рексы известны своим терпением и толерантностью, особенно с детьми. Их уникальная кудрявая шерсть требует минимального ухода для поддержания волнового рисунка. Они обычно здоровые крепкие кошки с немногими породными проблемами со здоровьем.",
+    "ideal_weight": {
+      "male": {
+        "min": 4.0,
+        "max": 6.0
+      },
+      "female": {
+        "min": 3.0,
+        "max": 5.0
+      }
+    },
+    "health_risks": [
+      {
+        "condition_code": "obesity_1",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "flutd",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "dental_disease",
+        "risk_level": "low"
+      }
+    ],
+    "allergy_risks": [
+      {
+        "allergen_code": "cat_fish_protein",
+        "risk_level": "common"
+      },
+      {
+        "allergen_code": "cat_beef_protein",
+        "risk_level": "uncommon"
+      }
+    ],
+    "base_activity_level": "moderate",
+    "trainability": "moderate"
+  },
+  {
+    "id": 4045,
+    "wcf_code": "BMS",
+    "name_en": "Burmilla",
+    "name_ru": "Бурмилла",
+    "wcf_category": "SHORTHAIR",
+    "country_origin": "United Kingdom",
+    "coat_type": "short",
+    "size_category": "medium",
+    "average_lifespan": 14,
+    "activity_level": "moderate",
+    "grooming_needs": "low",
+    "short_description_en": "The Burmilla is a breed developed by crossing Burmese with Chinchilla Persian cats, resulting in a silver-shaded shorthair with striking green eyes. These cats are gentle, sociable, and playful, combining the best traits of both parent breeds. Burmillas are affectionate and people-oriented but less demanding than Burmese. Their short, silky coat is easy to maintain with weekly brushing. They are generally healthy, adaptable cats that get along well with children and other pets.",
+    "short_description_ru": "Бурмилла — порода, выведенная путем скрещивания бурманских с шиншилловыми персидскими кошками, в результате чего получилась серебристо-затененная короткошерстная с поразительными зелеными глазами. Эти кошки нежны, общительны и игривы, сочетая лучшие черты обеих родительских пород. Бурмиллы ласковы и ориентированы на людей, но менее требовательны, чем бурманцы. Их короткая шелковистая шерсть проста в уходе при еженедельном расчесывании. Они обычно здоровые адаптивные кошки, хорошо ладящие с детьми и другими животными.",
+    "ideal_weight": {
+      "male": {
+        "min": 4.0,
+        "max": 6.0
+      },
+      "female": {
+        "min": 3.0,
+        "max": 5.0
+      }
+    },
+    "health_risks": [
+      {
+        "condition_code": "obesity_1",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "flutd",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "dental_disease",
+        "risk_level": "low"
+      }
+    ],
+    "allergy_risks": [
+      {
+        "allergen_code": "cat_fish_protein",
+        "risk_level": "common"
+      },
+      {
+        "allergen_code": "cat_beef_protein",
+        "risk_level": "uncommon"
+      }
+    ],
+    "base_activity_level": "moderate",
+    "trainability": "moderate"
+  },
+  {
+    "id": 4046,
+    "wcf_code": "MIS",
+    "name_en": "Mist",
+    "name_ru": "Мист",
+    "wcf_category": "SHORTHAIR",
+    "country_origin": "Australia",
+    "coat_type": "short",
+    "size_category": "medium",
+    "average_lifespan": 15,
+    "activity_level": "moderate",
+    "grooming_needs": "low",
+    "short_description_en": "The Mist, formerly known as Australian Mist, is a breed developed in Australia featuring a delicate spotted or marbled pattern on a misty background. These cats are friendly, relaxed, and ideal for indoor living. Mists are people-oriented and tolerant, making them excellent companions for families with children and elderly. Their short, glossy coat is low-maintenance and comes in various colors. They are generally healthy, adaptable cats with gentle, sociable personalities.",
+    "short_description_ru": "Мист, ранее известный как Австралийский Мист, — порода, выведенная в Австралии с нежным пятнистым или мраморным рисунком на туманном фоне. Эти кошки дружелюбны, расслаблены и идеальны для жизни в помещении. Мисты ориентированы на людей и толерантны, что делает их отличными компаньонами для семей с детьми и пожилыми. Их короткая глянцевая шерсть неприхотлива в уходе и представлена в различных цветах. Они обычно здоровые адаптивные кошки с нежными общительными личностями.",
+    "ideal_weight": {
+      "male": {
+        "min": 4.0,
+        "max": 6.0
+      },
+      "female": {
+        "min": 3.0,
+        "max": 5.0
+      }
+    },
+    "health_risks": [
+      {
+        "condition_code": "obesity_1",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "flutd",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "dental_disease",
+        "risk_level": "low"
+      }
+    ],
+    "allergy_risks": [
+      {
+        "allergen_code": "cat_fish_protein",
+        "risk_level": "common"
+      },
+      {
+        "allergen_code": "cat_beef_protein",
+        "risk_level": "uncommon"
+      }
+    ],
+    "base_activity_level": "moderate",
+    "trainability": "moderate"
+  },
+  {
+    "id": 4047,
+    "wcf_code": "TYG",
+    "name_en": "Toyger",
+    "name_ru": "Тойгер",
+    "wcf_category": "SHORTHAIR",
+    "country_origin": "United States",
+    "coat_type": "short",
+    "size_category": "large",
+    "average_lifespan": 14,
+    "activity_level": "moderate",
+    "grooming_needs": "low",
+    "short_description_en": "The Toyger is a designer breed developed to resemble a miniature tiger with distinctive bold, braided stripes on an orange background. These cats are friendly, outgoing, and highly social, making them excellent family pets. Toygers are intelligent and trainable, enjoying interactive play and human companionship. Their short, plush coat is easy to maintain with weekly brushing. They are generally healthy, easygoing cats that adapt well to various living situations.",
+    "short_description_ru": "Тойгер — дизайнерская порода, выведенная для сходства с миниатюрным тигром с характерными жирными плетеными полосами на оранжевом фоне. Эти кошки дружелюбны, общительны и очень социальны, что делает их отличными семейными питомцами. Тойгеры умны и обучаемы, наслаждаясь интерактивной игрой и человеческим обществом. Их короткая плюшевая шерсть проста в уходе при еженедельном расчесывании. Они обычно здоровые покладистые кошки, хорошо адаптирующиеся к различным условиям жизни.",
+    "ideal_weight": {
+      "male": {
+        "min": 5.5,
+        "max": 9.0
+      },
+      "female": {
+        "min": 4.0,
+        "max": 6.5
+      }
+    },
+    "health_risks": [
+      {
+        "condition_code": "heart_disease",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "hip_dysplasia",
+        "risk_level": "low"
+      },
+      {
+        "condition_code": "obesity_1",
+        "risk_level": "moderate"
+      }
+    ],
+    "allergy_risks": [
+      {
+        "allergen_code": "cat_fish_protein",
+        "risk_level": "common"
+      },
+      {
+        "allergen_code": "cat_beef_protein",
+        "risk_level": "uncommon"
+      }
+    ],
+    "base_activity_level": "moderate",
+    "trainability": "moderate"
+  },
+  {
+    "id": 5001,
+    "wcf_code": "BAL",
+    "name_en": "Balinese",
+    "name_ru": "Балинезийская",
+    "wcf_category": "SIAMESE_ORIENTAL",
+    "country_origin": "United States",
+    "coat_type": "semi_long",
+    "size_category": "medium",
+    "average_lifespan": 15,
+    "activity_level": "high",
+    "grooming_needs": "moderate",
+    "short_description_en": "The Balinese is essentially a longhaired Siamese, featuring the same color-point pattern and slender, elegant build with a flowing, silky coat. These cats are highly intelligent, vocal, and social, often engaging in long conversations with their owners. Balinese are affectionate and people-oriented, thriving on attention and companionship. Their semi-long coat is surprisingly easy to maintain with weekly brushing as it lacks a dense undercoat. They are generally healthy, active cats that don't like being alone.",
+    "short_description_ru": "Балинезийская кошка — по сути длинношерстная сиамская, с таким же колор-пойнтовым рисунком и стройным элегантным телосложением с струящейся шелковистой шерстью. Эти кошки очень умны, вокальны и общительны, часто ведут долгие разговоры с владельцами. Балинезийцы ласковы и ориентированы на людей, процветают на внимании и компании. Их полудлинная шерсть удивительно проста в уходе при еженедельном расчесывании, так как ей не хватает густого подшерстка. Они обычно здоровые активные кошки, которые не любят оставаться в одиночестве.",
+    "ideal_weight": {
+      "male": {
+        "min": 3.5,
+        "max": 5.5
+      },
+      "female": {
+        "min": 2.5,
+        "max": 4.5
+      }
+    },
+    "health_risks": [
+      {
+        "condition_code": "obesity_1",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "flutd",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "dental_disease",
+        "risk_level": "low"
+      }
+    ],
+    "allergy_risks": [
+      {
+        "allergen_code": "cat_fish_protein",
+        "risk_level": "common"
+      },
+      {
+        "allergen_code": "cat_beef_protein",
+        "risk_level": "uncommon"
+      }
+    ],
+    "base_activity_level": "high",
+    "trainability": "moderate"
+  },
+  {
+    "id": 5002,
+    "wcf_code": "MBT",
+    "name_en": "Mekong Bobtail",
+    "name_ru": "Меконгский бобтейл",
+    "wcf_category": "SIAMESE_ORIENTAL",
+    "country_origin": "Thailand",
+    "coat_type": "short",
+    "size_category": "medium",
+    "average_lifespan": 15,
+    "activity_level": "moderate",
+    "grooming_needs": "low",
+    "short_description_en": "The Mekong Bobtail is an ancient Thai breed featuring Siamese color-point markings and a short, kinked tail. These cats are intelligent, loyal, and form strong bonds with their families, often displaying dog-like devotion. Mekong Bobtails are less vocal than Siamese and have gentle, affectionate personalities. Their short, glossy coat requires minimal grooming. They are generally healthy, long-lived cats that make devoted companions and are known for their playful, curious nature.",
+    "short_description_ru": "Меконгский бобтейл — древняя тайская порода с сиамскими колор-пойнтовыми отметинами и коротким изломанным хвостом. Эти кошки умны, преданны и формируют крепкие связи со своими семьями, часто проявляя собачью преданность. Меконгские бобтейлы менее вокальны, чем сиамцы, и имеют нежные ласковые личности. Их короткая глянцевая шерсть требует минимального ухода. Они обычно здоровые долгоживущие кошки, которые становятся преданными компаньонами и известны своей игривой любопытной природой.",
+    "ideal_weight": {
+      "male": {
+        "min": 3.5,
+        "max": 5.5
+      },
+      "female": {
+        "min": 2.5,
+        "max": 4.5
+      }
+    },
+    "health_risks": [
+      {
+        "condition_code": "obesity_1",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "flutd",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "dental_disease",
+        "risk_level": "low"
+      }
+    ],
+    "allergy_risks": [
+      {
+        "allergen_code": "cat_fish_protein",
+        "risk_level": "common"
+      },
+      {
+        "allergen_code": "cat_beef_protein",
+        "risk_level": "uncommon"
+      }
+    ],
+    "base_activity_level": "moderate",
+    "trainability": "moderate"
+  },
+  {
+    "id": 5003,
+    "wcf_code": "OSH",
+    "name_en": "Oriental Shorthair",
+    "name_ru": "Ориентальная короткошерстная",
+    "wcf_category": "SIAMESE_ORIENTAL",
+    "country_origin": "United States",
+    "coat_type": "short",
+    "size_category": "medium",
+    "average_lifespan": 15,
+    "activity_level": "high",
+    "grooming_needs": "low",
+    "short_description_en": "The Oriental Shorthair shares the Siamese body type but comes in a vast array of colors and patterns rather than just color-points. These cats are extremely intelligent, social, and vocal, often forming intense bonds with their families. Orientals are energetic and playful, requiring significant attention and stimulation. Their short, sleek coat is easy to maintain with weekly brushing. They are generally healthy cats that don't tolerate being alone well and thrive in active households.",
+    "short_description_ru": "Ориентальная короткошерстная имеет тип телосложения сиамской кошки, но представлена в огромном множестве цветов и рисунков, а не только колор-пойнтах. Эти кошки чрезвычайно умны, общительны и вокальны, часто формируют интенсивные связи со своими семьями. Ориенталы энергичны и игривы, требующие значительного внимания и стимуляции. Их короткая гладкая шерсть проста в уходе при еженедельном расчесывании. Они обычно здоровые кошки, которые плохо переносят одиночество и процветают в активных домохозяйствах.",
+    "ideal_weight": {
+      "male": {
+        "min": 3.5,
+        "max": 5.5
+      },
+      "female": {
+        "min": 2.5,
+        "max": 4.5
+      }
+    },
+    "health_risks": [
+      {
+        "condition_code": "obesity_1",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "flutd",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "dental_disease",
+        "risk_level": "low"
+      }
+    ],
+    "allergy_risks": [
+      {
+        "allergen_code": "cat_fish_protein",
+        "risk_level": "common"
+      },
+      {
+        "allergen_code": "cat_beef_protein",
+        "risk_level": "uncommon"
+      }
+    ],
+    "base_activity_level": "high",
+    "trainability": "moderate"
+  },
+  {
+    "id": 5004,
+    "wcf_code": "OSL",
+    "name_en": "Oriental Longhair",
+    "name_ru": "Ориентальная длинношерстная",
+    "wcf_category": "SIAMESE_ORIENTAL",
+    "country_origin": "United States",
+    "coat_type": "semi_long",
+    "size_category": "medium",
+    "average_lifespan": 15,
+    "activity_level": "high",
+    "grooming_needs": "moderate",
+    "short_description_en": "The Oriental Longhair is the semi-longhaired version of the Oriental Shorthair, featuring the same elegant build in numerous colors and patterns. These cats are highly intelligent, social, and communicative, often demanding attention from their families. Oriental Longhairs are energetic and playful, enjoying interactive toys and games. Their silky coat lacks a dense undercoat and is easier to maintain than other longhaired breeds. They are affectionate cats that need companionship and don't do well when left alone.",
+    "short_description_ru": "Ориентальная длинношерстная — полудлинношерстная версия ориентальной короткошерстной с таким же элегантным телосложением в многочисленных цветах и рисунках. Эти кошки очень умны, общительны и коммуникативны, часто требуя внимания от своих семей. Ориентальные длинношерстные энергичны и игривы, наслаждаясь интерактивными игрушками и играми. Их шелковистая шерсть не имеет густого подшерстка и проще в уходе, чем у других длинношерстных пород. Это ласковые кошки, которые нуждаются в компании и плохо справляются, когда остаются в одиночестве.",
+    "ideal_weight": {
+      "male": {
+        "min": 3.5,
+        "max": 5.5
+      },
+      "female": {
+        "min": 2.5,
+        "max": 4.5
+      }
+    },
+    "health_risks": [
+      {
+        "condition_code": "obesity_1",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "flutd",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "dental_disease",
+        "risk_level": "low"
+      }
+    ],
+    "allergy_risks": [
+      {
+        "allergen_code": "cat_fish_protein",
+        "risk_level": "common"
+      },
+      {
+        "allergen_code": "cat_beef_protein",
+        "risk_level": "uncommon"
+      }
+    ],
+    "base_activity_level": "high",
+    "trainability": "moderate"
+  },
+  {
+    "id": 5005,
+    "wcf_code": "SIA",
+    "name_en": "Siamese",
+    "name_ru": "Сиамская",
+    "wcf_category": "SIAMESE_ORIENTAL",
+    "country_origin": "Thailand",
+    "coat_type": "short",
+    "size_category": "medium",
+    "average_lifespan": 15,
+    "activity_level": "high",
+    "grooming_needs": "low",
+    "short_description_en": "The Siamese is one of the most recognizable and oldest cat breeds, featuring distinctive color-point markings and striking blue eyes. These cats are extremely vocal, intelligent, and social, often engaging in loud conversations with their owners. Siamese are highly affectionate and people-oriented, forming intense bonds with their families. Their short, fine coat requires minimal grooming. They are energetic, playful cats that demand attention and don't tolerate being alone well.",
+    "short_description_ru": "Сиамская кошка — одна из самых узнаваемых и старейших пород кошек с характерными колор-пойнтовыми отметинами и поразительными голубыми глазами. Эти кошки чрезвычайно вокальны, умны и общительны, часто ведут громкие разговоры с владельцами. Сиамцы очень ласковы и ориентированы на людей, формируют интенсивные связи со своими семьями. Их короткая тонкая шерсть требует минимального ухода. Это энергичные игривые кошки, которые требуют внимания и плохо переносят одиночество.",
+    "ideal_weight": {
+      "male": {
+        "min": 3.5,
+        "max": 5.5
+      },
+      "female": {
+        "min": 2.5,
+        "max": 4.5
+      }
+    },
+    "health_risks": [
+      {
+        "condition_code": "obesity_1",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "flutd",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "dental_disease",
+        "risk_level": "low"
+      }
+    ],
+    "allergy_risks": [
+      {
+        "allergen_code": "cat_fish_protein",
+        "risk_level": "common"
+      },
+      {
+        "allergen_code": "cat_beef_protein",
+        "risk_level": "uncommon"
+      }
+    ],
+    "base_activity_level": "high",
+    "trainability": "moderate"
+  },
+  {
+    "id": 5006,
+    "wcf_code": "SUP",
+    "name_en": "Suphalak",
+    "name_ru": "Супалак",
+    "wcf_category": "SIAMESE_ORIENTAL",
+    "country_origin": "Thailand",
+    "coat_type": "short",
+    "size_category": "medium",
+    "average_lifespan": 15,
+    "activity_level": "moderate",
+    "grooming_needs": "low",
+    "short_description_en": "The Suphalak is a rare ancient Thai breed with a solid reddish-brown coat and amber or copper eyes. These cats are intelligent, affectionate, and moderately active, making them excellent companions. Suphalaks are less vocal than Siamese but equally people-oriented and social. Their short, glossy coat requires minimal grooming. They are generally healthy cats that adapt well to family life and are known for their gentle, friendly personalities and playful nature.",
+    "short_description_ru": "Супалак — редкая древняя тайская порода со сплошной красновато-коричневой шерстью и янтарными или медными глазами. Эти кошки умны, ласковы и умеренно активны, что делает их отличными компаньонами. Супалаки менее вокальны, чем сиамцы, но столь же ориентированы на людей и общительны. Их короткая глянцевая шерсть требует минимального ухода. Они обычно здоровые кошки, хорошо адаптирующиеся к семейной жизни и известные своими нежными дружелюбными личностями и игривой природой.",
+    "ideal_weight": {
+      "male": {
+        "min": 3.5,
+        "max": 5.5
+      },
+      "female": {
+        "min": 2.5,
+        "max": 4.5
+      }
+    },
+    "health_risks": [
+      {
+        "condition_code": "obesity_1",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "flutd",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "dental_disease",
+        "risk_level": "low"
+      }
+    ],
+    "allergy_risks": [
+      {
+        "allergen_code": "cat_fish_protein",
+        "risk_level": "common"
+      },
+      {
+        "allergen_code": "cat_beef_protein",
+        "risk_level": "uncommon"
+      }
+    ],
+    "base_activity_level": "moderate",
+    "trainability": "moderate"
+  },
+  {
+    "id": 5007,
+    "wcf_code": "TYB",
+    "name_en": "Toybob",
+    "name_ru": "Тойбоб",
+    "wcf_category": "SIAMESE_ORIENTAL",
+    "country_origin": "Russia",
+    "coat_type": "short",
+    "size_category": "small",
+    "average_lifespan": 14,
+    "activity_level": "moderate",
+    "grooming_needs": "low",
+    "short_description_en": "The Toybob is one of the smallest cat breeds in the world, featuring a bobbed tail and compact, kitten-like appearance. Despite their tiny size, these cats are well-proportioned and muscular. Toybobs are affectionate, playful, and social, making them excellent companions for various households. Their short coat is easy to maintain with weekly brushing. They are generally healthy cats that retain a playful, kitten-like personality throughout their lives and adapt well to indoor living.",
+    "short_description_ru": "Тойбоб — одна из самых маленьких пород кошек в мире с купированным хвостом и компактной котячьей внешностью. Несмотря на крошечный размер, эти кошки хорошо сложены и мускулисты. Тойбобы ласковы, игривы и общительны, что делает их отличными компаньонами для различных домохозяйств. Их короткая шерсть проста в уходе при еженедельном расчесывании. Они обычно здоровые кошки, которые сохраняют игривую котячью личность на протяжении всей жизни и хорошо адаптируются к жизни в помещении.",
+    "ideal_weight": {
+      "male": {
+        "min": 1.5,
+        "max": 2.5
+      },
+      "female": {
+        "min": 1.0,
+        "max": 2.0
+      }
+    },
+    "health_risks": [
+      {
+        "condition_code": "dental_disease",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "hyperthyroidism",
+        "risk_level": "low"
+      }
+    ],
+    "allergy_risks": [
+      {
+        "allergen_code": "cat_fish_protein",
+        "risk_level": "common"
+      },
+      {
+        "allergen_code": "cat_beef_protein",
+        "risk_level": "uncommon"
+      }
+    ],
+    "base_activity_level": "moderate",
+    "trainability": "moderate"
+  },
+  {
+    "id": 5008,
+    "wcf_code": "THA",
+    "name_en": "Thai",
+    "name_ru": "Тайская",
+    "wcf_category": "SIAMESE_ORIENTAL",
+    "country_origin": "Thailand",
+    "coat_type": "short",
+    "size_category": "medium",
+    "average_lifespan": 15,
+    "activity_level": "moderate",
+    "grooming_needs": "low",
+    "short_description_en": "The Thai cat represents the traditional body type of the Siamese, with a more moderate, rounded build compared to modern Siamese. These cats are intelligent, social, and vocal, forming strong bonds with their families. Thai cats are playful and affectionate, enjoying interaction and attention. Their short, sleek coat requires minimal grooming. They are generally healthy, long-lived cats that thrive on companionship and don't like being left alone.",
+    "short_description_ru": "Тайская кошка представляет традиционный тип телосложения сиамской кошки с более умеренным округлым телосложением по сравнению с современными сиамами. Эти кошки умны, общительны и вокальны, формируют крепкие связи со своими семьями. Тайские кошки игривы и ласковы, наслаждаясь взаимодействием и вниманием. Их короткая гладкая шерсть требует минимального ухода. Они обычно здоровые долгоживущие кошки, которые процветают на компании и не любят оставаться в одиночестве.",
+    "ideal_weight": {
+      "male": {
+        "min": 4.0,
+        "max": 6.0
+      },
+      "female": {
+        "min": 3.0,
+        "max": 5.0
+      }
+    },
+    "health_risks": [
+      {
+        "condition_code": "obesity_1",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "flutd",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "dental_disease",
+        "risk_level": "low"
+      }
+    ],
+    "allergy_risks": [
+      {
+        "allergen_code": "cat_fish_protein",
+        "risk_level": "common"
+      },
+      {
+        "allergen_code": "cat_beef_protein",
+        "risk_level": "uncommon"
+      }
+    ],
+    "base_activity_level": "moderate",
+    "trainability": "moderate"
+  },
+  {
+    "id": 5009,
+    "wcf_code": "TON",
+    "name_en": "Tonkinese",
+    "name_ru": "Тонкинская",
+    "wcf_category": "SIAMESE_ORIENTAL",
+    "country_origin": "Canada",
+    "coat_type": "short",
+    "size_category": "medium",
+    "average_lifespan": 15,
+    "activity_level": "high",
+    "grooming_needs": "low",
+    "short_description_en": "The Tonkinese is a hybrid breed combining traits from Siamese and Burmese cats, featuring a medium build and aqua or blue-green eyes. These cats are highly social, affectionate, and intelligent, often described as having dog-like personalities. Tonkinese are playful and interactive, enjoying games and human companionship. Their short, silky coat requires minimal grooming. They are generally healthy cats that don't like being alone and thrive in active households.",
+    "short_description_ru": "Тонкинская кошка — гибридная порода, сочетающая черты сиамских и бурманских кошек, с средним телосложением и аквамариновыми или сине-зелеными глазами. Эти кошки очень социальны, ласковы и умны, их часто описывают как имеющих собачьи личности. Тонкинские кошки игривы и интерактивны, наслаждаясь играми и человеческим обществом. Их короткая шелковистая шерсть требует минимального ухода. Они обычно здоровые кошки, которые не любят оставаться в одиночестве и процветают в активных домохозяйствах.",
+    "ideal_weight": {
+      "male": {
+        "min": 3.5,
+        "max": 5.5
+      },
+      "female": {
+        "min": 2.5,
+        "max": 4.5
+      }
+    },
+    "health_risks": [
+      {
+        "condition_code": "obesity_1",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "flutd",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "dental_disease",
+        "risk_level": "low"
+      }
+    ],
+    "allergy_risks": [
+      {
+        "allergen_code": "cat_fish_protein",
+        "risk_level": "common"
+      },
+      {
+        "allergen_code": "cat_beef_protein",
+        "risk_level": "uncommon"
+      }
+    ],
+    "base_activity_level": "high",
+    "trainability": "moderate"
+  },
+  {
+    "id": 5010,
+    "wcf_code": "HAV",
+    "name_en": "Havana Brown",
+    "name_ru": "Гавана браун",
+    "wcf_category": "SIAMESE_ORIENTAL",
+    "country_origin": "United Kingdom",
+    "coat_type": "short",
+    "size_category": "medium",
+    "average_lifespan": 14,
+    "activity_level": "moderate",
+    "grooming_needs": "low",
+    "short_description_en": "The Havana Brown is a rare breed with a distinctive rich chocolate coat and vivid green eyes. These cats are affectionate, playful, and highly people-oriented, often using their paws to interact with objects and people. Havana Browns are intelligent and curious, enjoying interactive toys and puzzles. Their short, glossy coat is easy to maintain with weekly brushing. They are social cats that don't like being left alone for extended periods.",
+    "short_description_ru": "Гавана браун — редкая порода с характерной насыщенной шоколадной шерстью и яркими зелеными глазами. Эти кошки ласковы, игривы и очень ориентированы на людей, часто используя лапы для взаимодействия с предметами и людьми. Гавана браун умны и любопытны, наслаждаясь интерактивными игрушками и головоломками. Их короткая глянцевая шерсть проста в уходе при еженедельном расчесывании. Это социальные кошки, которые не любят оставаться в одиночестве на длительные периоды.",
+    "ideal_weight": {
+      "male": {
+        "min": 3.5,
+        "max": 5.0
+      },
+      "female": {
+        "min": 2.5,
+        "max": 4.0
+      }
+    },
+    "health_risks": [
+      {
+        "condition_code": "obesity_1",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "flutd",
+        "risk_level": "moderate"
+      },
+      {
+        "condition_code": "dental_disease",
+        "risk_level": "low"
+      }
+    ],
+    "allergy_risks": [
+      {
+        "allergen_code": "cat_fish_protein",
+        "risk_level": "common"
+      },
+      {
+        "allergen_code": "cat_beef_protein",
+        "risk_level": "uncommon"
+      }
+    ],
+    "base_activity_level": "moderate",
+    "trainability": "moderate"
+  }
+]

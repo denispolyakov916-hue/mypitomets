@@ -1,55 +1,104 @@
-# ============================================
-# Питомец+ - Единый .gitignore
-# ============================================
-# Учитывает специфику работы команды:
-# - .env файлы коммитятся для синхронизации
-# - Работа на Windows и Linux
-# - Django backend + React/Vite frontend
-# ============================================
-
-# Исключения - эти файлы НЕ игнорируются
-!*.sh
-
-# ============================================
-# Python / Django Backend
-# ============================================
-
-# Byte-compiled / optimized / DLL files
+# =========================
+# Python
+# =========================
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
 .Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
 
-# Virtual environments (не коммитим)
+# Virtual environments
 venv/
-.venv/
-env/
 ENV/
-env.bak/
-venv.bak/
+env/
+.venv/
 
-# Django specific
+# =========================
+# Django
+# =========================
 *.log
 local_settings.py
 db.sqlite3
-*.sqlite3
-*.sqlite
+*.pot
+*.pyc
 media/
 staticfiles/
-collectstatic/
 
-# Python packaging
-*.egg
-*.egg-info/
+# =========================
+# Node.js / JavaScript
+# =========================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Build outputs
 dist/
-build/
-*.egg-info
-.eggs/
-pip-log.txt
-pip-delete-this-directory.txt
+.output/
+.nuxt/
+.next/
 
-# Unit test / coverage reports
+# =========================
+# IDE / Editor
+# =========================
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.settings/
+*.sublime-workspace
+*.sublime-project
+
+# =========================
+# OS
+# =========================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# =========================
+# Environment variables
+# =========================
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env*.local
+
+# =========================
+# Docker
+# =========================
+*.log
+docker-compose.override.yml
+
+# =========================
+# Testing / Coverage
+# =========================
 htmlcov/
 .tox/
 .nox/
@@ -62,189 +111,15 @@ coverage.xml
 *.py,cover
 .hypothesis/
 .pytest_cache/
-.mypy_cache/
-.dmypy.json
-dmypy.json
+coverage/
 
-# ============================================
-# Node.js / React / Vite Frontend
-# ============================================
-
-# Dependencies
-node_modules/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-lerna-debug.log*
-.pnpm-debug.log*
-
-# Build outputs
-dist/
-dist-ssr/
-*.local
-.output/
-.nuxt/
-.next/
-out/
-
-# Vite
-.vite/
-vite.config.js.timestamp-*
-
-# ============================================
-# Environment Variables
-# ============================================
-# ВАЖНО: .env файлы коммитятся для синхронизации команды
-# Игнорируем только локальные переопределения и продакшн
-
-.env.local
-.env.*.local
-.env.production
-.env.prod
-.env.production.local
-.env.test.local
-
-# ============================================
-# IDE / Editors
-# ============================================
-
-# VSCode
-.vscode/
-*.code-workspace
-
-# IntelliJ IDEA / PyCharm
-.idea/
-*.iml
-*.iws
-*.ipr
-
-# Sublime Text
-*.sublime-workspace
-*.sublime-project
-
-# Vim
-*.swp
-*.swo
-*~
-.netrwhist
-
-# Emacs
-*~
-\#*\#
-/.emacs.desktop
-/.emacs.desktop.lock
-*.elc
-
-# ============================================
-# Operating System Files
-# ============================================
-
-# Windows
-Thumbs.db
-Thumbs.db:encryptable
-ehthumbs.db
-ehthumbs_vista.db
-*.stackdump
-[Dd]esktop.ini
-$RECYCLE.BIN/
-*.cab
-*.msi
-*.msix
-*.msm
-*.msp
-*.lnk
-
-# macOS
-.DS_Store
-.AppleDouble
-.LSOverride
-Icon
-._*
-.DocumentRevisions-V100
-.fseventsd
-.Spotlight-V100
-.TemporaryItems
-.Trashes
-.VolumeIcon.icns
-.com.apple.timemachine.donotpresent
-.AppleDB
-.AppleDesktop
-Network Trash Folder
-Temporary Items
-.apdisk
-
-# Linux
-*~
-.directory
-.Trash-*
-.nfs*
-
-# ============================================
-# Docker
-# ============================================
-
-docker-compose.override.yml
-.dockerignore.local
-
-# ============================================
-# Deploy
-# ============================================
-
-backups/
-deploy.log
-certbot/
-
-# ============================================
-# Temporary / Backup Files
-# ============================================
-
+# =========================
+# Misc
+# =========================
+*.docx
+*.bak
 *.tmp
 *.temp
-*.bak
-*.backup
 *.orig
-*.save
-*.swp
-*.swo
-*~
-
-# ============================================
-# Project Specific
-# ============================================
-
-# Большие XML файлы каталогов (если не нужны в Git)
-# Раскомментируйте если не хотите коммитить:
-# backend/*.xml
-
-# Локальные настройки разработки
-local_settings.py
-settings_local.py
-
-# Локальные файлы проекта (не коммитятся)
-backend/.env
-backend/setup_db_final.py
-
-# ============================================
-# Logs
-# ============================================
-
-logs/
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-lerna-debug.log*
-
-# ============================================
-# Database
-# ============================================
-
-# SQLite (если используется для тестов)
-*.db
-*.sqlite
-*.sqlite3
-
-# PostgreSQL dumps (если есть)
-*.sql.backup
-*.dump
+.cache/
 

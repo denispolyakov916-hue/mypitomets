@@ -1,0 +1,14 @@
+"""
+Конфигурация приложения payments
+"""
+
+from django.apps import AppConfig
+
+
+class PaymentsConfig(AppConfig):
+    """Конфигурация приложения payments."""
+    
+    default_auto_field = 'django.db.models.BigAutoField'
+    name = 'apps.payments'
+    verbose_name = 'Платежи'
+

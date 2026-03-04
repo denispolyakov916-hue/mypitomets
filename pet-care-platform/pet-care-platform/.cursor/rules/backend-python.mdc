@@ -1,0 +1,173 @@
+---
+description: Конвенции Django/DRF бэкенда — архитектура слоёв, модели, сервисы, views, serializers
+globs: backend/**/*.py
+alwaysApply: false
+---
+
+# Конвенции бэкенда (Django/DRF)
+
+## Архитектура слоёв
+
+Бизнес-логика ТОЛЬКО в сервисах, НИКОГДА напрямую во views или моделях. Порядок слоёв:
+
+```
+Constants → Models → Serializers → Services → Views → URLs
+```
+
+## Константы
+
+Все магические числа и строки — в `core/constants.py`. НИКОГДА не хардкодить значения в коде:
+
+```python
+from core.constants import (
+    UserRole, OrderStatus,
+    DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE,
+    RESERVATION_TIMEOUT_MINUTES, DELIVERY_COSTS,
+    MAX_PETS_PER_USER, ACTIVATION_CODE_MIN, ACTIVATION_CODE_MAX,
+)
+```
+
+Роли и статусы — через классы-перечисления (`UserRole.ADMIN`, `OrderStatus.PENDING`), не строковые литералы.
+
+## Модели
+
+```python
+from core.utils import generate_uuid7
+
+class MyModel(models.Model):
+    id = models.CharField(primary_key=True, max_length=36, default=generate_uuid7, editable=False)
+    owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='my_models')
+    created_at = models.DateTimeField(default=timezone.now)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'my_models'
+        verbose_name = 'Моя модель'
+        verbose_name_plural = 'Мои модели'
+        ordering = ['-created_at']
+        indexes = [models.Index(fields=['owner', '-created_at'])]
+```
+
+- UUIDv7 для PK пользовательского контента, AutoField для админского (курсы, товары)
+- Computed свойства через `@property` (только простые вычисления без запросов к БД)
+- Choices — из `core/constants.py` (например `UserRole.CHOICES`)
+- `related_name` — всегда явно указывать
+- **НЕ ПОМЕЩАТЬ** в модели: `to_dict()`, бизнес-логику, сериализацию, создание связанных объектов
+- Методы-хелперы для оптимизации запросов допустимы (например `Cart.get_items_optimized()`)
+
+## Сервисы
+
+```python
+from core.services import BaseCRUDService, ServiceResult
+
+class MyService(BaseCRUDService):
+    def __init__(self):
+        from .models import MyModel
+        super().__init__(MyModel)
+
+    def create_item(self, data, user):
+        """Создание элемента с валидацией."""
+        return ServiceResult(success=True, data=instance, message='Создано')
+
+my_service = MyService()  # Инстанс на уровне модуля
+```
+
+- Наследование от `BaseCRUDService` из `core.services`
+- `BaseCRUDService` методы (`create`, `update`, `delete`, `get_by_id`, `list`) возвращают `ServiceResult`
+- `BaseCRUDService` обрабатывает `ValidationError`, `IntegrityError` отдельно (не общий `except Exception`)
+- `@dataclass` для сложных контекстов (`PetContext`, `PersonalizationContext`)
+- Общие утилиты (валидация, cookie) — в `core/validators.py`, не дублировать в приложениях
+
+## Views
+
+```python
+from core.crud_views import BaseListCreateView, BaseDetailView
+from core.permissions import IsOwner
+from core.exceptions import ApiError
+
+class MyListView(BaseListCreateView):
+    model = MyModel
+    serializer_class = MyCreateSerializer
+    permission_classes = [IsAuthenticated]
+    select_related_fields = ['owner', 'category']
+    prefetch_related_fields = ['tags']
+
+    def get_queryset(self):
+        return super().get_queryset().filter(owner=self.request.user)
+```
+
+- Наследование от `BaseListCreateView`, `BaseDetailView`, `BaseReadOnlyView`
+- `BaseCRUDMixin` предоставляет: `select_related_fields`, `prefetch_related_fields`, `filter_queryset()`, `order_queryset()`, `paginate_queryset()`, `make_response()`
+- Permissions: `IsAuthenticated`, `IsOwner`, `IsOwnerOrReadOnly`, `IsStaffOrReadOnly`
+- Ошибки: `ApiError.bad_request()`, `ApiError.not_found()`, `ApiError.forbidden()`
+- Декораторы: `@safe_api_operation`, `@handle_api_errors`
+- N+1 оптимизация: через `select_related_fields`/`prefetch_related_fields` в классе (предпочтительно) или `select_related()`/`prefetch_related()` в `get_queryset()`
+- Views должны быть тонкими — вызов сервиса + формирование Response, никакой бизнес-логики
+
+## Serializers
+
+- Раздельные: `MyCreateSerializer` (запись), `MySerializer` (чтение)
+- Валидация: `validate_field_name()` для поля, `validate()` для cross-field
+- Общие валидаторы — в `core/validators.py` (например `validate_password_strength`), не дублировать между сериализаторами
+- `SerializerMethodField` для computed полей
+- Всегда передавать `context={'request': request}` для абсолютных URL
+- Сериализаторы — замена `to_dict()` в моделях. Никогда не создавать `to_dict()` в моделях
+
+## URLs
+
+```python
+urlpatterns = [
+    path('', MyListView.as_view(), name='my-list-create'),
+    path('<uuid:pk>/', MyDetailView.as_view(), name='my-detail'),
+    path('<uuid:pk>/sub-resource/', SubViewSet.as_view({'get': 'list'})),
+]
+```
+
+## Admin
+
+```python
+from django.contrib import admin
+from .models import MyModel
+
+@admin.register(MyModel)
+class MyModelAdmin(admin.ModelAdmin):
+    list_display = ['id', 'name', 'owner', 'created_at']
+    search_fields = ['name', 'owner__email']
+    list_filter = ['created_at']
+    ordering = ['-created_at']
+```
+
+## Фильтрация и кэширование
+
+```python
+def filter_queryset(self, queryset, request):
+    status = request.query_params.get('status')
+    if status:
+        queryset = queryset.filter(status=status)
+    return queryset
+```
+
+Кэширование: `from django.core.cache import cache`, таймауты из `settings.CACHE_TIMEOUTS`:
+
+```python
+cache_key = f'products_list_{page}'
+data = cache.get(cache_key)
+if not data:
+    data = list(queryset.values())
+    cache.set(cache_key, data, settings.CACHE_TIMEOUTS['products_list'])
+```
+
+## Декораторы и утилиты
+
+- `@handle_service_errors` — из `core.exceptions`, автоконвертация исключений в `ApiError` в сервисных методах
+- `@handle_api_errors` — для views, преобразует `ValueError` → `validation_error`, `PermissionError` → `forbidden`
+- `@safe_api_operation` — безопасное выполнение с автоматическим `Response`
+- `BaseService` методы: `self.log_info()`, `self.log_error()`, `self.log_warning()`, `self.validate_required_fields(data, fields)`, `self.safe_get(data, key, default)`
+
+## Тесты
+
+- Django `TestCase`, helper-методы `_create_pet()`, `_create_product()`
+- `setUp()` для тестовых данных, docstrings на русском
+- `factory_boy` (`factory-boy==3.3.1`) для генерации тестовых объектов
+- Тесты для сервисов обязательны при создании нового сервиса
+- Структура: `apps/{app}/tests/test_{module}.py`, `core/tests/test_{module}.py`

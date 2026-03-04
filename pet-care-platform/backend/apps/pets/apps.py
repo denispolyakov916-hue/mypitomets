@@ -1,9 +1,0 @@
-from django.apps import AppConfig
-
-
-class PetsConfig(AppConfig):
-    """Configuration for Pets app - the core PetID module."""
-    default_auto_field = 'django.db.models.BigAutoField'
-    name = 'apps.pets'
-    verbose_name = 'Питомцы (PetID)'
-

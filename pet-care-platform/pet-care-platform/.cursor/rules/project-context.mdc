@@ -1,0 +1,101 @@
+---
+description: Контекст проекта Питомец+ — архитектура, стек, структура, ключевые классы
+alwaysApply: true
+---
+
+# Контекст проекта Питомец+
+
+## Стек технологий
+
+- **Backend**: Django 5.1.5, DRF 3.15.2, PostgreSQL, JWT (simplejwt 5.3.1), Argon2 (хеширование паролей)
+- **Frontend**: React 18.2, Vite 5, Zustand 4.4.7, Tailwind CSS 3.3.5, Axios 1.6.2, Framer Motion, Lucide React
+- **Пакетные менеджеры**: pip + requirements.txt (backend), npm + package.json (frontend)
+
+## Структура проекта
+
+```
+pet-care-platform/
+├── backend/
+│   ├── config/          # settings.py, urls.py, urls_admin.py
+│   ├── core/            # Базовые классы: services.py, crud_views.py, exceptions.py, permissions.py, authentication.py, utils.py
+│   └── apps/
+│       ├── users/       # Аутентификация, профили (email-based, роли: user/course_creator/admin)
+│       ├── pets/        # PetID, породы, календарь, напоминания, калькулятор калорий
+│       ├── shop/        # Товары, корзина, заказы, рекомендации
+│       ├── training/    # Курсы, уроки, конструктор курсов (CoursePage/ContentBlock)
+│       ├── payments/    # Единая система платежей
+│       └── reviews/     # Отзывы на товары и курсы
+└── frontend/src/
+    ├── api/             # Модули API (client.js, baseApi.js — фабрики CRUD, модули по доменам)
+    ├── store/           # Zustand stores (authStore, cartStore, favoritesStore, toastStore, baseStore)
+    ├── pages/           # Страницы: pages/{Feature}/{Feature}.jsx + pages/{Feature}/components/
+    ├── components/      # Переиспользуемые компоненты (Layout, ProductCard, PrivateRoute)
+    │   └── ui/          # UI Kit: Button, Card, Modal, Input, Badge, Progress, EmptyState, Skeleton, Alert, FormField
+    ├── hooks/           # Хуки (useProducts, usePets, useCourses, useCourse, useOrders, useFormValidation)
+    ├── utils/           # Утилиты (apiCache.js, format.js — formatPrice)
+    └── admin/           # React админ-панель (использует ui/ компоненты)
+```
+
+## Модель User
+
+- `AbstractBaseUser` + `PermissionsMixin`, email как `USERNAME_FIELD`, UUID PK (`uuid.uuid4`)
+- Роли: `user`, `course_creator`, `admin` (при `admin` автоматически `is_staff=True`, `is_superuser=True`)
+- Активация: `is_activated`, `activation_code` (6 цифр), `activation_link`
+- Восстановление пароля: `password_reset_code` (6 цифр)
+- Профиль: `first_name`, `last_name`, `phone`, `avatar`, `bio`, `city`, `default_address`
+- Настройки уведомлений: `email_notifications`, `push_notifications`, `order_notifications`
+- Модель `Token` хранит refresh-токены в БД для отзыва
+
+## Ключевые параметры
+
+- **Порты**: Frontend `5199`, Backend `8077`, PostgreSQL `5432`
+- **БД**: PostgreSQL `pitomets_db`. PK: UUIDv7 (`core.utils.generate_uuid7`) для пользовательского контента, `uuid.uuid4` для User, AutoField для админского контента
+- **Аутентификация**: JWT — access token в response body, refresh в httpOnly cookie. `CustomJWTAuthentication` в `core/authentication.py`
+- **Email**: SMTP (Mail.ru dev), активация по 6-значному коду, восстановление пароля по коду
+- **Хранилище**: Yandex Cloud S3 (public + private бакеты), fallback на локальное. Лимиты: изображения 10MB, видео 2GB, файлы 100MB
+- **Кэширование**: LocMemCache (dev), Redis-ready (prod). Таймауты в `settings.CACHE_TIMEOUTS`
+- **Язык/часовой пояс**: `ru-ru`, `Europe/Moscow`
+
+## Админ-панель
+
+- React SPA в `frontend/src/admin/` (отдельная структура: `AdminApp.jsx`, `adminStore.js`, `admin/utils/api.js`)
+- Backend API: `config/urls_admin.py` → `/api/admin/*`, ViewSets для CRUD (users, pets, products, orders, courses)
+- Доступ: `is_staff=True` (permission `IsAdminUser`)
+- Статистика: `/api/admin/stats/summary/`
+
+## Инфраструктура (core/)
+
+- **Константы**: `core/constants.py` — все магические числа и строки проекта (`UserRole`, `OrderStatus`, `DELIVERY_COSTS`, `MAX_PETS_PER_USER`, `SIZE_THRESHOLDS`, `COURSE_TIME_MULTIPLIERS` и др.)
+- **Валидаторы**: `core/validators.py` — общие валидаторы (`validate_password_strength()`) и утилиты (`set_refresh_token_cookie()`)
+- **Middleware**: `RequestLoggingMiddleware` — request_id, трейсинг, `X-Request-ID`, фильтрация чувствительных данных через `SensitiveDataFilter`
+- **Exception handler**: `core.exception_handler.custom_exception_handler` — глобальный обработчик для DRF
+- **Health check**: `/api/health/` (public), `/api/health/detailed/` (admin), `/api/metrics/` (admin)
+
+## API формат
+
+- Все эндпоинты: `/api/{app}/...` (auth, pets, v1/nutrition, shop, courses, payments, checkout, reviews, admin)
+- Успешный ответ: `{"data": ..., "count": ...}` или `{"message": "...", "data": ...}`
+- Ответ с ошибкой: `{"error": "...", "code": "ERROR_CODE", "errors": [...]}`
+
+## Базовые классы (core/)
+
+| Класс | Файл | Назначение |
+|-------|------|------------|
+| `BaseCRUDService` | `core/services.py` | Базовый CRUD сервис, возвращает `ServiceResult` |
+| `ServiceResult` | `core/services.py` | Единый формат возврата из сервисов (success, message, data, errors, error_code) |
+| `BaseService` | `core/services.py` | Базовый класс с `log_info()`, `log_error()`, `validate_required_fields()` |
+| `BaseCRUDMixin` | `core/crud_views.py` | Миксин с `select_related_fields`, `prefetch_related_fields`, `filter/order/paginate_queryset()`, `make_response()` |
+| `BaseListCreateView` | `core/crud_views.py` | GET список + POST создание |
+| `BaseDetailView` | `core/crud_views.py` | GET/PUT/PATCH/DELETE для объекта |
+| `BaseReadOnlyView` | `core/crud_views.py` | GET список + GET детали (публичный) |
+| `ApiError` | `core/exceptions.py` | Стандартизированные ошибки API с кодами |
+| `IsOwner` / `IsOwnerOrReadOnly` | `core/permissions.py` | Проверка владения объектом |
+| `UserRole` / `OrderStatus` | `core/constants.py` | Константы ролей и статусов |
+| `validate_password_strength` | `core/validators.py` | Общая валидация сложности пароля |
+| `set_refresh_token_cookie` | `core/validators.py` | Утилита установки refresh-токена в cookie |
+
+## Документация
+
+- Техническая документация: `docs/` (архитектура, модули 01-14, руководства)
+- Старая документация: `docs_old/` (для справки)
+- Справочные данные: `docs/data/` (породы, питание, категории магазина)

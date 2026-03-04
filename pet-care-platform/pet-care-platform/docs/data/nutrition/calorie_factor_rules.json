@@ -1,0 +1,80 @@
+[
+  {
+    "factor_key": "base_disease",
+    "priority": 0,
+    "scope": "both",
+    "notes": "Базовый фактор по заболеваниям (ведущий контекст)"
+  },
+  {
+    "factor_key": "base_reproductive",
+    "priority": 0,
+    "scope": "both",
+    "notes": "Базовый фактор по репродуктивному состоянию"
+  },
+  {
+    "factor_key": "base_growth",
+    "priority": 0,
+    "scope": "both",
+    "notes": "Базовый фактор по росту/ювенильному возрасту"
+  },
+  {
+    "factor_key": "base_age",
+    "priority": 0,
+    "scope": "both",
+    "notes": "Базовый фактор по возрасту (adult/senior)"
+  },
+  {
+    "factor_key": "bcs",
+    "priority": 1,
+    "scope": "both",
+    "notes": "BCS управляет caps по MER/RER"
+  },
+  {
+    "factor_key": "critical_disease",
+    "priority": 1,
+    "scope": "both",
+    "notes": "Критические заболевания ограничивают MER/RER"
+  },
+  {
+    "factor_key": "activity",
+    "priority": 2,
+    "max_delta_pct": 15.0,
+    "scope": "both",
+    "notes": "Ограниченная коррекция по активности"
+  },
+  {
+    "factor_key": "neutering",
+    "priority": 2,
+    "max_delta_pct": 10.0,
+    "scope": "both",
+    "notes": "Ограниченная коррекция по кастрации/стерилизации"
+  },
+  {
+    "factor_key": "size",
+    "priority": 2,
+    "max_delta_pct": 10.0,
+    "scope": "both",
+    "notes": "Ограниченная коррекция по размеру"
+  },
+  {
+    "factor_key": "coat",
+    "priority": 2,
+    "max_delta_pct": 5.0,
+    "scope": "both",
+    "notes": "Ограниченная коррекция по типу шерсти"
+  },
+  {
+    "factor_key": "climate",
+    "priority": 2,
+    "max_delta_pct": 10.0,
+    "scope": "both",
+    "notes": "Ограниченная коррекция по климату"
+  },
+  {
+    "factor_key": "housing",
+    "priority": 2,
+    "max_delta_pct": 10.0,
+    "scope": "both",
+    "notes": "Ограниченная коррекция по типу жилья"
+  }
+]

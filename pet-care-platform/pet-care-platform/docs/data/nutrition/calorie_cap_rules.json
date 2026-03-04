@@ -1,0 +1,44 @@
+[
+  {
+    "context_key": "bcs_obese_8_9",
+    "min_mer_rer": 0.60,
+    "max_mer_rer": 0.80,
+    "scope": "both",
+    "notes": "Ожирение BCS 8-9: ограничение для безопасного снижения веса"
+  },
+  {
+    "context_key": "growth_bcs_obese_8_9",
+    "min_mer_rer": 1.20,
+    "max_mer_rer": 2.00,
+    "scope": "both",
+    "notes": "Рост + BCS 8-9: не опускаем ниже безопасного роста"
+  },
+  {
+    "context_key": "bcs_overweight_7",
+    "min_mer_rer": 0.80,
+    "max_mer_rer": 1.00,
+    "scope": "both",
+    "notes": "Избыточный вес BCS 7: мягкое ограничение"
+  },
+  {
+    "context_key": "growth_bcs_overweight_7",
+    "min_mer_rer": 1.20,
+    "max_mer_rer": 2.20,
+    "scope": "both",
+    "notes": "Рост + BCS 7: ограничение без агрессивного дефицита"
+  },
+  {
+    "context_key": "bcs_underweight",
+    "min_mer_rer": 1.30,
+    "max_mer_rer": 2.20,
+    "scope": "both",
+    "notes": "Недобор веса: повышенный коридор"
+  },
+  {
+    "context_key": "critical_disease",
+    "min_mer_rer": 1.00,
+    "max_mer_rer": 1.20,
+    "scope": "both",
+    "notes": "Критические состояния: старт от 1.0x RER с ограничением"
+  }
+]

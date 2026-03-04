@@ -1,0 +1,428 @@
+[
+  {
+    "code": "obesity_1",
+    "name_ru": "Ожирение 1 степени",
+    "name_en": "Obesity Grade 1",
+    "species": "both",
+    "category": "metabolic",
+    "coefficient_min": 0.80,
+    "coefficient_max": 0.90,
+    "priority": "MEDIUM",
+    "direction": "DECREASE",
+    "bcs_range": {"min": 6, "max": 6},
+    "weight_deviation_percent": {"min": 10, "max": 20},
+    "symptoms": ["Рёбра прощупываются с трудом", "Заметный жировой слой", "Талия слабо выражена"],
+    "dietary_recommendations": {
+      "reduce_calories_percent": 15,
+      "increase_fiber": true,
+      "feeding_frequency": 3
+    },
+    "source": "AAHA 2021",
+    "clinical_notes": "Рекомендуется постепенное снижение веса на 1-2% в неделю"
+  },
+  {
+    "code": "obesity_2",
+    "name_ru": "Ожирение 2 степени",
+    "name_en": "Obesity Grade 2",
+    "species": "both",
+    "category": "metabolic",
+    "coefficient_min": 0.70,
+    "coefficient_max": 0.80,
+    "priority": "HIGH",
+    "direction": "DECREASE",
+    "bcs_range": {"min": 7, "max": 7},
+    "weight_deviation_percent": {"min": 20, "max": 30},
+    "symptoms": ["Рёбра не прощупываются", "Значительные жировые отложения", "Талия отсутствует"],
+    "dietary_recommendations": {
+      "reduce_calories_percent": 25,
+      "increase_fiber": true,
+      "feeding_frequency": 3,
+      "veterinary_diet_recommended": true
+    },
+    "source": "AAHA 2021",
+    "clinical_notes": "Требуется ветеринарный контроль программы похудения"
+  },
+  {
+    "code": "obesity_3",
+    "name_ru": "Ожирение 3 степени (морбидное)",
+    "name_en": "Obesity Grade 3 (Morbid)",
+    "species": "both",
+    "category": "metabolic",
+    "coefficient_min": 0.60,
+    "coefficient_max": 0.70,
+    "priority": "CRITICAL",
+    "direction": "DECREASE",
+    "bcs_range": {"min": 8, "max": 9},
+    "weight_deviation_percent": {"min": 30, "max": 100},
+    "symptoms": ["Массивные жировые отложения", "Затруднённое движение", "Одышка при нагрузках"],
+    "dietary_recommendations": {
+      "reduce_calories_percent": 35,
+      "veterinary_diet_required": true,
+      "medical_supervision_required": true
+    },
+    "source": "AAHA 2021",
+    "clinical_notes": "Требуется обязательное ветеринарное наблюдение, риск сопутствующих заболеваний"
+  },
+  {
+    "code": "underweight_mild",
+    "name_ru": "Недобор веса (лёгкий)",
+    "name_en": "Underweight Mild",
+    "species": "both",
+    "category": "metabolic",
+    "coefficient_min": 1.10,
+    "coefficient_max": 1.20,
+    "priority": "MEDIUM",
+    "direction": "INCREASE",
+    "bcs_range": {"min": 3, "max": 4},
+    "weight_deviation_percent": {"min": -10, "max": -20},
+    "symptoms": ["Рёбра легко прощупываются", "Видны тазовые кости", "Минимальный жировой слой"],
+    "dietary_recommendations": {
+      "increase_calories_percent": 15,
+      "high_calorie_food": true
+    },
+    "source": "Clinical",
+    "clinical_notes": "Исключить паразитарные и системные заболевания"
+  },
+  {
+    "code": "underweight_severe",
+    "name_ru": "Недобор веса (тяжёлый)",
+    "name_en": "Underweight Severe",
+    "species": "both",
+    "category": "metabolic",
+    "coefficient_min": 1.30,
+    "coefficient_max": 1.50,
+    "priority": "HIGH",
+    "direction": "INCREASE",
+    "bcs_range": {"min": 1, "max": 2},
+    "weight_deviation_percent": {"min": -20, "max": -50},
+    "symptoms": ["Видны все рёбра и позвонки", "Отсутствие жировых отложений", "Атрофия мышц"],
+    "dietary_recommendations": {
+      "increase_calories_percent": 40,
+      "high_calorie_food": true,
+      "frequent_small_meals": true,
+      "medical_supervision_required": true
+    },
+    "source": "Clinical",
+    "clinical_notes": "Требуется ветеринарное обследование для выявления причины"
+  },
+  {
+    "code": "diabetes",
+    "name_ru": "Сахарный диабет",
+    "name_en": "Diabetes Mellitus",
+    "species": "both",
+    "category": "endocrine",
+    "coefficient_min": 0.80,
+    "coefficient_max": 1.00,
+    "priority": "HIGH",
+    "direction": "DECREASE",
+    "symptoms": ["Повышенная жажда", "Частое мочеиспускание", "Потеря веса при нормальном аппетите"],
+    "dietary_recommendations": {
+      "low_glycemic_index": true,
+      "high_fiber": true,
+      "consistent_feeding_schedule": true,
+      "avoid_simple_carbs": true
+    },
+    "contraindicated_ingredients": ["sugar", "simple_carbs", "high_glycemic_grains"],
+    "source": "AAHA 2021",
+    "clinical_notes": "Требуется согласование диеты с режимом инсулинотерапии"
+  },
+  {
+    "code": "ckd_1_2",
+    "name_ru": "Хроническая болезнь почек 1-2 стадии",
+    "name_en": "Chronic Kidney Disease Stage 1-2",
+    "species": "both",
+    "category": "renal",
+    "coefficient_min": 0.90,
+    "coefficient_max": 1.00,
+    "priority": "MEDIUM",
+    "direction": "DECREASE",
+    "symptoms": ["Умеренное повышение жажды", "Незначительные изменения в анализах"],
+    "dietary_recommendations": {
+      "moderate_protein_restriction": true,
+      "low_phosphorus": true,
+      "omega_3_supplementation": true,
+      "adequate_hydration": true
+    },
+    "contraindicated_ingredients": ["high_phosphorus", "excessive_protein", "high_sodium"],
+    "source": "NRC 2006",
+    "clinical_notes": "Регулярный мониторинг функции почек"
+  },
+  {
+    "code": "ckd_3_4",
+    "name_ru": "Хроническая болезнь почек 3-4 стадии",
+    "name_en": "Chronic Kidney Disease Stage 3-4",
+    "species": "both",
+    "category": "renal",
+    "coefficient_min": 0.70,
+    "coefficient_max": 0.80,
+    "priority": "CRITICAL",
+    "direction": "DECREASE",
+    "symptoms": ["Сильная жажда", "Рвота", "Потеря аппетита", "Потеря веса", "Вялость"],
+    "dietary_recommendations": {
+      "strict_protein_restriction": true,
+      "very_low_phosphorus": true,
+      "omega_3_supplementation": true,
+      "potassium_supplementation": true,
+      "renal_diet_required": true
+    },
+    "contraindicated_ingredients": ["high_phosphorus", "high_protein", "high_sodium"],
+    "source": "AAHA 2021",
+    "clinical_notes": "Требуется специализированная почечная диета под контролем ветеринара"
+  },
+  {
+    "code": "pancreatitis",
+    "name_ru": "Панкреатит",
+    "name_en": "Pancreatitis",
+    "species": "both",
+    "category": "gastrointestinal",
+    "coefficient_min": 0.80,
+    "coefficient_max": 0.90,
+    "priority": "HIGH",
+    "direction": "DECREASE",
+    "symptoms": ["Рвота", "Боль в животе", "Потеря аппетита", "Диарея"],
+    "dietary_recommendations": {
+      "very_low_fat": true,
+      "highly_digestible": true,
+      "small_frequent_meals": true,
+      "fat_percent_max": 10
+    },
+    "contraindicated_ingredients": ["high_fat", "fatty_meats", "oils"],
+    "source": "Clinical",
+    "clinical_notes": "Строгое ограничение жиров, особенно в острой фазе"
+  },
+  {
+    "code": "heart_disease",
+    "name_ru": "Сердечная недостаточность",
+    "name_en": "Heart Disease",
+    "species": "both",
+    "category": "cardiovascular",
+    "coefficient_min": 0.90,
+    "coefficient_max": 1.00,
+    "priority": "HIGH",
+    "direction": "NEUTRAL",
+    "symptoms": ["Одышка", "Кашель", "Непереносимость физических нагрузок", "Отёки"],
+    "dietary_recommendations": {
+      "low_sodium": true,
+      "taurine_supplementation": true,
+      "omega_3_supplementation": true,
+      "moderate_protein": true
+    },
+    "contraindicated_ingredients": ["high_sodium", "salty_treats"],
+    "source": "Clinical",
+    "clinical_notes": "Избегать соли, добавлять таурин и омега-3"
+  },
+  {
+    "code": "allergies",
+    "name_ru": "Пищевые аллергии",
+    "name_en": "Food Allergies",
+    "species": "both",
+    "category": "immune",
+    "coefficient_min": 1.00,
+    "coefficient_max": 1.00,
+    "priority": "LOW",
+    "direction": "NEUTRAL",
+    "symptoms": ["Зуд кожи", "Ушные инфекции", "Желудочно-кишечные расстройства"],
+    "dietary_recommendations": {
+      "elimination_diet": true,
+      "novel_protein": true,
+      "hydrolyzed_protein": true
+    },
+    "source": "Clinical",
+    "clinical_notes": "Влияет на выбор ингредиентов, не на калорийность"
+  },
+  {
+    "code": "arthritis",
+    "name_ru": "Артрит",
+    "name_en": "Arthritis",
+    "species": "both",
+    "category": "musculoskeletal",
+    "coefficient_min": 1.00,
+    "coefficient_max": 1.00,
+    "priority": "LOW",
+    "direction": "NEUTRAL",
+    "symptoms": ["Хромота", "Скованность движений", "Нежелание двигаться"],
+    "dietary_recommendations": {
+      "omega_3_supplementation": true,
+      "glucosamine_chondroitin": true,
+      "weight_management": true
+    },
+    "source": "Clinical",
+    "clinical_notes": "Важно поддержание здорового веса для снижения нагрузки на суставы"
+  },
+  {
+    "code": "recovery_surgery",
+    "name_ru": "Восстановление после операции",
+    "name_en": "Post-Surgery Recovery",
+    "species": "both",
+    "category": "recovery",
+    "coefficient_min": 1.10,
+    "coefficient_max": 1.30,
+    "priority": "MEDIUM",
+    "direction": "INCREASE",
+    "symptoms": [],
+    "dietary_recommendations": {
+      "high_quality_protein": true,
+      "easily_digestible": true,
+      "immune_support": true
+    },
+    "source": "Clinical",
+    "clinical_notes": "Повышенные потребности в белке для заживления тканей"
+  },
+  {
+    "code": "cancer",
+    "name_ru": "Онкология",
+    "name_en": "Cancer",
+    "species": "both",
+    "category": "oncology",
+    "coefficient_min": 1.00,
+    "coefficient_max": 1.20,
+    "priority": "CRITICAL",
+    "direction": "NEUTRAL",
+    "symptoms": ["Зависит от типа и локализации"],
+    "dietary_recommendations": {
+      "high_quality_protein": true,
+      "moderate_fat": true,
+      "low_carbohydrate": true,
+      "omega_3_supplementation": true,
+      "antioxidants": true
+    },
+    "source": "Clinical",
+    "clinical_notes": "Индивидуальный подход в зависимости от типа рака и лечения"
+  },
+  {
+    "code": "hypothyroidism",
+    "name_ru": "Гипотиреоз",
+    "name_en": "Hypothyroidism",
+    "species": "dog",
+    "category": "endocrine",
+    "coefficient_min": 0.80,
+    "coefficient_max": 0.90,
+    "priority": "MEDIUM",
+    "direction": "DECREASE",
+    "symptoms": ["Вялость", "Набор веса", "Выпадение шерсти", "Непереносимость холода"],
+    "dietary_recommendations": {
+      "calorie_restriction": true,
+      "weight_management": true,
+      "iodine_monitoring": true
+    },
+    "source": "Clinical",
+    "clinical_notes": "Сниженный метаболизм требует меньше калорий"
+  },
+  {
+    "code": "liver_disease",
+    "name_ru": "Заболевания печени",
+    "name_en": "Liver Disease",
+    "species": "dog",
+    "category": "hepatic",
+    "coefficient_min": 0.80,
+    "coefficient_max": 1.00,
+    "priority": "HIGH",
+    "direction": "DECREASE",
+    "symptoms": ["Желтуха", "Рвота", "Потеря аппетита", "Увеличение живота"],
+    "dietary_recommendations": {
+      "moderate_high_quality_protein": true,
+      "low_copper": true,
+      "easily_digestible": true,
+      "multiple_small_meals": true
+    },
+    "contraindicated_ingredients": ["high_copper", "organ_meats"],
+    "source": "Clinical",
+    "clinical_notes": "Белок высокого качества в умеренных количествах"
+  },
+  {
+    "code": "hyperthyroidism",
+    "name_ru": "Гипертиреоз",
+    "name_en": "Hyperthyroidism",
+    "species": "cat",
+    "category": "endocrine",
+    "coefficient_min": 1.20,
+    "coefficient_max": 1.50,
+    "priority": "HIGH",
+    "direction": "INCREASE",
+    "symptoms": ["Потеря веса", "Повышенный аппетит", "Гиперактивность", "Рвота"],
+    "dietary_recommendations": {
+      "high_calorie": true,
+      "high_protein": true,
+      "iodine_restricted": true
+    },
+    "source": "Clinical",
+    "clinical_notes": "Повышенный метаболизм требует больше калорий. Рассмотреть йод-ограниченную диету"
+  },
+  {
+    "code": "flutd",
+    "name_ru": "Заболевания мочевыводящих путей",
+    "name_en": "Feline Lower Urinary Tract Disease",
+    "species": "cat",
+    "category": "urinary",
+    "coefficient_min": 0.90,
+    "coefficient_max": 1.00,
+    "priority": "MEDIUM",
+    "direction": "NEUTRAL",
+    "symptoms": ["Частое мочеиспускание", "Кровь в моче", "Затруднённое мочеиспускание"],
+    "dietary_recommendations": {
+      "urinary_health_formula": true,
+      "increased_moisture": true,
+      "controlled_minerals": true,
+      "optimal_ph": true
+    },
+    "source": "Clinical",
+    "clinical_notes": "Важно поддержание оптимального pH мочи и увеличение потребления воды"
+  },
+  {
+    "code": "ibd",
+    "name_ru": "Воспалительные заболевания кишечника",
+    "name_en": "Inflammatory Bowel Disease",
+    "species": "cat",
+    "category": "gastrointestinal",
+    "coefficient_min": 0.90,
+    "coefficient_max": 1.00,
+    "priority": "MEDIUM",
+    "direction": "NEUTRAL",
+    "symptoms": ["Хроническая рвота", "Диарея", "Потеря веса"],
+    "dietary_recommendations": {
+      "highly_digestible": true,
+      "limited_ingredient": true,
+      "novel_protein": true,
+      "prebiotics": true
+    },
+    "source": "Clinical",
+    "clinical_notes": "Легкоусвояемая диета с ограниченным количеством ингредиентов"
+  },
+  {
+    "code": "hepatic_lipidosis",
+    "name_ru": "Липидоз печени",
+    "name_en": "Hepatic Lipidosis",
+    "species": "cat",
+    "category": "hepatic",
+    "coefficient_min": 1.00,
+    "coefficient_max": 1.20,
+    "priority": "CRITICAL",
+    "direction": "INCREASE",
+    "symptoms": ["Желтуха", "Отказ от еды", "Потеря веса", "Вялость"],
+    "dietary_recommendations": {
+      "high_protein": true,
+      "high_calorie": true,
+      "force_feeding_may_required": true
+    },
+    "source": "Clinical",
+    "clinical_notes": "Критическое состояние! Требуется агрессивное питание под контролем ветеринара"
+  },
+  {
+    "code": "dental_disease",
+    "name_ru": "Заболевания зубов и дёсен",
+    "name_en": "Dental Disease",
+    "species": "cat",
+    "category": "dental",
+    "coefficient_min": 1.00,
+    "coefficient_max": 1.00,
+    "priority": "LOW",
+    "direction": "NEUTRAL",
+    "symptoms": ["Неприятный запах изо рта", "Затруднённое жевание", "Слюнотечение"],
+    "dietary_recommendations": {
+      "soft_food_may_needed": true,
+      "dental_care_treats": true
+    },
+    "source": "Clinical",
+    "clinical_notes": "Может потребоваться мягкий корм при тяжёлых случаях"
+  }
+]

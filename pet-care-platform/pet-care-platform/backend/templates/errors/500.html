@@ -1,0 +1,128 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>500 - Ошибка сервера | Питомец +</title>
+  <link rel="stylesheet" href="{% static 'errors/errors-common.css' %}">
+  <style>
+    body {
+      min-height: 100vh;
+      background-color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+    }
+    .container {
+      text-align: center;
+      max-width: 42rem;
+      margin: 0 auto;
+      position: relative;
+      z-index: 10;
+    }
+    .image-container {
+      margin-bottom: 3rem;
+    }
+    .error-page-image {
+      width: 16rem;
+      height: 16rem;
+      object-fit: cover;
+      border-radius: 9999px;
+      margin: 0 auto;
+      border: 4px solid #f3f4f6;
+    }
+    h2 {
+      font-size: 1.875rem;
+      font-weight: 700;
+      color: #111827;
+      margin-bottom: 1rem;
+    }
+    p {
+      font-size: 1.125rem;
+      color: #4b5563;
+      margin-bottom: 3rem;
+      max-width: 28rem;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    .buttons {
+      display: flex;
+      gap: 1rem;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    .btn {
+      padding: 0.75rem 2rem;
+      border-radius: 9999px;
+      font-weight: 600;
+      transition: all 0.2s ease;
+      cursor: pointer;
+      border: none;
+    }
+    .btn:hover {
+      transform: translateY(-2px);
+    }
+    .btn-primary {
+      background-color: #8b5cf6;
+      color: white;
+    }
+    .btn-secondary {
+      background-color: white;
+      color: #374151;
+      border: 2px solid #e5e7eb;
+    }
+    .btn-accent {
+      background-color: #f97316;
+      color: white;
+    }
+  </style>
+</head>
+<body>
+  <!-- Большая цифра ошибки на фоне -->
+  <div class="error-number-bg">500</div>
+
+  <div class="container">
+    <!-- Изображение -->
+    <div class="image-container animate-image">
+      <img src="https://images.unsplash.com/photo-1547557098-c6f52b0e1ad4?w=640&q=80" alt="Виноватый питомец" class="error-page-image">
+    </div>
+
+    <!-- Текст ошибки -->
+    <h2 class="animate-title">Ошибка сервера</h2>
+    <p class="animate-text">
+      Что-то пошло не так на нашей стороне. Мы уже работаем над исправлением.
+    </p>
+
+    <!-- Кнопки -->
+    <div class="buttons animate-buttons">
+      <button class="btn btn-primary" onclick="window.location.href='/'">
+        На главную
+      </button>
+      <button class="btn btn-secondary" onclick="window.location.reload()">
+        Обновить страницу
+      </button>
+      <button class="btn btn-accent" onclick="alert('Служба поддержки скоро свяжется с вами!')">
+        Связаться с нами
+      </button>
+    </div>
+  </div>
+
+  <script>
+    // Анимация букв в заголовке
+    var title = document.querySelector('.animate-title');
+    if (title) {
+      var text = title.textContent;
+      title.textContent = '';
+      text.split('').forEach(function(char, index) {
+        var span = document.createElement('span');
+        span.className = 'letter';
+        span.innerHTML = char === ' ' ? '&nbsp;' : char;
+        span.style.animationDelay = (0.4 + index * 0.05) + 's';
+        title.appendChild(span);
+      });
+    }
+  </script>
+</body>
+</html>

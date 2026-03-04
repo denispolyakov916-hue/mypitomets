@@ -1,0 +1,284 @@
+/**
+ * Глобальные CSS стили для Питомец+
+ *
+ * Структура:
+ * 1. Tailwind директивы
+ * 2. CSS переменные (синхронизированы с tailwind.config.js)
+ * 3. Базовые стили элементов
+ * 4. Утилитарные классы (@layer components)
+ * 5. Accessibility
+ * 6. Скроллбар
+ * 7. Адаптивная сетка
+ * 8. Стили контента уроков
+ */
+
+/* 1. Директивы Tailwind CSS — шрифт как на лендинге */
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* 2. CSS переменные, синхронизированные с tailwind.config.js */
+:root {
+  --color-primary: #522f81;
+  --color-violet: #C86BFA;
+  --color-white: #F5F5F5;
+  --color-yellow-light: #F0EB93;
+  --color-gold: #fbba2d;
+
+  --primary: #C86BFA;
+  --primary-dark: #522f81;
+  --primary-foreground: #F5F5F5;
+
+  --accent: #fbba2d;
+  --accent-dark: #e5a41e;
+
+  --secondary: #fbba2d;
+
+  --background: #F5F5F5;
+  --foreground: #522f81;
+  --muted: #F5F5F5;
+  --muted-foreground: #6b2da1;
+  --border: #d9bfff;
+  --ring: #C86BFA;
+
+  --card: #FFFFFF;
+  --card-foreground: #522f81;
+
+  --destructive: #EF4444;
+  --success: #22c55e;
+  --warning: #fbba2d;
+  --info: #C86BFA;
+}
+
+/* 3. Базовые стили */
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+html:has(body[data-page="payment"]) {
+  scroll-behavior: auto !important;
+}
+
+body {
+  font-family: 'Manrope', system-ui, -apple-system, sans-serif;
+  color: var(--foreground);
+  background-color: var(--background);
+  margin: 0;
+  padding: 0;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
+
+/* 4. Утилитарные классы — в стиле лендинга (primary #522f81, accent #fbba2d) */
+@layer components {
+  .card {
+    @apply bg-white rounded-2xl shadow-sm border border-primary-200/50 p-6;
+    box-shadow: 0 4px 20px rgba(82, 47, 129, 0.08);
+  }
+
+  .btn-primary {
+    @apply bg-primary-600 hover:bg-primary-700 text-white font-semibold py-2.5 px-6 rounded-full
+           transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed
+           shadow-md hover:shadow-lg;
+  }
+
+  .btn-secondary {
+    @apply bg-[#F5F5F5] hover:bg-primary-100 text-primary-700 font-medium py-2.5 px-5 rounded-xl
+           border border-primary-200 transition-colors duration-200;
+  }
+
+  .btn-outline {
+    @apply border-2 border-primary-600 text-primary-600 bg-transparent hover:bg-primary-50 font-medium
+           py-2 px-5 rounded-full transition-colors duration-200;
+  }
+
+  .btn-danger {
+    @apply bg-red-500 hover:bg-red-600 text-white font-medium py-2.5 px-5 rounded-xl
+           transition-colors duration-200;
+  }
+
+  .input {
+    @apply w-full px-4 py-2.5 border border-primary-200 rounded-xl focus:ring-2
+           focus:ring-primary-400 focus:border-primary-400 outline-none transition-all;
+  }
+
+  .input-error {
+    @apply border-red-500 focus:ring-red-500 focus:border-red-500;
+  }
+
+  .input-field {
+    @apply w-full px-3 py-2 text-sm border border-primary-200 rounded-xl
+           focus:ring-1 focus:ring-primary-400 focus:border-primary-400 outline-none transition-all;
+  }
+
+  .label {
+    @apply block text-sm font-medium text-primary-800 mb-1.5;
+  }
+
+  .error-message {
+    @apply text-sm text-red-600 mt-1;
+  }
+
+  .page-container {
+    @apply mx-auto px-4 sm:px-6 lg:px-8 py-8;
+    max-width: 1400px;
+  }
+
+  .page-container-with-sidebar {
+    @apply mx-auto px-4 sm:px-6 lg:px-8 py-8;
+    max-width: 1400px;
+  }
+
+  .page-title {
+    @apply text-2xl sm:text-3xl font-bold text-primary-800 mb-6;
+  }
+
+  .section-title {
+    @apply text-xl font-semibold text-primary-800 mb-4;
+  }
+
+  /* Футер с главной (лендинга) — единый вид по проекту */
+  .footer-landing .footer-subscribe {
+    @apply rounded-2xl p-5 flex flex-wrap items-start gap-4;
+    background: rgba(245, 245, 245, 0.08);
+    border: 1px solid rgba(245, 245, 245, 0.12);
+  }
+  .footer-landing .footer-subscribe__text {
+    flex: 1 1 200px;
+    min-width: 0;
+  }
+  .footer-landing .footer-subscribe__form {
+    flex: 1 1 260px;
+    min-width: 0;
+  }
+  .footer-landing .footer-subscribe__form-row {
+    @apply flex gap-2 flex-wrap;
+  }
+  .footer-landing .footer-subscribe__input {
+    @apply flex-1 min-w-[140px] rounded-xl py-2.5 px-3 text-white;
+    background: rgba(245, 245, 245, 0.1);
+    border: 1px solid rgba(245, 245, 245, 0.25);
+  }
+  .footer-landing .footer-subscribe__input::placeholder {
+    color: rgba(245, 245, 245, 0.6);
+  }
+  .footer-landing .footer-subscribe__btn {
+    @apply font-semibold py-2.5 px-5 rounded-xl whitespace-nowrap transition-all;
+    background: var(--color-primary);
+    color: var(--color-white);
+  }
+  .footer-landing .footer-subscribe__btn:hover {
+    opacity: 0.95;
+    transform: scale(1.02);
+  }
+  .footer-landing .footer-social-circle {
+    @apply w-11 h-11 rounded-full inline-flex items-center justify-center text-white transition-colors;
+    background: rgba(245, 245, 245, 0.12);
+    border: 1px solid rgba(245, 245, 245, 0.25);
+  }
+  .footer-landing .footer-social-circle:hover {
+    background: rgba(245, 245, 245, 0.2);
+    border-color: rgba(245, 245, 245, 0.4);
+  }
+  .footer-landing .footer-scroll-top {
+    @apply w-11 h-11 rounded-full inline-flex items-center justify-center text-white cursor-pointer transition-colors;
+    border: 1px solid rgba(245, 245, 245, 0.4);
+    background: transparent;
+  }
+  .footer-landing .footer-scroll-top:hover {
+    background: rgba(245, 245, 245, 0.12);
+    border-color: rgba(245, 245, 245, 0.7);
+  }
+}
+
+/* 5. Accessibility */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* 6. Скроллбар — в стиле лендинга (фиолетовый оттенок) */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(82, 47, 129, 0.06);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(82, 47, 129, 0.25);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(82, 47, 129, 0.4);
+}
+
+/* 7. Адаптивная сетка для каталогов */
+.responsive-grid {
+  display: grid;
+  grid-template-columns: repeat(1, 1fr);
+  gap: 1rem;
+}
+
+@media (min-width: 640px) {
+  .responsive-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1024px) {
+  .responsive-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (min-width: 1600px) {
+  .responsive-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+/* 8. Стили контента уроков */
+.lesson-content img,
+.prose img,
+[class*="lesson-images"] img {
+  display: block !important;
+  max-width: 100% !important;
+  height: auto !important;
+  margin: 20px 0 !important;
+  border-radius: 8px !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+.lesson-content .lesson-images,
+.prose .lesson-images {
+  display: block !important;
+  margin: 20px 0 !important;
+}
+
+.lesson-content .lesson-images img {
+  margin: 10px 0 !important;
+}
