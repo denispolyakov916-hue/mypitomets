@@ -1,4 +1,42 @@
-import { memo, useState } from 'react'
+import { memo } from 'react'
+import {
+  LayoutGrid,
+  UtensilsCrossed,
+  Pill,
+  Bath,
+  Utensils,
+  Gamepad2,
+  Footprints,
+  Shirt,
+  Sparkles,
+  Home,
+  Brain,
+  Tag,
+} from 'lucide-react'
+
+const ICON_SIZE = 19
+const ICON_STROKE = 2
+
+/** Подбор минималистичной иконки под текст/код категории */
+function getCategoryIcon(item) {
+  if (item.type === 'all') return LayoutGrid
+  const name = (item.name || '').toLowerCase()
+  const code = (item.code || item.slug || '').toLowerCase()
+  const combined = `${name} ${code}`
+
+  if (combined.includes('питание') || combined.includes('корм') || combined.includes('food')) return UtensilsCrossed
+  if (combined.includes('ветаптека') || combined.includes('вет') || combined.includes('pharm')) return Pill
+  if (combined.includes('туалет')) return Bath
+  if (combined.includes('миск') || combined.includes('поил') || combined.includes('bowl')) return Utensils
+  if (combined.includes('игруш') || combined.includes('развлечен')) return Gamepad2
+  if (combined.includes('амуниция') || combined.includes('выгул') || combined.includes('поводок')) return Footprints
+  if (combined.includes('одежда') || combined.includes('обувь')) return Shirt
+  if (combined.includes('уход') || (combined.includes('гигиена') && !combined.includes('туалет'))) return Sparkles
+  if (combined.includes('дом') || combined.includes('транспорт')) return Home
+  if (combined.includes('контроль') || combined.includes('поведен')) return Brain
+
+  return Tag
+}
 
 /**
  * Чипы активных фильтров (витрина)
@@ -10,7 +48,7 @@ const ActiveFilterChips = memo(function ActiveFilterChips({ filters, availableFi
 
   if (filters.animal) {
     const animalLabel = availableFilters.animals?.find(a => a.value === filters.animal)?.label
-    chips.push({ key: 'animal', label: animalLabel ? `Для: ${animalLabel}` : `Для: ${filters.animal}` })
+    chips.push({ key: 'animal', label: animalLabel || filters.animal })
   }
 
   if (filters.pet_id) {
@@ -88,16 +126,6 @@ const ActiveFilterChips = memo(function ActiveFilterChips({ filters, availableFi
   )
 })
 
-/** Определить, принадлежит ли выбранная категория к данному родителю */
-const isCategoryUnderParent = (parent, selectedCode, selectedSlug) => {
-  if (!selectedCode && !selectedSlug) return false
-  const parentCode = parent.code || parent.slug
-  const parentSlug = parent.slug
-  if (selectedCode === parentCode || selectedSlug === parentSlug) return true
-  const childSlugs = (parent.children || []).map(c => c.slug || c.code).filter(Boolean)
-  return childSlugs.some(s => s === selectedCode || s === selectedSlug)
-}
-
 /**
  * Заголовок страницы магазина по референсу:
  * табы категорий, поиск + счётчик + кнопка Найти, чипы фильтров
@@ -118,8 +146,6 @@ const ShopHeader = memo(function ShopHeader({
 }) {
   const categories = availableFilters?.hierarchical_categories || []
   const topCategories = categories
-  const currentCategoryCode = filters.category_code || ''
-  const currentCategorySlug = filters.category_slug || ''
 
   const allTabs = [
     { type: 'all', id: 'all', name: 'Все' },
@@ -128,56 +154,55 @@ const ShopHeader = memo(function ShopHeader({
   const half = Math.ceil(allTabs.length / 2)
   const row1 = allTabs.slice(0, half)
   const row2 = allTabs.slice(half)
-  const [hoveredId, setHoveredId] = useState(null)
 
-  /** Пузырь категории в стиле жидкого стекла: полупрозрачность, размытие, блики */
-  const renderBubbleTab = (item) => {
+  /**
+   * Кнопка категории в стиле btn-slide; выбранный раздел — с контрастной окантовкой.
+   */
+  const renderSlideButton = (item) => {
     const isAll = item.type === 'all'
+    const currentCode = filters.category_code || ''
+    const currentSlug = filters.category_slug || ''
+    const itemCode = item.code || item.slug || ''
+    const itemSlug = item.slug || item.code || ''
     const isActive = isAll
-      ? !currentCategoryCode && !currentCategorySlug
-      : isCategoryUnderParent(item, currentCategoryCode, currentCategorySlug) ||
-        currentCategoryCode === (item.code || item.slug) || currentCategorySlug === item.slug
-    const isHovered = hoveredId === item.id
+      ? !currentCode && !currentSlug
+      : (currentCode && (currentCode === itemCode || currentCode === itemSlug)) ||
+        (currentSlug && (currentSlug === itemSlug || currentSlug === itemCode))
+    const handleClick = () => {
+      if (onCategoryChange) onCategoryChange('category_code', isAll ? '' : (item.code || item.slug))
+    }
+    const Icon = getCategoryIcon(item)
     return (
       <button
         key={item.id}
         type="button"
-        onMouseEnter={() => setHoveredId(item.id)}
-        onMouseLeave={() => setHoveredId(null)}
-        onClick={() => onCategoryChange && onCategoryChange('category_code', isAll ? '' : (item.code || item.slug))}
-        style={{
-          background: 'linear-gradient(135deg, rgba(251,186,45,0.75) 0%, rgba(245,215,96,0.78) 50%, rgba(240,235,147,0.75) 100%)',
-          backdropFilter: 'blur(12px)',
-          WebkitBackdropFilter: 'blur(12px)',
-          border: '1px solid rgba(255,255,255,0.5)',
-          color: '#2a2a2a',
-          boxShadow: isHovered
-            ? 'inset 0 1px 0 rgba(255,255,255,0.7), inset 0 -1px 0 rgba(229,164,30,0.3), 0 8px 24px rgba(251,186,45,0.35)'
-            : 'inset 0 1px 0 rgba(255,255,255,0.6), inset 0 -1px 0 rgba(229,164,30,0.25), 0 4px 12px rgba(251,186,45,0.2)',
-        }}
-        className={`
-          relative flex-1 min-w-0 rounded-full py-4 px-6 text-base font-medium whitespace-nowrap
-          transition-all duration-200 ease-out
-          ${isActive ? 'z-10 ring-1 ring-white/60' : 'z-0'}
-          ${isHovered ? 'z-20 scale-[1.02]' : ''}
-        `}
+        className={`btn-slide flex-1 min-w-0 ${isActive ? 'btn-slide-active' : ''}`}
+        onClick={handleClick}
+        aria-current={isActive ? 'true' : undefined}
       >
-        {item.name}
+        <span className="circle">
+          <Icon size={ICON_SIZE} strokeWidth={ICON_STROKE} />
+        </span>
+        <span className="title">
+          <span className="btn-slide-text">{item.name}</span>
+        </span>
+        <span className="title title-hover">
+          <span className="btn-slide-text">{item.name}</span>
+        </span>
       </button>
     )
   }
 
   return (
     <div className="mb-6">
-      {/* Пузыри категорий в два ряда, увеличенный размер */}
       {allTabs.length > 0 && (
-        <nav className="flex flex-col gap-3 py-2 w-full overflow-hidden">
+        <nav className="shop-header-nav flex flex-col gap-3 py-2 w-full overflow-hidden">
           <div className="flex flex-nowrap items-center gap-2 w-full min-w-0">
-            {row1.map(renderBubbleTab)}
+            {row1.map(renderSlideButton)}
           </div>
           {row2.length > 0 && (
             <div className="flex flex-nowrap items-center gap-2 w-full min-w-0">
-              {row2.map(renderBubbleTab)}
+              {row2.map(renderSlideButton)}
             </div>
           )}
         </nav>

@@ -125,9 +125,10 @@ export default {
           900: '#1e3a8a',
         },
       },
-      // Кастомное семейство шрифтов — как на лендинге
+      // Заголовки — Manrope, основной текст — Inter
       fontFamily: {
-        sans: ['Manrope', 'system-ui', 'sans-serif'],
+        sans: ['Inter', 'system-ui', 'sans-serif'],
+        heading: ['Manrope', 'system-ui', 'sans-serif'],
       },
       // Кастомные анимации
       animation: {

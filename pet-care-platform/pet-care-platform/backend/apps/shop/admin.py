@@ -7,6 +7,7 @@ from django.urls import reverse
 from django.http import HttpResponse
 from .models import (
     Product, Cart, CartItem, Order, OrderItem, Reservation, Address, Return,
+    ShareableWishlist, ShareableWishlistItem,
     Category, Brand, ProductSKU, ProductBreedRecommendation
 )
 
@@ -462,6 +463,22 @@ class AddressAdmin(admin.ModelAdmin):
             return format_html('<a href="{}">{}</a>', url, obj.user.email)
         return "Удалённый пользователь"
     user_display.short_description = 'Пользователь'
+
+
+class ShareableWishlistItemInline(admin.TabularInline):
+    model = ShareableWishlistItem
+    extra = 0
+    raw_id_fields = ('product',)
+    readonly_fields = ('created_at',)
+
+
+@admin.register(ShareableWishlist)
+class ShareableWishlistAdmin(admin.ModelAdmin):
+    list_display = ('id', 'user', 'name', 'share_token', 'created_at', 'updated_at')
+    list_filter = ('created_at',)
+    search_fields = ('user__email', 'name', 'share_token')
+    readonly_fields = ('share_token', 'created_at', 'updated_at')
+    inlines = [ShareableWishlistItemInline]
 
 
 @admin.register(Return)

@@ -1,10 +1,11 @@
 /**
  * Заголовок страницы курсов
  *
- * Табы категорий (как в магазине), поиск, чипы активных фильтров, кнопка «Фильтры» на мобильных.
+ * Табы категорий в том же стиле, что и в магазине питания (pill + круг с иконкой + градиент), в фиолетовой палитре.
  */
 
-import { memo, useState } from 'react'
+import { memo } from 'react'
+import { GraduationCap } from 'lucide-react'
 
 const CATEGORY_TABS = [
   { type: 'all', id: 'all', name: 'Все' },
@@ -26,7 +27,7 @@ const ActiveFilterChips = memo(function ActiveFilterChips({ filters, availableFi
 
   if (filters.search) chips.push({ key: 'search', label: `Поиск: ${filters.search}` })
   if (filters.pet_type) {
-    const labels = { dog: 'Для собак', cat: 'Для кошек', all: 'Для всех' }
+    const labels = { dog: 'Собак', cat: 'Кошек', all: 'Все' }
     chips.push({ key: 'pet_type', label: labels[filters.pet_type] || filters.pet_type })
   }
   if (filters.pet_id) {
@@ -101,40 +102,32 @@ const CourseHeader = memo(function CourseHeader({
   const half = Math.ceil(allTabs.length / 2)
   const row1 = allTabs.slice(0, half)
   const row2 = allTabs.slice(half)
-  const [hoveredId, setHoveredId] = useState(null)
   const currentCategory = filters.category || ''
 
-  /** Пузырь категории: тот же градиент и стекло, но в сиреневой гамме */
-  const renderTab = (item) => {
+  /** Кнопка категории в стиле магазина питания: pill, круг с иконкой (уезжает вправо при hover), градиент в фиолетовой палитре */
+  const renderSlideButton = (item) => {
     const isAll = item.type === 'all'
     const itemId = item.id || item.value
+    const handleClick = () => {
+      if (onCategoryChange) onCategoryChange('category', isAll ? '' : itemId)
+    }
     const isActive = isAll ? !currentCategory : currentCategory === itemId
-    const isHovered = hoveredId === itemId
     return (
       <button
         key={itemId}
         type="button"
-        onMouseEnter={() => setHoveredId(itemId)}
-        onMouseLeave={() => setHoveredId(null)}
-        onClick={() => onCategoryChange && onCategoryChange('category', isAll ? '' : itemId)}
-        style={{
-          background: 'linear-gradient(135deg, rgba(237,224,255,0.9) 0%, rgba(217,191,255,0.92) 50%, rgba(200,170,240,0.9) 100%)',
-          backdropFilter: 'blur(12px)',
-          WebkitBackdropFilter: 'blur(12px)',
-          border: '1px solid rgba(255,255,255,0.55)',
-          color: '#3e2362',
-          boxShadow: isHovered
-            ? 'inset 0 1px 0 rgba(255,255,255,0.7), inset 0 -1px 0 rgba(82,47,129,0.25), 0 8px 24px rgba(82,47,129,0.28)'
-            : 'inset 0 1px 0 rgba(255,255,255,0.6), inset 0 -1px 0 rgba(82,47,129,0.2), 0 4px 12px rgba(82,47,129,0.18)',
-        }}
-        className={`
-          relative flex-1 min-w-0 rounded-full py-4 px-6 text-base font-medium whitespace-nowrap
-          transition-all duration-200 ease-out
-          ${isActive ? 'z-10 ring-1 ring-white/60' : 'z-0'}
-          ${isHovered ? 'z-20 scale-[1.02]' : ''}
-        `}
+        className={`btn-slide flex-1 min-w-0 ${isActive ? 'btn-slide-active' : ''}`}
+        onClick={handleClick}
       >
-        {item.name}
+        <span className="circle">
+          <GraduationCap size={19} strokeWidth={2} />
+        </span>
+        <span className="title">
+          <span className="btn-slide-text">{item.name}</span>
+        </span>
+        <span className="title title-hover">
+          <span className="btn-slide-text">{item.name}</span>
+        </span>
       </button>
     )
   }
@@ -142,13 +135,13 @@ const CourseHeader = memo(function CourseHeader({
   return (
     <div className="mb-6">
       {allTabs.length > 0 && (
-        <nav className="flex flex-col gap-3 py-2 w-full overflow-hidden">
+        <nav className="course-header-nav flex flex-col gap-3 py-2 w-full overflow-hidden">
           <div className="flex flex-nowrap items-center gap-2 w-full min-w-0">
-            {row1.map(renderTab)}
+            {row1.map(renderSlideButton)}
           </div>
           {row2.length > 0 && (
             <div className="flex flex-nowrap items-center gap-2 w-full min-w-0">
-              {row2.map(renderTab)}
+              {row2.map(renderSlideButton)}
             </div>
           )}
         </nav>

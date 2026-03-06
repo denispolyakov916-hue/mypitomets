@@ -48,9 +48,9 @@ const CourseForm = ({
 
   // Опции для селекторов
   const petTypeOptions = [
-    { value: 'dog', label: 'Для собак' },
-    { value: 'cat', label: 'Для кошек' },
-    { value: 'all', label: 'Для всех' },
+    { value: 'dog', label: 'Собак' },
+    { value: 'cat', label: 'Кошек' },
+    { value: 'all', label: 'Все' },
   ];
 
   const categoryOptions = [

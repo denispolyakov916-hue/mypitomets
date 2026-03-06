@@ -20,6 +20,14 @@
 
 import { forwardRef } from 'react'
 import { Link } from 'react-router-dom'
+import { motion } from 'framer-motion'
+
+/** Единая анимация кнопок: лёгкое увеличение при наведении, прожатие при нажатии */
+const buttonMotion = {
+  whileHover: { scale: 1.03 },
+  whileTap: { scale: 0.98 },
+  transition: { type: 'spring', stiffness: 400, damping: 17 },
+}
 
 /**
  * Спиннер загрузки для кнопки
@@ -155,6 +163,10 @@ const Button = forwardRef(({
     RenderComponent = 'a'
     componentProps.href = href
   }
+
+  const MotionTag = RenderComponent === Link ? motion(Link) : RenderComponent === 'a' ? motion.a : motion.button
+  const isButtonDisabled = isDisabled || isLoading
+  const motionProps = isButtonDisabled ? {} : buttonMotion
   
   // Оранжевые кнопки (warning) — скругление как у фиолетовых тегов (pill)
   const effectiveRounded = variant === 'warning' ? 'full' : rounded
@@ -163,7 +175,7 @@ const Button = forwardRef(({
   const baseClasses = `
     inline-flex items-center justify-center
     font-medium
-    transition-all duration-200
+    transition-[color,background-color,border-color,box-shadow] duration-300 ease-in-out
     focus:outline-none focus:ring-2 focus:ring-offset-2
     disabled:cursor-not-allowed
     ${roundedClasses[effectiveRounded] ?? 'rounded-xl'}
@@ -172,8 +184,6 @@ const Button = forwardRef(({
     ${sizes[size] || sizes.md}
     ${className}
   `.trim().replace(/\s+/g, ' ')
-  
-  const isButtonDisabled = isDisabled || isLoading
   
   // Определяем props для кнопки
   const buttonProps = RenderComponent === 'button' ? {
@@ -188,10 +198,11 @@ const Button = forwardRef(({
   }
   
   return (
-    <RenderComponent
+    <MotionTag
       ref={ref}
       className={baseClasses}
       onClick={isButtonDisabled ? undefined : onClick}
+      {...motionProps}
       {...buttonProps}
       {...componentProps}
     >
@@ -217,7 +228,7 @@ const Button = forwardRef(({
           {rightIcon}
         </span>
       )}
-    </RenderComponent>
+    </MotionTag>
   )
 })
 

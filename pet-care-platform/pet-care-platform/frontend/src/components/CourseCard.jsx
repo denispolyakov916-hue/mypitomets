@@ -27,9 +27,9 @@ import { formatCoursePrice } from '../utils/format'
  * Маппинг названий типов животных
  */
 const petTypeLabels = {
-  dog: 'Для собак',
-  cat: 'Для кошек',
-  all: 'Для всех',
+  dog: 'Собак',
+  cat: 'Кошек',
+  all: 'Все',
 }
 
 /**
@@ -259,12 +259,11 @@ function CourseCard({ course, onAddToCart, onEnrollFree, isOwned = false, isLoad
                 <ButtonLoader />
               ) : (
                 <>
-                  {/* Текст "В корзину" / "Добавить" */}
+                  {/* Текст "В корзину" */}
                   <div className={`absolute inset-0 flex flex-col items-center justify-center transition-all duration-300 ease-in-out ${
                     isInCart ? 'opacity-0 scale-95' : 'opacity-100 scale-100'
                   }`}>
                     <span className="text-sm font-medium leading-tight">В корзину</span>
-                    <span className="text-[10px] opacity-80 leading-tight">Добавить</span>
                   </div>
                   {/* Текст "В корзине" / "Перейти" */}
                   <div className={`absolute inset-0 flex flex-col items-center justify-center transition-all duration-300 ease-in-out ${

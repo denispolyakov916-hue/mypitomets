@@ -10,9 +10,9 @@ import Modal from '../../../components/ui/Modal'
 
 const PET_TYPE_OPTIONS = [
   { value: '', label: 'Все курсы' },
-  { value: 'dog', label: 'Для собак' },
-  { value: 'cat', label: 'Для кошек' },
-  { value: 'all', label: 'Для всех' },
+  { value: 'dog', label: 'Собак' },
+  { value: 'cat', label: 'Кошек' },
+  { value: 'all', label: 'Все' },
 ]
 
 const CATEGORY_OPTIONS = [
@@ -168,7 +168,7 @@ const FilterSidebar = memo(function FilterSidebar({
         </div>
       </div>
 
-      <div className={`flex-1 min-h-0 overflow-y-auto flex flex-col ${largeButtons ? 'p-4 space-y-4 min-h-full' : 'p-2.5 space-y-2'}`}>
+      <div className={`course-filter-sidebar flex-1 min-h-0 overflow-y-auto flex flex-col ${largeButtons ? 'p-4 space-y-4 min-h-full' : 'p-2.5 space-y-2'}`}>
         {/* Окно питомцев — как в магазине питания: заголовок с иконкой, горизонтальная полоса карточек, кнопка «Добавить питомца» */}
         <div className={`border-b border-gray-200 ${largeButtons ? 'pb-4' : 'pb-2'}`}>
           <div className="flex items-center justify-between mb-2">
@@ -231,7 +231,7 @@ const FilterSidebar = memo(function FilterSidebar({
         </div>
 
         <div className={`border-b border-gray-200 ${largeButtons ? 'pb-4' : 'pb-2'}`}>
-          <div className={`font-medium text-gray-800 ${largeButtons ? 'text-sm mb-2' : 'text-xs mb-1'}`}>Для кого</div>
+          <div className={`font-medium text-gray-800 ${largeButtons ? 'text-sm mb-2' : 'text-xs mb-1'}`}>Тип питомца</div>
           <div className="flex flex-wrap gap-2">
             {(availableFilters?.pet_types || PET_TYPE_OPTIONS).map(opt => {
               const val = opt.value ?? opt.id
@@ -242,9 +242,9 @@ const FilterSidebar = memo(function FilterSidebar({
                   key={val}
                   type="button"
                   onClick={() => onFilterChange('pet_type', isSelected ? '' : val)}
-                  className={`flex-1 min-w-0 ${base} ${isSelected ? tagActive : tagInactive}`}
+                  className={`flex-1 min-w-0 rounded-full text-sm font-medium transition-all ${largeButtons ? 'px-4 py-4' : 'px-3 py-2.5'} ${isSelected ? 'filter-pill-active' : 'filter-pill'}`}
                 >
-                  {label}
+                  <span className="relative z-[1]">{label}</span>
                 </button>
               )
             })}

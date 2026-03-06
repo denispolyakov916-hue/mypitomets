@@ -43,9 +43,9 @@ class Course(models.Model):
     """
 
     PET_TYPE_CHOICES = [
-        ('dog', 'Для собак'),
-        ('cat', 'Для кошек'),
-        ('all', 'Для всех'),
+        ('dog', 'Собак'),
+        ('cat', 'Кошек'),
+        ('all', 'Все'),
     ]
 
     CATEGORY_CHOICES = [

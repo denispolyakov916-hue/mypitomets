@@ -36,9 +36,9 @@ const formatDuration = (minutes) => {
 }
 
 const petTypeInfo = {
-  dog:  { label: 'Для собак',  icon: '🐕', color: 'from-blue-100 to-blue-200',   badge: 'bg-blue-100 text-blue-700' },
-  cat:  { label: 'Для кошек',  icon: '🐱', color: 'from-primary-100 to-primary-200', badge: 'bg-primary-100 text-primary-700' },
-  all:  { label: 'Для всех',   icon: '🐾', color: 'from-green-100 to-green-200',  badge: 'bg-green-100 text-green-700' },
+  dog:  { label: 'Собак',  icon: '🐕', color: 'from-blue-100 to-blue-200',   badge: 'bg-blue-100 text-blue-700' },
+  cat:  { label: 'Кошек',  icon: '🐱', color: 'from-primary-100 to-primary-200', badge: 'bg-primary-100 text-primary-700' },
+  all:  { label: 'Все',   icon: '🐾', color: 'from-green-100 to-green-200',  badge: 'bg-green-100 text-green-700' },
 }
 
 const levelLabels = { beginner: 'Начинающий', intermediate: 'Средний', advanced: 'Продвинутый', expert: 'Эксперт' }

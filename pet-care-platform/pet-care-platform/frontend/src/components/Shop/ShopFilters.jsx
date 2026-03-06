@@ -823,42 +823,18 @@ const PriceRangeFilter = memo(function PriceRangeFilter({
   )
 })
 
-/** Кнопка фильтра в стиле хедера магазина: жидкое стекло, градиент, золотистая гамма */
+/** Кнопка фильтра в том же стиле, что и кнопки категорий в хедере магазина: градиент оранжевый → бледно-оранжевый, плавное переливание через CSS */
 const GlassFilterButton = memo(function GlassFilterButton({ isActive, onClick, children, largeButtons }) {
-  const [hovered, setHovered] = useState(false)
   const baseClass = largeButtons
-    ? 'flex-1 min-w-0 rounded-full py-3 px-4 text-sm font-medium transition-all duration-200'
-    : 'flex-1 min-w-0 rounded-full py-2.5 px-3 text-sm font-medium transition-all duration-200'
-  const activeStyle = {
-    background: 'linear-gradient(135deg, rgba(251,186,45,0.75) 0%, rgba(245,215,96,0.78) 50%, rgba(240,235,147,0.75) 100%)',
-    backdropFilter: 'blur(12px)',
-    WebkitBackdropFilter: 'blur(12px)',
-    border: '1px solid rgba(255,255,255,0.5)',
-    color: '#2a2a2a',
-    boxShadow: hovered
-      ? 'inset 0 1px 0 rgba(255,255,255,0.7), inset 0 -1px 0 rgba(229,164,30,0.3), 0 8px 24px rgba(251,186,45,0.35)'
-      : 'inset 0 1px 0 rgba(255,255,255,0.6), inset 0 -1px 0 rgba(229,164,30,0.25), 0 4px 12px rgba(251,186,45,0.2)',
-  }
-  const inactiveStyle = {
-    background: 'linear-gradient(135deg, rgba(255,252,245,0.95) 0%, rgba(253,250,240,0.95) 50%, rgba(248,245,235,0.95) 100%)',
-    backdropFilter: 'blur(12px)',
-    WebkitBackdropFilter: 'blur(12px)',
-    border: '1px solid rgba(229,164,30,0.35)',
-    color: '#2a2a2a',
-    boxShadow: hovered
-      ? 'inset 0 1px 0 rgba(255,255,255,0.9), 0 4px 12px rgba(251,186,45,0.15)'
-      : 'inset 0 1px 0 rgba(255,255,255,0.85), 0 2px 8px rgba(251,186,45,0.08)',
-  }
+    ? 'shop-filter-glass-btn flex-1 min-w-0 rounded-full py-3 px-4 text-sm font-medium'
+    : 'shop-filter-glass-btn flex-1 min-w-0 rounded-full py-2.5 px-3 text-sm font-medium'
   return (
     <button
       type="button"
       onClick={onClick}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-      style={isActive ? activeStyle : inactiveStyle}
-      className={`${baseClass} ${hovered ? 'scale-[1.02]' : ''} ${isActive ? 'ring-1 ring-white/50' : ''}`}
+      className={`${baseClass} ${isActive ? 'shop-filter-glass-btn-active' : ''}`}
     >
-      {children}
+      <span className="relative z-[1]">{children}</span>
     </button>
   )
 })
@@ -958,7 +934,7 @@ const ShopFilters = memo(function ShopFilters({
       </div>
       
       {/* Секции фильтров — растягиваются на всё свободное место, при переполнении прокрутка */}
-      <div className={`flex-1 min-h-0 overflow-y-auto flex flex-col ${largeButtons ? 'p-4 space-y-4 min-h-full' : 'p-2.5 space-y-2'}`}>
+      <div className={`shop-filter-sidebar flex-1 min-h-0 overflow-y-auto flex flex-col ${largeButtons ? 'p-4 space-y-4 min-h-full' : 'p-2.5 space-y-2'}`}>
         {/* Окно питомцев — заголовок с иконкой, горизонтальная полоса карточек, кнопка «Добавить питомца» */}
         <div className={`border-b border-gray-200 ${largeButtons ? 'pb-4' : 'pb-2'}`}>
           <div className="flex items-center justify-between mb-2">

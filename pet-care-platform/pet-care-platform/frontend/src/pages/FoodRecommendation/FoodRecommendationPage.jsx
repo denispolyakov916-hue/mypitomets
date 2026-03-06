@@ -5,7 +5,8 @@
  * Подбирает корм на основе данных из PetID.
  */
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useCallback, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -30,24 +31,49 @@ import { Doughnut, Pie } from 'react-chartjs-2';
 
 ChartJS.register(ArcElement, Tooltip);
 
+// Расчёт позиции выпадающего меню в viewport, чтобы меню было полностью видно
+const getMenuPosition = (triggerRect, maxMenuHeight = 320, gap = 8) => {
+  const spaceBelow = window.innerHeight - triggerRect.bottom - gap;
+  const spaceAbove = triggerRect.top - gap;
+  const width = triggerRect.width;
+  const left = triggerRect.left;
+  if (spaceBelow >= maxMenuHeight || spaceBelow >= spaceAbove) {
+    return { top: triggerRect.bottom + gap, left, width, maxHeight: Math.min(maxMenuHeight, Math.max(200, spaceBelow)) };
+  }
+  return { top: triggerRect.top - Math.min(maxMenuHeight, spaceAbove) - gap, left, width, maxHeight: Math.min(maxMenuHeight, Math.max(200, spaceAbove)) };
+};
+
 // ============================================================================
 // КОМПОНЕНТ: Выпадающий список выбора питомца
 // ============================================================================
 const PetDropdown = ({ pets, selectedPet, onSelect, isLoading }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
+  const [menuPosition, setMenuPosition] = useState(null);
   const dropdownRef = useRef(null);
+  const triggerRef = useRef(null);
   const listboxIdRef = useRef(`pet-dropdown-listbox-${Math.random().toString(36).slice(2)}`);
   
   useEffect(() => {
     const handleClickOutside = (e) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+      const trigger = dropdownRef.current;
+      const menu = document.getElementById(listboxIdRef.current);
+      if (trigger && !trigger.contains(e.target) && (!menu || !menu.contains(e.target))) {
         setIsOpen(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  useLayoutEffect(() => {
+    if (!isOpen || !triggerRef.current) {
+      setMenuPosition(null);
+      return;
+    }
+    const rect = triggerRef.current.getBoundingClientRect();
+    setMenuPosition(getMenuPosition(rect, 360));
+  }, [isOpen]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -77,10 +103,64 @@ const PetDropdown = ({ pets, selectedPet, onSelect, isLoading }) => {
   
   if (pets.length === 0) return null;
   
+  const dropdownContent = isOpen && menuPosition && createPortal(
+    <AnimatePresence>
+      <motion.div
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -10 }}
+        className="bg-white border border-gray-200 rounded-xl shadow-lg overflow-y-auto p-2"
+        id={listboxIdRef.current}
+        role="listbox"
+        style={{
+          position: 'fixed',
+          left: menuPosition.left,
+          top: menuPosition.top,
+          width: menuPosition.width,
+          maxHeight: menuPosition.maxHeight,
+          zIndex: 9999,
+          scrollbarGutter: 'stable',
+        }}
+      >
+        {pets.map((pet, index) => (
+          <button
+            key={pet.id}
+            onClick={() => {
+              onSelect(pet);
+              setIsOpen(false);
+            }}
+            id={`${listboxIdRef.current}-opt-${index}`}
+            role="option"
+            aria-selected={activeIndex === index}
+            tabIndex={-1}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors text-left
+              ${activeIndex === index
+                ? 'bg-primary-100 text-primary-700'
+                : selectedPet?.id === pet.id
+                  ? 'bg-primary-50'
+                  : 'hover:bg-primary-50'}`}
+          >
+            <span className="text-xl flex-shrink-0">{pet.species === 'dog' ? '🐕' : '🐱'}</span>
+            <div className="flex-1 min-w-0">
+              <p className="font-medium text-gray-800 truncate">{pet.name}</p>
+              <p className="text-xs text-gray-500 truncate">
+                {pet.breed_name || 'Порода не указана'}
+                {(pet.weight_kg || pet.weight) && ` • ${pet.weight_kg || pet.weight} кг`}
+              </p>
+            </div>
+            {selectedPet?.id === pet.id && <Check className="w-5 h-5 flex-shrink-0 text-primary-600" />}
+          </button>
+        ))}
+      </motion.div>
+    </AnimatePresence>,
+    document.body
+  );
+  
   return (
     <div className="relative" ref={dropdownRef}>
       <label className="block text-sm font-medium text-gray-700 mb-2">Питомец</label>
       <button
+        ref={triggerRef}
         onClick={() => setIsOpen(!isOpen)}
         disabled={isLoading}
         className={`w-full flex items-center justify-between gap-3 px-4 py-3 bg-white border border-gray-200 rounded-xl transition-all
@@ -147,50 +227,7 @@ const PetDropdown = ({ pets, selectedPet, onSelect, isLoading }) => {
         )}
         <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
       </button>
-      
-      <AnimatePresence>
-        {isOpen && (
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            className="absolute z-20 w-full mt-2 bg-white border border-gray-200 rounded-xl shadow-lg overflow-x-auto overflow-y-hidden flex flex-nowrap gap-2 p-2"
-            id={listboxIdRef.current}
-            role="listbox"
-            style={{ scrollbarGutter: 'stable' }}
-          >
-            {pets.map((pet, index) => (
-              <button
-                key={pet.id}
-                onClick={() => {
-                  onSelect(pet);
-                  setIsOpen(false);
-                }}
-                id={`${listboxIdRef.current}-opt-${index}`}
-                role="option"
-                aria-selected={activeIndex === index}
-                tabIndex={-1}
-                className={`flex-shrink-0 w-52 flex items-center gap-3 px-4 py-3 rounded-lg transition-colors text-left
-                  ${activeIndex === index
-                    ? 'bg-primary-100 text-primary-700'
-                    : selectedPet?.id === pet.id
-                      ? 'bg-primary-50'
-                      : 'hover:bg-primary-50'}`}
-              >
-                <span className="text-xl flex-shrink-0">{pet.species === 'dog' ? '🐕' : '🐱'}</span>
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium text-gray-800 truncate">{pet.name}</p>
-                  <p className="text-xs text-gray-500 truncate">
-                    {pet.breed_name || 'Порода не указана'}
-                    {(pet.weight_kg || pet.weight) && ` • ${pet.weight_kg || pet.weight} кг`}
-                  </p>
-                </div>
-                {selectedPet?.id === pet.id && <Check className="w-5 h-5 flex-shrink-0 text-primary-600" />}
-              </button>
-            ))}
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {dropdownContent}
     </div>
   );
 };
@@ -201,20 +238,33 @@ const PetDropdown = ({ pets, selectedPet, onSelect, isLoading }) => {
 const SelectDropdown = ({ options, value, onChange, label, disabled }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
+  const [menuPosition, setMenuPosition] = useState(null);
   const dropdownRef = useRef(null);
+  const triggerRef = useRef(null);
   const listboxIdRef = useRef(`select-dropdown-listbox-${Math.random().toString(36).slice(2)}`);
-  
+  const listRef = useRef(null);
   const selectedOption = options.find(o => o.value === value);
   
   useEffect(() => {
     const handleClickOutside = (e) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+      const trigger = dropdownRef.current;
+      const menu = document.getElementById(listboxIdRef.current);
+      if (trigger && !trigger.contains(e.target) && (!menu || !menu.contains(e.target))) {
         setIsOpen(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  useLayoutEffect(() => {
+    if (!isOpen || !triggerRef.current) {
+      setMenuPosition(null);
+      return;
+    }
+    const rect = triggerRef.current.getBoundingClientRect();
+    setMenuPosition(getMenuPosition(rect, 320));
+  }, [isOpen]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -242,17 +292,74 @@ const SelectDropdown = ({ options, value, onChange, label, disabled }) => {
     });
   };
 
-  const listRef = useRef(null);
   useEffect(() => {
     if (!isOpen || activeIndex < 0 || !listRef.current) return;
     const opt = listRef.current.querySelector(`[id="${listboxIdRef.current}-opt-${activeIndex}"]`);
     if (opt) opt.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'smooth' });
   }, [isOpen, activeIndex]);
   
+  const dropdownContent = isOpen && menuPosition && createPortal(
+    <AnimatePresence>
+      <motion.div
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -10 }}
+        className="bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden"
+        id={listboxIdRef.current}
+        role="listbox"
+        style={{
+          position: 'fixed',
+          left: menuPosition.left,
+          top: menuPosition.top,
+          width: menuPosition.width,
+          maxHeight: menuPosition.maxHeight,
+          zIndex: 9999,
+        }}
+      >
+        <div
+          ref={listRef}
+          className="flex flex-col overflow-y-auto p-2 scroll-smooth"
+          style={{ scrollbarGutter: 'stable' }}
+        >
+          {options.map((option, index) => (
+            <button
+              key={option.value}
+              onClick={() => {
+                onChange(option.value);
+                setIsOpen(false);
+              }}
+              id={`${listboxIdRef.current}-opt-${index}`}
+              role="option"
+              aria-selected={activeIndex === index}
+              tabIndex={-1}
+              className={`w-full flex flex-row items-center gap-3 px-4 py-3 rounded-xl transition-colors text-left
+                ${activeIndex === index
+                  ? 'bg-primary-100 text-primary-700'
+                  : value === option.value
+                    ? 'bg-primary-50'
+                    : 'hover:bg-primary-50'}`}
+            >
+              {option.icon && <span className="text-lg shrink-0">{option.icon}</span>}
+              <div className="flex-1 min-w-0">
+                <p className="font-medium text-gray-800">{option.label}</p>
+                {option.description && (
+                  <p className="text-xs text-gray-500">{option.description}</p>
+                )}
+              </div>
+              {value === option.value && <Check className="w-5 h-5 shrink-0 text-primary-600" />}
+            </button>
+          ))}
+        </div>
+      </motion.div>
+    </AnimatePresence>,
+    document.body
+  );
+
   return (
     <div className="relative" ref={dropdownRef}>
       <label className="block text-sm font-medium text-gray-700 mb-2">{label}</label>
       <button
+        ref={triggerRef}
         onClick={() => !disabled && setIsOpen(!isOpen)}
         disabled={disabled}
         className={`w-full flex items-center justify-between px-4 py-3 bg-white border-2 rounded-xl transition-all
@@ -308,52 +415,7 @@ const SelectDropdown = ({ options, value, onChange, label, disabled }) => {
         </div>
         <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
       </button>
-      
-      <AnimatePresence>
-        {isOpen && (
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            className="absolute z-20 w-full mt-2 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden"
-            id={listboxIdRef.current}
-            role="listbox"
-          >
-            <div
-              ref={listRef}
-              className="flex flex-nowrap gap-2 overflow-x-auto overflow-y-hidden p-2 scroll-smooth"
-              style={{ scrollbarGutter: 'stable' }}
-            >
-              {options.map((option, index) => (
-                <button
-                  key={option.value}
-                  onClick={() => {
-                    onChange(option.value);
-                    setIsOpen(false);
-                  }}
-                  id={`${listboxIdRef.current}-opt-${index}`}
-                  role="option"
-                  aria-selected={activeIndex === index}
-                  tabIndex={-1}
-                  className={`flex-shrink-0 w-[180px] min-w-[180px] flex flex-col items-start gap-1 px-4 py-3 rounded-xl transition-colors text-left
-                    ${activeIndex === index
-                      ? 'bg-primary-100 text-primary-700'
-                      : value === option.value
-                        ? 'bg-primary-50'
-                        : 'hover:bg-primary-50'}`}
-                >
-                  {option.icon && <span className="text-lg">{option.icon}</span>}
-                  <p className="font-medium text-gray-800">{option.label}</p>
-                  {option.description && (
-                    <p className="text-xs text-gray-500">{option.description}</p>
-                  )}
-                  {value === option.value && <Check className="w-5 h-5 text-primary-600 mt-1 self-end" />}
-                </button>
-              ))}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {dropdownContent}
     </div>
   );
 };
@@ -366,8 +428,10 @@ const PeriodInput = ({ value, onChange, disabled }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [showWarning, setShowWarning] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
+  const [menuPosition, setMenuPosition] = useState(null);
   const inputRef = useRef(null);
   const dropdownRef = useRef(null);
+  const triggerRef = useRef(null);
   const listboxIdRef = useRef(`period-listbox-${Math.random().toString(36).slice(2)}`);
   
   const presets = [
@@ -376,16 +440,26 @@ const PeriodInput = ({ value, onChange, disabled }) => {
     { value: 30, label: '30 дн.', desc: 'Месяц' },
   ];
   
-  // Закрытие при клике вне
   useEffect(() => {
     const handleClickOutside = (e) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+      const trigger = dropdownRef.current;
+      const menu = document.getElementById(listboxIdRef.current);
+      if (trigger && !trigger.contains(e.target) && (!menu || !menu.contains(e.target))) {
         setIsOpen(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  useLayoutEffect(() => {
+    if (!isOpen || !triggerRef.current) {
+      setMenuPosition(null);
+      return;
+    }
+    const rect = triggerRef.current.getBoundingClientRect();
+    setMenuPosition(getMenuPosition(rect, 320));
+  }, [isOpen]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -446,11 +520,61 @@ const PeriodInput = ({ value, onChange, disabled }) => {
     }, 150);
   };
   
+  const dropdownContent = isOpen && menuPosition && createPortal(
+    <AnimatePresence>
+      <motion.div
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -10 }}
+        className="bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden"
+        id={listboxIdRef.current}
+        role="listbox"
+        style={{
+          position: 'fixed',
+          left: menuPosition.left,
+          top: menuPosition.top,
+          width: menuPosition.width,
+          maxHeight: menuPosition.maxHeight,
+          zIndex: 9999,
+        }}
+      >
+        <div className="overflow-y-auto" style={{ maxHeight: menuPosition.maxHeight }}>
+          {presets.map((preset, index) => (
+            <button
+              key={preset.value}
+              onClick={() => handleSelect(preset.value)}
+              id={`${listboxIdRef.current}-opt-${index}`}
+              role="option"
+              aria-selected={activeIndex === index}
+              tabIndex={-1}
+              className={`w-full flex items-center justify-between px-4 py-3 transition-colors text-left
+                ${activeIndex === index
+                  ? 'bg-primary-100 text-primary-700'
+                  : value === preset.value
+                    ? 'bg-primary-50'
+                    : 'hover:bg-primary-50'}`}
+            >
+              <div className="flex items-center gap-3">
+                <span className="font-semibold text-gray-800">{preset.label}</span>
+                <span className="text-xs text-gray-400">{preset.desc}</span>
+              </div>
+              {value === preset.value && <Check className="w-5 h-5 text-primary-600" />}
+            </button>
+          ))}
+          <div className="px-4 py-2 bg-gray-50 border-t border-gray-100">
+            <p className="text-xs text-gray-500">Или введите своё значение (1-60 дней)</p>
+          </div>
+        </div>
+      </motion.div>
+    </AnimatePresence>,
+    document.body
+  );
+
   return (
     <div className="relative" ref={dropdownRef}>
-      <label className="block text-sm font-medium text-gray-700 mb-2">Период подбора</label>
+      <label className="block text-sm font-medium text-gray-700 mb-2">периуд на который расчитан комплект питания</label>
       
-      <div className="relative flex items-center">
+      <div ref={triggerRef} className="relative flex items-center">
         <input
           ref={inputRef}
           type="text"
@@ -512,46 +636,7 @@ const PeriodInput = ({ value, onChange, disabled }) => {
         </span>
         <span className="absolute right-11 top-1/2 -translate-y-1/2 text-sm text-gray-500">дней</span>
       </div>
-      
-      {/* Выпадающий список с подсказками */}
-      <AnimatePresence>
-        {isOpen && (
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            className="absolute z-20 w-full mt-2 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden"
-            id={listboxIdRef.current}
-            role="listbox"
-          >
-            {presets.map((preset, index) => (
-              <button
-                key={preset.value}
-                onClick={() => handleSelect(preset.value)}
-                id={`${listboxIdRef.current}-opt-${index}`}
-                role="option"
-                aria-selected={activeIndex === index}
-                tabIndex={-1}
-                className={`w-full flex items-center justify-between px-4 py-3 transition-colors text-left
-                  ${activeIndex === index
-                    ? 'bg-primary-100 text-primary-700'
-                    : value === preset.value
-                      ? 'bg-primary-50'
-                      : 'hover:bg-primary-50'}`}
-              >
-                <div className="flex items-center gap-3">
-                  <span className="font-semibold text-gray-800">{preset.label}</span>
-                  <span className="text-xs text-gray-400">{preset.desc}</span>
-                </div>
-                {value === preset.value && <Check className="w-5 h-5 text-primary-600" />}
-              </button>
-            ))}
-            <div className="px-4 py-2 bg-gray-50 border-t border-gray-100">
-              <p className="text-xs text-gray-500">Или введите своё значение (1-60 дней)</p>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {dropdownContent}
       
       {/* Предупреждение при превышении 60 дней */}
       <AnimatePresence>
@@ -704,6 +789,25 @@ const mapProductToSupplementComponent = (product) => ({
   supplement_type: product.supplement_type,
 });
 
+const mapProductToTreatComponent = (product) => ({
+  product_id: product.id,
+  product_name: product.name,
+  product_type: 'treat',
+  match_score: 80,
+  price: product.price,
+  weight_grams: product.weight_grams,
+  packages_needed: 1,
+  daily_grams: 10,
+  treat_frequency_days: 2,
+  pieces_per_day: null,
+  reasons: [],
+  warnings: [],
+  badges: [],
+  short_description: product.short_description,
+  image_url: product.image_url,
+  shop_url: product.shop_url || `/shop/products/${product.id}`,
+});
+
 const SUPPLEMENT_LABELS = {
   vitamins: 'Витамины',
   omega3: 'Омега‑3',
@@ -796,10 +900,13 @@ const RationComponentCard = ({
   labelOverride,
   showRemove,
   onRemove,
+  removeButtonRight = false,
   calorieDistribution,
   dailyCalories,
+  accentVariant = 'amber', // 'amber' | 'purple' — в продвинутом режиме фиолетовый градиент
 }) => {
   const navigate = useNavigate();
+  const isPurple = accentVariant === 'purple';
   
   // Если нет компонента - не рендерим
   if (!component) return null;
@@ -850,11 +957,7 @@ const RationComponentCard = ({
   const portionKcal = component.kcal_per_100g && component.daily_grams
     ? Math.round((component.daily_grams * component.kcal_per_100g) / 100)
     : null;
-  const kcalLine = component.kcal_per_100g
-    ? portionKcal
-      ? `${component.kcal_per_100g} ккал/100г - ${portionKcal} ккал/${component.daily_grams || 0}г`
-      : `${component.kcal_per_100g} ккал/100г`
-    : null;
+  const kcalLine = null; // ккал убраны с фронта по запросу
   const packLine = component.weight_grams
     ? `1×${(component.weight_grams / 1000).toFixed(component.weight_grams >= 1000 ? 1 : 2)} кг`
     : component.package_summary || null;
@@ -875,24 +978,36 @@ const RationComponentCard = ({
             {typeLabels[baseType] || baseType}
           </span>
         </div>
-        {showRemove && (
-          <button
-            type="button"
-            onClick={onRemove}
-            className="text-gray-400 hover:text-gray-600 text-sm"
-            title="Убрать добавку"
-          >
-            ✕
-          </button>
-        )}
-        {totalItems > 1 && (
-          <span className="text-xs text-gray-700 bg-white/80 px-2 py-0.5 rounded-full">
-            {currentIndex + 1}/{totalItems}
+        <div className="flex items-center gap-2 shrink-0">
+          {!removeButtonRight && showRemove && (
+            <button
+              type="button"
+              onClick={onRemove}
+              className="px-3 py-1.5 text-sm font-medium rounded-lg border border-red-200 bg-red-50 text-red-700 hover:bg-red-100 hover:border-red-300 transition-colors"
+              title="Убрать из плана"
+            >
+              Убрать
+            </button>
+          )}
+          {totalItems > 1 && (
+            <span className="text-xs text-gray-700 bg-white/80 px-2 py-0.5 rounded-full">
+              {currentIndex + 1}/{totalItems}
+            </span>
+          )}
+          <span className="text-success-600 flex-shrink-0" aria-hidden>
+            <Check className="w-5 h-5" />
           </span>
-        )}
-        <span className="text-success-600 flex-shrink-0" aria-hidden>
-          <Check className="w-5 h-5" />
-        </span>
+          {removeButtonRight && showRemove && (
+            <button
+              type="button"
+              onClick={onRemove}
+              className="px-3 py-1.5 text-sm font-medium rounded-lg border border-red-200 bg-red-50 text-red-700 hover:bg-red-100 hover:border-red-300 transition-colors"
+              title="Убрать из плана"
+            >
+              Убрать
+            </button>
+          )}
+        </div>
       </div>
       
       {/* Контент */}
@@ -900,11 +1015,15 @@ const RationComponentCard = ({
         <button 
           onClick={() => canNavigate && onChangeIndex(currentIndex - 1)}
           disabled={!canNavigate || isLoading}
-          className={`px-2 flex items-center border-r border-gray-200/80 transition-colors
-            ${canNavigate && !isLoading ? 'hover:bg-gray-200 text-gray-500 hover:text-gray-700' : 'text-gray-300 cursor-not-allowed'}`}
+          className={`min-w-[44px] px-3 flex items-center justify-center rounded-l-xl border-r transition-all duration-200
+            ${canNavigate && !isLoading
+              ? isPurple
+                ? 'border-primary-200/60 bg-gradient-to-b from-primary-100 via-primary-50 to-primary-100 text-primary-800 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.8),0_2px_4px_rgba(82,47,129,0.2)] hover:from-primary-200 hover:via-primary-100 hover:to-primary-200 hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.9),0_4px_8px_rgba(82,47,129,0.25)] hover:scale-[1.02] active:scale-[0.98] active:shadow-[inset_0_2px_4px_rgba(0,0,0,0.08)]'
+                : 'border-amber-200/60 bg-gradient-to-b from-amber-100 via-amber-50 to-amber-100/80 text-amber-800 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.8),0_2px_4px_rgba(251,191,36,0.2)] hover:from-amber-200 hover:via-amber-100 hover:to-amber-200/90 hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.9),0_4px_8px_rgba(251,191,36,0.25)] hover:scale-[1.02] active:scale-[0.98] active:shadow-[inset_0_2px_4px_rgba(0,0,0,0.06)]'
+              : 'border-gray-200/60 bg-gradient-to-b from-gray-100 to-gray-50 text-gray-300 cursor-not-allowed shadow-[inset_0_1px_0_0_rgba(255,255,255,0.5)]'}`}
           aria-label="Предыдущий вариант"
         >
-          <ChevronLeft className="w-4 h-4" />
+          <ChevronLeft className="w-5 h-5" />
         </button>
         
         <div 
@@ -949,25 +1068,28 @@ const RationComponentCard = ({
             </div>
           </div>
           
-          <div className="flex flex-col items-end justify-center gap-0.5 text-right flex-shrink-0 rounded-lg px-3 py-2 w-24 min-w-24 bg-gray-50 border border-gray-200/80">
+          <div className="flex flex-col items-end justify-center text-right flex-shrink-0 px-2 py-1 min-w-0">
             <span className="font-bold text-gray-900">
               {component.price 
                 ? `${(parseFloat(component.price) * (component.packages_needed || 1)).toLocaleString('ru-RU')} Р`
                 : '—'
               }
             </span>
-            <ChevronDown className="w-4 h-4 text-gray-600 flex-shrink-0" aria-hidden />
           </div>
         </div>
         
         <button 
           onClick={() => canNavigate && onChangeIndex(currentIndex + 1)}
           disabled={!canNavigate || isLoading}
-          className={`px-2 flex items-center border-l border-gray-200/80 transition-colors
-            ${canNavigate && !isLoading ? 'hover:bg-gray-200 text-gray-500 hover:text-gray-700' : 'text-gray-300 cursor-not-allowed'}`}
+          className={`min-w-[44px] px-3 flex items-center justify-center rounded-r-xl border-l transition-all duration-200
+            ${canNavigate && !isLoading
+              ? isPurple
+                ? 'border-primary-200/60 bg-gradient-to-b from-primary-100 via-primary-50 to-primary-100 text-primary-800 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.8),0_2px_4px_rgba(82,47,129,0.2)] hover:from-primary-200 hover:via-primary-100 hover:to-primary-200 hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.9),0_4px_8px_rgba(82,47,129,0.25)] hover:scale-[1.02] active:scale-[0.98] active:shadow-[inset_0_2px_4px_rgba(0,0,0,0.08)]'
+                : 'border-amber-200/60 bg-gradient-to-b from-amber-100 via-amber-50 to-amber-100/80 text-amber-800 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.8),0_2px_4px_rgba(251,191,36,0.2)] hover:from-amber-200 hover:via-amber-100 hover:to-amber-200/90 hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.9),0_4px_8px_rgba(251,191,36,0.25)] hover:scale-[1.02] active:scale-[0.98] active:shadow-[inset_0_2px_4px_rgba(0,0,0,0.06)]'
+              : 'border-gray-200/60 bg-gradient-to-b from-gray-100 to-gray-50 text-gray-300 cursor-not-allowed shadow-[inset_0_1px_0_0_rgba(255,255,255,0.5)]'}`}
           aria-label="Следующий вариант"
         >
-          <ChevronRight className="w-4 h-4" />
+          <ChevronRight className="w-5 h-5" />
         </button>
       </div>
     </motion.div>
@@ -1047,7 +1169,7 @@ const PdfDownloadButton = ({ plan, pet, selectedComponents, treatFrequencyDays, 
           <td style="padding:8px 12px;border-bottom:1px solid #e5e7eb;font-weight:600;">${m.label}</td>
           <td style="padding:8px 12px;border-bottom:1px solid #e5e7eb;">${m.product}</td>
           <td style="padding:8px 12px;border-bottom:1px solid #e5e7eb;text-align:right;font-weight:600;">${m.grams}г</td>
-          <td style="padding:8px 12px;border-bottom:1px solid #e5e7eb;text-align:right;color:#6b7280;">${m.kcal} ккал</td>
+          <td style="padding:8px 12px;border-bottom:1px solid #e5e7eb;text-align:right;color:#6b7280;">${m.kcal}</td>
         </tr>
       `).join('');
 
@@ -1058,7 +1180,7 @@ const PdfDownloadButton = ({ plan, pet, selectedComponents, treatFrequencyDays, 
             <div>
               <div style="font-weight:600;font-size:14px;">${c.product_name || 'Корм'}</div>
               <div style="font-size:12px;color:#6b7280;margin-top:2px;">
-                ${c.daily_grams ? `${c.daily_grams} г/день` : ''}${c.kcal_per_100g ? ` • ${c.kcal_per_100g} ккал/100г` : ''}
+                ${c.daily_grams ? `${c.daily_grams} г/день` : ''}
               </div>
             </div>
             <div style="text-align:right;">
@@ -1109,7 +1231,7 @@ const PdfDownloadButton = ({ plan, pet, selectedComponents, treatFrequencyDays, 
         <div style="margin-top:24px;">
           <h3 style="font-size:16px;font-weight:700;margin-bottom:10px;color:#c08716;">⚡ Активный день</h3>
           <div style="padding:12px 14px;background:#fffdf5;border:1px solid #F0EB93;border-radius:8px;">
-            <div style="font-size:14px;">${plan.active_day.total_kcal} ккал (+${plan.active_day.extra_percent}%)</div>
+            <div style="font-size:14px;">${plan.active_day.total_kcal} (+${plan.active_day.extra_percent}%)</div>
             <div style="font-size:12px;color:#6d4b0b;margin-top:4px;">${plan.active_day.note || 'Увеличьте порцию при повышенной активности'}</div>
           </div>
         </div>
@@ -1133,7 +1255,7 @@ const PdfDownloadButton = ({ plan, pet, selectedComponents, treatFrequencyDays, 
         <div style="display:flex;gap:16px;margin-bottom:24px;">
           <div style="flex:1;padding:16px;background:linear-gradient(135deg,#f6f0ff,#ede0ff);border-radius:12px;text-align:center;">
             <div style="font-size:28px;font-weight:800;color:#522f81;">${dailyKcal}</div>
-            <div style="font-size:12px;color:#6b7280;">ккал/день</div>
+            <div style="font-size:12px;color:#6b7280;">в день</div>
           </div>
           <div style="flex:1;padding:16px;background:linear-gradient(135deg,#f0fdf4,#dcfce7);border-radius:12px;text-align:center;">
             <div style="font-size:28px;font-weight:800;color:#16a34a;">${regularDay.meals_count || 2}</div>
@@ -1141,7 +1263,7 @@ const PdfDownloadButton = ({ plan, pet, selectedComponents, treatFrequencyDays, 
           </div>
           <div style="flex:1;padding:16px;background:linear-gradient(135deg,#fffdf5,#fef8e0);border-radius:12px;text-align:center;">
             <div style="font-size:28px;font-weight:800;color:#c08716;">${Math.round(plan.daily_calories || dailyKcal)}</div>
-            <div style="font-size:12px;color:#6b7280;">норма ккал</div>
+            <div style="font-size:12px;color:#6b7280;">норма</div>
           </div>
         </div>
 
@@ -1439,14 +1561,9 @@ const FeedingPlanBlock = ({ plan, isLoading, selectedComponents, treatFrequencyD
       <div className="rounded-xl p-4 mb-4 bg-gradient-to-b from-slate-50/95 to-gray-50/90 border border-gray-200/80 shadow-sm">
         <p className="text-xs font-semibold bg-gradient-to-r from-accent-400 to-accent-600 bg-clip-text text-transparent inline-block mb-1">Дневная норма</p>
         <p className="text-2xl font-bold text-gray-900">
-          {(caloriesForUi?.total ?? regularDay.total_kcal ?? Math.round(plan.daily_calories))}{" "}
-          <span className="text-sm font-normal">ккал</span>
+          {(caloriesForUi?.total ?? regularDay.total_kcal ?? Math.round(plan.daily_calories))} ккал
         </p>
-        <p className="text-sm text-gray-900 mt-1">
-          Нормы {Math.round(plan.daily_calories)} ккал
-          {caloriesForUi?.percent ? ` — ${caloriesForUi.percent}% от нормы` : ''}
-        </p>
-        
+
         {/* БЖУ за день — белок, жир, углеводы + круговая диаграмма соотношения */}
         {componentsForUi?.length > 0 && (() => {
           const dailyNutrition = dailyNutritionForUi || regularDay?.daily_nutrition;
@@ -1507,48 +1624,27 @@ const FeedingPlanBlock = ({ plan, isLoading, selectedComponents, treatFrequencyD
                     Number(carbsPct.toFixed(1)),
                   ],
                   backgroundColor: ['#2563eb', '#e5a41e', '#9ca3af'],
-                  borderWidth: 0,
+                  borderWidth: 6,
+                  borderColor: '#ffffff',
+                  hoverBorderWidth: 8,
+                  hoverBorderColor: '#ffffff',
+                  // Лёгкий «взрыв» сегментов — отступ от центра для объёмного вида
+                  offset: [4, 4, 4],
                 }],
               }
             : null;
 
-          const doughnutLabelsPlugin = {
-            id: 'doughnutLabels',
-            afterDraw: (chart) => {
-              const meta = chart.getDatasetMeta(0);
-              const dataset = chart.data?.datasets?.[0];
-              if (!meta?.data?.length || !dataset?.data) return;
-              const ctx = chart.ctx;
-              const dataValues = dataset.data;
-              meta.data.forEach((arc, i) => {
-                const value = i < dataValues.length ? Number(dataValues[i]) : 0;
-                const pctText = Number.isFinite(value) ? value.toFixed(1) + '%' : '0%';
-                const midAngle = (arc.startAngle + arc.endAngle) / 2;
-                const dist = (arc.outerRadius + arc.innerRadius) / 2;
-                const x = arc.x + Math.cos(midAngle) * dist;
-                const y = arc.y + Math.sin(midAngle) * dist;
-                ctx.save();
-                ctx.font = 'bold 14px sans-serif';
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                ctx.fillStyle = i === 2 ? '#374151' : '#fff';
-                ctx.fillText(pctText, x, y);
-                ctx.restore();
-              });
-            },
-          };
-
           return (
             <div className="mt-3 pt-3 border-t border-gray-200">
               <p className="text-xs font-semibold bg-gradient-to-r from-accent-400 to-accent-600 bg-clip-text text-transparent inline-block mb-2">Питательные вещества (день)</p>
-              {/* Сначала диаграмма с объёмом */}
+              {/* Диаграмма; при наведении — подсказка с белками, жирами, углеводами */}
               {chartData && (
                 <div className="flex justify-center mb-4">
                   <div
-                    className="relative w-48 h-48 flex items-center justify-center rounded-full"
+                    className="relative w-48 h-48 flex items-center justify-center"
                     style={{
-                      filter: 'drop-shadow(0 8px 24px rgba(0,0,0,0.12)) drop-shadow(0 4px 8px rgba(0,0,0,0.08)) drop-shadow(0 2px 4px rgba(0,0,0,0.06))',
-                      transform: 'perspective(120px) rotateX(5deg)',
+                      filter: 'drop-shadow(0 24px 48px rgba(0,0,0,0.22)) drop-shadow(0 12px 24px rgba(0,0,0,0.16)) drop-shadow(0 6px 12px rgba(0,0,0,0.1)) drop-shadow(0 2px 4px rgba(0,0,0,0.06))',
+                      transform: 'perspective(280px) rotateX(8deg) rotateY(-2deg)',
                     }}
                   >
                     <Pie
@@ -1556,44 +1652,39 @@ const FeedingPlanBlock = ({ plan, isLoading, selectedComponents, treatFrequencyD
                       options={{
                         responsive: true,
                         maintainAspectRatio: true,
-                        borderWidth: 3,
-                        borderColor: '#fff',
-                        hoverBorderWidth: 4,
                         plugins: {
                           tooltip: {
+                            enabled: true,
+                            titleFont: { size: 12, weight: 'bold' },
+                            bodyFont: { size: 12 },
                             callbacks: {
+                              title: () => 'Питательные вещества (день)',
                               label: (ctx) => `${ctx.label}: ${Number(ctx.raw).toFixed(1)}%`,
                             },
                           },
                           legend: { display: false },
                         },
-                        layout: { padding: 4 },
+                        layout: { padding: 6 },
                       }}
-                      plugins={[doughnutLabelsPlugin]}
                     />
                   </div>
                 </div>
               )}
-              {/* Окошки БЖУ — у каждого свой цвет */}
+              {/* Окошки БЖУ — оконтовка в цветах диаграммы (#2563eb, #e5a41e, #9ca3af) */}
               <div className="grid grid-cols-3 gap-2 text-xs">
-                <div className="rounded-xl p-2.5 text-center border-2 border-blue-200 bg-blue-100/90 shadow-sm">
+                <div className="rounded-xl p-2.5 text-center border-2 border-[#2563eb] bg-blue-100/90 shadow-sm">
                   <p className="font-semibold text-gray-900">{proteinG != null ? `${proteinG}г` : '—'}</p>
                   <p className="text-[10px] text-gray-900">Белок</p>
                 </div>
-                <div className="rounded-xl p-2.5 text-center border-2 border-amber-200 bg-amber-100/90 shadow-sm">
+                <div className="rounded-xl p-2.5 text-center border-2 border-[#e5a41e] bg-amber-100/90 shadow-sm">
                   <p className="font-semibold text-gray-900">{fatG != null ? `${fatG}г` : '—'}</p>
                   <p className="text-[10px] text-gray-900">Жир</p>
                 </div>
-                <div className="rounded-xl p-2.5 text-center border-2 border-slate-200 bg-slate-100/90 shadow-sm">
+                <div className="rounded-xl p-2.5 text-center border-2 border-[#9ca3af] bg-slate-100/90 shadow-sm">
                   <p className="font-semibold text-gray-900">{carbsG != null ? `${carbsG}г` : '—'}</p>
                   <p className="text-[10px] text-gray-900">Углеводы</p>
                 </div>
               </div>
-              {dailyNutritionForUi?.note && (
-                <p className="mt-2 text-[10px] text-gray-700">
-                  {dailyNutritionForUi.note}
-                </p>
-              )}
             </div>
           );
         })()}
@@ -1605,7 +1696,7 @@ const FeedingPlanBlock = ({ plan, isLoading, selectedComponents, treatFrequencyD
           <p className="text-xs font-semibold bg-gradient-to-r from-accent-400 to-accent-600 bg-clip-text text-transparent inline-block uppercase tracking-wide mb-3">
             Дневное расписание кормления
           </p>
-          <div className="rounded-xl border border-gray-200/80 bg-gradient-to-b from-blue-50/90 to-slate-50/80 shadow-sm overflow-hidden">
+          <div className="rounded-xl border-2 border-amber-300/70 bg-gradient-to-b from-blue-50/90 to-slate-50/80 shadow-sm overflow-hidden">
             {(() => {
               const dryFood = componentsForUi.find(c => c.product_type?.includes('dry'));
               const wetFood = componentsForUi.find(c => c.product_type?.includes('wet'));
@@ -1641,7 +1732,7 @@ const FeedingPlanBlock = ({ plan, isLoading, selectedComponents, treatFrequencyD
               };
               return schedule.map((meal, i) => (
                 <div key={i} className="relative">
-                  {i > 0 && <div className="absolute left-0 right-0 top-0 border-t border-dashed border-gray-200" aria-hidden />}
+                  {i > 0 && <div className="absolute left-0 right-0 top-0 border-t-2 border-dashed border-amber-400/80" aria-hidden />}
                   <div className="p-3 flex items-start gap-3 bg-gradient-to-b from-white/70 to-blue-50/30">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap mb-1.5">
@@ -1649,7 +1740,6 @@ const FeedingPlanBlock = ({ plan, isLoading, selectedComponents, treatFrequencyD
                         <span className={`px-2 py-0.5 rounded-full text-xs font-medium shrink-0 ${pillClass(meal.label)}`}>
                           {meal.label}
                         </span>
-                        <span className="ml-auto text-sm font-medium text-gray-700 shrink-0">{meal.kcal} ккал</span>
                       </div>
                       <div className="flex items-center gap-2 flex-wrap">
                         {meal.type === 'dry' ? (
@@ -1697,7 +1787,7 @@ const FeedingPlanBlock = ({ plan, isLoading, selectedComponents, treatFrequencyD
             <p className="text-xs font-semibold bg-gradient-to-r from-accent-400 to-accent-600 bg-clip-text text-transparent inline-block uppercase tracking-wide mb-3">
               Лакомства (между кормлениями)
             </p>
-            <div className="p-3 rounded-xl bg-gradient-to-b from-slate-50/95 to-gray-50/90 border border-gray-200/80 shadow-sm">
+            <div className="p-3 rounded-xl bg-gradient-to-b from-slate-50/95 to-gray-50/90 border-2 border-amber-300/70 shadow-sm">
               <div className="flex items-center gap-2 mb-3">
                 <Bone className="w-4 h-4 shrink-0 text-amber-700/90" aria-hidden />
                 <span className="text-sm font-medium text-gray-800 line-clamp-1 flex-1 min-w-0">{productName}</span>
@@ -1731,7 +1821,7 @@ const FeedingPlanBlock = ({ plan, isLoading, selectedComponents, treatFrequencyD
                 <MapPin className="w-3.5 h-3.5 shrink-0 mt-0.5 text-amber-600" aria-hidden />
                 <span className="font-medium">Распределить в течение дня, не более 10% от суточной нормы</span>
               </p>
-              <div className="mt-4 pt-3 border-t border-gray-200/80">
+              <div className="mt-4 pt-3 border-t-2 border-dashed border-amber-400/80">
                 <PdfDownloadButton plan={plan} pet={pet} selectedComponents={componentsForUi} treatFrequencyDays={treatFrequencyDays} variant="secondary" />
               </div>
             </div>
@@ -1814,7 +1904,7 @@ const FeedingPlanBlock = ({ plan, isLoading, selectedComponents, treatFrequencyD
             </span>
           </div>
           <p className="text-sm text-gray-600">
-            {plan.active_day.total_kcal} ккал ({plan.active_day.note})
+            {plan.active_day.total_kcal} ({plan.active_day.note})
           </p>
         </div>
       )}
@@ -1858,6 +1948,8 @@ export default function FoodRecommendationPage() {
   const [componentStates, setComponentStates] = useState({});
   const [supplementPool, setSupplementPool] = useState([]);
   const [isSuppPoolLoading, setIsSuppPoolLoading] = useState(false);
+  const [treatPool, setTreatPool] = useState([]);
+  const [isTreatPoolLoading, setIsTreatPoolLoading] = useState(false);
   const [restoreState, setRestoreState] = useState(null);
   const restoreAppliedRef = useRef(false);
   
@@ -2038,7 +2130,48 @@ export default function FoodRecommendationPage() {
       isMounted = false;
     };
   }, [selectedPet, planVariant]);
-  
+
+  // Загрузка каталога лакомств для кнопки «Добавить лакомство»
+  useEffect(() => {
+    if (!selectedPet) {
+      setTreatPool([]);
+      return;
+    }
+    let isMounted = true;
+    const loadTreats = async () => {
+      try {
+        setIsTreatPoolLoading(true);
+        const catResp = await getCategories({ animal_type: selectedPet.species, tree: true });
+        const categories = catResp.data || catResp;
+        const treatsCategory = findCategoryByCode(categories, 'food.treats') || findCategoryByCode(categories, 'treats');
+        let productsResp;
+        if (treatsCategory?.id) {
+          productsResp = await getProductsV2({
+            category_id: treatsCategory.id,
+            animal_type: selectedPet.species,
+            per_page: 60,
+          });
+        } else {
+          productsResp = await getProductsV2({
+            product_group: 'treats',
+            animal_type: selectedPet.species,
+            per_page: 60,
+          });
+        }
+        const rawProducts = productsResp?.data?.results || productsResp?.results || productsResp?.data?.products || productsResp?.products || [];
+        const mapped = rawProducts.map(mapProductToTreatComponent);
+        if (isMounted) setTreatPool(mapped);
+      } catch (e) {
+        console.error('Ошибка загрузки лакомств:', e);
+        if (isMounted) setTreatPool([]);
+      } finally {
+        if (isMounted) setIsTreatPoolLoading(false);
+      }
+    };
+    loadTreats();
+    return () => { isMounted = false; };
+  }, [selectedPet]);
+
   // Загрузка альтернатив для компонента
   const loadAlternatives = useCallback(async (componentType) => {
     if (!selectedPet || !componentStates[componentType]) return;
@@ -2208,6 +2341,30 @@ export default function FoodRecommendationPage() {
       return next;
     });
   }, []);
+
+  const handleRemoveTreat = useCallback(() => {
+    setComponentStates((prev) => {
+      const next = { ...prev };
+      delete next.treat;
+      return next;
+    });
+  }, []);
+
+  const handleAddTreat = useCallback(() => {
+    if (!treatPool.length) return;
+    if (componentStates.treat) return;
+    const alternatives = treatPool.map((item) => ({
+      ...item,
+      treat_frequency_days: item.treat_frequency_days ?? 2,
+    }));
+    setComponentStates((prev) => ({
+      ...prev,
+      treat: {
+        alternatives,
+        currentIndex: 0,
+      },
+    }));
+  }, [treatPool, componentStates.treat]);
 
   // Получение текущих компонентов для отображения
   const currentComponents = Object.entries(componentStates).map(([type, state]) => {
@@ -2488,10 +2645,35 @@ export default function FoodRecommendationPage() {
                             isLoading={isPlanLoading}
                             componentType={type}
                             onProductClick={handleOpenProduct}
+                            showRemove={type === 'treat'}
+                            onRemove={type === 'treat' ? handleRemoveTreat : undefined}
+                            removeButtonRight={type === 'treat'}
                             calorieDistribution={feedingPlan?.calorie_distribution}
                             dailyCalories={feedingPlan?.daily_calories}
+                            accentVariant={planVariant === 'advanced' ? 'purple' : 'amber'}
                           />
                         ))}
+
+                        {!foodComponents.some(({ type }) => type === 'treat') && (
+                          <div className="pt-2">
+                            <div className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-2">
+                              <span className="text-lg">🦴</span>
+                              Лакомства
+                            </div>
+                            <button
+                              type="button"
+                              onClick={handleAddTreat}
+                              disabled={isTreatPoolLoading || treatPool.length === 0}
+                              className="inline-flex items-center gap-2 text-sm px-3 py-2 rounded-lg border border-amber-200 text-amber-800 hover:bg-amber-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              <span className="text-lg leading-none">＋</span>
+                              Добавить лакомство
+                            </button>
+                            {isTreatPoolLoading && (
+                              <span className="ml-3 text-xs text-gray-400">загружаем каталог...</span>
+                            )}
+                          </div>
+                        )}
 
                         {planVariant === 'advanced' && supplementComponents.length > 0 && (
                           <div className="pt-2">
@@ -2511,10 +2693,11 @@ export default function FoodRecommendationPage() {
                                   componentType={type}
                                   onProductClick={handleOpenProduct}
                                   labelOverride={getSupplementLabel(component)}
-                                  showRemove={idx > 0}
+                                  showRemove
                                   onRemove={() => handleRemoveSupplement(type)}
                                   calorieDistribution={feedingPlan?.calorie_distribution}
                                   dailyCalories={feedingPlan?.daily_calories}
+                                  accentVariant="purple"
                                 />
                               ))}
                             </div>
@@ -2539,7 +2722,7 @@ export default function FoodRecommendationPage() {
                               type="button"
                               onClick={handleAddSupplement}
                               disabled={isSuppPoolLoading || supplementComponents.length >= 3 || supplementPool.length === 0}
-                              className="inline-flex items-center gap-2 text-sm px-3 py-2 rounded-lg border border-primary-200 text-primary-700 hover:bg-primary-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                              className="inline-flex items-center gap-2 text-sm px-3 py-2 rounded-lg font-medium bg-gradient-to-r from-primary-100 via-primary-200/80 to-primary-300 text-primary-900 border border-primary-300/80 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.6),0_1px_2px_rgba(82,47,129,0.15)] hover:from-primary-200 hover:via-primary-300/90 hover:to-primary-400 hover:shadow-[0_2px_4px_rgba(82,47,129,0.2)] disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
                             >
                               <span className="text-lg leading-none">＋</span>
                               Добавить витамины
@@ -2586,6 +2769,14 @@ export default function FoodRecommendationPage() {
                     <ShoppingCart className="w-5 h-5" />
                     Добавить в корзину
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => navigate('/shop')}
+                    className="w-full mt-3 py-2.5 rounded-xl border-2 border-primary-200 text-primary-700 
+                               font-medium hover:bg-primary-50 transition-all flex items-center justify-center gap-2"
+                  >
+                    Хотите выбрать сами?
+                  </button>
                 </div>
               )}
               </div>
@@ -2596,11 +2787,18 @@ export default function FoodRecommendationPage() {
           </div>
         </div>
         
-        {/* Правая колонка: дневная норма и расписание — всегда видны, данные размыты до выбора питомца */}
+        {/* Правая колонка: расчёт рациона (дневная норма и расписание) */}
         <div className="lg:col-span-1">
-          <div className="sticky top-24">
-            {selectedPet ? (
-              <FeedingPlanBlock
+          <div className="rounded-2xl border border-amber-200/80 overflow-hidden bg-amber-50/30">
+            <div className="rounded-t-2xl px-6 py-4 bg-gradient-to-r from-[#F6B537] via-[#FDE28F] to-[#FEE9AE] border-b border-amber-200/60">
+              <h2 className="text-lg font-semibold text-amber-900 flex items-center gap-2">
+                <Sparkles className="w-5 h-5 flex-shrink-0 text-amber-800" aria-hidden />
+                Расчёт рациона
+              </h2>
+            </div>
+            <div className="sticky top-24">
+              {selectedPet ? (
+                <FeedingPlanBlock
                 variant="sidebar"
                 plan={feedingPlan}
                 isLoading={isPlanLoading}
@@ -2614,20 +2812,19 @@ export default function FoodRecommendationPage() {
                 <div className="p-4">
                   <div className="rounded-xl p-4 mb-4 bg-gradient-to-b from-slate-50/95 to-gray-50/90 border border-gray-200/80 shadow-sm">
                     <p className="text-xs font-semibold bg-gradient-to-r from-accent-400 to-accent-600 bg-clip-text text-transparent inline-block mb-1">Дневная норма</p>
-                    <p className="text-2xl font-bold text-gray-900">— <span className="text-sm font-normal">ккал</span></p>
-                    <p className="text-sm text-gray-900 mt-1">Нормы — ккал</p>
+                    <p className="text-2xl font-bold text-gray-900">— ккал</p>
                     <div className="mt-3 pt-3 border-t border-gray-200">
                       <p className="text-xs font-semibold bg-gradient-to-r from-accent-400 to-accent-600 bg-clip-text text-transparent inline-block mb-2">Питательные вещества (день)</p>
                       <div className="grid grid-cols-3 gap-2 text-xs">
-                        <div className="rounded-xl p-2.5 text-center border-2 border-blue-200 bg-blue-100/90 shadow-sm">
+                        <div className="rounded-xl p-2.5 text-center border-2 border-[#2563eb] bg-blue-100/90 shadow-sm">
                           <p className="font-semibold text-gray-900">— г</p>
                           <p className="text-[10px] text-gray-900">Белок</p>
                         </div>
-                        <div className="rounded-xl p-2.5 text-center border-2 border-amber-200 bg-amber-100/90 shadow-sm">
+                        <div className="rounded-xl p-2.5 text-center border-2 border-[#e5a41e] bg-amber-100/90 shadow-sm">
                           <p className="font-semibold text-gray-900">— г</p>
                           <p className="text-[10px] text-gray-900">Жир</p>
                         </div>
-                        <div className="rounded-xl p-2.5 text-center border-2 border-slate-200 bg-slate-100/90 shadow-sm">
+                        <div className="rounded-xl p-2.5 text-center border-2 border-[#9ca3af] bg-slate-100/90 shadow-sm">
                           <p className="font-semibold text-gray-900">— г</p>
                           <p className="text-[10px] text-gray-900">Углеводы</p>
                         </div>
@@ -2638,13 +2835,12 @@ export default function FoodRecommendationPage() {
                     <p className="text-xs font-semibold bg-gradient-to-r from-accent-400 to-accent-600 bg-clip-text text-transparent inline-block uppercase tracking-wide mb-3">
                       Дневное расписание кормления
                     </p>
-                    <div className="rounded-xl border border-gray-200/80 bg-gradient-to-b from-blue-50/90 to-slate-50/80 shadow-sm overflow-hidden">
-                      <div className="p-3 flex items-start gap-3 bg-gradient-to-b from-white/70 to-blue-50/30 border-b border-dashed border-gray-200">
+                    <div className="rounded-xl border-2 border-amber-300/70 bg-gradient-to-b from-blue-50/90 to-slate-50/80 shadow-sm overflow-hidden">
+                      <div className="p-3 flex items-start gap-3 bg-gradient-to-b from-white/70 to-blue-50/30 border-b-2 border-dashed border-amber-400/80">
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 flex-wrap mb-1.5">
                             <span className="text-sm font-bold text-gray-900">08:00</span>
                             <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-amber-50/90 text-amber-800 border border-amber-200/60">Завтрак</span>
-                            <span className="ml-auto text-sm font-medium text-gray-700">— ккал</span>
                           </div>
                           <div className="flex items-center gap-2 flex-wrap">
                             <Package className="w-4 h-4 shrink-0 text-red-500/90" />
@@ -2658,7 +2854,6 @@ export default function FoodRecommendationPage() {
                           <div className="flex items-center gap-2 flex-wrap mb-1.5">
                             <span className="text-sm font-bold text-gray-900">13:00</span>
                             <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-blue-50/90 text-blue-800 border border-blue-200/60">Обед</span>
-                            <span className="ml-auto text-sm font-medium text-gray-700">— ккал</span>
                           </div>
                           <div className="flex items-center gap-2 flex-wrap">
                             <Circle className="w-3.5 h-3.5 shrink-0 fill-amber-700/80 text-amber-700/80" />
@@ -2673,6 +2868,7 @@ export default function FoodRecommendationPage() {
                 <div className="absolute inset-0 rounded-2xl bg-white/50 backdrop-blur-md pointer-events-auto z-10" aria-hidden />
               </div>
             )}
+            </div>
           </div>
         </div>
       </div>

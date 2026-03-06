@@ -1787,6 +1787,79 @@ class Wishlist(models.Model):
 
 
 # =============================================================================
+# ВИШЛИСТ (ПОДАРОЧНЫЙ СПИСОК ДЛЯ ШАРИНГА)
+# =============================================================================
+
+def _default_share_token():
+    import secrets
+    return secrets.token_urlsafe(16)
+
+
+class ShareableWishlist(models.Model):
+    """
+    Вишлист пользователя для шаринга: другие пользователи могут открыть
+    список по ссылке и оплатить товары (добавить в корзину / оформить заказ).
+    """
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='shareable_wishlist',
+        verbose_name='Владелец'
+    )
+    name = models.CharField(
+        max_length=255,
+        blank=True,
+        default='Мой вишлист',
+        verbose_name='Название'
+    )
+    share_token = models.CharField(
+        max_length=64,
+        unique=True,
+        default=_default_share_token,
+        editable=False,
+        verbose_name='Токен для шаринга'
+    )
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='Создан')
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='Обновлён')
+
+    class Meta:
+        db_table = 'shop_shareable_wishlists'
+        verbose_name = 'Вишлист (подарочный список)'
+        verbose_name_plural = 'Вишлисты (подарочные списки)'
+        ordering = ['-updated_at']
+
+    def __str__(self):
+        return f"Вишлист: {self.user.email}"
+
+
+class ShareableWishlistItem(models.Model):
+    """Элемент вишлиста — товар в подарок."""
+    wishlist = models.ForeignKey(
+        ShareableWishlist,
+        on_delete=models.CASCADE,
+        related_name='items',
+        verbose_name='Вишлист'
+    )
+    product = models.ForeignKey(
+        Product,
+        on_delete=models.CASCADE,
+        related_name='shareable_wishlist_items',
+        verbose_name='Товар'
+    )
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='Добавлено')
+
+    class Meta:
+        db_table = 'shop_shareable_wishlist_items'
+        verbose_name = 'Элемент вишлиста'
+        verbose_name_plural = 'Элементы вишлиста'
+        unique_together = ['wishlist', 'product']
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.wishlist} — {self.product.name}"
+
+
+# =============================================================================
 # ПРОМО-АКЦИИ И СКИДКИ
 # =============================================================================
 

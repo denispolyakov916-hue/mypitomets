@@ -18,6 +18,8 @@ import { Card, CardMedia } from './ui/Card'
 import { ButtonLoader } from './Loader'
 import { useCartStore } from '../store/cartStore'
 import { useFavoritesStore } from '../store/favoritesStore'
+import { useShareableWishlistStore } from '../store/shareableWishlistStore'
+import { useAuthStore } from '../store/authStore'
 import { ProductPropTypes } from '../utils/propTypes'
 import { formatPrice } from '../utils/format'
 
@@ -129,6 +131,42 @@ const FavoriteBtn = memo(function FavoriteBtn({ productId }) {
           d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" 
         />
       </svg>
+    </button>
+  )
+})
+
+/**
+ * Кнопка «Добавить в вишлист» (подарочный список для шаринга).
+ * Отображается только для авторизованных пользователей.
+ */
+const WishlistGiftBtn = memo(function WishlistGiftBtn({ productId }) {
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
+  const isInWishlist = useShareableWishlistStore((s) => s.isInWishlist(productId))
+  const toggleProduct = useShareableWishlistStore((s) => s.toggleProduct)
+
+  const handleClick = useCallback(
+    (e) => {
+      e.preventDefault()
+      e.stopPropagation()
+      toggleProduct(productId)
+    },
+    [productId, toggleProduct]
+  )
+
+  if (!isAuthenticated) return null
+
+  return (
+    <button
+      onClick={handleClick}
+      className={`w-11 h-11 rounded-full flex items-center justify-center transition-all duration-200 text-lg ${
+        isInWishlist
+          ? 'bg-amber-50 text-amber-600 hover:bg-amber-100'
+          : 'bg-white/90 text-gray-400 hover:text-amber-600 hover:bg-white'
+      } shadow-sm`}
+      aria-label={isInWishlist ? 'Удалить из вишлиста' : 'Добавить в вишлист (подарок)'}
+      title={isInWishlist ? 'Удалить из вишлиста' : 'Добавить в вишлист — поделиться списком'}
+    >
+      🎁
     </button>
   )
 })
@@ -309,8 +347,9 @@ const ProductCard = memo(function ProductCard({ product, onAddToCart, isLoading 
           </span>
         )}
         
-        {/* Кнопка избранного - всегда видна */}
-        <div className="absolute top-2 right-2">
+        {/* Кнопки вишлиста и избранного */}
+        <div className="absolute top-2 right-2 flex items-center gap-1">
+          <WishlistGiftBtn productId={product.id} />
           <FavoriteBtn productId={product.id} />
         </div>
         
@@ -321,7 +360,7 @@ const ProductCard = memo(function ProductCard({ product, onAddToCart, isLoading 
             animalType === 'cat' ? 'bg-primary-100 text-primary-700' :
             'bg-gray-100 text-gray-700'
           }`}>
-            {animalType === 'dog' ? 'Для собак' : animalType === 'cat' ? 'Для кошек' : 'Для всех'}
+            {animalType === 'dog' ? 'Собак' : animalType === 'cat' ? 'Кошек' : 'Все'}
           </span>
         </div>
         
@@ -354,21 +393,31 @@ const ProductCard = memo(function ProductCard({ product, onAddToCart, isLoading 
           </p>
         )}
         
-        {/* Цена: текущая жирно, старая зачёркнута, серое число (рейтинг/отзывы) */}
-        <div className="flex items-baseline gap-2 flex-wrap mb-1">
-          <span className="text-lg font-bold text-primary-900">
-            {formatPrice(product.price)}
-          </span>
-          {discountPercent > 0 && product.compare_price && (
-            <span className="text-sm text-gray-500 line-through">
-              {formatPrice(product.compare_price)}
+        {/* Цена слева, рейтинг (звёзды) справа */}
+        <div className="flex items-center justify-between gap-2 mb-1">
+          <div className="flex items-baseline gap-2 flex-wrap min-w-0">
+            <span className="text-lg font-bold text-primary-900">
+              {formatPrice(product.price)}
             </span>
-          )}
-          {(product.rating_count || product.reviews_count) > 0 && (
-            <span className="text-xs text-gray-500">
-              {product.rating_count || product.reviews_count}
+            {discountPercent > 0 && product.compare_price && (
+              <span className="text-sm text-gray-500 line-through">
+                {formatPrice(product.compare_price)}
+              </span>
+            )}
+            {(product.rating_count || product.reviews_count) > 0 && (
+              <span className="text-xs text-gray-500">
+                {product.rating_count || product.reviews_count}
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-1 shrink-0" title="Рейтинг">
+            <svg className="w-4 h-4 text-accent-400 fill-current" viewBox="0 0 20 20" aria-hidden="true">
+              <path d="M10 15l-5.878 3.09 1.123-6.545L.489 6.91l6.572-.955L10 0l2.939 5.955 6.572.955-4.756 4.635 1.123 6.545z"/>
+            </svg>
+            <span className="text-sm font-medium text-gray-700">
+              {(product.rating || 0).toFixed(1)}
             </span>
-          )}
+          </div>
         </div>
         
         {/* Описание (название) */}
@@ -378,22 +427,14 @@ const ProductCard = memo(function ProductCard({ product, onAddToCart, isLoading 
           </h3>
         </Link>
         
-        {/* Рейтинг — компактно */}
-        <div className="flex items-center gap-1 mb-3">
-          <div className="flex items-center">
-            <svg className="w-4 h-4 text-accent-400 fill-current" viewBox="0 0 20 20" aria-hidden="true">
-              <path d="M10 15l-5.878 3.09 1.123-6.545L.489 6.91l6.572-.955L10 0l2.939 5.955 6.572.955-4.756 4.635 1.123 6.545z"/>
-            </svg>
-            <span className="ml-0.5 text-sm font-medium text-gray-700">
-              {(product.rating || 0).toFixed(1)}
-            </span>
-          </div>
-          {product.stock_count > 0 && product.stock_count <= 5 && isAvailable && (
-            <span className="ml-auto text-xs text-accent-600 font-medium">
+        {/* Осталось мало — под описанием */}
+        {product.stock_count > 0 && product.stock_count <= 5 && isAvailable && (
+          <div className="mb-3">
+            <span className="text-xs text-accent-600 font-medium">
               Осталось {product.stock_count}
             </span>
-          )}
-        </div>
+          </div>
+        )}
         
         {/* Кнопка корзины */}
         <div className="mt-auto">

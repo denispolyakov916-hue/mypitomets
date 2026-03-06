@@ -9,6 +9,7 @@ import { Link } from 'react-router-dom';
 // Сервисы — соответствуют разделам главной (Питомцы, Питание, Здоровье, обучение)
 const FOOTER_SERVICES = [
   { to: '/food-recommendation', label: 'Подбор питания' },
+  { to: '/coming-soon?name=Подбор+питомца+для+вас', label: 'Подбор питомца для вас' },
   { to: '/courses', label: 'Обучающие курсы' },
   { to: '/pet-id', label: 'Мои питомцы' },
   { to: '/pet-id', label: 'Умный календарь' },

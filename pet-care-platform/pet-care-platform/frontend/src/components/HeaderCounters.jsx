@@ -1,20 +1,17 @@
 /**
- * Виджет быстрых счетчиков в хедере: Заказы, Избранное, Корзина
- * - Связь с бэкендом: заказы (история заказов) и корзина
+ * Виджет быстрых счетчиков в хедере: Уведомления, Избранное, Корзина
+ * - Связь с бэкендом: корзина
  * - Локальное состояние: избранное (zustand)
  * - Периодическое обновление для актуальности бейджей
- * - Централизованная загрузка данных для предотвращения дублирования
  */
 
 import { useEffect, useMemo, useState, useRef } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { getOrders } from '../api/shop'
 import { useCartStore } from '../store/cartStore'
 import { useFavoritesStore } from '../store/favoritesStore'
-import { apiCache } from '../utils/apiCache'
 
-// Иконка Заказы (коробка/накладная)
-const OrdersIcon = ({ className = '' }) => (
+// Иконка Уведомления (конверт)
+const NotificationsIcon = ({ className = '' }) => (
 	<svg
 		viewBox="0 0 24 24"
 		fill="none"
@@ -24,9 +21,8 @@ const OrdersIcon = ({ className = '' }) => (
 		strokeLinejoin="round"
 		className={className}
 	>
-		<path d="M3 7l9-4 9 4" />
-		<path d="M21 7v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7" />
-		<path d="M3 7l9 5 9-5" />
+		<path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+		<polyline points="22,6 12,13 2,6" />
 	</svg>
 )
 
@@ -62,7 +58,7 @@ function CounterBadge({ value, dark }) {
 	if (!value || value <= 0) return null
 	const text = value > 99 ? '99+' : value
 	return (
-		<span className={`absolute -top-1.5 -right-1.5 min-w-[20px] h-[20px] px-1 text-white text-[11px] leading-[20px] rounded-full font-semibold text-center shadow-md ${dark ? 'bg-red-500' : 'bg-pink-500'}`}>
+		<span className={`absolute -top-4 left-[calc(50%+10px)] -translate-x-1/2 min-w-[20px] h-[20px] px-1 text-white text-[11px] leading-[20px] rounded-full font-semibold text-center shadow-md flex items-center justify-center ${dark ? 'bg-red-500' : 'bg-pink-500'}`}>
 			{text}
 		</span>
 	)
@@ -81,38 +77,31 @@ export default function HeaderCounters({ variant = 'light', compact = false }) {
 	const favCoursesLen = useFavoritesStore(s => s.courses.length)
 	const favoritesCount = favProductsLen + favCoursesLen
 
-	// Заказы (неоплаченные)
-	const [pendingCount, setPendingCount] = useState(0)
-	const hasInitialized = useRef(false)
+	// Уведомления (пока заглушка — счётчик можно подключить к API позже)
+	const [notificationsCount] = useState(0)
+	const [notificationsOpen, setNotificationsOpen] = useState(false)
+	const notificationsRef = useRef(null)
+
+	// Закрытие выпадающего блока уведомлений по клику снаружи
+	useEffect(() => {
+		if (!notificationsOpen) return
+		const handleClickOutside = (e) => {
+			if (notificationsRef.current && !notificationsRef.current.contains(e.target)) {
+				setNotificationsOpen(false)
+			}
+		}
+		document.addEventListener('click', handleClickOutside)
+		return () => document.removeEventListener('click', handleClickOutside)
+	}, [notificationsOpen])
 
 	useEffect(() => {
 		let mounted = true
-
-		const loadOrders = async () => {
-			try {
-				// Используем глобальное кэширование с TTL 30 секунд
-				const data = await apiCache.get('orders-history', getOrders, 30000)
-				// считаем только ожидающие оплаты
-				const count = (data.orders || []).reduce((acc, o) => acc + (o.status === 'pending' ? 1 : 0), 0)
-				if (mounted) setPendingCount(count)
-			} catch {
-				if (mounted) setPendingCount(0)
-			}
-		}
-
 		const load = async () => {
-			// Корзина: быстрый рефреш количества (уже имеет защиту от дублирования в store)
 			try {
 				await refreshCartCount()
 			} catch {}
-
-			await loadOrders()
 		}
-
 		load()
-		hasInitialized.current = true
-
-		// Увеличиваем интервал обновления до 2 минут (было 1 минута)
 		const interval = setInterval(load, 120000)
 		return () => {
 			mounted = false
@@ -140,12 +129,34 @@ export default function HeaderCounters({ variant = 'light', compact = false }) {
 	if (compact) {
 		return (
 			<div className="flex items-center gap-2">
-				<Link to="/orders" className={itemClassCompact} aria-label="Заказы">
-					<div className="relative">
-						<OrdersIcon className={iconClassCompact} />
-						<CounterBadge value={pendingCount} dark={dark} />
-					</div>
-				</Link>
+				<div className="relative" ref={notificationsRef}>
+					<button
+						type="button"
+						onClick={() => setNotificationsOpen((v) => !v)}
+						className={itemClassCompact}
+						aria-label="Уведомления"
+						aria-expanded={notificationsOpen}
+					>
+						<div className="relative">
+							<NotificationsIcon className={iconClassCompact} />
+							<CounterBadge value={notificationsCount} dark={dark} />
+						</div>
+					</button>
+					{notificationsOpen && (
+						<div
+							className={`absolute right-0 top-full mt-2 w-72 rounded-xl border shadow-lg z-50 ${
+								dark ? 'bg-slate-800 border-slate-600' : 'bg-white border-slate-200'
+							}`}
+							role="dialog"
+							aria-label="Окно уведомлений"
+						>
+							<div className={`p-4 text-center ${dark ? 'text-slate-300' : 'text-slate-600'}`}>
+								<p className="font-medium">Пока нет уведомлений</p>
+								<p className="text-sm mt-1 opacity-80">Здесь будут отображаться ваши уведомления</p>
+							</div>
+						</div>
+					)}
+				</div>
 				<Link to="/favorites" className={itemClassCompact} aria-label="Избранное">
 					<div className="relative">
 						<HeartIcon className={iconClassCompact} />
@@ -164,13 +175,35 @@ export default function HeaderCounters({ variant = 'light', compact = false }) {
 
 	return (
 		<div className="flex items-end gap-6">
-			<Link to="/orders" className={itemClass} aria-label="Заказы">
-				<div className="relative">
-					<OrdersIcon className={iconClass} />
-					<CounterBadge value={pendingCount} dark={dark} />
-				</div>
-				<span className={`${labelClass} ${isActive('/orders') ? 'font-semibold' : ''}`}>Заказы</span>
-			</Link>
+			<div className="relative flex flex-col items-center gap-1" ref={notificationsRef}>
+				<button
+					type="button"
+					onClick={() => setNotificationsOpen((v) => !v)}
+					className={itemClass}
+					aria-label="Уведомления"
+					aria-expanded={notificationsOpen}
+				>
+					<div className="relative">
+						<NotificationsIcon className={iconClass} />
+						<CounterBadge value={notificationsCount} dark={dark} />
+					</div>
+					<span className={`${labelClass} ${notificationsOpen ? 'font-semibold' : ''}`}>Уведомления</span>
+				</button>
+				{notificationsOpen && (
+					<div
+						className={`absolute left-1/2 top-full mt-2 w-72 -translate-x-1/2 rounded-xl border shadow-lg z-50 ${
+							dark ? 'bg-slate-800 border-slate-600' : 'bg-white border-slate-200'
+						}`}
+						role="dialog"
+						aria-label="Окно уведомлений"
+					>
+						<div className={`p-4 text-center ${dark ? 'text-slate-300' : 'text-slate-600'}`}>
+							<p className="font-medium">Пока нет уведомлений</p>
+							<p className="text-sm mt-1 opacity-80">Здесь будут отображаться ваши уведомления</p>
+						</div>
+					</div>
+				)}
+			</div>
 
 			<Link to="/favorites" className={itemClass} aria-label="Избранное">
 				<div className="relative">

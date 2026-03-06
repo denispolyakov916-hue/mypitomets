@@ -31,7 +31,8 @@ from .models import AnalyticMetric, ChartConfig, ChartSession, AnalyticsLog
 # Новые модели по database_tz.md
 from .models import (
     Category, Brand, Product, ProductSKU, ProductBreedRecommendation,
-    FoodDetails, Wishlist, Promotion, PromotionUsage, PriceHistory, ProductRelation,
+    FoodDetails, Wishlist, ShareableWishlist, ShareableWishlistItem,
+    Promotion, PromotionUsage, PriceHistory, ProductRelation,
     ProductImage, AttributeValue
 )
 
@@ -1203,6 +1204,60 @@ class WishlistAddSerializer(serializers.Serializer):
         if not Product.objects.filter(id=value, status=1).exists():
             raise serializers.ValidationError("Товар не найден")
         return value
+
+
+# =============================================================================
+# ВИШЛИСТ (ПОДАРОЧНЫЙ СПИСОК ДЛЯ ШАРИНГА)
+# =============================================================================
+
+class ShareableWishlistItemSerializer(serializers.ModelSerializer):
+    """Элемент вишлиста с данными товара."""
+    product = ProductCatalogSerializer(read_only=True)
+
+    class Meta:
+        model = ShareableWishlistItem
+        fields = ['id', 'product', 'created_at']
+        read_only_fields = ['id', 'created_at']
+
+
+class ShareableWishlistSerializer(serializers.ModelSerializer):
+    """Вишлист пользователя с элементами."""
+    items = ShareableWishlistItemSerializer(many=True, read_only=True)
+    share_url = serializers.SerializerMethodField()
+
+    class Meta:
+        model = ShareableWishlist
+        fields = ['id', 'name', 'share_token', 'share_url', 'items', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'share_token', 'created_at', 'updated_at']
+
+    def get_share_url(self, obj):
+        # Путь для фронта; полный URL собирается на клиенте (origin + path)
+        return f'/wishlist/shared/{obj.share_token}'
+
+
+class ShareableWishlistAddSerializer(serializers.Serializer):
+    """Добавление товара в вишлист."""
+    product_id = serializers.IntegerField(required=True)
+
+    def validate_product_id(self, value):
+        if not Product.objects.filter(id=value, status=1).exists():
+            raise serializers.ValidationError("Товар не найден")
+        return value
+
+
+class SharedWishlistPublicSerializer(serializers.ModelSerializer):
+    """Публичное представление вишлиста по ссылке (без владельца)."""
+    items = ShareableWishlistItemSerializer(many=True, read_only=True)
+    owner_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = ShareableWishlist
+        fields = ['id', 'name', 'owner_name', 'items']
+
+    def get_owner_name(self, obj):
+        if obj.user.first_name or obj.user.last_name:
+            return f"{obj.user.first_name or ''} {obj.user.last_name or ''}".strip()
+        return obj.user.email.split('@')[0] if obj.user.email else ''
 
 
 class PromotionSerializer(serializers.ModelSerializer):

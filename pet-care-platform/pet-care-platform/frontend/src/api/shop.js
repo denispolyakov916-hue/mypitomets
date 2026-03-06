@@ -262,6 +262,49 @@ export const getHealthFilters = async () => {
 }
 
 // =============================================================================
+// ВИШЛИСТ (ПОДАРОЧНЫЙ СПИСОК ДЛЯ ШАРИНГА)
+// =============================================================================
+
+/**
+ * Получить свой вишлист (создаётся при первом запросе).
+ * @returns {Promise<Object>} { id, name, share_token, share_url, items, ... }
+ */
+export const getMyWishlist = async () => {
+  const { data } = await api.get('/shop/wishlist/')
+  return data
+}
+
+/**
+ * Добавить товар в вишлист.
+ * @param {number} productId - ID товара
+ * @returns {Promise<Object>} { message, data } — обновлённый вишлист
+ */
+export const addToWishlist = async (productId) => {
+  const { data } = await api.post('/shop/wishlist/', { product_id: productId })
+  return data
+}
+
+/**
+ * Удалить товар из вишлиста.
+ * @param {number} productId - ID товара
+ * @returns {Promise<Object>} { message, data } — обновлённый вишлист
+ */
+export const removeFromWishlist = async (productId) => {
+  const { data } = await api.delete(`/shop/wishlist/?product_id=${productId}`)
+  return data
+}
+
+/**
+ * Получить вишлист по токену (публичная ссылка для тех, кому скинули).
+ * @param {string} token - Токен из ссылки
+ * @returns {Promise<Object>} { id, name, owner_name, items }
+ */
+export const getSharedWishlist = async (token) => {
+  const { data } = await api.get(`/shop/wishlist/shared/${token}/`)
+  return data
+}
+
+// =============================================================================
 // КОРЗИНА
 // =============================================================================
 
@@ -611,8 +654,8 @@ export const HEALTH_ISSUES = [
  */
 export const PET_TYPE_OPTIONS = [
   { value: '', label: 'Все животные' },
-  { value: 'dog', label: 'Для собак' },
-  { value: 'cat', label: 'Для кошек' },
+  { value: 'dog', label: 'Собак' },
+  { value: 'cat', label: 'Кошек' },
 ]
 
 /**

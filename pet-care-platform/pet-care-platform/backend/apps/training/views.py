@@ -291,9 +291,9 @@ class CourseListView(APIView):
             },
             'filters': {
                 'pet_types': [
-                    {'value': 'dog', 'label': 'Для собак'},
-                    {'value': 'cat', 'label': 'Для кошек'},
-                    {'value': 'all', 'label': 'Для всех'},
+                    {'value': 'dog', 'label': 'Собак'},
+                    {'value': 'cat', 'label': 'Кошек'},
+                    {'value': 'all', 'label': 'Все'},
                 ],
                 'categories': [
                     {'value': 'basics', 'label': 'Основы'},

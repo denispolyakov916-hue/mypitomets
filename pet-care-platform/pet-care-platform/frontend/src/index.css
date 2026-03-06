@@ -12,8 +12,10 @@
  * 8. Стили контента уроков
  */
 
-/* 1. Директивы Tailwind CSS — шрифт как на лендинге */
+/* 1. Директивы Tailwind CSS — Manrope для заголовков, Inter для основного текста */
 @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Nunito+Sans:wght@400;600&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -66,7 +68,7 @@ html:has(body[data-page="payment"]) {
 }
 
 body {
-  font-family: 'Manrope', system-ui, -apple-system, sans-serif;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
   color: var(--foreground);
   background-color: var(--background);
   margin: 0;
@@ -76,9 +78,31 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Manrope', system-ui, sans-serif;
+}
+
 button {
   font-family: inherit;
   cursor: pointer;
+}
+
+/* Виджет «Чат с Пуфом» — пульсация кнопки */
+@keyframes puff-widget-pulse {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 6px 24px rgba(82, 47, 129, 0.35);
+  }
+  50% {
+    transform: scale(1.08);
+    box-shadow: 0 12px 36px rgba(82, 47, 129, 0.5);
+  }
+}
+.puff-support-trigger {
+  animation: puff-widget-pulse 1.8s ease-in-out infinite;
+}
+.puff-support-trigger:hover {
+  animation: none;
 }
 
 /* 4. Утилитарные классы — в стиле лендинга (primary #522f81, accent #fbba2d) */
@@ -143,10 +167,12 @@ button {
 
   .page-title {
     @apply text-2xl sm:text-3xl font-bold text-primary-800 mb-6;
+    font-family: 'Manrope', system-ui, sans-serif;
   }
 
   .section-title {
     @apply text-xl font-semibold text-primary-800 mb-4;
+    font-family: 'Manrope', system-ui, sans-serif;
   }
 
   /* Футер с главной (лендинга) — единый вид по проекту */
@@ -200,6 +226,572 @@ button {
   .footer-landing .footer-scroll-top:hover {
     background: rgba(245, 245, 245, 0.12);
     border-color: rgba(245, 245, 245, 0.7);
+  }
+
+  /* Кнопки категорий магазина — стиль btn-slide (градиент, круг, два заголовка при hover) */
+  .shop-header-nav .btn-slide {
+    position: relative;
+    display: inline-block;
+    height: 50px;
+    min-width: 140px;
+    width: auto;
+    line-height: 50px;
+    margin: 0;
+    padding: 0 20px;
+    border-radius: 25px;
+    box-shadow: 0 10px 20px -8px rgba(236, 177, 62, 0.25);
+    background: linear-gradient(135deg, #ECB13E 0%, #e0a535 50%, #f5d9a0 100%);
+    border: none;
+    cursor: pointer;
+    font-family: 'Nunito Sans', sans-serif;
+    text-align: left;
+    transition: box-shadow 0.35s ease-in-out;
+  }
+  .shop-header-nav .btn-slide::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: linear-gradient(-135deg, #ECB13E 0%, #e0a535 50%, #f5d9a0 100%);
+    opacity: 0;
+    transition: opacity 0.35s ease-in-out;
+    z-index: 0;
+    pointer-events: none;
+  }
+  .shop-header-nav .btn-slide:hover::before {
+    opacity: 1;
+  }
+  .shop-header-nav .btn-slide:active::before {
+    opacity: 0.7;
+  }
+  .shop-header-nav .btn-slide:active {
+    box-shadow: 0 8px 16px -8px rgba(236, 177, 62, 0.3);
+    transform: scale(0.96);
+  }
+  .shop-header-nav .btn-slide:hover {
+    box-shadow: 0 12px 24px -8px rgba(236, 177, 62, 0.3);
+  }
+  .shop-header-nav .btn-slide span.circle {
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #fff;
+    color: #e0a535;
+    position: absolute;
+    margin: 5px;
+    height: 40px;
+    width: 40px;
+    top: 0;
+    left: 0;
+    border-radius: 50%;
+    transition: all 1.5s ease;
+  }
+  .shop-header-nav .btn-slide:hover span.circle {
+    left: 100%;
+    margin-left: -45px;
+    background-color: #fff;
+    color: #c4953a;
+  }
+  .shop-header-nav .btn-slide span.title {
+    font-family: 'Nunito Sans', sans-serif;
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding-left: 28px;
+    transition: all 1.5s linear;
+    pointer-events: none;
+    z-index: 1;
+  }
+  .shop-header-nav .btn-slide span.title .btn-slide-text {
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 1.2;
+    letter-spacing: 0.5px;
+    color: #1a1a2e;
+    text-align: center;
+    white-space: normal;
+    max-width: calc(100% - 60px);
+  }
+  .shop-header-nav .btn-slide span.title-hover {
+    font-family: 'Nunito Sans', sans-serif;
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding-left: 28px;
+    transition: all 1.5s linear;
+    opacity: 0;
+    pointer-events: none;
+    z-index: 1;
+  }
+  .shop-header-nav .btn-slide span.title-hover .btn-slide-text {
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 1.2;
+    letter-spacing: 0.5px;
+    color: #1a1a2e;
+    text-align: center;
+    white-space: normal;
+    max-width: calc(100% - 60px);
+  }
+  .shop-header-nav .btn-slide:hover span.title {
+    opacity: 0;
+  }
+  .shop-header-nav .btn-slide:hover span.title-hover {
+    opacity: 1;
+  }
+  /* Выбранный раздел — контрастная окантовка, остаётся пока находишься в разделе */
+  .shop-header-nav .btn-slide.btn-slide-active {
+    box-shadow: 0 10px 20px -8px rgba(236, 177, 62, 0.25), 0 0 0 2px #1a1a2e;
+  }
+  .shop-header-nav .btn-slide.btn-slide-active:hover {
+    box-shadow: 0 12px 24px -8px rgba(236, 177, 62, 0.3), 0 0 0 2px #1a1a2e;
+  }
+  @media (max-width: 540px) {
+    .shop-header-nav .btn-slide {
+      min-width: 120px;
+      padding: 0 12px;
+    }
+  }
+
+  /* Кнопки Избранное | Вишлист — градиент от фиолетового к жёлтому (тот же pill + круг, что в магазине) */
+  .favorites-header-nav .btn-slide {
+    position: relative;
+    display: inline-block;
+    height: 50px;
+    min-width: 140px;
+    width: auto;
+    line-height: 50px;
+    margin: 0;
+    padding: 0 20px;
+    border-radius: 25px;
+    box-shadow: 0 10px 20px -8px rgba(124, 58, 237, 0.25);
+    background: linear-gradient(135deg, #7c3aed 0%, #a78bfa 50%, #facc15 100%);
+    border: none;
+    cursor: pointer;
+    font-family: 'Nunito Sans', sans-serif;
+    text-align: left;
+    transition: box-shadow 0.35s ease-in-out;
+  }
+  .favorites-header-nav .btn-slide::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: linear-gradient(-135deg, #7c3aed 0%, #a78bfa 50%, #facc15 100%);
+    opacity: 0;
+    transition: opacity 0.35s ease-in-out;
+    z-index: 0;
+    pointer-events: none;
+  }
+  .favorites-header-nav .btn-slide:hover::before {
+    opacity: 1;
+  }
+  .favorites-header-nav .btn-slide:active::before {
+    opacity: 0.7;
+  }
+  .favorites-header-nav .btn-slide:active {
+    box-shadow: 0 8px 16px -8px rgba(124, 58, 237, 0.3);
+    transform: scale(0.96);
+  }
+  .favorites-header-nav .btn-slide:hover {
+    box-shadow: 0 12px 24px -8px rgba(124, 58, 237, 0.3);
+  }
+  .favorites-header-nav .btn-slide span.circle {
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #fff;
+    color: #7c3aed;
+    position: absolute;
+    margin: 5px;
+    height: 40px;
+    width: 40px;
+    top: 0;
+    left: 0;
+    border-radius: 50%;
+    transition: all 1.5s ease;
+  }
+  .favorites-header-nav .btn-slide:hover span.circle {
+    left: 100%;
+    margin-left: -45px;
+    background-color: #fff;
+    color: #b45309;
+  }
+  .favorites-header-nav .btn-slide span.title {
+    font-family: 'Nunito Sans', sans-serif;
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding-left: 28px;
+    transition: all 1.5s linear;
+    pointer-events: none;
+    z-index: 1;
+  }
+  .favorites-header-nav .btn-slide span.title .btn-slide-text {
+    font-size: 17px;
+    font-weight: 600;
+    line-height: 1.2;
+    letter-spacing: 0.5px;
+    color: #1a1a2e;
+    text-align: center;
+    white-space: normal;
+    max-width: calc(100% - 60px);
+  }
+  .favorites-header-nav .btn-slide span.title-hover {
+    font-family: 'Nunito Sans', sans-serif;
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding-left: 28px;
+    transition: all 1.5s linear;
+    opacity: 0;
+    pointer-events: none;
+    z-index: 1;
+  }
+  .favorites-header-nav .btn-slide span.title-hover .btn-slide-text {
+    font-size: 17px;
+    font-weight: 600;
+    line-height: 1.2;
+    letter-spacing: 0.5px;
+    color: #1a1a2e;
+    text-align: center;
+    white-space: normal;
+    max-width: calc(100% - 60px);
+  }
+  .favorites-header-nav .btn-slide:hover span.title {
+    opacity: 0;
+  }
+  .favorites-header-nav .btn-slide:hover span.title-hover {
+    opacity: 1;
+  }
+  .favorites-header-nav .btn-slide.btn-slide-active {
+    box-shadow: 0 10px 20px -8px rgba(124, 58, 237, 0.25), 0 0 0 2px #1a1a2e;
+  }
+  .favorites-header-nav .btn-slide.btn-slide-active:hover {
+    box-shadow: 0 12px 24px -8px rgba(124, 58, 237, 0.3), 0 0 0 2px #1a1a2e;
+  }
+
+  /* Вишлист — зеркально к Избранному: градиент жёлтый → фиолетовый, круг справа, при hover уезжает влево */
+  .favorites-header-nav .btn-slide.btn-slide-mirror {
+    background: linear-gradient(135deg, #facc15 0%, #a78bfa 50%, #7c3aed 100%);
+    box-shadow: 0 10px 20px -8px rgba(234, 179, 8, 0.25);
+  }
+  .favorites-header-nav .btn-slide.btn-slide-mirror::before {
+    background: linear-gradient(-135deg, #facc15 0%, #a78bfa 50%, #7c3aed 100%);
+  }
+  .favorites-header-nav .btn-slide.btn-slide-mirror:hover {
+    box-shadow: 0 12px 24px -8px rgba(234, 179, 8, 0.3);
+  }
+  .favorites-header-nav .btn-slide.btn-slide-mirror:active {
+    box-shadow: 0 8px 16px -8px rgba(234, 179, 8, 0.3);
+  }
+  /* Та же анимация, что у «Избранное» (all 1.5s ease), но в обратном направлении: круг едет справа влево */
+  .favorites-header-nav .btn-slide.btn-slide-mirror span.circle {
+    left: calc(100% - 50px);
+    margin: 5px;
+    color: #b45309;
+    transition: all 1.5s ease;
+  }
+  .favorites-header-nav .btn-slide.btn-slide-mirror span.circle svg {
+    transition: transform 1.5s ease;
+  }
+  .favorites-header-nav .btn-slide.btn-slide-mirror:hover span.circle svg {
+    transform: scale(1.08);
+  }
+  .favorites-header-nav .btn-slide.btn-slide-mirror:hover span.circle {
+    left: 0;
+    margin-left: 5px;
+    color: #7c3aed;
+  }
+  .favorites-header-nav .btn-slide.btn-slide-mirror span.title,
+  .favorites-header-nav .btn-slide.btn-slide-mirror span.title-hover {
+    padding-left: 0;
+    padding-right: 28px;
+  }
+  .favorites-header-nav .btn-slide.btn-slide-mirror.btn-slide-active {
+    box-shadow: 0 10px 20px -8px rgba(234, 179, 8, 0.25), 0 0 0 2px #1a1a2e;
+  }
+  .favorites-header-nav .btn-slide.btn-slide-mirror.btn-slide-active:hover {
+    box-shadow: 0 12px 24px -8px rgba(234, 179, 8, 0.3), 0 0 0 2px #1a1a2e;
+  }
+
+  @media (max-width: 540px) {
+    .favorites-header-nav .btn-slide {
+      min-width: 120px;
+      padding: 0 12px;
+    }
+  }
+
+  /* Кнопки категорий магазина курсов — тот же стиль (pill + круг + градиент), фиолетовая палитра сайта */
+  .course-header-nav .btn-slide {
+    position: relative;
+    display: inline-block;
+    height: 50px;
+    min-width: 140px;
+    width: auto;
+    line-height: 50px;
+    margin: 0;
+    padding: 0 20px;
+    border-radius: 25px;
+    box-shadow: 0 6px 16px -6px rgba(82, 47, 129, 0.18);
+    background: linear-gradient(135deg, #E4DCF0 0%, #d9bfff 50%, #c4a8f0 100%);
+    border: none;
+    cursor: pointer;
+    font-family: 'Nunito Sans', sans-serif;
+    text-align: left;
+    transition: box-shadow 0.3s ease-in-out;
+  }
+  .course-header-nav .btn-slide::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: linear-gradient(-135deg, #E8E0F4 0%, #d9bfff 50%, #c4a8f0 100%);
+    opacity: 0;
+    transition: opacity 0.35s ease-in-out;
+    z-index: 0;
+    pointer-events: none;
+  }
+  .course-header-nav .btn-slide:hover::before {
+    opacity: 1;
+  }
+  .course-header-nav .btn-slide:active::before {
+    opacity: 0.7;
+  }
+  .course-header-nav .btn-slide:active {
+    box-shadow: 0 4px 12px -6px rgba(82, 47, 129, 0.2);
+    transform: scale(0.96);
+  }
+  .course-header-nav .btn-slide:hover {
+    box-shadow: 0 8px 20px -6px rgba(82, 47, 129, 0.22);
+  }
+  .course-header-nav .btn-slide span.circle {
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #fff;
+    color: #6b2da1;
+    position: absolute;
+    margin: 5px;
+    height: 40px;
+    width: 40px;
+    top: 0;
+    left: 0;
+    border-radius: 50%;
+    transition: all 1.5s ease;
+  }
+  .course-header-nav .btn-slide:hover span.circle {
+    left: 100%;
+    margin-left: -45px;
+    background-color: #fff;
+    color: #522f81;
+  }
+  .course-header-nav .btn-slide span.title {
+    font-family: 'Nunito Sans', sans-serif;
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding-left: 28px;
+    transition: all 1.5s linear;
+    pointer-events: none;
+    z-index: 1;
+  }
+  .course-header-nav .btn-slide span.title .btn-slide-text {
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 1.2;
+    letter-spacing: 0.5px;
+    color: #3e2362;
+    text-align: center;
+    white-space: normal;
+    max-width: calc(100% - 60px);
+  }
+  .course-header-nav .btn-slide span.title-hover {
+    font-family: 'Nunito Sans', sans-serif;
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding-left: 28px;
+    transition: all 1.5s linear;
+    opacity: 0;
+    pointer-events: none;
+    z-index: 1;
+  }
+  .course-header-nav .btn-slide span.title-hover .btn-slide-text {
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 1.2;
+    letter-spacing: 0.5px;
+    color: #3e2362;
+    text-align: center;
+    white-space: normal;
+    max-width: calc(100% - 60px);
+  }
+  .course-header-nav .btn-slide:hover span.title {
+    opacity: 0;
+  }
+  .course-header-nav .btn-slide:hover span.title-hover {
+    opacity: 1;
+  }
+  /* Выбранный раздел — контрастная окантовка, как в магазине кормов */
+  .course-header-nav .btn-slide.btn-slide-active {
+    box-shadow: 0 6px 16px -6px rgba(82, 47, 129, 0.22), inset 0 1px 0 rgba(255,255,255,0.6), 0 0 0 2px #1a1a2e;
+    background: linear-gradient(135deg, #d9bfff 0%, #c4a8f0 50%, #b794f6 100%);
+  }
+  .course-header-nav .btn-slide.btn-slide-active:hover {
+    box-shadow: 0 8px 18px -6px rgba(82, 47, 129, 0.28), inset 0 1px 0 rgba(255,255,255,0.6), 0 0 0 2px #1a1a2e;
+  }
+  .course-header-nav .btn-slide.btn-slide-active::before {
+    background: linear-gradient(-135deg, #d9bfff 0%, #c4a8f0 50%, #b794f6 100%);
+  }
+  @media (max-width: 540px) {
+    .course-header-nav .btn-slide {
+      min-width: 120px;
+      padding: 0 12px;
+    }
+  }
+
+  /* Кнопки фильтра курсов — в том же стиле, что и табы категорий (светлый лавандовый градиент, тёмно-фиолетовый текст) */
+  .course-filter-sidebar .filter-pill {
+    position: relative;
+    background: linear-gradient(135deg, #E4DCF0 0%, #d9bfff 50%, #c4a8f0 100%);
+    border: none;
+    color: #3e2362;
+    box-shadow: 0 4px 12px -4px rgba(82, 47, 129, 0.15);
+    transition: box-shadow 0.35s ease-in-out;
+  }
+  .course-filter-sidebar .filter-pill::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: linear-gradient(-135deg, #E8E0F4 0%, #d9bfff 50%, #c4a8f0 100%);
+    opacity: 0;
+    transition: opacity 0.35s ease-in-out;
+    z-index: 0;
+    pointer-events: none;
+  }
+  .course-filter-sidebar .filter-pill:hover::before {
+    opacity: 1;
+  }
+  .course-filter-sidebar .filter-pill:hover {
+    box-shadow: 0 6px 16px -4px rgba(82, 47, 129, 0.2);
+  }
+  .course-filter-sidebar .filter-pill-active {
+    position: relative;
+    background: linear-gradient(135deg, #d9bfff 0%, #c4a8f0 50%, #b794f6 100%);
+    border: none;
+    color: #3e2362;
+    box-shadow: 0 6px 16px -4px rgba(82, 47, 129, 0.22), inset 0 1px 0 rgba(255,255,255,0.5);
+    transition: box-shadow 0.35s ease-in-out;
+  }
+  .course-filter-sidebar .filter-pill-active::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: linear-gradient(-135deg, #d9bfff 0%, #c4a8f0 50%, #b794f6 100%);
+    opacity: 0;
+    transition: opacity 0.35s ease-in-out;
+    z-index: 0;
+    pointer-events: none;
+  }
+  .course-filter-sidebar .filter-pill-active:hover::before {
+    opacity: 1;
+  }
+  .course-filter-sidebar .filter-pill,
+  .course-filter-sidebar .filter-pill-active {
+    isolation: isolate;
+  }
+  .course-filter-sidebar .filter-pill > *,
+  .course-filter-sidebar .filter-pill-active > * {
+    position: relative;
+    z-index: 1;
+  }
+
+  /* Кнопки фильтра магазина (Тип питомца, Возраст питомца) — плавное переливание градиента при наведении */
+  .shop-filter-sidebar .shop-filter-glass-btn {
+    position: relative;
+    isolation: isolate;
+    border: 1px solid #FEEAC7;
+    background: #FBF9F5;
+    color: #363C44;
+    box-shadow: 0 2px 8px -2px rgba(236, 177, 62, 0.08);
+    transition: box-shadow 0.35s ease-in-out, transform 0.2s ease;
+  }
+  .shop-filter-sidebar .shop-filter-glass-btn::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: linear-gradient(-135deg, rgba(236, 177, 62, 0.12) 0%, rgba(245, 217, 160, 0.2) 50%, rgba(254, 234, 199, 0.15) 100%);
+    opacity: 0;
+    transition: opacity 0.35s ease-in-out;
+    z-index: 0;
+    pointer-events: none;
+  }
+  .shop-filter-sidebar .shop-filter-glass-btn:hover {
+    box-shadow: 0 4px 12px -4px rgba(236, 177, 62, 0.15);
+    transform: scale(1.02);
+  }
+  .shop-filter-sidebar .shop-filter-glass-btn:hover::before {
+    opacity: 1;
+  }
+  .shop-filter-sidebar .shop-filter-glass-btn-active {
+    border: none;
+    background: linear-gradient(135deg, #ECB13E 0%, #e0a535 50%, #f5d9a0 100%);
+    color: #1a1a2e;
+    box-shadow: 0 10px 20px -8px rgba(236, 177, 62, 0.25);
+    transition: box-shadow 0.35s ease-in-out, transform 0.2s ease;
+  }
+  .shop-filter-sidebar .shop-filter-glass-btn-active::before {
+    background: linear-gradient(-135deg, #ECB13E 0%, #e0a535 50%, #f5d9a0 100%);
+  }
+  .shop-filter-sidebar .shop-filter-glass-btn-active:hover {
+    box-shadow: 0 12px 24px -8px rgba(236, 177, 62, 0.35);
+    transform: scale(1.02);
+  }
+  .shop-filter-sidebar .shop-filter-glass-btn-active:hover::before {
+    opacity: 1;
   }
 }
 

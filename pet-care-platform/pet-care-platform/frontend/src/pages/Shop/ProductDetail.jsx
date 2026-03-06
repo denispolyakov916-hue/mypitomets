@@ -19,6 +19,7 @@ import { PageLoader, ButtonLoader } from '../../components/Loader'
 import Rating from '../../components/Rating'
 import ReviewsSection from '../../components/ReviewsSection'
 import RecommendationBlock from '../../components/RecommendationBlock'
+import FavoriteButton from '../../components/FavoriteButton'
 import { formatPrice } from '../../utils/format'
 
 /**
@@ -105,9 +106,9 @@ function ProductDetail() {
   const characteristics = useMemo(() => {
     if (!product) return []
     const animalLabels = {
-      dog: 'Для собак',
-      cat: 'Для кошек',
-      all: 'Для всех',
+      dog: 'Собак',
+      cat: 'Кошек',
+      all: 'Все',
     }
     const ageLabels = {
       puppy: 'Для щенков',
@@ -140,7 +141,7 @@ function ProductDetail() {
     const list = []
     if (product.brand?.name) list.push({ label: 'Бренд', value: product.brand.name })
     if (product.category?.name) list.push({ label: 'Категория', value: product.category.name })
-    if (product.animal_type) list.push({ label: 'Для кого', value: animalLabels[product.animal_type] || product.animal_type })
+    if (product.animal_type) list.push({ label: 'Тип питомца', value: animalLabels[product.animal_type] || product.animal_type })
     if (product.product_group) list.push({ label: 'Группа товаров', value: groupLabels[product.product_group] || product.product_group })
     if (product.age_group && product.age_group !== 'all') list.push({ label: 'Возраст', value: ageLabels[product.age_group] || product.age_group })
     if (product.size_group && product.size_group !== 'all') list.push({ label: 'Размер', value: sizeLabels[product.size_group] || product.size_group })
@@ -442,7 +443,7 @@ function ProductDetail() {
                 to={buildShopLink({ animal: 'dog' })}
                 className="hover:text-primary-600"
               >
-                Для собак
+                Собак
               </Link>
               <span className="text-gray-300">/</span>
             </>
@@ -453,7 +454,7 @@ function ProductDetail() {
                 to={buildShopLink({ animal: 'cat' })}
                 className="hover:text-primary-600"
               >
-                Для кошек
+                Кошек
               </Link>
               <span className="text-gray-300">/</span>
             </>
@@ -512,6 +513,17 @@ function ProductDetail() {
                     }}
                   />
                   
+                  {/* Кнопка «В избранное» на фото товара */}
+                  <div className="absolute top-3 right-3 z-10">
+                    <FavoriteButton
+                      itemId={product.id}
+                      type="product"
+                      size="md"
+                      showBackground={true}
+                      className="shadow-lg"
+                    />
+                  </div>
+                  
                   {/* Стрелки навигации */}
                   {imageUrls.length > 1 && (
                     <>
@@ -554,49 +566,6 @@ function ProductDetail() {
               )
             })()}
           </div>
-          
-          {/* Миниатюры */}
-          {(() => {
-            const imageUrls = []
-            if (product.image_url) imageUrls.push(product.image_url)
-            if (product.images && product.images.length > 0) {
-              product.images.forEach(img => {
-                const url = getImageUrl(img)
-                if (url && !imageUrls.includes(url)) imageUrls.push(url)
-              })
-            }
-            
-            if (imageUrls.length === 0) {
-              imageUrls.push(getPlaceholderImage())
-            }
-            
-            if (imageUrls.length <= 1) return null
-            
-            return (
-              <div className="grid grid-cols-5 gap-2">
-                {imageUrls.slice(0, 5).map((url, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => setSelectedImageIndex(idx)}
-                    className={`aspect-square bg-gray-100 rounded-xl overflow-hidden border-2 transition-all ${
-                      idx === selectedImageIndex 
-                        ? 'border-primary-500 ring-2 ring-primary-200' 
-                        : 'border-transparent hover:border-gray-300'
-                    }`}
-                  >
-                    <img 
-                      src={url} 
-                      alt={`${product.name} ${idx + 1}`}
-                      className="w-full h-full object-contain p-1"
-                      onError={(e) => {
-                        e.target.style.display = 'none'
-                      }}
-                    />
-                  </button>
-                ))}
-              </div>
-            )
-          })()}
         </div>
         
         {/* Информация о товаре */}
@@ -606,10 +575,10 @@ function ProductDetail() {
             <div className="flex flex-wrap items-center gap-2">
               <span className="px-3 py-1 bg-primary-100 text-primary-700 text-xs font-medium rounded-full">
                 {product.animal_type === 'dog'
-                  ? 'Для собак'
+                  ? 'Собак'
                   : product.animal_type === 'cat'
-                    ? 'Для кошек'
-                    : 'Для всех'}
+                    ? 'Кошек'
+                    : 'Все'}
               </span>
               {product.category?.name && (
                 <span className="px-3 py-1 bg-gray-100 text-gray-700 text-xs font-medium rounded-full">
@@ -915,8 +884,9 @@ function ProductDetail() {
         </div>
       </div>
 
-      {/* Детали товара (вкладки) */}
-      <div className="mt-10">
+      {/* Два окна: слева — состав/характеристики, справа — отзывы */}
+      <div className="mt-10 grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Левое окно: состав и характеристики */}
         <div className="bg-white rounded-2xl border border-gray-100 p-5">
           <div className="flex flex-wrap gap-2 mb-4">
             {detailsTabs.map(tab => (
@@ -980,11 +950,9 @@ function ProductDetail() {
             </div>
           )}
         </div>
-      </div>
-      
-      {/* Секция отзывов */}
-      <div className="mt-10">
-        <div className="bg-white rounded-2xl border border-gray-100 p-5">
+
+        {/* Правое окно: отзывы */}
+        <div id="reviews" className="bg-white rounded-2xl border border-gray-100 p-5">
           <ReviewsSection
             type="product"
             itemId={product.id}

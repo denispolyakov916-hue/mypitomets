@@ -140,6 +140,13 @@ const platformFeatures = [
     color: 'emerald'
   },
   {
+    icon: '🐾',
+    title: 'Подбор питомца для вас',
+    description: 'Поможем выбрать идеального питомца по образу жизни, жилищу и предпочтениям — собака, кошка или другой друг.',
+    link: '/coming-soon?name=Подбор+питомца+для+вас',
+    color: 'indigo'
+  },
+  {
     icon: '🛒',
     title: 'Магазин с экспертизой',
     description: 'Только проверенные товары. Каждый продукт содержит полную информацию о составе и подходящих питомцах.',
@@ -255,6 +262,7 @@ const FeatureCard = ({ feature, index }) => {
     purple: 'from-primary-500 to-primary-600 bg-primary-50 border-primary-200',
     rose: 'from-rose-500 to-rose-600 bg-rose-50 border-rose-200',
     emerald: 'from-emerald-500 to-emerald-600 bg-emerald-50 border-emerald-200',
+    indigo: 'from-indigo-500 to-indigo-600 bg-indigo-50 border-indigo-200',
     amber: 'from-secondary-500 to-secondary-600 bg-secondary-50 border-secondary-200',
     sky: 'from-sky-500 to-sky-600 bg-sky-50 border-sky-200',
     violet: 'from-primary-500 to-primary-600 bg-primary-50 border-primary-200'

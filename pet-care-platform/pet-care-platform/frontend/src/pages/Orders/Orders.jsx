@@ -8,7 +8,7 @@
 
 import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { PawPrint, Lock, ShoppingCart, Search, ChevronRight, LogOut } from 'lucide-react'
+import { PawPrint, Lock, ShoppingCart, Search, ChevronRight } from 'lucide-react'
 import { createPayment } from '../../api/payments'
 import { getProfile } from '../../api/auth'
 import { PageLoader } from '../../components/Loader'
@@ -18,8 +18,6 @@ import { EmptyState } from '../../components/ui/EmptyState'
 import { useOrders } from '../../hooks/useOrders'
 import OrderTimer from '../../components/OrderTimer'
 import { formatPrice } from '../../utils/format'
-import { useAuthStore } from '../../store/authStore'
-
 /**
  * Формат даты: «18 февраля 2026 г. в 22:44»
  */
@@ -115,9 +113,9 @@ function PawBackground() {
 }
 
 /**
- * Левая колонка: карточка выбранного питомца / «Все заказы» + кнопки смены + Выйти
+ * Левая колонка: карточка выбранного питомца / «Все заказы» + кнопки смены
  */
-function OrdersSidebar({ profile, selectedPetId, onSelectPet, onLogout }) {
+function OrdersSidebar({ profile, selectedPetId, onSelectPet }) {
   const user = profile?.user || {}
   const pets = profile?.pets || []
   const isAllOrders = selectedPetId === null
@@ -171,16 +169,6 @@ function OrdersSidebar({ profile, selectedPetId, onSelectPet, onLogout }) {
           </div>
         </div>
       </Card>
-
-      <Button
-        variant="ghost"
-        size="sm"
-        className="w-full justify-start text-gray-600 hover:text-gray-800"
-        leftIcon={<LogOut className="w-4 h-4" />}
-        onClick={onLogout}
-      >
-        Выйти
-      </Button>
     </aside>
   )
 }
@@ -355,7 +343,6 @@ function OrderCard({ order, onOrderExpired, onRepeat, onTrack, collapsed, onTogg
  */
 function Orders() {
   const navigate = useNavigate()
-  const logout = useAuthStore(s => s.logout)
   const { orders, isLoading, error, refetch, handleOrderExpired } = useOrders()
   const [profile, setProfile] = useState(null)
   const [collapsedIds, setCollapsedIds] = useState(new Set())
@@ -370,11 +357,6 @@ function Orders() {
             (item) => item?.pet && String(item.pet.id) === String(selectedPetId)
           )
         )
-
-  const handleLogout = () => {
-    logout()
-    navigate('/')
-  }
 
   useEffect(() => {
     getProfile().then(setProfile).catch(() => setProfile(null))
@@ -418,7 +400,7 @@ function Orders() {
       <PawBackground />
       <div className="page-container py-8">
         <div className="flex flex-col lg:flex-row gap-8">
-          <OrdersSidebar profile={profile} selectedPetId={selectedPetId} onSelectPet={setSelectedPetId} onLogout={handleLogout} />
+          <OrdersSidebar profile={profile} selectedPetId={selectedPetId} onSelectPet={setSelectedPetId} />
 
           <main className="flex-1 min-w-0">
             {/* Карточка «Обзор заказов» */}

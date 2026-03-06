@@ -18,13 +18,19 @@ from rest_framework.decorators import action, api_view, permission_classes
 from apps.payments.models import Payment
 from apps.training.models import UserCourse
 
-from .models import Product, ProductSKU, Cart, CartItem, Order, OrderItem, Address, Reservation
+from .models import (
+    Product, ProductSKU, Cart, CartItem, Order, OrderItem, Address, Reservation,
+    ShareableWishlist, ShareableWishlistItem,
+)
 from .serializers import (
     CartItemAddSerializer,
     CartItemUpdateSerializer,
     CartItemSerializer,
     OrderCreateSerializer,
-    UnifiedOrderSerializer
+    UnifiedOrderSerializer,
+    ShareableWishlistSerializer,
+    ShareableWishlistAddSerializer,
+    SharedWishlistPublicSerializer,
 )
 from .services import (
     ReservationService, process_expired_orders,
@@ -2690,6 +2696,117 @@ class ReturnDetailView(APIView):
                 {'error': 'Возврат не найден'},
                 status=status.HTTP_404_NOT_FOUND
             )
+
+
+# =============================================================================
+# ВИШЛИСТ (ПОДАРОЧНЫЙ СПИСОК ДЛЯ ШАРИНГА)
+# =============================================================================
+
+class ShareableWishlistView(APIView):
+    """
+    Вишлист пользователя: список товаров, которыми можно поделиться по ссылке.
+
+    GET    /api/shop/wishlist/           — получить свой вишлист (создаётся при первом запросе)
+    POST   /api/shop/wishlist/           — добавить товар (body: product_id)
+    DELETE /api/shop/wishlist/?product_id= — удалить товар
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        wishlist, _ = ShareableWishlist.objects.get_or_create(
+            user=request.user,
+            defaults={'name': 'Мой вишлист'}
+        )
+        wishlist = ShareableWishlist.objects.prefetch_related(
+            'items__product'
+        ).get(pk=wishlist.pk)
+        serializer = ShareableWishlistSerializer(wishlist, context={'request': request})
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def post(self, request):
+        serializer = ShareableWishlistAddSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(
+                {'errors': serializer.errors},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        product_id = serializer.validated_data['product_id']
+        wishlist, _ = ShareableWishlist.objects.get_or_create(
+            user=request.user,
+            defaults={'name': 'Мой вишлист'}
+        )
+        from .models import ShareableWishlistItem
+        item, created = ShareableWishlistItem.objects.get_or_create(
+            wishlist=wishlist,
+            product_id=product_id
+        )
+        if not created:
+            return Response(
+                {'message': 'Товар уже в вишлисте', 'data': ShareableWishlistSerializer(
+                    ShareableWishlist.objects.prefetch_related('items__product').get(pk=wishlist.pk),
+                    context={'request': request}
+                ).data},
+                status=status.HTTP_200_OK
+            )
+        wishlist = ShareableWishlist.objects.prefetch_related('items__product').get(pk=wishlist.pk)
+        return Response(
+            {'message': 'Добавлено в вишлист', 'data': ShareableWishlistSerializer(wishlist, context={'request': request}).data},
+            status=status.HTTP_201_CREATED
+        )
+
+    def delete(self, request):
+        product_id = request.query_params.get('product_id')
+        if not product_id:
+            return Response(
+                {'error': 'Укажите product_id'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        try:
+            product_id = int(product_id)
+        except ValueError:
+            return Response(
+                {'error': 'Некорректный product_id'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        from .models import ShareableWishlistItem
+        deleted, _ = ShareableWishlistItem.objects.filter(
+            wishlist__user=request.user,
+            product_id=product_id
+        ).delete()
+        if not deleted:
+            return Response(
+                {'error': 'Товар не найден в вишлисте'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        wishlist = ShareableWishlist.objects.prefetch_related('items__product').get(user=request.user)
+        return Response(
+            {'message': 'Удалено из вишлиста', 'data': ShareableWishlistSerializer(wishlist, context={'request': request}).data},
+            status=status.HTTP_200_OK
+        )
+
+
+class SharedWishlistByTokenView(APIView):
+    """
+    Публичный просмотр вишлиста по токену (для тех, кому скинули ссылку).
+
+    GET /api/shop/wishlist/shared/<token>/
+    """
+
+    permission_classes = [AllowAny]
+
+    def get(self, request, token):
+        try:
+            wishlist = ShareableWishlist.objects.prefetch_related(
+                'items__product'
+            ).select_related('user').get(share_token=token)
+        except ShareableWishlist.DoesNotExist:
+            return Response(
+                {'error': 'Вишлист не найден или ссылка устарела'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        serializer = SharedWishlistPublicSerializer(wishlist)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 # =============================================================================

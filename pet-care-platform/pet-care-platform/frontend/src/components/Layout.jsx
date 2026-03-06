@@ -13,10 +13,20 @@
  */
 
 import { useLocation } from 'react-router-dom'
+import { motion, AnimatePresence } from 'framer-motion'
 import Navbar from './Navbar'
 import Footer from './Footer'
+import PuffSupportWidget from './PuffSupportWidget'
 import { ToastContainer } from './Toast'
 import { useToastStore } from '../store/toastStore'
+
+/** Единые параметры анимации переключения страниц */
+const pageTransition = {
+  initial: { opacity: 0, y: 14 },
+  animate: { opacity: 1, y: 0 },
+  exit: { opacity: 0, y: -10 },
+  transition: { duration: 0.28, ease: [0.25, 0.46, 0.45, 0.94] },
+}
 
 /**
  * Компонент Layout, оборачивающий все страницы
@@ -43,9 +53,20 @@ function Layout({ children }) {
       {/* Навигационная шапка */}
       <Navbar />
 
-      {/* Основная область контента */}
+      {/* Основная область контента с плавной сменой страниц */}
       <main id="main-content" className="flex-1 pt-[88px] md:pt-[96px]" tabIndex={-1}>
-        {children}
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={pathname}
+            initial={pageTransition.initial}
+            animate={pageTransition.animate}
+            exit={pageTransition.exit}
+            transition={pageTransition.transition}
+            className="min-h-[50vh]"
+          >
+            {children}
+          </motion.div>
+        </AnimatePresence>
       </main>
 
       {/* Toast уведомления */}
@@ -53,6 +74,9 @@ function Layout({ children }) {
 
       {/* Подвал — на главной не показываем, т.к. футер уже есть в лендинге (iframe) */}
       {!isLanding && <Footer />}
+
+      {/* Виджет-помощник «Чат с Пуфом» — на всех страницах кроме главной (на главной виджет уже в лендинге iframe) */}
+      {!isLanding && <PuffSupportWidget />}
     </div>
   )
 }

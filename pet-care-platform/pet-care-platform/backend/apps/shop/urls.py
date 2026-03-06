@@ -62,6 +62,8 @@ from .views import (
     ReturnCreateView,
     ReturnListView,
     ReturnDetailView,
+    ShareableWishlistView,
+    SharedWishlistByTokenView,
     # Analytics
     AnalyticMetricsViewSet,
     ChartConstructorViewSet,
@@ -197,6 +199,12 @@ urlpatterns = [
 
     # GET /api/shop/returns/{return_id}/ - детали возврата
     path('returns/<str:return_id>/', ReturnDetailView.as_view(), name='return-detail'),
+
+    # Вишлист (подарочный список для шаринга)
+    # GET, POST, DELETE /api/shop/wishlist/
+    path('wishlist/', ShareableWishlistView.as_view(), name='shareable-wishlist'),
+    # GET /api/shop/wishlist/shared/<token>/ — публичный просмотр по ссылке
+    path('wishlist/shared/<str:token>/', SharedWishlistByTokenView.as_view(), name='shared-wishlist'),
 
     # Аналитика и конструктор графиков
     # GET /api/shop/analytics/metrics/ - метрики

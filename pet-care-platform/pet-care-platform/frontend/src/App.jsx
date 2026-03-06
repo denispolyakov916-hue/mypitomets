@@ -62,6 +62,7 @@ import CourseDetail from './pages/Training/CourseDetail'
 import Payment from './pages/Payment/Payment'
 import Profile from './pages/Dashboard/Profile'
 import Favorites from './pages/Favorites'
+import SharedWishlistPage from './pages/Wishlist/SharedWishlistPage'
 
 // Ленивая загрузка некритичных страниц (улучшает время первой загрузки)
 const UnifiedCheckout = lazy(() => import('./pages/Checkout/UnifiedCheckout'))
@@ -153,6 +154,9 @@ function App() {
               <Route path="/shop" element={<Shop />} />
               <Route path="/shop/products/:id" element={<ProductDetail />} />
 
+              {/* Вишлист по ссылке — публичный (без авторизации) */}
+              <Route path="/wishlist/shared/:token" element={<SharedWishlistPage />} />
+
               {/* Породы - Публичный */}
               <Route
                 path="/breeds"
@@ -238,6 +242,9 @@ function App() {
 
                 {/* Избранное */}
                 <Route path="/favorites" element={<Favorites />} />
+
+                {/* Вишлист — тот же раздел «Избранное», переключение через таб без смены страницы */}
+                <Route path="/wishlist" element={<Navigate to="/favorites?view=wishlist" replace />} />
 
                 {/* Единый Checkout - Защищённый (ленивая загрузка) */}
                 <Route

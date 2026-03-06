@@ -11,12 +11,11 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { PawPrint, Bell, ShoppingBag, UtensilsCrossed, Phone, Mail, ChevronRight, ShoppingCart, GraduationCap, LogOut, Pencil } from 'lucide-react'
+import { PawPrint, Phone, Mail, ChevronRight, Package, LogOut, Pencil, CreditCard } from 'lucide-react'
 import { getProfile, updateProfile } from '../../api/auth'
 import { getUserCourses } from '../../api/courses'
 import { getReturns } from '../../api/shop'
 import { useAuthStore } from '../../store/authStore'
-import { useCartStore } from '../../store/cartStore'
 import PetCard from '../../components/PetCard'
 import { PageLoader } from '../../components/Loader'
 import { Progress } from '../../components/ui/Progress'
@@ -24,7 +23,6 @@ import { Card } from '../../components/ui/Card'
 import { Button } from '../../components/ui/Button'
 import { Badge } from '../../components/ui/Badge'
 import RemindersWidget from '../../components/RemindersWidget'
-import FeedingPlanPreview from '../../components/Shop/FeedingPlanPreview'
 
 /**
  * Форматирование даты в русскую локаль
@@ -85,8 +83,6 @@ function Profile() {
   const [activeTab, setActiveTab] = useState(() =>
     (tabFromUrl === 'courses' || tabFromUrl === 'orders' || tabFromUrl === 'returns') ? tabFromUrl : 'profile'
   )
-  const cartCount = useCartStore(s => s.itemsCount) ?? 0
-
   // Синхронизация вкладки с URL при переходе по ссылке с ?tab=
   useEffect(() => {
     if (tabFromUrl === 'courses' || tabFromUrl === 'orders' || tabFromUrl === 'returns') {
@@ -103,7 +99,6 @@ function Profile() {
   const [isSaving, setIsSaving] = useState(false)
   const [hasChanges, setHasChanges] = useState(false)
   const [isEditingProfile, setIsEditingProfile] = useState(false)
-  const [selectedPetId, setSelectedPetId] = useState(null)
   const [isDetailsMenuOpen, setIsDetailsMenuOpen] = useState(false)
   const [ordersPetFilterId, setOrdersPetFilterId] = useState(null)
   const detailsMenuRef = useRef(null)
@@ -264,7 +259,7 @@ function Profile() {
    * Загрузка курсов при переключении на вкладку курсов или изменении фильтра
    */
   useEffect(() => {
-    if (activeTab === 'courses' && profile) {
+    if ((activeTab === 'courses' || activeTab === 'profile') && profile) {
       fetchCourses()
     }
   }, [activeTab, selectedPetFilter, profile])
@@ -320,7 +315,7 @@ function Profile() {
     )
   }
   
-  let userFromProfile, pets, orders, user, petsList, ordersList, latestOrders, defaultPetId, activePetId, activePet, missingFields, remindersCount
+  let userFromProfile, pets, orders, user, petsList, ordersList, latestOrders, defaultPetId, missingFields, remindersCount
   try {
     userFromProfile = profile?.user
     pets = profile?.pets
@@ -332,8 +327,6 @@ function Profile() {
       .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0))
       .slice(0, 3)
     defaultPetId = petsList[0]?.id || null
-    activePetId = selectedPetId || defaultPetId
-    activePet = petsList.find(p => p && p.id === activePetId) || petsList[0]
     const requiredFields = ['first_name', 'phone', 'default_address']
     missingFields = requiredFields.filter((field) => !editForm?.[field])
     remindersCount = 0
@@ -373,55 +366,27 @@ function Profile() {
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200/80 p-5">
           <h2 className="text-xl font-bold text-gray-900">Личный кабинет</h2>
           <p className="text-sm text-gray-600 mt-1">{user.email}</p>
+          {/* Способ оплаты */}
+          <div className="mt-4 pt-4 border-t border-gray-100">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 min-w-0">
+                <CreditCard className="w-5 h-5 flex-shrink-0 text-gray-500" />
+                <span className="text-sm font-medium text-gray-700">Способ оплаты</span>
+              </div>
+              <Link
+                to="/settings"
+                className="text-sm text-primary-600 hover:text-primary-700 font-medium whitespace-nowrap"
+              >
+                {profile?.user?.default_payment_method ? 'Изменить' : 'Настроить'}
+              </Link>
+            </div>
+            <p className="text-sm text-gray-500 mt-1 truncate">
+              {profile?.user?.default_payment_method || 'Не указан'}
+            </p>
+          </div>
         </div>
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-200/80 p-4 space-y-1">
-          <Link
-            to="/pet-id"
-            className="flex items-center gap-3 py-2.5 px-3 rounded-xl text-left text-gray-700 hover:bg-gray-50 transition-colors"
-          >
-            <PawPrint className="w-5 h-5 flex-shrink-0 text-gray-600" />
-            <span className="flex-1 font-medium">Мои питомцы</span>
-            {petsList.length > 0 && (
-              <span className="bg-secondary-100 text-secondary-800 text-xs font-medium px-2 py-0.5 rounded-full">{petsList.length}</span>
-            )}
-            <ChevronRight className="w-4 h-4 flex-shrink-0 text-gray-400" />
-          </Link>
-          <Link
-            to="/reminders"
-            className="flex items-center gap-3 py-2.5 px-3 rounded-xl text-left text-gray-700 hover:bg-gray-50 transition-colors"
-          >
-            <Bell className="w-5 h-5 flex-shrink-0 text-gray-600" />
-            <span className="flex-1 font-medium">Напоминания</span>
-            {remindersCount > 0 && (
-              <span className="bg-secondary-100 text-secondary-800 text-xs font-medium px-2 py-0.5 rounded-full">{remindersCount}</span>
-            )}
-            <ChevronRight className="w-4 h-4 flex-shrink-0 text-gray-400" />
-          </Link>
-          <Link
-            to="/shop"
-            className="flex items-center gap-3 py-2.5 px-3 rounded-xl text-left text-gray-700 hover:bg-gray-50 transition-colors"
-          >
-            <ShoppingBag className="w-5 h-5 flex-shrink-0 text-gray-600" />
-            <span className="flex-1 font-medium">Товары под питомцев</span>
-            <ChevronRight className="w-4 h-4 flex-shrink-0 text-gray-400" />
-          </Link>
-          <Link
-            to={activePet ? `/food-recommendation?pet_id=${activePet.id}` : '/food-recommendation'}
-            className="flex items-center gap-3 py-2.5 px-3 rounded-xl text-left text-gray-700 hover:bg-gray-50 transition-colors"
-          >
-            <UtensilsCrossed className="w-5 h-5 flex-shrink-0 text-gray-600" />
-            <span className="flex-1 font-medium">Подбор корма</span>
-            <ChevronRight className="w-4 h-4 flex-shrink-0 text-gray-400" />
-          </Link>
-          <Link
-            to="/profile?tab=courses"
-            className="flex items-center gap-3 py-2.5 px-3 rounded-xl text-left text-gray-700 hover:bg-gray-50 transition-colors"
-          >
-            <GraduationCap className="w-5 h-5 flex-shrink-0 text-gray-600" />
-            <span className="flex-1 font-medium">Курсы</span>
-            <ChevronRight className="w-4 h-4 flex-shrink-0 text-gray-400" />
-          </Link>
-        </div>
+        {/* Напоминания — между Личный кабинет и Поддержка */}
+        <RemindersWidget limit={3} />
         <div className="bg-amber-50/80 rounded-2xl shadow-sm border border-amber-200/60 p-4">
           <div className="flex items-center gap-2 mb-2">
             <Phone className="w-5 h-5 text-amber-600" />
@@ -455,26 +420,23 @@ function Profile() {
             </div>
             <div className="flex flex-wrap items-center gap-3">
               <Link
-                to="/shop"
-                className="inline-flex items-center gap-2 bg-secondary-400 hover:bg-secondary-500 text-white font-medium py-2.5 px-4 rounded-full shadow-sm transition-colors"
+                to="/orders"
+                className="inline-flex items-center gap-2 text-sm font-medium bg-secondary-400 hover:bg-secondary-500 text-white py-2.5 px-4 rounded-full shadow-sm transition-colors"
               >
-                В магазин →
+                <Package className="w-5 h-5" aria-hidden />
+                Заказы
                 <ChevronRight className="w-4 h-4" aria-hidden />
               </Link>
-              <Link to="/cart" className="inline-flex items-center gap-2 text-gray-700 hover:text-gray-900 font-medium py-2.5 px-4 rounded-xl border border-gray-200 hover:border-gray-300 bg-white transition-colors">
-                <ShoppingCart className="w-5 h-5" />
-                Корзина
-                {cartCount > 0 && (
-                  <span className="bg-gray-200 text-gray-700 text-xs font-medium px-2 py-0.5 rounded-full">{cartCount}</span>
-                )}
-              </Link>
-              <Link to="/pet-id" className="inline-flex items-center gap-2 text-gray-700 hover:text-gray-900 font-medium py-2.5 px-4 rounded-xl border border-gray-200 hover:border-gray-300 bg-white transition-colors">
+              <Link
+                to="/pet-id"
+                className="inline-flex items-center gap-2 text-sm font-medium text-gray-700 hover:text-gray-900 py-2.5 px-4 rounded-full border border-gray-200 hover:border-gray-300 bg-white transition-colors"
+              >
                 <PawPrint className="w-5 h-5" />
                 Питомцы
               </Link>
               <Link
                 to="/settings"
-                className="inline-flex items-center gap-2 font-semibold text-white bg-primary-600 hover:bg-primary-700 py-2.5 px-4 rounded-full text-sm transition-colors"
+                className="inline-flex items-center gap-2 text-sm font-semibold text-white bg-primary-600 hover:bg-primary-700 py-2.5 px-4 rounded-full transition-colors"
               >
                 <Pencil className="w-4 h-4" aria-hidden />
                 Редактировать
@@ -482,7 +444,7 @@ function Profile() {
               <button
                 type="button"
                 onClick={async () => { await logout(); navigate('/'); }}
-                className="inline-flex items-center gap-2 font-semibold text-primary-800 bg-accent-400 hover:brightness-110 py-2.5 px-4 rounded-full text-sm transition-colors"
+                className="inline-flex items-center gap-2 text-sm font-semibold text-primary-800 bg-accent-400 hover:brightness-110 py-2.5 px-4 rounded-full transition-colors"
               >
                 <LogOut className="w-4 h-4" aria-hidden />
                 Выйти
@@ -494,215 +456,245 @@ function Profile() {
         {/* Контент: две колонки */}
         <div className="flex-1 min-w-0 min-h-[400px] w-full overflow-visible">
           {activeTab === 'profile' && (
-            <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,380px)_1fr] gap-6 lg:gap-8 overflow-visible">
-            {/* Левая колонка: Мои питомцы + Напоминания */}
-            <div className="flex flex-col gap-6">
-              <div className="bg-white rounded-2xl shadow-sm border border-gray-200/80 p-5">
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-lg font-semibold text-gray-900">Мои питомцы</h2>
-                  <Link to="/pet-id" className="text-sm text-primary-600 hover:text-primary-700 font-medium">
+            <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,360px)_1fr] gap-6 lg:gap-8 overflow-visible items-stretch">
+            {/* Первая строка: Мои питомцы и Последние заказы — одна высота */}
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-200/80 p-5 min-h-0 flex flex-col">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-gray-900">Мои питомцы</h2>
+                <Link to="/pet-id" className="text-sm text-primary-600 hover:text-primary-700 font-medium">
+                  Все →
+                </Link>
+              </div>
+              {petsList.length === 0 ? (
+                <div className="text-center py-6 flex-1 flex flex-col justify-center">
+                  <div className="text-4xl mb-2">🐾</div>
+                  <p className="text-gray-600 mb-4">Добавьте первого питомца</p>
+                  <Link to="/pet-id" className="inline-flex items-center gap-2 bg-secondary-400 hover:bg-secondary-500 text-white font-medium py-2.5 px-4 rounded-full">
+                    Создать профиль
+                  </Link>
+                </div>
+              ) : (
+                <div className="space-y-3 flex-1 min-h-0">
+                  {petsList.slice(0, 3).map(pet => {
+                    const petEmoji = pet.species === 'dog' ? '🐕' : pet.species === 'cat' ? '🐱' : '🐾'
+                    return (
+                      <Link
+                        key={pet.id}
+                        to={`/pet-id/${pet.id}`}
+                        className="flex items-center justify-between p-3 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors group"
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <span className="text-2xl">{petEmoji}</span>
+                          <div className="min-w-0">
+                            <p className="font-medium text-gray-900 truncate">{pet.name}</p>
+                            <p className="text-xs text-gray-500 truncate">
+                              {pet.breed_name || pet.breed || 'Порода не указана'}
+                            </p>
+                          </div>
+                        </div>
+                        <span className="inline-flex items-center gap-1 text-sm font-medium text-white bg-secondary-400 hover:bg-secondary-500 px-3 py-1.5 rounded-full transition-colors">
+                          Открыть →
+                        </span>
+                      </Link>
+                    )
+                  })}
+                  <Link
+                    to="/pet-id"
+                    className="flex items-center justify-center gap-2 py-2.5 text-sm font-medium text-gray-600 hover:text-gray-900 border border-dashed border-gray-300 rounded-xl"
+                  >
+                    + Добавить питомца
+                  </Link>
+                </div>
+              )}
+            </div>
+
+            {/* Последние заказы — в одной строке с «Мои питомцы», высота совпадает */}
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-200/80 p-5 relative min-h-0 flex flex-col" ref={detailsMenuRef}>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-900">Последние заказы</h3>
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setIsDetailsMenuOpen(prev => !prev)}
+                    className="text-sm font-medium text-primary-600 hover:text-primary-700 py-1.5 px-3 rounded-lg hover:bg-primary-50"
+                  >
+                    Подробнее
+                  </button>
+                  {isDetailsMenuOpen && (
+                    <div className="absolute right-0 top-full mt-1 w-48 py-1 bg-white rounded-xl shadow-lg border border-gray-200 z-50">
+                      <button
+                        type="button"
+                        onClick={() => { setActiveTab('profile'); setIsDetailsMenuOpen(false) }}
+                        className={`block w-full text-left px-4 py-2 text-sm ${activeTab === 'profile' ? 'bg-violet-100 text-violet-800 font-medium' : 'text-gray-700 hover:bg-gray-50'}`}
+                      >
+                        Главная
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setIsDetailsMenuOpen(false); navigate('/orders') }}
+                        className={`block w-full text-left px-4 py-2 text-sm ${activeTab === 'orders' ? 'bg-violet-100 text-violet-800 font-medium' : 'text-gray-700 hover:bg-gray-50'}`}
+                      >
+                        Заказы
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setActiveTab('returns'); setIsDetailsMenuOpen(false) }}
+                        className={`block w-full text-left px-4 py-2 text-sm ${activeTab === 'returns' ? 'bg-violet-100 text-violet-800 font-medium' : 'text-gray-700 hover:bg-gray-50'}`}
+                      >
+                        Возвраты
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+              {ordersList.length === 0 ? (
+                <div className="text-center py-6 flex-1 flex flex-col justify-center">
+                  <div className="text-4xl mb-2">📦</div>
+                  <p className="text-gray-600 mb-4">Пока нет заказов</p>
+                  <Link to="/shop" className="inline-flex items-center gap-2 bg-secondary-400 hover:bg-secondary-500 text-white font-medium py-2.5 px-4 rounded-full">
+                    Перейти в магазин
+                  </Link>
+                </div>
+              ) : (
+                <>
+                  <div className="flex flex-wrap gap-2 mb-3">
+                    <button
+                      type="button"
+                      onClick={() => setOrdersPetFilterId(null)}
+                      className={`px-3 py-1.5 rounded-full text-sm font-medium ${!ordersPetFilterId ? 'bg-violet-100 text-violet-800' : 'text-gray-600 hover:bg-gray-100 border border-transparent hover:border-gray-200'}`}
+                    >
+                      Все
+                    </button>
+                    {petsList.slice(0, 4).map(pet => (
+                      <button
+                        key={pet.id}
+                        type="button"
+                        onClick={() => setOrdersPetFilterId(pet.id)}
+                        className={`px-3 py-1.5 rounded-full text-sm font-medium ${ordersPetFilterId === pet.id ? 'bg-violet-100 text-violet-800' : 'text-gray-600 hover:bg-gray-100 border border-transparent hover:border-gray-200'}`}
+                      >
+                        {pet.name}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="space-y-3 flex-1 min-h-0 overflow-auto">
+                    {ordersFilteredByPet.length === 0 && ordersPetFilterId ? (
+                      <p className="text-sm text-gray-500 py-4 text-center">
+                        Нет заказов для выбранного питомца
+                      </p>
+                    ) : (
+                      ordersFilteredByPet.map(order => {
+                        const status = statusLabels[order.status] || statusLabels.pending
+                        return (
+                          <div
+                            key={order.id}
+                            className="flex items-start justify-between gap-3 p-3 bg-gray-50 rounded-xl"
+                          >
+                            <div>
+                              <p className="text-sm font-medium text-gray-900">
+                                Заказ #{order.id.slice(0, 8).toUpperCase()}
+                              </p>
+                              <p className="text-xs text-gray-500">{formatDate(order.created_at)}</p>
+                            </div>
+                            <div className="text-right flex flex-col items-end gap-1">
+                              <span className={`px-2 py-0.5 text-xs rounded-full ${status.class}`}>
+                                {status.label}
+                              </span>
+                              <p className="text-sm font-semibold text-gray-900">
+                                {formatPrice(order.total_amount)}
+                              </p>
+                              <Link
+                                to={`/orders/${order.id}`}
+                                className="text-xs text-primary-600 hover:text-primary-700"
+                              >
+                                Подробнее →
+                              </Link>
+                            </div>
+                          </div>
+                        )
+                      })
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Вторая строка: Курсы на всю ширину */}
+            <Card className="p-6 flex flex-col lg:col-span-2">
+                <div className="flex items-center justify-between mb-4 flex-shrink-0">
+                  <h3 className="text-lg font-semibold text-gray-900">🎓 Курсы</h3>
+                  <Link
+                    to="/profile?tab=courses"
+                    className="text-sm text-primary-600 hover:text-primary-700 font-medium"
+                  >
                     Все →
                   </Link>
                 </div>
-                {petsList.length === 0 ? (
-                  <div className="text-center py-6">
-                    <div className="text-4xl mb-2">🐾</div>
-                    <p className="text-gray-600 mb-4">Добавьте первого питомца</p>
-                    <Link to="/pet-id" className="inline-flex items-center gap-2 bg-secondary-400 hover:bg-secondary-500 text-white font-medium py-2.5 px-4 rounded-full">
-                      Создать профиль
-                    </Link>
+                <div className="flex-1 min-h-0 flex flex-col">
+                {coursesLoading ? (
+                  <div className="animate-pulse flex-1">
+                    <div className="h-6 bg-gray-200 rounded w-1/3 mb-4" />
+                    <div className="space-y-3">
+                      {[...Array(3)].map((_, i) => (
+                        <div key={i} className="h-16 bg-gray-100 rounded" />
+                      ))}
+                    </div>
                   </div>
-                ) : (
-                  <div className="space-y-3">
-                    {petsList.slice(0, 3).map(pet => {
-                      const petEmoji = pet.species === 'dog' ? '🐕' : pet.species === 'cat' ? '🐱' : '🐾'
-                      return (
-                        <Link
-                          key={pet.id}
-                          to={`/pet-id/${pet.id}`}
-                          className="flex items-center justify-between p-3 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors group"
-                        >
-                          <div className="flex items-center gap-3 min-w-0">
-                            <span className="text-2xl">{petEmoji}</span>
-                            <div className="min-w-0">
-                              <p className="font-medium text-gray-900 truncate">{pet.name}</p>
-                              <p className="text-xs text-gray-500 truncate">
-                                {pet.breed_name || pet.breed || 'Порода не указана'}
-                              </p>
-                            </div>
-                          </div>
-                          <span className="inline-flex items-center gap-1 text-sm font-medium text-white bg-secondary-400 hover:bg-secondary-500 px-3 py-1.5 rounded-full transition-colors">
-                            Открыть →
-                          </span>
-                        </Link>
-                      )
-                    })}
-                    <Link
-                      to="/pet-id"
-                      className="flex items-center justify-center gap-2 py-2.5 text-sm font-medium text-gray-600 hover:text-gray-900 border border-dashed border-gray-300 rounded-xl"
-                    >
-                      + Добавить питомца
-                    </Link>
-                  </div>
-                )}
-              </div>
-
-              {/* Окно напоминаний */}
-              <RemindersWidget limit={3} />
-            </div>
-
-            {/* Правая колонка: Последние заказы, Подбор корма для питомца */}
-            <div className="flex flex-col gap-6 min-w-0">
-              {/* Последние заказы */}
-              <div className="bg-white rounded-2xl shadow-sm border border-gray-200/80 p-5 relative" ref={detailsMenuRef}>
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-semibold text-gray-900">Последние заказы</h3>
-                  <div className="relative">
-                    <button
-                      type="button"
-                      onClick={() => setIsDetailsMenuOpen(prev => !prev)}
-                      className="text-sm font-medium text-primary-600 hover:text-primary-700 py-1.5 px-3 rounded-lg hover:bg-primary-50"
-                    >
-                      Подробнее
-                    </button>
-                    {isDetailsMenuOpen && (
-                      <div className="absolute right-0 top-full mt-1 w-48 py-1 bg-white rounded-xl shadow-lg border border-gray-200 z-50">
-                        <button
-                          type="button"
-                          onClick={() => { setActiveTab('profile'); setIsDetailsMenuOpen(false) }}
-                          className={`block w-full text-left px-4 py-2 text-sm ${activeTab === 'profile' ? 'bg-violet-100 text-violet-800 font-medium' : 'text-gray-700 hover:bg-gray-50'}`}
-                        >
-                          Главная
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => { setIsDetailsMenuOpen(false); navigate('/orders') }}
-                          className={`block w-full text-left px-4 py-2 text-sm ${activeTab === 'orders' ? 'bg-violet-100 text-violet-800 font-medium' : 'text-gray-700 hover:bg-gray-50'}`}
-                        >
-                          Заказы
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => { setActiveTab('returns'); setIsDetailsMenuOpen(false) }}
-                          className={`block w-full text-left px-4 py-2 text-sm ${activeTab === 'returns' ? 'bg-violet-100 text-violet-800 font-medium' : 'text-gray-700 hover:bg-gray-50'}`}
-                        >
-                          Возвраты
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-                {ordersList.length === 0 ? (
-                  <div className="text-center py-6">
-                    <div className="text-4xl mb-2">📦</div>
-                    <p className="text-gray-600 mb-4">Пока нет заказов</p>
-                    <Link to="/shop" className="inline-flex items-center gap-2 bg-secondary-400 hover:bg-secondary-500 text-white font-medium py-2.5 px-4 rounded-full">
-                      Перейти в магазин
+                ) : courses.length === 0 ? (
+                  <div className="text-center py-8 flex-1 flex flex-col justify-center">
+                    <span className="text-4xl block mb-3">📚</span>
+                    <p className="text-gray-600 mb-4">Нет приобретённых курсов</p>
+                    <Link to="/courses">
+                      <Button variant="primary" size="sm" className="inline-flex items-center gap-1">
+                        Смотреть каталог →
+                      </Button>
                     </Link>
                   </div>
                 ) : (
                   <>
-                    <div className="flex flex-wrap gap-2 mb-3">
-                      <button
-                        type="button"
-                        onClick={() => setOrdersPetFilterId(null)}
-                        className={`px-3 py-1.5 rounded-full text-sm font-medium ${!ordersPetFilterId ? 'bg-violet-100 text-violet-800' : 'text-gray-600 hover:bg-gray-100 border border-transparent hover:border-gray-200'}`}
-                      >
-                        Все
-                      </button>
-                      {petsList.slice(0, 4).map(pet => (
-                        <button
-                          key={pet.id}
-                          type="button"
-                          onClick={() => setOrdersPetFilterId(pet.id)}
-                          className={`px-3 py-1.5 rounded-full text-sm font-medium ${ordersPetFilterId === pet.id ? 'bg-violet-100 text-violet-800' : 'text-gray-600 hover:bg-gray-100 border border-transparent hover:border-gray-200'}`}
+                    <div className="space-y-3 flex-1 min-h-0 overflow-auto">
+                      {courses.slice(0, 3).map(item => (
+                        <Link
+                          key={item.course.id}
+                          to={`/courses/${item.course.id}`}
+                          className="flex items-center gap-3 p-3 rounded-lg transition-colors bg-gray-50 hover:bg-gray-100"
                         >
-                          {pet.name}
-                        </button>
+                          <span className="text-2xl flex-shrink-0">
+                            {item.course.pet_type === 'dog' ? '🐕' : item.course.pet_type === 'cat' ? '🐱' : '📚'}
+                          </span>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-gray-900 truncate">{item.course.title}</p>
+                            <div className="flex items-center gap-2 text-sm text-gray-500 mt-0.5">
+                              <span className={item.progress >= 100 ? 'text-green-600 font-medium' : ''}>
+                                {item.progress}%
+                              </span>
+                              {item.pet && (
+                                <>
+                                  <span>•</span>
+                                  <span>🐾 {item.pet.name}</span>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                          <ChevronRight className="w-4 h-4 flex-shrink-0 text-gray-400" />
+                        </Link>
                       ))}
                     </div>
-                    <div className="space-y-3">
-                      {ordersFilteredByPet.length === 0 && ordersPetFilterId ? (
-                        <p className="text-sm text-gray-500 py-4 text-center">
-                          Нет заказов для выбранного питомца
-                        </p>
-                      ) : (
-                        ordersFilteredByPet.map(order => {
-                          const status = statusLabels[order.status] || statusLabels.pending
-                          return (
-                            <div
-                              key={order.id}
-                              className="flex items-start justify-between gap-3 p-3 bg-gray-50 rounded-xl"
-                            >
-                              <div>
-                                <p className="text-sm font-medium text-gray-900">
-                                  Заказ #{order.id.slice(0, 8).toUpperCase()}
-                                </p>
-                                <p className="text-xs text-gray-500">{formatDate(order.created_at)}</p>
-                              </div>
-                              <div className="text-right flex flex-col items-end gap-1">
-                                <span className={`px-2 py-0.5 text-xs rounded-full ${status.class}`}>
-                                  {status.label}
-                                </span>
-                                <p className="text-sm font-semibold text-gray-900">
-                                  {formatPrice(order.total_amount)}
-                                </p>
-                                <Link
-                                  to={`/orders/${order.id}`}
-                                  className="text-xs text-primary-600 hover:text-primary-700"
-                                >
-                                  Подробнее →
-                                </Link>
-                              </div>
-                            </div>
-                          )
-                        })
-                      )}
+                    <div className="mt-4 pt-4 border-t border-gray-100 flex justify-between items-center flex-shrink-0">
+                      <Link to="/courses">
+                        <Button variant="ghost" size="sm">
+                          Каталог курсов
+                        </Button>
+                      </Link>
+                      <Link to="/profile?tab=courses">
+                        <Button variant="secondary" size="sm">
+                          Все курсы
+                        </Button>
+                      </Link>
                     </div>
                   </>
                 )}
-              </div>
-
-              {/* Подбор корма для питомца */}
-              {petsList.length > 0 && (
-                <div>
-                  <div className="bg-white rounded-2xl shadow-sm border border-gray-200/80 p-5">
-                    <div className="flex items-center justify-between mb-3">
-                      <h3 className="text-lg font-semibold text-gray-900">Подбор корма для {activePet?.name || 'питомца'}</h3>
-                      <Link
-                        to={`/food-recommendation?pet_id=${activePet?.id || ''}`}
-                        className="text-sm text-primary-600 hover:text-primary-700 font-medium"
-                      >
-                        Все →
-                      </Link>
-                    </div>
-                    <div className="flex gap-2 overflow-x-auto pb-2">
-                      {petsList.map(pet => (
-                        <button
-                          key={pet.id}
-                          onClick={() => setSelectedPetId(pet.id)}
-                          className={`px-3 py-1.5 rounded-full text-sm whitespace-nowrap border transition-colors ${
-                            pet.id === activePetId
-                              ? 'bg-violet-100 text-violet-800 border-violet-200'
-                              : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
-                          }`}
-                        >
-                          {pet.name || 'Питомец'}
-                        </button>
-                      ))}
-                    </div>
-                    <div className="mt-3">
-                      <FeedingPlanPreview
-                        petId={activePet?.id}
-                        petName={activePet?.name}
-                        limit={4}
-                        withCard={false}
-                      />
-                    </div>
-                  </div>
                 </div>
-              )}
-            </div>
+              </Card>
 
           </div>
         )}

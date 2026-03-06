@@ -21,9 +21,9 @@ const categoryOptions = [
 ]
 
 const petTypeOptions = [
-  { value: 'all', label: 'Для всех' },
-  { value: 'dog', label: 'Для собак' },
-  { value: 'cat', label: 'Для кошек' },
+  { value: 'all', label: 'Все' },
+  { value: 'dog', label: 'Собак' },
+  { value: 'cat', label: 'Кошек' },
 ]
 
 const levelOptions = [

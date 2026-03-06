@@ -149,7 +149,7 @@ const FilterSidebar = memo(function FilterSidebar({
       {/* Животное */}
       <div className="mb-5">
         <label className="block text-sm font-medium text-gray-700 mb-2">
-          Для кого
+          Тип питомца
         </label>
         <div className="space-y-2">
           {availableFilters.animals?.map(opt => (

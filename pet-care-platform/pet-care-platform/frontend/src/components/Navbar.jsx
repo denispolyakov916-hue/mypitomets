@@ -4,11 +4,12 @@
  * Цвета сайта сохранены (primary, accent).
  */
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useAuthStore } from '../store/authStore'
+import { usePets } from '../hooks/usePets'
 import HeaderCounters from './HeaderCounters'
 import {
   ChevronDown,
@@ -24,6 +25,7 @@ import {
   Activity,
   ChevronRight,
   Coins,
+  PawPrint,
 } from 'lucide-react'
 
 const XIcon = () => <X className="w-6 h-6" aria-hidden />
@@ -31,13 +33,6 @@ const XIcon = () => <X className="w-6 h-6" aria-hidden />
 const ChevronDownIcon = ({ className = '' }) => (
   <ChevronDown className={`w-3.5 h-3.5 ${className}`} aria-hidden />
 )
-
-// Одна кнопка без дропдауна
-const navPets = {
-  id: 'pets',
-  label: 'Питомцы',
-  to: '/pet-id',
-}
 
 // Собирательные кнопки с дропдаунами. placeholder: true — заглушка «Скоро», иначе рабочий Link
 const navShop = {
@@ -57,6 +52,7 @@ const navNutrition = {
   sectionTitle: 'СЕРВИСЫ',
   items: [
     { label: 'Подбор корма', to: '/food-recommendation', description: 'рекомендации по корму', icon: UtensilsCrossed },
+    { label: 'Подбор питомца для вас', to: '/coming-soon?name=Подбор+питомца+для+вас', description: 'поможем выбрать питомца', icon: PawPrint },
     { label: 'Подбор курсов', to: '/coming-soon?name=Подбор+курсов', description: 'курсы и обучение', icon: GraduationCap },
     { label: 'Список продуктов', to: '/coming-soon?name=Список+продуктов', description: 'каталог товаров', icon: List },
   ],
@@ -73,7 +69,7 @@ const navHealth = {
   ],
 }
 
-const dropdownNavItems = [navShop, navNutrition, navHealth]
+const staticDropdownNavItems = [navShop, navNutrition, navHealth]
 
 function Navbar() {
   const navigate = useNavigate()
@@ -81,11 +77,44 @@ function Navbar() {
   const isAuthenticated = useAuthStore(s => s.isAuthenticated)
   const user = useAuthStore(s => s.user)
   const logout = useAuthStore(s => s.logout)
+  const { pets } = usePets()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+
+  /** Дропдаун «Питомцы»: «Мои питомцы» + список питомцев пользователя */
+  const navPetsDropdown = useMemo(() => {
+    const items = [
+      { label: 'Мои питомцы', to: '/pet-id', description: 'все питомцы', icon: PawPrint },
+      ...(pets || []).map((p) => ({
+        label: p.name,
+        to: `/pet-id/${p.id}`,
+        description: p.species === 'dog' ? 'Собака' : p.species === 'cat' ? 'Кошка' : 'Питомец',
+        icon: PawPrint,
+      })),
+    ]
+    return { id: 'pets', label: 'Питомцы', sectionTitle: 'ПИТОМЦЫ', items }
+  }, [pets])
+
+  const dropdownNavItems = useMemo(
+    () => [navPetsDropdown, ...staticDropdownNavItems],
+    [navPetsDropdown]
+  )
   const [openDropdownId, setOpenDropdownId] = useState(null)
   const [dropdownPosition, setDropdownPosition] = useState(null)
   const dropdownRef = useRef(null)
   const dropdownPanelRef = useRef(null)
+  const hoverCloseTimeoutRef = useRef(null)
+
+  const clearHoverCloseTimeout = () => {
+    if (hoverCloseTimeoutRef.current) {
+      clearTimeout(hoverCloseTimeoutRef.current)
+      hoverCloseTimeoutRef.current = null
+    }
+  }
+
+  const scheduleHoverClose = () => {
+    clearHoverCloseTimeout()
+    hoverCloseTimeoutRef.current = setTimeout(() => setOpenDropdownId(null), 200)
+  }
 
   const handleLogout = async () => {
     await logout()
@@ -135,6 +164,10 @@ function Navbar() {
   }, [openDropdownId])
 
   useEffect(() => {
+    return () => clearHoverCloseTimeout()
+  }, [])
+
+  useEffect(() => {
     if (!openDropdownId) return
     const handleClickOutside = (e) => {
       const inTrigger = dropdownRef.current && dropdownRef.current.contains(e.target)
@@ -170,32 +203,7 @@ function Navbar() {
           </motion.div>
 
           <nav className="hidden lg:flex items-center flex-1 min-w-0 overflow-visible justify-evenly gap-1">
-            {/* Питомцы — одна ссылка */}
-            <motion.div
-              className="flex justify-center flex-1 min-w-0"
-              whileHover={{ scale: 1.04 }}
-              transition={{ type: 'spring', stiffness: 400, damping: 17 }}
-            >
-              <Link
-                to={navPets.to}
-                className="flex items-center gap-1 font-medium text-sm py-2 px-2.5 rounded-full whitespace-nowrap w-fit text-white hover:opacity-95"
-                aria-current={isLinkActive(navPets.to) ? 'page' : undefined}
-              >
-                <motion.span
-                  className="rounded-full py-2 px-2.5 -m-2 inline-flex items-center"
-                  animate={{
-                    backgroundColor: isLinkActive(navPets.to) ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0)',
-                  }}
-                  transition={{ duration: 0.25 }}
-                  whileHover={{ backgroundColor: 'rgba(255,255,255,0.06)' }}
-                >
-                  {navPets.label}
-                  <ChevronDownIcon className="text-white/70 opacity-80 shrink-0 ml-0.5" />
-                </motion.span>
-              </Link>
-            </motion.div>
-
-            {/* Собирательные кнопки с дропдаунами */}
+            {/* Кнопки с дропдаунами: Питомцы, Магазин, Сервисы, Здоровье */}
             {dropdownNavItems.map((nav) => {
               const isOpen = openDropdownId === nav.id
               const active = isNavItemActive(nav)
@@ -205,6 +213,11 @@ function Navbar() {
                   key={nav.id}
                   ref={isOpen ? dropdownRef : undefined}
                   className="relative flex items-center justify-center flex-1 min-w-0"
+                  onMouseEnter={() => {
+                    clearHoverCloseTimeout()
+                    setOpenDropdownId(nav.id)
+                  }}
+                  onMouseLeave={scheduleHoverClose}
                 >
                   <motion.div
                     className="flex justify-center w-full"
@@ -258,6 +271,8 @@ function Navbar() {
                   top: dropdownPosition.top,
                   left: dropdownPosition.left,
                 }}
+                onMouseEnter={clearHoverCloseTimeout}
+                onMouseLeave={scheduleHoverClose}
               >
                 <motion.div
                   className="rounded-2xl bg-primary-700 border border-white/10 py-3 shadow-xl"
@@ -416,14 +431,6 @@ function Navbar() {
             transition={{ duration: 0.25, ease: [0.25, 0.46, 0.45, 0.94] }}
           >
           <nav className="flex flex-col gap-0.5">
-            <Link
-              to={navPets.to}
-              onClick={() => setMobileMenuOpen(false)}
-              className={`py-3 px-4 rounded-xl font-medium transition-colors ${isLinkActive(navPets.to) ? 'bg-white/15 text-white' : 'text-white/90 hover:bg-white/10'}`}
-              aria-current={isLinkActive(navPets.to) ? 'page' : undefined}
-            >
-              {navPets.label}
-            </Link>
             {dropdownNavItems.map((nav) => (
               <div key={nav.id} className="py-1">
                 <div className="px-4 py-1 text-[10px] uppercase tracking-wider text-white/60">
