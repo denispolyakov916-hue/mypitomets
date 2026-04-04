@@ -64,9 +64,12 @@ function Layout({ children }) {
       <main
         id="main-content"
         className={
-          showMobileCta
-            ? /* CTA + таблетка-иконки + парение */ 'flex-1 pt-0 pb-[calc(10.25rem+env(safe-area-inset-bottom))] md:pt-[88px] md:pb-0 lg:pt-[96px]'
-            : 'flex-1 pt-0 pb-[calc(7rem+env(safe-area-inset-bottom))] md:pt-[88px] md:pb-0 lg:pt-[96px]'
+          isLanding
+            ? /* Главная: iframe сам даёт отступ снизу внутри документа — без пустой полосы вокруг iframe */
+              'flex min-h-0 flex-1 flex-col pt-0 pb-0 md:pt-[88px] md:pb-0 lg:pt-[96px]'
+            : showMobileCta
+              ? 'flex min-h-0 flex-1 flex-col pt-0 pb-[calc(10.25rem+env(safe-area-inset-bottom))] md:pt-[88px] md:pb-0 lg:pt-[96px]'
+              : 'flex min-h-0 flex-1 flex-col pt-0 pb-[calc(7rem+env(safe-area-inset-bottom))] md:pt-[88px] md:pb-0 lg:pt-[96px]'
         }
         tabIndex={-1}
       >
@@ -77,7 +80,7 @@ function Layout({ children }) {
             animate={pageTransition.animate}
             exit={pageTransition.exit}
             transition={pageTransition.transition}
-            className="min-h-[50vh] w-full min-w-0 overflow-x-hidden"
+            className="flex min-h-0 w-full min-w-0 flex-1 flex-col overflow-x-hidden"
           >
             {children}
           </motion.div>

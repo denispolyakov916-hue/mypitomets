@@ -45,7 +45,7 @@ function MobileBottomNav() {
     active ? 'text-[#F0EB93]' : 'text-white/90 hover:text-white'
 
   return (
-    <div className="mobile-bottom-nav md:hidden fixed inset-x-0 z-[50070] flex flex-col items-center pointer-events-none bottom-[calc(1.5rem+env(safe-area-inset-bottom,0px))] px-[4vw]">
+    <div className="mobile-bottom-nav md:hidden fixed inset-x-0 z-[50070] flex w-full min-w-0 flex-col items-center pointer-events-none bg-transparent px-[4vw] bottom-[calc(1.5rem+env(safe-area-inset-bottom,0px))]">
       {showGuestStrip && (
         <div className="pointer-events-auto mb-2 flex w-full max-w-[min(92vw,28rem)] justify-center">
           <Link

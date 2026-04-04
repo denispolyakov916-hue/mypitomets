@@ -1057,6 +1057,12 @@
     html.embed-no-header .floating-cta-btn {
       display: none !important;
     }
+    /* В приложении нижняя навигация снаружи iframe — запас снизу внутри документа, без пустой полосы между iframe и React */
+    @media (max-width: 767px) {
+      html.embed-no-header body {
+        padding-bottom: calc(10.25rem + env(safe-area-inset-bottom, 0px));
+      }
+    }
     main {
       padding-top: 100px;
       padding-bottom: 0;
