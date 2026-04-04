@@ -65,8 +65,8 @@ export default function PuffSupportWidget({ stackGuestStrip = false }) {
   }
 
   const mobileBottomClass = stackGuestStrip
-    ? 'bottom-[calc(4.5rem+env(safe-area-inset-bottom,0px)+0.375rem)]'
-    : 'bottom-[calc(4.5rem+max(1rem,env(safe-area-inset-bottom)))]'
+    ? 'bottom-[calc(1.5rem+env(safe-area-inset-bottom,0px)+3.25rem+5.5rem+0.375rem)]'
+    : 'bottom-[calc(1.5rem+env(safe-area-inset-bottom,0px)+5.5rem+0.25rem)]'
 
   const rootZ = stackGuestStrip ? 'z-[50065]' : 'z-[10040]'
 

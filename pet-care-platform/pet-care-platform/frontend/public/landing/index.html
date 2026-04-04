@@ -27,6 +27,8 @@
       --font-sans: 'Manrope', sans-serif;
       /* Высота нижней шапки на мобильных (логотип + кнопки) — для отступов main и плавающих виджетов */
       --landing-bottom-nav-h: 0px;
+      /* Зазор «парения» нижней панели от края экрана (только мобильные; на десктопе 0) */
+      --landing-bottom-nav-float-gap: 0px;
       /* Полоска «Начать бесплатно» + Пуф над нижней панелью (только мобильные) */
       --landing-mobile-above-header-h: 0px;
       --section-padding-y: clamp(2rem, 6vh, 4rem);
@@ -183,7 +185,7 @@
       .hero-video-wrap.puff-minimized {
         bottom: calc(
           var(--landing-bottom-nav-h) + var(--landing-gap-above-bottom-nav) +
-            env(safe-area-inset-bottom, 0px)
+            env(safe-area-inset-bottom, 0px) + var(--landing-bottom-nav-float-gap)
         );
       }
     }
@@ -217,7 +219,7 @@
       .puff-support-widget {
         bottom: calc(
           var(--landing-bottom-nav-h) + var(--landing-gap-above-bottom-nav) +
-            env(safe-area-inset-bottom, 0px)
+            env(safe-area-inset-bottom, 0px) + var(--landing-bottom-nav-float-gap)
         );
         right: max(20px, env(safe-area-inset-right));
       }
@@ -467,7 +469,7 @@
         position: fixed;
         left: 12px;
         right: 12px;
-        bottom: calc(var(--landing-bottom-nav-h) + 88px);
+        bottom: calc(var(--landing-bottom-nav-h) + 88px + var(--landing-bottom-nav-float-gap));
         top: auto;
         width: auto;
         height: 260px;
@@ -1112,30 +1114,44 @@
     @media (max-width: 767px) {
       :root {
         /* Нижняя строка (логотип + меню + вход + регистрация) */
-        --landing-header-inner-h: 72px;
+        --landing-header-inner-h: 82px;
         /* Полоска «Начать бесплатно» + Пуф над ней */
         /* Только жёлтая CTA по центру (без фиолетовой полоски с Пуфом) */
-        --landing-mobile-above-header-h: 44px;
+        --landing-mobile-above-header-h: 50px;
+        /* Только px: в части WebView calc/mm внутри var() для bottom даёт сброс позиции */
+        --landing-bottom-nav-float-gap: 24px;
+        /* Нижний внутренний отступ карточки шапки (входит в --landing-bottom-nav-h) */
+        --landing-mobile-header-card-pad-bottom: 10px;
         --landing-bottom-nav-h: calc(
-          var(--landing-header-inner-h) + var(--landing-mobile-above-header-h)
+          var(--landing-header-inner-h) + var(--landing-mobile-above-header-h) +
+            var(--landing-mobile-header-card-pad-bottom)
         );
         --landing-gap-above-bottom-nav: 2mm;
       }
       main {
         padding-top: 0;
-        padding-bottom: calc(var(--landing-bottom-nav-h) + env(safe-area-inset-bottom, 0px));
+        padding-bottom: calc(
+          var(--landing-bottom-nav-h) + var(--landing-bottom-nav-float-gap) +
+            env(safe-area-inset-bottom, 0px)
+        );
       }
       .site-header {
         top: auto;
-        bottom: 0;
+        left: 12px;
+        right: 12px;
+        bottom: calc(var(--landing-bottom-nav-float-gap) + env(safe-area-inset-bottom, 0px));
+        width: auto;
         display: flex;
         flex-direction: column;
         border-bottom: none;
-        border-top: 1px solid rgba(245, 245, 245, 0.15);
-        border-radius: 1.25rem 1.25rem 0 0;
+        border-top: none;
+        border-radius: 1.35rem;
         padding-top: 0;
-        padding-bottom: env(safe-area-inset-bottom, 0);
-        box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.12);
+        padding-bottom: var(--landing-mobile-header-card-pad-bottom);
+        box-shadow:
+          0 18px 48px rgba(82, 47, 129, 0.42),
+          0 8px 20px rgba(0, 0, 0, 0.14),
+          0 2px 6px rgba(0, 0, 0, 0.08);
       }
       .site-header.header-hidden {
         transform: translateY(100%);
@@ -1150,14 +1166,17 @@
         gap: 0;
         flex-shrink: 0;
         min-height: var(--landing-mobile-above-header-h);
-        padding: 6px 12px;
-        border-bottom: 1px solid rgba(82, 47, 129, 0.12);
+        padding: 8px 14px 6px;
+        border-bottom: none;
         background: transparent;
       }
       .landing-mobile-float-puff {
         position: fixed;
         top: auto;
-        bottom: calc(var(--landing-bottom-nav-h) + env(safe-area-inset-bottom, 0px) + 8px);
+        bottom: calc(
+          var(--landing-bottom-nav-h) + env(safe-area-inset-bottom, 0px) + 8px +
+            var(--landing-bottom-nav-float-gap)
+        );
         right: max(10px, env(safe-area-inset-right, 0px));
         z-index: 1002;
         width: 72px;
@@ -1241,7 +1260,10 @@
         left: 0;
         right: 0;
         z-index: 1002;
-        bottom: calc(var(--landing-bottom-nav-h) + env(safe-area-inset-bottom, 0px));
+        bottom: calc(
+          var(--landing-bottom-nav-h) + env(safe-area-inset-bottom, 0px) +
+            var(--landing-bottom-nav-float-gap)
+        );
         max-height: min(52vh, 380px);
         overflow-x: hidden;
         overflow-y: auto;
@@ -1271,7 +1293,10 @@
         left: 0;
         right: 0;
         /* Не перекрываем нижнюю панель — можно снова нажать «Меню» */
-        bottom: calc(var(--landing-bottom-nav-h) + env(safe-area-inset-bottom, 0px));
+        bottom: calc(
+          var(--landing-bottom-nav-h) + env(safe-area-inset-bottom, 0px) +
+            var(--landing-bottom-nav-float-gap)
+        );
         z-index: 1001;
         background: rgba(82, 47, 129, 0.45);
         opacity: 0;
@@ -1298,8 +1323,8 @@
       }
     }
     @media (max-width: 640px) {
-      .site-header .header-inner { min-height: 64px; padding: 10px 0; }
-      .site-header .logo-img { height: 52px; }
+      .site-header .header-inner { min-height: 74px; padding: 12px 0; }
+      .site-header .logo-img { height: 58px; }
       .site-header .nav-link,
       .site-header .btn-login,
       .site-header .btn-register { min-height: 44px; padding: 10px 16px; display: inline-flex; align-items: center; touch-action: manipulation; }
@@ -1358,11 +1383,39 @@
         margin-top: 0.15rem;
       }
     }
-    /* Мобильные: второй Пуф в герое убран — остаётся только круг у нижней панели (в приложении или .landing-mobile-float-puff) */
+    /* Мобильные: основной блок с видео в сетке скрыт — большой Пуф вынесен в .hero-mobile-big-puff над заголовком */
     @media (max-width: 767px) {
       .hero-grid .hero-video-col {
         display: none !important;
       }
+    }
+    /* Большой Пуфыч над заголовком (только мобильные; класс md:hidden в разметке) */
+    .hero-mobile-big-puff {
+      width: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin-bottom: 0.35rem;
+    }
+    .hero-mobile-big-puff__inner {
+      width: 100%;
+      max-width: min(100%, 440px);
+      height: min(44vh, 320px);
+      min-height: 188px;
+      max-height: 360px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      pointer-events: none;
+    }
+    .hero-mobile-big-puff video {
+      width: auto;
+      height: 100%;
+      max-width: 100%;
+      object-fit: contain;
+      transform: scale(1.12);
     }
     .hero-feature-stat--orange .hero-feature-num { color: var(--color-orange); }
     .hero-feature-stat--violet .hero-feature-num { color: var(--color-primary); }
@@ -1624,6 +1677,21 @@
       <div class="grid lg:grid-cols-2 gap-10 items-center hero-grid">
         <!-- Текст (на мобильных и планшетах — под блоком с Пуфом) -->
         <div class="fade-in hero-text-col">
+          <div class="hero-mobile-big-puff md:hidden" aria-hidden="true">
+            <div class="hero-mobile-big-puff__inner">
+              <video
+                id="puff-video-mobile"
+                src="puf-jump-new.mp4"
+                muted
+                playsinline
+                loop
+                preload="metadata"
+                disablePictureInPicture
+                disableRemotePlayback
+                controlsList="noremoteplayback noPictureInPicture"
+              ></video>
+            </div>
+          </div>
           <h1 class="text-5xl lg:text-6xl font-bold mb-6" style="color: var(--color-primary);">
             Ваш питомец заслуживает лучшего
           </h1>
@@ -2283,6 +2351,17 @@
           if (puffWrap && puffVideo) {
             puffVideo.currentTime = 0;
             puffVideo.play().catch(function() {});
+          }
+        }, 100);
+      }
+
+      var puffVideoMobile = document.getElementById('puff-video-mobile');
+      if (puffVideoMobile) {
+        puffVideoMobile.currentTime = 0;
+        setTimeout(function() {
+          if (puffVideoMobile) {
+            puffVideoMobile.currentTime = 0;
+            puffVideoMobile.play().catch(function() {});
           }
         }, 100);
       }

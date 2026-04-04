@@ -65,8 +65,8 @@ function Layout({ children }) {
         id="main-content"
         className={
           showMobileCta
-            ? /* таблетка 4.5rem + полоска CTA 2.75rem */ 'flex-1 pt-0 pb-[calc(7.25rem+env(safe-area-inset-bottom))] md:pt-[88px] md:pb-0 lg:pt-[96px]'
-            : 'flex-1 pt-0 pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:pt-[88px] md:pb-0 lg:pt-[96px]'
+            ? /* CTA + таблетка-иконки + парение */ 'flex-1 pt-0 pb-[calc(10.25rem+env(safe-area-inset-bottom))] md:pt-[88px] md:pb-0 lg:pt-[96px]'
+            : 'flex-1 pt-0 pb-[calc(7rem+env(safe-area-inset-bottom))] md:pt-[88px] md:pb-0 lg:pt-[96px]'
         }
         tabIndex={-1}
       >
