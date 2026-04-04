@@ -17,6 +17,7 @@ import { useAuthStore } from '../store/authStore'
 import { motion, AnimatePresence } from 'framer-motion'
 import Navbar from './Navbar'
 import MobileHomeStrip from './MobileHomeStrip'
+import MobileRightActionsRail from './MobileRightActionsRail'
 import MobileBottomNav from './MobileBottomNav'
 import Footer from './Footer'
 import PuffSupportWidget from './PuffSupportWidget'
@@ -48,16 +49,12 @@ function Layout({ children }) {
   const showPuffWidget =
     !isLanding || showMobileCta || (isLanding && isAuthenticated)
 
-  /** Высота MobileHomeStrip: h-9 + градиент 1px + safe-area (см. компонент) */
-  const mobileTopStripPt = 'pt-[calc(2.25rem+1px+env(safe-area-inset-top,0px))]'
+  /** Мобильная «капсула» шапки: safe-area + отступ + min-h-9/py + зазор снизу (см. MobileHomeStrip) */
+  const mobileTopStripPt = 'pt-[calc(env(safe-area-inset-top,0px)+3.125rem)]'
 
   return (
     <div
-      className={
-        isLanding
-          ? 'min-h-screen flex w-full min-w-0 flex-col overflow-x-hidden bg-[#522f81] md:bg-[#F5F5F5]'
-          : 'min-h-screen flex w-full min-w-0 flex-col overflow-x-hidden bg-[#F5F5F5]'
-      }
+      className="min-h-screen flex w-full min-w-0 flex-col overflow-x-hidden bg-[#F5F5F5]"
     >
       {/* Skip links для доступности */}
       <a
@@ -67,8 +64,9 @@ function Layout({ children }) {
         Перейти к основному содержимому
       </a>
 
-      {/* Мобильные: тонкая полоска «Главная»; десктоп: Navbar */}
+      {/* Мобильные: полоска «Главная» + плашка справа; десктоп: Navbar */}
       <MobileHomeStrip />
+      <MobileRightActionsRail />
       <Navbar />
 
       {/* На мобильных отступ снизу под нижнюю панель — в т.ч. на главной, иначе навигации не видно */}
@@ -77,10 +75,10 @@ function Layout({ children }) {
         className={
           isLanding
             ? /* Главная: не flex-1 — иначе с большим футером снаружи iframe сжимается до полоски и ломается скролл */
-              `flex w-full flex-shrink-0 flex-col ${mobileTopStripPt} pb-0 md:pt-[88px] md:pb-0 lg:pt-[96px]`
+              `flex w-full flex-shrink-0 flex-col bg-transparent ${mobileTopStripPt} pb-0 md:pt-[88px] md:pb-0 lg:pt-[96px]`
             : showMobileCta
-              ? `flex min-h-0 flex-1 flex-col ${mobileTopStripPt} pb-[calc(10.25rem+env(safe-area-inset-bottom))] md:pt-[88px] md:pb-0 lg:pt-[96px]`
-              : `flex min-h-0 flex-1 flex-col ${mobileTopStripPt} pb-[calc(7rem+env(safe-area-inset-bottom))] md:pt-[88px] md:pb-0 lg:pt-[96px]`
+              ? `flex min-h-0 flex-1 flex-col bg-transparent ${mobileTopStripPt} pb-[calc(9.5rem+env(safe-area-inset-bottom))] md:pt-[88px] md:pb-0 lg:pt-[96px]`
+              : `flex min-h-0 flex-1 flex-col bg-transparent ${mobileTopStripPt} pb-[calc(6.5rem+env(safe-area-inset-bottom))] md:pt-[88px] md:pb-0 lg:pt-[96px]`
         }
         tabIndex={-1}
       >
@@ -93,8 +91,8 @@ function Layout({ children }) {
             transition={pageTransition.transition}
             className={
               isLanding
-                ? 'flex w-full min-w-0 flex-shrink-0 flex-col overflow-x-hidden'
-                : 'flex min-h-0 w-full min-w-0 flex-1 flex-col overflow-x-hidden'
+                ? 'flex w-full min-w-0 flex-shrink-0 flex-col overflow-x-hidden bg-transparent'
+                : 'flex min-h-0 w-full min-w-0 flex-1 flex-col overflow-x-hidden bg-transparent'
             }
           >
             {children}
