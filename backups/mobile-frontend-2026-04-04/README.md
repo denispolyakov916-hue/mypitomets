@@ -1,8 +1,8 @@
 # Резервная копия фронтенда (мобильная вёрстка и связанные файлы)
 
-**Дата:** 2026-04-04  
+**Дата:** 2026-04-04 (обновлено: архив и тег v2)  
 **Ветка Git:** `backup/2026-04-04-mobile-ui`  
-**Теги снимка кода:** `backup/mobile-ui-2026-04-04`, `backup/mobile-ui-2026-04-04-stable` (актуальный после iframe/нижней панели)
+**Теги снимка кода:** `backup/mobile-ui-2026-04-04`, `backup/mobile-ui-2026-04-04-stable`, **`backup/mobile-ui-2026-04-04-v2`** (минималистичный объём панели и CTA «Начать бесплатно», позиция Пуфа)
 
 ## Содержимое `frontend-src.tar.gz`
 
@@ -30,7 +30,9 @@ cd pet-care-platform/pet-care-platform/frontend && npm install
 ## Восстановление через Git
 
 ```bash
-git checkout backup/mobile-ui-2026-04-04
-# или
-git checkout backup/mobile-ui-2026-04-04 -- pet-care-platform/pet-care-platform/frontend
+git checkout backup/mobile-ui-2026-04-04-v2
+# или предыдущий снимок:
+git checkout backup/mobile-ui-2026-04-04-stable
+# только папка frontend:
+git checkout backup/mobile-ui-2026-04-04-v2 -- pet-care-platform/pet-care-platform/frontend
 ```
