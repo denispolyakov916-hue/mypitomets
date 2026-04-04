@@ -2,7 +2,7 @@
 
 **Дата:** 2026-04-04  
 **Ветка Git:** `backup/2026-04-04-mobile-ui`  
-**Тег снимка кода:** `backup/mobile-ui-2026-04-04`
+**Теги снимка кода:** `backup/mobile-ui-2026-04-04`, `backup/mobile-ui-2026-04-04-stable` (актуальный после iframe/нижней панели)
 
 ## Содержимое `frontend-src.tar.gz`
 
