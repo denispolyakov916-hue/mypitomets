@@ -16,6 +16,7 @@ import { useLocation } from 'react-router-dom'
 import { useAuthStore } from '../store/authStore'
 import { motion, AnimatePresence } from 'framer-motion'
 import Navbar from './Navbar'
+import MobileHomeStrip from './MobileHomeStrip'
 import MobileBottomNav from './MobileBottomNav'
 import Footer from './Footer'
 import PuffSupportWidget from './PuffSupportWidget'
@@ -47,6 +48,9 @@ function Layout({ children }) {
   const showPuffWidget =
     !isLanding || showMobileCta || (isLanding && isAuthenticated)
 
+  /** Высота MobileHomeStrip: h-9 + градиент 1px + safe-area (см. компонент) */
+  const mobileTopStripPt = 'pt-[calc(2.25rem+1px+env(safe-area-inset-top,0px))]'
+
   return (
     <div
       className={
@@ -63,7 +67,8 @@ function Layout({ children }) {
         Перейти к основному содержимому
       </a>
 
-      {/* Шапка — только от md; на мобильных нижняя панель MobileBottomNav */}
+      {/* Мобильные: тонкая полоска «Главная»; десктоп: Navbar */}
+      <MobileHomeStrip />
       <Navbar />
 
       {/* На мобильных отступ снизу под нижнюю панель — в т.ч. на главной, иначе навигации не видно */}
@@ -72,10 +77,10 @@ function Layout({ children }) {
         className={
           isLanding
             ? /* Главная: не flex-1 — иначе с большим футером снаружи iframe сжимается до полоски и ломается скролл */
-              'flex w-full flex-shrink-0 flex-col pt-0 pb-0 md:pt-[88px] md:pb-0 lg:pt-[96px]'
+              `flex w-full flex-shrink-0 flex-col ${mobileTopStripPt} pb-0 md:pt-[88px] md:pb-0 lg:pt-[96px]`
             : showMobileCta
-              ? 'flex min-h-0 flex-1 flex-col pt-0 pb-[calc(10.25rem+env(safe-area-inset-bottom))] md:pt-[88px] md:pb-0 lg:pt-[96px]'
-              : 'flex min-h-0 flex-1 flex-col pt-0 pb-[calc(7rem+env(safe-area-inset-bottom))] md:pt-[88px] md:pb-0 lg:pt-[96px]'
+              ? `flex min-h-0 flex-1 flex-col ${mobileTopStripPt} pb-[calc(10.25rem+env(safe-area-inset-bottom))] md:pt-[88px] md:pb-0 lg:pt-[96px]`
+              : `flex min-h-0 flex-1 flex-col ${mobileTopStripPt} pb-[calc(7rem+env(safe-area-inset-bottom))] md:pt-[88px] md:pb-0 lg:pt-[96px]`
         }
         tabIndex={-1}
       >
