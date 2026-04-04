@@ -293,15 +293,6 @@ button {
     background: rgba(245, 245, 245, 0.2);
     border-color: rgba(245, 245, 245, 0.4);
   }
-  .footer-landing .footer-scroll-top {
-    @apply w-11 h-11 rounded-full inline-flex items-center justify-center text-white cursor-pointer transition-colors;
-    border: 1px solid rgba(245, 245, 245, 0.4);
-    background: transparent;
-  }
-  .footer-landing .footer-scroll-top:hover {
-    background: rgba(245, 245, 245, 0.12);
-    border-color: rgba(245, 245, 245, 0.7);
-  }
 
   /* Кнопки категорий магазина — стиль btn-slide (градиент, круг, два заголовка при hover) */
   .shop-header-nav .btn-slide {

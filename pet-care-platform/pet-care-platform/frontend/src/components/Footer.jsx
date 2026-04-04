@@ -3,7 +3,7 @@
  * Ссылки ведут на разделы приложения, соответствующие блокам главной.
  */
 
-import { useCallback, useState } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 
 // Сервисы — соответствуют разделам главной (Питомцы, Питание, Здоровье, обучение)
@@ -112,10 +112,6 @@ function FooterColumn({ title, links }) {
 export function Footer() {
   const [email, setEmail] = useState('');
 
-  const scrollToTop = useCallback(() => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }, []);
-
   const handleSubscribe = (e) => {
     e.preventDefault();
     if (!email.trim()) return;
@@ -173,33 +169,21 @@ export function Footer() {
       </div>
 
       <div className="footer-bottom border-t border-white/20 py-5">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            {SOCIAL_LINKS.map(({ href, label, icon: Icon }) => (
-              <a
-                key={label}
-                href={href}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="footer-social-circle"
-                aria-label={label}
-                title={label}
-              >
-                <Icon className="w-6 h-6" />
-              </a>
-            ))}
-            <span className="text-white/85 text-sm font-medium ml-2">@pitometsplus</span>
-          </div>
-          <button
-            type="button"
-            className="footer-scroll-top"
-            onClick={scrollToTop}
-            aria-label="Наверх"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" />
-            </svg>
-          </button>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-wrap items-center gap-4">
+          {SOCIAL_LINKS.map(({ href, label, icon: Icon }) => (
+            <a
+              key={label}
+              href={href}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="footer-social-circle"
+              aria-label={label}
+              title={label}
+            >
+              <Icon className="w-6 h-6" />
+            </a>
+          ))}
+          <span className="text-white/85 text-sm font-medium">@pitometsplus</span>
         </div>
       </div>
     </footer>

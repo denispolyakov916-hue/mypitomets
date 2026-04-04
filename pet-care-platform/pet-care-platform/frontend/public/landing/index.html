@@ -825,18 +825,23 @@
       border-color: rgba(245, 245, 245, 0.2);
     }
 
-    /* Подвал: иконки соцсетей и кнопка «наверх» */
+    /* Подвал: иконки соцсетей (компактнее на мобильных) */
     .footer-social-circle {
-      width: 44px;
-      height: 44px;
+      width: 36px;
+      height: 36px;
       border-radius: 50%;
       display: inline-flex;
       align-items: center;
       justify-content: center;
+      flex-shrink: 0;
       background: rgba(245,245,245,0.12);
       color: var(--color-white);
       border: 1px solid rgba(245,245,245,0.25);
       transition: background 0.2s, color 0.2s, border-color 0.2s;
+    }
+    .footer-bottom .footer-social-circle svg {
+      width: 1.125rem;
+      height: 1.125rem;
     }
     .footer-social-circle:hover {
       background: rgba(245,245,245,0.2);
@@ -859,24 +864,13 @@
       background: rgba(245,245,245,0.12);
       border-color: rgba(245,245,245,0.7);
     }
-    .footer-scroll-top {
-      width: 44px;
-      height: 44px;
-      border-radius: 50%;
-      border: 1px solid rgba(245,245,245,0.4);
-      background: transparent;
-      color: var(--color-white);
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      transition: background 0.2s, border-color 0.2s;
+    .footer-bottom .footer-handle {
+      display: block;
+      max-width: 100%;
+      word-break: break-word;
+      overflow-wrap: anywhere;
+      line-height: 1.35;
     }
-    .footer-scroll-top:hover {
-      background: rgba(245,245,245,0.12);
-      border-color: rgba(245,245,245,0.7);
-    }
-
     /* Плавающая кнопка «Начать бесплатно» — оранжевая, как на макете */
     .floating-cta-btn {
       position: fixed;
@@ -1057,10 +1051,14 @@
     html.embed-no-header .floating-cta-btn {
       display: none !important;
     }
-    /* В приложении нижняя навигация снаружи iframe — запас снизу внутри документа, без пустой полосы между iframe и React */
+    /* В приложении нижняя навигация снаружи iframe — запас снизу; фон как у футера/панели, без белой полосы */
     @media (max-width: 767px) {
+      html.embed-no-header {
+        background-color: var(--color-primary);
+      }
       html.embed-no-header body {
         padding-bottom: calc(10.25rem + env(safe-area-inset-bottom, 0px));
+        background-color: var(--color-primary);
       }
     }
     main {
@@ -1422,6 +1420,15 @@
       max-width: 100%;
       object-fit: contain;
       transform: scale(1.12);
+    }
+    @media (max-width: 767px) {
+      /* После базовых стилей .hero-mobile-big-puff: зазор под scale(1.12), чтобы не наезжать на заголовок */
+      .hero-mobile-big-puff {
+        margin-bottom: clamp(1.35rem, 6vw, 2.25rem);
+      }
+      .hero-text-col > h1 {
+        margin-top: 0.35rem;
+      }
     }
     .hero-feature-stat--orange .hero-feature-num { color: var(--color-orange); }
     .hero-feature-stat--violet .hero-feature-num { color: var(--color-primary); }
@@ -2098,8 +2105,10 @@
             Умная экосистема заботы о вашем питомце.
           </p>
         </div>
+        <!-- На мобильных — два столбца (Сервисы | Каталог / Компания | Документы); с md — участвуют в общей сетке (contents) -->
+        <div class="grid w-full grid-cols-2 gap-x-6 gap-y-8 md:contents">
         <!-- Колонка 2: Сервисы -->
-        <div class="md:col-span-1">
+        <div class="min-w-0 md:col-span-1">
           <h4 class="font-semibold text-white mb-4">Сервисы</h4>
           <ul class="space-y-2.5 text-gray-400 text-sm">
             <li><a href="#" class="hover:text-white transition-colors">Подбор питания</a></li>
@@ -2110,7 +2119,7 @@
           </ul>
         </div>
         <!-- Колонка 3: Каталог -->
-        <div class="md:col-span-1">
+        <div class="min-w-0 md:col-span-1">
           <h4 class="font-semibold text-white mb-4">Каталог</h4>
           <ul class="space-y-2.5 text-gray-400 text-sm">
             <li><a href="#" class="hover:text-white transition-colors">Корма и добавки</a></li>
@@ -2120,7 +2129,7 @@
           </ul>
         </div>
         <!-- Колонка 4: Компания -->
-        <div class="md:col-span-1">
+        <div class="min-w-0 md:col-span-1">
           <h4 class="font-semibold text-white mb-4">Компания</h4>
           <ul class="space-y-2.5 text-gray-400 text-sm">
             <li><a href="#" class="hover:text-white transition-colors">О нас</a></li>
@@ -2130,7 +2139,7 @@
           </ul>
         </div>
         <!-- Колонка 5: Документы -->
-        <div class="md:col-span-1">
+        <div class="min-w-0 md:col-span-1">
           <h4 class="font-semibold text-white mb-4">Документы</h4>
           <ul class="space-y-2.5 text-gray-400 text-sm">
             <li><a href="#" class="hover:text-white transition-colors">Политика конфиденциальности</a></li>
@@ -2139,6 +2148,7 @@
             <li><a href="#" class="hover:text-white transition-colors">Согласие на обработку персональных данных</a></li>
             <li><a href="#" class="hover:text-white transition-colors">Партнёрская оферта</a></li>
           </ul>
+        </div>
         </div>
         <!-- Колонка 6: Подписаться (шире, в одну линию по возможности) -->
         <div class="md:col-span-2">
@@ -2158,30 +2168,29 @@
         </div>
       </div>
     </div>
-    <!-- Нижняя полоса: соцсети VK, Telegram, Max, RuTube, TikTok, @pitometsplus, кнопка «наверх» -->
+    <!-- Нижняя полоса: соцсети VK, Telegram, Max, RuTube, TikTok, @pitometsplus -->
     <div class="footer-bottom border-t py-5">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-wrap items-center justify-between gap-4">
-        <div class="flex items-center gap-4">
-          <a href="https://vk.com/pitometsplus" target="_blank" rel="noopener noreferrer" class="footer-social-circle" aria-label="ВКонтакте" title="ВКонтакте">
-            <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path d="M15.684 0H8.316C1.592 0 0 1.592 0 8.316v7.368C0 22.408 1.592 24 8.316 24h7.368C22.408 24 24 22.408 24 15.684V8.316C24 1.592 22.408 0 15.684 0zm3.692 17.123h-1.744c-.66 0-.864-.525-2.05-1.727-1.033-1-1.49-1.135-1.744-1.135-.356 0-.458.102-.458.593v1.575c0 .424-.135.678-1.253.678-1.846 0-3.896-1.118-5.335-3.202C4.624 10.857 4 8.57 4 6.686c0-.254.102-.491.593-.491h1.744c.44 0 .61.203.78.678.863 2.49 2.303 4.675 2.896 4.675.22 0 .322-.102.322-.66V6.92c-.034-1.186-.695-1.287-.695-1.71 0-.203.17-.407.44-.407h2.744c.373 0 .508.203.508.643v3.473c0 .372.17.508.271.508.22 0 .407-.136.813-.542 1.254-1.406 2.151-3.574 2.151-3.574.119-.254.322-.491.763-.491h1.744c.525 0 .644.27.525.643-.22 1.017-2.354 4.031-2.354 4.031-.186.305-.254.44 0 .78.186.254.796.779 1.203 1.253.745.847 1.32 1.558 1.473 2.049.17.49-.085.744-.576.744z"/></svg>
-          </a>
-          <a href="https://t.me/pitometsplus" target="_blank" rel="noopener noreferrer" class="footer-social-circle" aria-label="Telegram" title="Telegram">
-            <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.665 3.717l-17.73 6.837c-1.21.486-1.203 1.161-.222 1.462l4.552 1.42 10.532-6.645c.498-.303.953-.14.579.192l-8.533 7.701h-.002l-.002.001-.314 4.692c.46 0 .663-.211.921-.46l2.211-2.15 4.599 3.397c.843.466 1.457.227 1.668-.785l3.019-14.228c.309-1.239-.473-1.8-1.282-1.434z"/></svg>
-          </a>
-          <a href="https://max.ru/" target="_blank" rel="noopener noreferrer" class="footer-social-circle" aria-label="Макс" title="Макс">
-            <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path fill-rule="evenodd" d="M4 2h14q2 0 2 2v8q0 2-2 2h-4l-4 5v-5H4q-2 0-2-2V4q0-2 2-2zm8 8.5a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/></svg>
-          </a>
-          <a href="https://rutube.ru/channel/74217640/" target="_blank" rel="noopener noreferrer" class="footer-social-circle" aria-label="RuTube" title="RuTube">
-            <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7L8 5z"/></svg>
-          </a>
-          <a href="https://www.tiktok.com/@pitometsplus" target="_blank" rel="noopener noreferrer" class="footer-social-circle" aria-label="TikTok" title="TikTok">
-            <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1-.1z"/></svg>
-          </a>
-          <span class="footer-handle text-gray-400 text-sm font-medium ml-2">@pitometsplus</span>
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex min-w-0 flex-col gap-2">
+          <div class="flex flex-wrap items-center gap-2">
+            <a href="https://vk.com/pitometsplus" target="_blank" rel="noopener noreferrer" class="footer-social-circle" aria-label="ВКонтакте" title="ВКонтакте">
+              <svg fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path d="M15.684 0H8.316C1.592 0 0 1.592 0 8.316v7.368C0 22.408 1.592 24 8.316 24h7.368C22.408 24 24 22.408 24 15.684V8.316C24 1.592 22.408 0 15.684 0zm3.692 17.123h-1.744c-.66 0-.864-.525-2.05-1.727-1.033-1-1.49-1.135-1.744-1.135-.356 0-.458.102-.458.593v1.575c0 .424-.135.678-1.253.678-1.846 0-3.896-1.118-5.335-3.202C4.624 10.857 4 8.57 4 6.686c0-.254.102-.491.593-.491h1.744c.44 0 .61.203.78.678.863 2.49 2.303 4.675 2.896 4.675.22 0 .322-.102.322-.66V6.92c-.034-1.186-.695-1.287-.695-1.71 0-.203.17-.407.44-.407h2.744c.373 0 .508.203.508.643v3.473c0 .372.17.508.271.508.22 0 .407-.136.813-.542 1.254-1.406 2.151-3.574 2.151-3.574.119-.254.322-.491.763-.491h1.744c.525 0 .644.27.525.643-.22 1.017-2.354 4.031-2.354 4.031-.186.305-.254.44 0 .78.186.254.796.779 1.203 1.253.745.847 1.32 1.558 1.473 2.049.17.49-.085.744-.576.744z"/></svg>
+            </a>
+            <a href="https://t.me/pitometsplus" target="_blank" rel="noopener noreferrer" class="footer-social-circle" aria-label="Telegram" title="Telegram">
+              <svg fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.665 3.717l-17.73 6.837c-1.21.486-1.203 1.161-.222 1.462l4.552 1.42 10.532-6.645c.498-.303.953-.14.579.192l-8.533 7.701h-.002l-.002.001-.314 4.692c.46 0 .663-.211.921-.46l2.211-2.15 4.599 3.397c.843.466 1.457.227 1.668-.785l3.019-14.228c.309-1.239-.473-1.8-1.282-1.434z"/></svg>
+            </a>
+            <a href="https://max.ru/" target="_blank" rel="noopener noreferrer" class="footer-social-circle" aria-label="Макс" title="Макс">
+              <svg fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path fill-rule="evenodd" d="M4 2h14q2 0 2 2v8q0 2-2 2h-4l-4 5v-5H4q-2 0-2-2V4q0-2 2-2zm8 8.5a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/></svg>
+            </a>
+            <a href="https://rutube.ru/channel/74217640/" target="_blank" rel="noopener noreferrer" class="footer-social-circle" aria-label="RuTube" title="RuTube">
+              <svg fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7L8 5z"/></svg>
+            </a>
+            <a href="https://www.tiktok.com/@pitometsplus" target="_blank" rel="noopener noreferrer" class="footer-social-circle" aria-label="TikTok" title="TikTok">
+              <svg fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1-.1z"/></svg>
+            </a>
+          </div>
+          <span class="footer-handle text-gray-400 text-sm font-medium">@pitometsplus</span>
         </div>
-        <button type="button" class="footer-scroll-top" id="scroll-to-top" aria-label="Наверх">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"/></svg>
-        </button>
       </div>
     </div>
   </footer>
@@ -2224,18 +2233,7 @@
       }
     }
 
-    // Кнопка «Наверх»
-    function initScrollToTop() {
-      const btn = document.getElementById('scroll-to-top');
-      if (btn) {
-        btn.addEventListener('click', function() {
-          window.scrollTo({ top: 0, behavior: 'smooth' });
-        });
-      }
-    }
-
     document.addEventListener('DOMContentLoaded', function() {
-      initScrollToTop();
       var heroSection = document.getElementById('hero');
 
       // Мобильное меню: те же пункты, что в десктоп-навигации

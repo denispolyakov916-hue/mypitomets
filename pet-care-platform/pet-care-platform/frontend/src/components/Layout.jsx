@@ -48,7 +48,13 @@ function Layout({ children }) {
     !isLanding || showMobileCta || (isLanding && isAuthenticated)
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#F5F5F5] w-full min-w-0 overflow-x-hidden">
+    <div
+      className={
+        isLanding
+          ? 'min-h-screen flex w-full min-w-0 flex-col overflow-x-hidden bg-[#522f81] md:bg-[#F5F5F5]'
+          : 'min-h-screen flex w-full min-w-0 flex-col overflow-x-hidden bg-[#F5F5F5]'
+      }
+    >
       {/* Skip links для доступности */}
       <a
         href="#main-content"
