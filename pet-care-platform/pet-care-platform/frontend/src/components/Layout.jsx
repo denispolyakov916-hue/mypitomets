@@ -71,8 +71,8 @@ function Layout({ children }) {
         id="main-content"
         className={
           isLanding
-            ? /* Главная: iframe сам даёт отступ снизу внутри документа — без пустой полосы вокруг iframe */
-              'flex min-h-0 flex-1 flex-col pt-0 pb-0 md:pt-[88px] md:pb-0 lg:pt-[96px]'
+            ? /* Главная: не flex-1 — иначе с большим футером снаружи iframe сжимается до полоски и ломается скролл */
+              'flex w-full flex-shrink-0 flex-col pt-0 pb-0 md:pt-[88px] md:pb-0 lg:pt-[96px]'
             : showMobileCta
               ? 'flex min-h-0 flex-1 flex-col pt-0 pb-[calc(10.25rem+env(safe-area-inset-bottom))] md:pt-[88px] md:pb-0 lg:pt-[96px]'
               : 'flex min-h-0 flex-1 flex-col pt-0 pb-[calc(7rem+env(safe-area-inset-bottom))] md:pt-[88px] md:pb-0 lg:pt-[96px]'
@@ -86,7 +86,11 @@ function Layout({ children }) {
             animate={pageTransition.animate}
             exit={pageTransition.exit}
             transition={pageTransition.transition}
-            className="flex min-h-0 w-full min-w-0 flex-1 flex-col overflow-x-hidden"
+            className={
+              isLanding
+                ? 'flex w-full min-w-0 flex-shrink-0 flex-col overflow-x-hidden'
+                : 'flex min-h-0 w-full min-w-0 flex-1 flex-col overflow-x-hidden'
+            }
           >
             {children}
           </motion.div>

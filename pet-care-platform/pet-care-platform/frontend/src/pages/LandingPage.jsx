@@ -6,11 +6,15 @@
 
 function LandingPage() {
   return (
-    <div className="flex min-h-0 w-full min-w-0 flex-1 flex-col md:min-h-[calc(100vh-100px)]">
+    <div className="flex w-full min-w-0 flex-col">
+      {/*
+        Фиксированная высота окна лендинга: длинный контент листается внутри iframe;
+        под iframe остаётся футер приложения — листается вся страница.
+      */}
       <iframe
         src="/landing/index.html?noheader=1&nofooter=1"
         title="ПИТОМЕЦПЛЮС — Всё для счастливой жизни вашего питомца"
-        className="block min-h-0 w-full flex-1 border-0 md:min-h-[calc(100vh-100px)]"
+        className="block h-[100dvh] min-h-[100dvh] w-full border-0 md:h-[calc(100vh-88px)] md:min-h-[calc(100vh-88px)] lg:h-[calc(100vh-96px)] lg:min-h-[calc(100vh-96px)]"
       />
     </div>
   )
