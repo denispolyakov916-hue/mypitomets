@@ -14,7 +14,10 @@ const PUFF_IMAGE_FALLBACK = '/purple-monster.png'
 const GREETING = 'Привет! Я Пуф, твой помощник. Чем могу помочь?'
 const REPLY_PLACEHOLDER = 'Получил! Постараюсь ответить скоро. Если срочно — напишите в поддержку на сайте.'
 
-export default function PuffSupportWidget() {
+/**
+ * @param {{ stackGuestStrip?: boolean }} props — если true, кнопка на одной вертикали с полоской «Начать бесплатно» (над таблеткой)
+ */
+export default function PuffSupportWidget({ stackGuestStrip = false }) {
   const [isOpen, setIsOpen] = useState(false)
   const [messages, setMessages] = useState([{ text: GREETING, isUser: false }])
   const [inputValue, setInputValue] = useState('')
@@ -38,6 +41,12 @@ export default function PuffSupportWidget() {
     }
   }, [isOpen])
 
+  useEffect(() => {
+    const video = videoRef.current
+    if (!video || !stackGuestStrip) return
+    video.play().catch(() => {})
+  }, [stackGuestStrip])
+
   const sendMessage = () => {
     const text = inputValue.trim()
     if (!text) return
@@ -55,10 +64,16 @@ export default function PuffSupportWidget() {
     }
   }
 
+  const mobileBottomClass = stackGuestStrip
+    ? 'bottom-[calc(4.5rem+env(safe-area-inset-bottom,0px)+0.375rem)]'
+    : 'bottom-[calc(4.5rem+max(1rem,env(safe-area-inset-bottom)))]'
+
+  const rootZ = stackGuestStrip ? 'z-[50065]' : 'z-[10040]'
+
   return (
     <div
-      className="fixed bottom-5 right-5 z-[9999] flex flex-col items-end gap-0 sm:bottom-5 sm:right-5"
-      style={{ bottom: 'max(20px, env(safe-area-inset-bottom))', right: 'max(20px, env(safe-area-inset-right))' }}
+      className={`fixed ${rootZ} flex flex-col items-end gap-0 right-5 md:bottom-5 md:right-5 ${mobileBottomClass}`}
+      style={{ right: 'max(20px, env(safe-area-inset-right))' }}
       aria-label="Чат с Пуфом"
     >
       {/* Окно чата */}
@@ -130,19 +145,49 @@ export default function PuffSupportWidget() {
         </div>
       </div>
 
-      {/* Кнопка-маскот Пуфа */}
       <button
         type="button"
         onClick={() => setIsOpen((v) => !v)}
-        className="puff-support-trigger relative h-[72px] w-[72px] shrink-0 overflow-hidden rounded-full border-0 shadow-lg transition-transform hover:scale-105 active:scale-95 sm:h-[88px] sm:w-[88px]"
-        style={{
-          background: '#f3e9c6',
-          boxShadow: '0 6px 24px rgba(82, 47, 129, 0.35)',
-        }}
+        className={`shrink-0 rounded-full border-0 p-0 transition-transform hover:scale-105 active:scale-95 ${
+          stackGuestStrip
+            ? 'guest-puff-active'
+            : 'puff-support-trigger relative h-[72px] w-[72px] overflow-hidden sm:h-[88px] sm:w-[88px] shadow-lg'
+        }`}
+        style={
+          stackGuestStrip
+            ? undefined
+            : {
+                background: '#f3e9c6',
+                boxShadow: '0 6px 24px rgba(82, 47, 129, 0.35)',
+              }
+        }
         title="Чат с Пуфом"
         aria-label="Открыть чат с Пуфом"
       >
-        {useVideo ? (
+        {stackGuestStrip ? (
+          <span className="guest-puff-active__inner">
+            {useVideo ? (
+              <video
+                ref={videoRef}
+                src={PUFF_VIDEO_SRC}
+                muted
+                loop
+                playsInline
+                preload="auto"
+                className="guest-puff-active__video"
+                aria-hidden
+                onError={() => setUseVideo(false)}
+              />
+            ) : (
+              <img
+                src={PUFF_IMAGE_FALLBACK}
+                alt=""
+                className="guest-puff-active__video object-cover"
+                aria-hidden
+              />
+            )}
+          </span>
+        ) : useVideo ? (
           <video
             ref={videoRef}
             src={PUFF_VIDEO_SRC}

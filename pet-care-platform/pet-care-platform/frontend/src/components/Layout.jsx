@@ -13,8 +13,10 @@
  */
 
 import { useLocation } from 'react-router-dom'
+import { useAuthStore } from '../store/authStore'
 import { motion, AnimatePresence } from 'framer-motion'
 import Navbar from './Navbar'
+import MobileBottomNav from './MobileBottomNav'
 import Footer from './Footer'
 import PuffSupportWidget from './PuffSupportWidget'
 import { ToastContainer } from './Toast'
@@ -39,9 +41,14 @@ function Layout({ children }) {
   const toasts = useToastStore(s => s.toasts)
   const removeToast = useToastStore(s => s.removeToast)
   const isLanding = pathname === '/'
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
+  const showMobileCta =
+    !isAuthenticated && pathname !== '/login' && pathname !== '/register'
+  const showPuffWidget =
+    !isLanding || showMobileCta || (isLanding && isAuthenticated)
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#F5F5F5]">
+    <div className="min-h-screen flex flex-col bg-[#F5F5F5] w-full min-w-0 overflow-x-hidden">
       {/* Skip links для доступности */}
       <a
         href="#main-content"
@@ -50,11 +57,19 @@ function Layout({ children }) {
         Перейти к основному содержимому
       </a>
 
-      {/* Навигационная шапка */}
+      {/* Шапка — только от md; на мобильных нижняя панель MobileBottomNav */}
       <Navbar />
 
-      {/* Основная область контента с плавной сменой страниц */}
-      <main id="main-content" className="flex-1 pt-[88px] md:pt-[96px]" tabIndex={-1}>
+      {/* На мобильных отступ снизу под нижнюю панель — в т.ч. на главной, иначе навигации не видно */}
+      <main
+        id="main-content"
+        className={
+          showMobileCta
+            ? /* таблетка 4.5rem + полоска CTA 2.75rem */ 'flex-1 pt-0 pb-[calc(7.25rem+env(safe-area-inset-bottom))] md:pt-[88px] md:pb-0 lg:pt-[96px]'
+            : 'flex-1 pt-0 pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:pt-[88px] md:pb-0 lg:pt-[96px]'
+        }
+        tabIndex={-1}
+      >
         <AnimatePresence mode="wait">
           <motion.div
             key={pathname}
@@ -62,7 +77,7 @@ function Layout({ children }) {
             animate={pageTransition.animate}
             exit={pageTransition.exit}
             transition={pageTransition.transition}
-            className="min-h-[50vh]"
+            className="min-h-[50vh] w-full min-w-0 overflow-x-hidden"
           >
             {children}
           </motion.div>
@@ -75,8 +90,13 @@ function Layout({ children }) {
       {/* Подвал — на главной не показываем, т.к. футер уже есть в лендинге (iframe) */}
       {!isLanding && <Footer />}
 
-      {/* Виджет-помощник «Чат с Пуфом» — на всех страницах кроме главной (на главной виджет уже в лендинге iframe) */}
-      {!isLanding && <PuffSupportWidget />}
+      {/* Чат с Пуфом: на внутренних страницах всегда; на главной — вместо дубля в iframe (embed) */}
+      {showPuffWidget && (
+        <PuffSupportWidget stackGuestStrip={showMobileCta} />
+      )}
+
+      {/* Нижняя навигация на мобильных — на главной тоже (верхний Navbar там скрыт) */}
+      <MobileBottomNav />
     </div>
   )
 }

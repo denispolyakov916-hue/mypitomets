@@ -572,7 +572,9 @@ const PeriodInput = ({ value, onChange, disabled }) => {
 
   return (
     <div className="relative" ref={dropdownRef}>
-      <label className="block text-sm font-medium text-gray-700 mb-2">периуд на который расчитан комплект питания</label>
+      <label className="block text-sm font-medium text-gray-700 mb-2 leading-snug break-words">
+        Период (дней), на который рассчитан комплект питания
+      </label>
       
       <div ref={triggerRef} className="relative flex items-center">
         <input
@@ -968,7 +970,7 @@ const RationComponentCard = ({
     <motion.div 
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className={`rounded-xl border overflow-hidden ${cardBg}`}
+      className={`rounded-xl border overflow-hidden max-w-full min-w-0 ${cardBg}`}
     >
       {/* Заголовок типа с иконкой и галочкой — без цвета */}
       <div className="flex items-center justify-between px-3 py-2 border-b border-gray-200/80 bg-gray-50">
@@ -1011,7 +1013,7 @@ const RationComponentCard = ({
       </div>
       
       {/* Контент */}
-      <div className="flex items-stretch bg-white">
+      <div className="flex items-stretch bg-white min-w-0 max-w-full">
         <button 
           onClick={() => canNavigate && onChangeIndex(currentIndex - 1)}
           disabled={!canNavigate || isLoading}
@@ -1092,6 +1094,34 @@ const RationComponentCard = ({
           <ChevronRight className="w-5 h-5" />
         </button>
       </div>
+
+      {canNavigate && alternatives?.length > 0 && (
+        <div className="md:hidden border-t border-gray-100 bg-gray-50/90 px-2 py-2">
+          <p className="text-[10px] text-gray-500 mb-1.5 px-1">Варианты корма</p>
+          <div className="flex gap-2 overflow-x-auto pb-1 snap-x snap-mandatory [-webkit-overflow-scrolling:touch]">
+            {alternatives.map((alt, idx) => (
+              <button
+                type="button"
+                key={alt.product_id ?? `alt-${idx}`}
+                onClick={() => onChangeIndex(idx)}
+                className={`shrink-0 snap-start w-14 h-14 rounded-lg border-2 overflow-hidden bg-white transition-all ${
+                  idx === currentIndex
+                    ? isPurple
+                      ? 'border-primary-500 ring-2 ring-primary-200'
+                      : 'border-amber-500 ring-2 ring-amber-200'
+                    : 'border-gray-200 opacity-90'
+                }`}
+              >
+                {alt.image_url ? (
+                  <img src={alt.image_url} alt="" className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-lg">{typeEmoji[baseType] || '📦'}</div>
+                )}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
     </motion.div>
   );
 };
@@ -1547,7 +1577,7 @@ const FeedingPlanBlock = ({ plan, isLoading, selectedComponents, treatFrequencyD
   })();
   
   return (
-    <div className={`rounded-2xl border overflow-hidden ${isSidebar ? 'border-gray-200 bg-white shadow-sm' : 'border-primary-200 bg-primary-50/50'}`}>
+    <div className={`rounded-2xl border overflow-hidden max-w-full min-w-0 ${isSidebar ? 'border-gray-200 bg-white shadow-sm' : 'border-primary-200 bg-primary-50/50'}`}>
       {!isSidebar && (
         <div className="px-5 py-4 bg-gradient-to-r from-primary-100 to-primary-200 border-b border-primary-200">
           <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
@@ -1556,7 +1586,7 @@ const FeedingPlanBlock = ({ plan, isLoading, selectedComponents, treatFrequencyD
           </h3>
         </div>
       )}
-      <div className={isSidebar ? 'p-4' : 'p-5 bg-white/70'}>
+      <div className={isSidebar ? 'p-3 sm:p-4 max-w-full min-w-0 overflow-x-hidden' : 'p-5 bg-white/70'}>
       {/* Дневная норма и БЖУ — градиент как на референсе (светлый голубовато-серый) */}
       <div className="rounded-xl p-4 mb-4 bg-gradient-to-b from-slate-50/95 to-gray-50/90 border border-gray-200/80 shadow-sm">
         <p className="text-xs font-semibold bg-gradient-to-r from-accent-400 to-accent-600 bg-clip-text text-transparent inline-block mb-1">Дневная норма</p>
@@ -1639,9 +1669,9 @@ const FeedingPlanBlock = ({ plan, isLoading, selectedComponents, treatFrequencyD
               <p className="text-xs font-semibold bg-gradient-to-r from-accent-400 to-accent-600 bg-clip-text text-transparent inline-block mb-2">Питательные вещества (день)</p>
               {/* Диаграмма; при наведении — подсказка с белками, жирами, углеводами */}
               {chartData && (
-                <div className="flex justify-center mb-4">
+                <div className="flex justify-center mb-4 w-full min-w-0 px-1">
                   <div
-                    className="relative w-48 h-48 flex items-center justify-center"
+                    className="relative w-36 h-36 sm:w-48 sm:h-48 max-w-full flex items-center justify-center mx-auto"
                     style={{
                       filter: 'drop-shadow(0 24px 48px rgba(0,0,0,0.22)) drop-shadow(0 12px 24px rgba(0,0,0,0.16)) drop-shadow(0 6px 12px rgba(0,0,0,0.1)) drop-shadow(0 2px 4px rgba(0,0,0,0.06))',
                       transform: 'perspective(280px) rotateX(8deg) rotateY(-2deg)',
@@ -1671,18 +1701,18 @@ const FeedingPlanBlock = ({ plan, isLoading, selectedComponents, treatFrequencyD
                 </div>
               )}
               {/* Окошки БЖУ — оконтовка в цветах диаграммы (#2563eb, #e5a41e, #9ca3af) */}
-              <div className="grid grid-cols-3 gap-2 text-xs">
-                <div className="rounded-xl p-2.5 text-center border-2 border-[#2563eb] bg-blue-100/90 shadow-sm">
-                  <p className="font-semibold text-gray-900">{proteinG != null ? `${proteinG}г` : '—'}</p>
-                  <p className="text-[10px] text-gray-900">Белок</p>
+              <div className="grid grid-cols-3 gap-1.5 sm:gap-2 text-xs min-w-0">
+                <div className="rounded-xl p-1.5 sm:p-2.5 text-center border-2 border-[#2563eb] bg-blue-100/90 shadow-sm min-w-0">
+                  <p className="font-semibold text-gray-900 text-[11px] sm:text-sm tabular-nums">{proteinG != null ? `${proteinG}г` : '—'}</p>
+                  <p className="text-[9px] sm:text-[10px] text-gray-900 leading-tight">Белок</p>
                 </div>
-                <div className="rounded-xl p-2.5 text-center border-2 border-[#e5a41e] bg-amber-100/90 shadow-sm">
-                  <p className="font-semibold text-gray-900">{fatG != null ? `${fatG}г` : '—'}</p>
-                  <p className="text-[10px] text-gray-900">Жир</p>
+                <div className="rounded-xl p-1.5 sm:p-2.5 text-center border-2 border-[#e5a41e] bg-amber-100/90 shadow-sm min-w-0">
+                  <p className="font-semibold text-gray-900 text-[11px] sm:text-sm tabular-nums">{fatG != null ? `${fatG}г` : '—'}</p>
+                  <p className="text-[9px] sm:text-[10px] text-gray-900 leading-tight">Жир</p>
                 </div>
-                <div className="rounded-xl p-2.5 text-center border-2 border-[#9ca3af] bg-slate-100/90 shadow-sm">
-                  <p className="font-semibold text-gray-900">{carbsG != null ? `${carbsG}г` : '—'}</p>
-                  <p className="text-[10px] text-gray-900">Углеводы</p>
+                <div className="rounded-xl p-1.5 sm:p-2.5 text-center border-2 border-[#9ca3af] bg-slate-100/90 shadow-sm min-w-0">
+                  <p className="font-semibold text-gray-900 text-[11px] sm:text-sm tabular-nums">{carbsG != null ? `${carbsG}г` : '—'}</p>
+                  <p className="text-[9px] sm:text-[10px] text-gray-900 leading-tight">Углеводы</p>
                 </div>
               </div>
             </div>
@@ -1733,30 +1763,28 @@ const FeedingPlanBlock = ({ plan, isLoading, selectedComponents, treatFrequencyD
               return schedule.map((meal, i) => (
                 <div key={i} className="relative">
                   {i > 0 && <div className="absolute left-0 right-0 top-0 border-t-2 border-dashed border-amber-400/80" aria-hidden />}
-                  <div className="p-3 flex items-start gap-3 bg-gradient-to-b from-white/70 to-blue-50/30">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap mb-1.5">
-                        <span className="text-sm font-bold text-gray-900 shrink-0">{meal.time}</span>
-                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium shrink-0 ${pillClass(meal.label)}`}>
-                          {meal.label}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2 flex-wrap">
-                        {meal.type === 'dry' ? (
-                          <Package className="w-4 h-4 shrink-0 text-red-500/90" aria-hidden />
-                        ) : (
-                          <Circle className="w-3.5 h-3.5 shrink-0 fill-amber-700/80 text-amber-700/80" aria-hidden />
-                        )}
-                        <span className="text-sm text-gray-800 line-clamp-1 min-w-0">
-                          {meal.product}
-                          {meal.type === 'dry' ? ' (сухой)' : ' (влажный)'}
-                        </span>
-                        <span className="text-sm shrink-0">
-                          <span className="font-bold text-blue-600">{meal.grams}</span>
-                          <span className="text-gray-600"> г</span>
-                        </span>
-                        <ChevronRight className="w-4 h-4 text-gray-400 shrink-0 ml-auto" aria-hidden />
-                      </div>
+                  <div className="p-2.5 sm:p-3 flex flex-col gap-2 min-w-0 bg-gradient-to-b from-white/70 to-blue-50/30">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-sm font-bold text-gray-900 shrink-0">{meal.time}</span>
+                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium shrink-0 ${pillClass(meal.label)}`}>
+                        {meal.label}
+                      </span>
+                    </div>
+                    <div className="flex items-start gap-2 min-w-0">
+                      {meal.type === 'dry' ? (
+                        <Package className="w-4 h-4 shrink-0 text-red-500/90 mt-0.5" aria-hidden />
+                      ) : (
+                        <Circle className="w-3.5 h-3.5 shrink-0 fill-amber-700/80 text-amber-700/80 mt-0.5" aria-hidden />
+                      )}
+                      <p className="text-sm text-gray-800 break-words min-w-0 flex-1 leading-snug">
+                        {meal.product}
+                        <span className="text-gray-600">{meal.type === 'dry' ? ' (сухой)' : ' (влажный)'}</span>
+                      </p>
+                      <span className="text-sm shrink-0 tabular-nums">
+                        <span className="font-bold text-blue-600">{meal.grams}</span>
+                        <span className="text-gray-600"> г</span>
+                      </span>
+                      <ChevronRight className="w-4 h-4 text-gray-400 shrink-0 hidden sm:block mt-0.5" aria-hidden />
                     </div>
                   </div>
                 </div>
@@ -2493,7 +2521,7 @@ export default function FoodRecommendationPage() {
   }
   
   return (
-    <div className="page-container animate-fadeIn pb-8">
+    <div className="page-container animate-fadeIn pb-8 w-full min-w-0 max-w-full overflow-x-hidden">
       {/* Ошибка */}
       <AnimatePresence>
         {error && (
@@ -2535,23 +2563,22 @@ export default function FoodRecommendationPage() {
         </motion.div>
       )}
       
-      {/* Основной контент */}
-      <div className="grid lg:grid-cols-3 gap-6">
-        {/* Левая колонка */}
-        <div className="lg:col-span-2 space-y-6">
+      {/* Основной контент: на мобильных сначала блок «Расчёт рациона», затем подбор и конструктор */}
+      <div className="grid lg:grid-cols-3 gap-4 sm:gap-6 w-full min-w-0 max-w-full">
+        <div className="lg:col-span-2 space-y-6 order-2 lg:order-1 min-w-0 max-w-full">
           {/* Подбор корма — градиент по референсу (оранжево-жёлтый → бледно-жёлтый) */}
-          <div className="rounded-2xl border border-amber-200/80 overflow-hidden bg-amber-50/30">
-            <div className="rounded-t-2xl px-6 py-4 bg-gradient-to-r from-[#F6B537] via-[#FDE28F] to-[#FEE9AE] border-b border-amber-200/60">
-              <h1 className="text-lg font-semibold text-amber-900 flex items-center gap-2">
+          <div className="rounded-2xl border border-amber-200/80 overflow-hidden bg-amber-50/30 max-w-full min-w-0">
+            <div className="rounded-t-2xl px-4 sm:px-6 py-3 sm:py-4 bg-gradient-to-r from-[#F6B537] via-[#FDE28F] to-[#FEE9AE] border-b border-amber-200/60">
+              <h1 className="text-base sm:text-lg font-semibold text-amber-900 flex items-center gap-2 min-w-0">
                 <Sparkles className="w-5 h-5 flex-shrink-0 text-amber-800" aria-hidden />
                 Подбор корма
               </h1>
             </div>
-            <div className="p-6 sm:p-7 overflow-visible bg-white/90">
+            <div className="p-4 sm:p-7 overflow-x-hidden bg-white/90">
               <h2 className="text-xs font-semibold bg-gradient-to-r from-accent-400 to-accent-600 bg-clip-text text-transparent inline-block uppercase tracking-wide mb-4">
                 Параметры подбора
               </h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 overflow-visible rounded-xl p-4 bg-[#F8F8F8]/60 border border-gray-100">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5 overflow-x-hidden rounded-xl p-3 sm:p-4 bg-[#F8F8F8]/60 border border-gray-100 min-w-0 max-w-full">
                 <div className="space-y-1">
                   <PetDropdown 
                     pets={pets} 
@@ -2592,15 +2619,15 @@ export default function FoodRecommendationPage() {
           </div>
           
           {/* Конструктор рациона — градиент по референсу (оранжево-жёлтый → бледно-жёлтый); контент размыт, пока не выбран питомец */}
-          <div className="rounded-2xl border border-amber-200/80 overflow-hidden bg-amber-50/30">
-            <div className="px-6 py-4 bg-gradient-to-r from-[#F6B537] via-[#FDE28F] to-[#FEE9AE] border-b border-amber-200/60">
-              <h3 className="text-lg font-semibold text-amber-900 flex items-center gap-2">
+          <div className="rounded-2xl border border-amber-200/80 overflow-hidden bg-amber-50/30 max-w-full min-w-0">
+            <div className="px-4 sm:px-6 py-3 sm:py-4 bg-gradient-to-r from-[#F6B537] via-[#FDE28F] to-[#FEE9AE] border-b border-amber-200/60">
+              <h3 className="text-base sm:text-lg font-semibold text-amber-900 flex items-center gap-2 min-w-0">
                 <Sparkles className="w-5 h-5 flex-shrink-0 text-amber-800" aria-hidden />
                 Конструктор рациона
               </h3>
             </div>
-            <div className="relative">
-              <div className="p-6 bg-white/80">
+            <div className="relative min-w-0 max-w-full">
+              <div className="p-4 sm:p-6 bg-white/80 overflow-x-hidden">
               {/* Переключатель Базовый / Продвинутый */}
               <div className="mb-6">
                 <VariantToggle
@@ -2787,16 +2814,15 @@ export default function FoodRecommendationPage() {
           </div>
         </div>
         
-        {/* Правая колонка: расчёт рациона (дневная норма и расписание) */}
-        <div className="lg:col-span-1">
-          <div className="rounded-2xl border border-amber-200/80 overflow-hidden bg-amber-50/30">
-            <div className="rounded-t-2xl px-6 py-4 bg-gradient-to-r from-[#F6B537] via-[#FDE28F] to-[#FEE9AE] border-b border-amber-200/60">
-              <h2 className="text-lg font-semibold text-amber-900 flex items-center gap-2">
+        <div className="lg:col-span-1 order-1 lg:order-2 min-w-0 max-w-full">
+          <div className="rounded-2xl border border-amber-200/80 overflow-hidden bg-amber-50/30 max-w-full min-w-0">
+            <div className="rounded-t-2xl px-4 sm:px-6 py-3 sm:py-4 bg-gradient-to-r from-[#F6B537] via-[#FDE28F] to-[#FEE9AE] border-b border-amber-200/60">
+              <h2 className="text-base sm:text-lg font-semibold text-amber-900 flex items-center gap-2 min-w-0">
                 <Sparkles className="w-5 h-5 flex-shrink-0 text-amber-800" aria-hidden />
                 Расчёт рациона
               </h2>
             </div>
-            <div className="sticky top-24">
+            <div className="sticky top-3 md:top-24 min-w-0 max-w-full overflow-x-hidden">
               {selectedPet ? (
                 <FeedingPlanBlock
                 variant="sidebar"

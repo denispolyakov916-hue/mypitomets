@@ -6,93 +6,25 @@
 
 import { useState, useRef, useEffect, useMemo } from 'react'
 import { createPortal } from 'react-dom'
-import { Link, useNavigate, useLocation } from 'react-router-dom'
-import { motion, AnimatePresence } from 'framer-motion'
+import { Link, useLocation } from 'react-router-dom'
+import { motion } from 'framer-motion'
 import { useAuthStore } from '../store/authStore'
 import { usePets } from '../hooks/usePets'
 import HeaderCounters from './HeaderCounters'
-import {
-  ChevronDown,
-  Menu as MenuIcon,
-  X,
-  ShoppingBag,
-  GraduationCap,
-  Package,
-  UtensilsCrossed,
-  List,
-  Stethoscope,
-  FileHeart,
-  Activity,
-  ChevronRight,
-  Coins,
-  PawPrint,
-} from 'lucide-react'
-
-const XIcon = () => <X className="w-6 h-6" aria-hidden />
+import { ChevronDown, ChevronRight, Coins } from 'lucide-react'
+import { buildNavPetsDropdown, staticDropdownNavItems } from '../nav/dropdownNavConfig'
 
 const ChevronDownIcon = ({ className = '' }) => (
   <ChevronDown className={`w-3.5 h-3.5 ${className}`} aria-hidden />
 )
 
-// Собирательные кнопки с дропдаунами. placeholder: true — заглушка «Скоро», иначе рабочий Link
-const navShop = {
-  id: 'shop',
-  label: 'Магазин',
-  sectionTitle: 'ПОКУПКИ',
-  items: [
-    { label: 'Магазин питания и аксессуаров', to: '/shop', description: 'товары для питомцев', icon: ShoppingBag },
-    { label: 'Магазин курсов коррекции поведения', to: '/courses', description: 'курсы и обучение', icon: GraduationCap },
-    { label: 'Заказы', to: '/orders', description: 'история заказов', icon: Package },
-  ],
-}
-
-const navNutrition = {
-  id: 'nutrition',
-  label: 'Сервисы',
-  sectionTitle: 'СЕРВИСЫ',
-  items: [
-    { label: 'Подбор корма', to: '/food-recommendation', description: 'рекомендации по корму', icon: UtensilsCrossed },
-    { label: 'Подбор питомца для вас', to: '/coming-soon?name=Подбор+питомца+для+вас', description: 'поможем выбрать питомца', icon: PawPrint },
-    { label: 'Подбор курсов', to: '/coming-soon?name=Подбор+курсов', description: 'курсы и обучение', icon: GraduationCap },
-    { label: 'Список продуктов', to: '/coming-soon?name=Список+продуктов', description: 'каталог товаров', icon: List },
-  ],
-}
-
-const navHealth = {
-  id: 'health',
-  label: 'Здоровье',
-  sectionTitle: 'КОНТРОЛЬ',
-  items: [
-    { label: 'Дневник здоровья', to: '/health-diary', description: 'симптомы, самочувствие', icon: Stethoscope },
-    { label: 'Медкарта', to: '/coming-soon?name=Медкарта', description: 'паспорта и здоровье питомцев', icon: FileHeart },
-    { label: 'Активность', to: '/coming-soon?name=Активность', description: 'уровень активности', icon: Activity },
-  ],
-}
-
-const staticDropdownNavItems = [navShop, navNutrition, navHealth]
-
 function Navbar() {
-  const navigate = useNavigate()
   const location = useLocation()
   const isAuthenticated = useAuthStore(s => s.isAuthenticated)
   const user = useAuthStore(s => s.user)
-  const logout = useAuthStore(s => s.logout)
   const { pets } = usePets()
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
-  /** Дропдаун «Питомцы»: «Мои питомцы» + список питомцев пользователя */
-  const navPetsDropdown = useMemo(() => {
-    const items = [
-      { label: 'Мои питомцы', to: '/pet-id', description: 'все питомцы', icon: PawPrint },
-      ...(pets || []).map((p) => ({
-        label: p.name,
-        to: `/pet-id/${p.id}`,
-        description: p.species === 'dog' ? 'Собака' : p.species === 'cat' ? 'Кошка' : 'Питомец',
-        icon: PawPrint,
-      })),
-    ]
-    return { id: 'pets', label: 'Питомцы', sectionTitle: 'ПИТОМЦЫ', items }
-  }, [pets])
+  const navPetsDropdown = useMemo(() => buildNavPetsDropdown(pets), [pets])
 
   const dropdownNavItems = useMemo(
     () => [navPetsDropdown, ...staticDropdownNavItems],
@@ -114,12 +46,6 @@ function Navbar() {
   const scheduleHoverClose = () => {
     clearHoverCloseTimeout()
     hoverCloseTimeoutRef.current = setTimeout(() => setOpenDropdownId(null), 200)
-  }
-
-  const handleLogout = async () => {
-    await logout()
-    navigate('/')
-    setMobileMenuOpen(false)
   }
 
   const isLinkActive = (path) =>
@@ -180,7 +106,7 @@ function Navbar() {
 
   return (
     <header
-      className="fixed top-0 left-0 right-0 z-50 pt-[env(safe-area-inset-top)] px-3 sm:px-4 md:px-5"
+      className="hidden md:block fixed top-0 left-0 right-0 z-50 pt-[env(safe-area-inset-top)] px-3 sm:px-4 md:px-5"
       style={{ paddingTop: 'max(12px, env(safe-area-inset-top))' }}
     >
       <div className="max-w-4xl mx-auto">
@@ -392,19 +318,6 @@ function Navbar() {
               </span>
             )}
 
-            <div className="flex md:hidden items-center gap-1.5">
-              {isAuthenticated && <HeaderCounters variant="dark" compact />}
-              <button
-                type="button"
-                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className="p-2 text-white rounded-full hover:bg-white/10 min-h-[40px] min-w-[40px] inline-flex items-center justify-center"
-                aria-label={mobileMenuOpen ? 'Закрыть меню' : 'Открыть меню'}
-                aria-expanded={mobileMenuOpen}
-                aria-controls="mobile-menu"
-              >
-                {mobileMenuOpen ? <XIcon /> : <MenuIcon className="w-6 h-6" />}
-              </button>
-            </div>
           </motion.div>
           </div>
           {/* Градиентная линия под пунктами навигации */}
@@ -417,85 +330,6 @@ function Navbar() {
           />
         </motion.div>
       </div>
-
-      {/* Мобильное меню с собирательными блоками */}
-      <AnimatePresence>
-        {mobileMenuOpen && (
-          <motion.div
-            id="mobile-menu"
-            className="md:hidden mt-2 mx-3 sm:mx-4 rounded-2xl bg-primary-700 py-4 px-4 border border-white/10"
-            style={{ boxShadow: pillShadow }}
-            initial={{ opacity: 0, y: -12 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -12 }}
-            transition={{ duration: 0.25, ease: [0.25, 0.46, 0.45, 0.94] }}
-          >
-          <nav className="flex flex-col gap-0.5">
-            {dropdownNavItems.map((nav) => (
-              <div key={nav.id} className="py-1">
-                <div className="px-4 py-1 text-[10px] uppercase tracking-wider text-white/60">
-                  {nav.sectionTitle}
-                </div>
-                {nav.items.map((item) => {
-                  const Icon = item.icon
-                  const isPlaceholder = item.placeholder === true
-                  if (isPlaceholder) {
-                    return (
-                      <div
-                        key={item.label}
-                        className="flex items-center gap-3 py-3 px-4 rounded-xl text-white/60"
-                      >
-                        <span className="flex-shrink-0 text-accent-400/70">
-                          <Icon className="w-5 h-5" />
-                        </span>
-                        <span className="flex-1 min-w-0">
-                          <span className="block font-medium">{item.label}</span>
-                          <span className="block text-sm text-white/50">{item.description}</span>
-                        </span>
-                        <span className="text-xs text-white/50">Скоро</span>
-                      </div>
-                    )
-                  }
-                  return (
-                    <Link
-                      key={item.to + item.label}
-                      to={item.to}
-                      onClick={() => setMobileMenuOpen(false)}
-                      className={`flex items-center gap-3 py-3 px-4 rounded-xl transition-colors ${isLinkActive(item.to) ? 'bg-white/15 text-white' : 'text-white/90 hover:bg-white/10'}`}
-                    >
-                      <span className="flex-shrink-0 text-accent-400">
-                        <Icon className="w-5 h-5" />
-                      </span>
-                      <span className="flex-1 min-w-0">
-                        <span className="block font-medium">{item.label}</span>
-                        <span className="block text-sm text-white/60">{item.description}</span>
-                      </span>
-                      <ChevronRight className="w-4 h-4 text-white/50 flex-shrink-0" aria-hidden />
-                    </Link>
-                  )
-                })}
-              </div>
-            ))}
-            {!isAuthenticated ? (
-              <>
-                <Link to="/login" onClick={() => setMobileMenuOpen(false)} className="py-3 px-4 rounded-xl font-medium text-white/90 hover:bg-white/10">
-                  Вход
-                </Link>
-                <Link to="/register" onClick={() => setMobileMenuOpen(false)} className="mt-2 py-3 px-5 rounded-full font-semibold text-primary-800 bg-accent-400 hover:brightness-110 inline-flex items-center justify-center">
-                  Регистрация
-                </Link>
-              </>
-            ) : (
-              <div className="flex items-center gap-2 py-3 px-4 rounded-xl text-white/90">
-                <Coins className="w-5 h-5 text-accent-400 flex-shrink-0" aria-hidden />
-                <span className="font-medium">Ням-коины: 0</span>
-                <span className="text-xs text-white/50">(заглушка)</span>
-              </div>
-            )}
-          </nav>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </header>
   )
 }

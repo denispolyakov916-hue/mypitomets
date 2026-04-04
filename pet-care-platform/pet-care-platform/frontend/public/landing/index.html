@@ -25,6 +25,10 @@
       --color-accent-light: #F0EB93;
       --font-display: 'Manrope', sans-serif;
       --font-sans: 'Manrope', sans-serif;
+      /* Высота нижней шапки на мобильных (логотип + кнопки) — для отступов main и плавающих виджетов */
+      --landing-bottom-nav-h: 0px;
+      /* Полоска «Начать бесплатно» + Пуф над нижней панелью (только мобильные) */
+      --landing-mobile-above-header-h: 0px;
       --section-padding-y: clamp(2rem, 6vh, 4rem);
       --section-padding-x: clamp(1rem, 4vw, 2rem);
     }
@@ -174,6 +178,15 @@
         right: max(28px, env(safe-area-inset-right));
       }
     }
+    /* Мобильная нижняя шапка: минимизированный Пуф — над панелью, справа внизу (высота панели — :root в блоке .site-header) */
+    @media (max-width: 767px) {
+      .hero-video-wrap.puff-minimized {
+        bottom: calc(
+          var(--landing-bottom-nav-h) + var(--landing-gap-above-bottom-nav) +
+            env(safe-area-inset-bottom, 0px)
+        );
+      }
+    }
     .hero-video-wrap.puff-minimized video {
       display: none;
     }
@@ -197,6 +210,15 @@
     @supports (bottom: max(20px, env(safe-area-inset-bottom))) {
       .puff-support-widget {
         bottom: max(20px, env(safe-area-inset-bottom));
+        right: max(20px, env(safe-area-inset-right));
+      }
+    }
+    @media (max-width: 767px) {
+      .puff-support-widget {
+        bottom: calc(
+          var(--landing-bottom-nav-h) + var(--landing-gap-above-bottom-nav) +
+            env(safe-area-inset-bottom, 0px)
+        );
         right: max(20px, env(safe-area-inset-right));
       }
     }
@@ -445,7 +467,7 @@
         position: fixed;
         left: 12px;
         right: 12px;
-        bottom: 88px;
+        bottom: calc(var(--landing-bottom-nav-h) + 88px);
         top: auto;
         width: auto;
         height: 260px;
@@ -472,6 +494,18 @@
     .hero-video-col {
       min-height: min(60vh, 400px);
       position: relative;
+    }
+    /* До lg: Пуф выше заголовка «Ваш питомец…»; видео не на всю высоту экрана */
+    @media (max-width: 1023px) {
+      .hero-grid .hero-video-col {
+        order: -1;
+        min-height: auto;
+      }
+      .hero-grid .hero-video-col .hero-video-wrap {
+        height: min(52vh, 360px);
+        min-height: 200px;
+        max-height: 400px;
+      }
     }
     .scroll-animate {
       opacity: 0;
@@ -848,13 +882,13 @@
       bottom: 20px;
       transform: translateX(-50%);
       z-index: 9998;
-      padding: 14px 28px;
-      min-height: 48px;
-      min-width: 180px;
+      padding: 10px 20px;
+      min-height: 40px;
+      min-width: 158px;
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      font-size: 1.125rem;
+      font-size: 0.9375rem;
       font-weight: 600;
       color: var(--color-heading);
       background: var(--color-orange);
@@ -886,7 +920,15 @@
       }
     }
     @supports (width: max(1px, 1px)) {
-      .floating-cta-btn { bottom: max(20px, env(safe-area-inset-bottom)); }
+      .floating-cta-btn {
+        bottom: max(20px, env(safe-area-inset-bottom));
+      }
+    }
+    @media (max-width: 767px) {
+      /* Дублирующая плавающая CTA не нужна — кнопка в полоске над панелью */
+      .floating-cta-btn {
+        display: none !important;
+      }
     }
 
     /* Кнопка CTA «Готовы начать заботиться лучше?» — подсветка и мерцание */
@@ -999,11 +1041,23 @@
     html.embed-no-header .site-header {
       display: none !important;
     }
+    html.embed-no-header .landing-mobile-float-puff {
+      display: none !important;
+    }
+    html.embed-no-header #puff-support-widget {
+      display: none !important;
+    }
     html.embed-no-header main {
       padding-top: 0 !important;
+      padding-bottom: 0 !important;
+    }
+    /* В приложении плавающая CTA рендерится снаружи iframe — иначе fixed внутри длинного iframe даёт «кнопку посередине» */
+    html.embed-no-header .floating-cta-btn {
+      display: none !important;
     }
     main {
       padding-top: 100px;
+      padding-bottom: 0;
     }
     .site-header .header-inner {
       min-height: 80px;
@@ -1054,8 +1108,196 @@
       filter: brightness(1.1);
       transform: scale(1.02);
     }
+    /* Мобильные: шапка снизу — контент без отступа сверху, запас снизу под панель */
+    @media (max-width: 767px) {
+      :root {
+        /* Нижняя строка (логотип + меню + вход + регистрация) */
+        --landing-header-inner-h: 72px;
+        /* Полоска «Начать бесплатно» + Пуф над ней */
+        /* Только жёлтая CTA по центру (без фиолетовой полоски с Пуфом) */
+        --landing-mobile-above-header-h: 44px;
+        --landing-bottom-nav-h: calc(
+          var(--landing-header-inner-h) + var(--landing-mobile-above-header-h)
+        );
+        --landing-gap-above-bottom-nav: 2mm;
+      }
+      main {
+        padding-top: 0;
+        padding-bottom: calc(var(--landing-bottom-nav-h) + env(safe-area-inset-bottom, 0px));
+      }
+      .site-header {
+        top: auto;
+        bottom: 0;
+        display: flex;
+        flex-direction: column;
+        border-bottom: none;
+        border-top: 1px solid rgba(245, 245, 245, 0.15);
+        border-radius: 1.25rem 1.25rem 0 0;
+        padding-top: 0;
+        padding-bottom: env(safe-area-inset-bottom, 0);
+        box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.12);
+      }
+      .site-header.header-hidden {
+        transform: translateY(100%);
+        -webkit-transform: translateY(100%);
+      }
+      /* Полоска только с CTA по центру (Пуф — fixed справа над нижней шапкой) */
+      .landing-mobile-above-strip {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        justify-content: center;
+        gap: 0;
+        flex-shrink: 0;
+        min-height: var(--landing-mobile-above-header-h);
+        padding: 6px 12px;
+        border-bottom: 1px solid rgba(82, 47, 129, 0.12);
+        background: transparent;
+      }
+      .landing-mobile-float-puff {
+        position: fixed;
+        top: auto;
+        bottom: calc(var(--landing-bottom-nav-h) + env(safe-area-inset-bottom, 0px) + 8px);
+        right: max(10px, env(safe-area-inset-right, 0px));
+        z-index: 1002;
+        width: 72px;
+        height: 72px;
+        border-radius: 50%;
+        overflow: visible;
+        border: none;
+        background: #f3e9c6;
+        box-shadow: 0 6px 24px rgba(82, 47, 129, 0.35);
+        animation: puff-widget-pulse 1.8s ease-in-out infinite;
+        pointer-events: auto;
+      }
+      .landing-mobile-float-puff::before {
+        content: '';
+        position: absolute;
+        inset: -4px;
+        border-radius: 50%;
+        border: 3px solid rgba(82, 47, 129, 0.35);
+        animation: puff-widget-ring 1.8s ease-in-out infinite;
+        pointer-events: none;
+      }
+      .landing-mobile-float-puff__inner {
+        display: block;
+        position: absolute;
+        inset: 0;
+        border-radius: 50%;
+        overflow: hidden;
+      }
+      .landing-mobile-float-puff video {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        object-position: center;
+        transform: scale(0.85);
+        pointer-events: none;
+        border-radius: 50%;
+      }
+      .landing-mobile-above-strip__cta {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 8px 18px;
+        min-height: 38px;
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: var(--color-heading);
+        background: var(--color-orange);
+        border-radius: 9999px;
+        text-decoration: none;
+        box-shadow: 0 4px 16px rgba(251, 186, 45, 0.35);
+        white-space: nowrap;
+        touch-action: manipulation;
+      }
+      .site-header .header-inner {
+        flex: 0 0 auto;
+        min-height: var(--landing-header-inner-h);
+      }
+      /* Кнопка «Меню» и всплывающая панель с теми же пунктами, что в десктоп-навигации */
+      .mobile-menu-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 8px 12px;
+        margin-right: 2px;
+        border: 1px solid rgba(245, 245, 245, 0.35);
+        border-radius: 9999px;
+        background: rgba(245, 245, 245, 0.1);
+        color: rgba(245, 245, 245, 0.95);
+        font-size: 0.8125rem;
+        font-weight: 600;
+        cursor: pointer;
+        touch-action: manipulation;
+        -webkit-tap-highlight-color: transparent;
+      }
+      .mobile-menu-btn[aria-expanded="true"] {
+        background: rgba(245, 245, 245, 0.2);
+        border-color: rgba(245, 245, 245, 0.5);
+      }
+      .mobile-nav-dropdown {
+        position: fixed;
+        left: 0;
+        right: 0;
+        z-index: 1002;
+        bottom: calc(var(--landing-bottom-nav-h) + env(safe-area-inset-bottom, 0px));
+        max-height: min(52vh, 380px);
+        overflow-x: hidden;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+        background: var(--color-primary);
+        border-radius: 1rem 1rem 0 0;
+        border: 1px solid rgba(245, 245, 245, 0.2);
+        border-bottom: none;
+        box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.2);
+        padding: 12px 0 env(safe-area-inset-bottom, 12px);
+        transform: translateY(100%);
+        opacity: 0;
+        visibility: hidden;
+        pointer-events: none;
+        transition: transform 0.28s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+          opacity 0.25s ease, visibility 0.25s ease;
+      }
+      .mobile-nav-dropdown.is-open {
+        transform: translateY(0);
+        opacity: 1;
+        visibility: visible;
+        pointer-events: auto;
+      }
+      .mobile-nav-dropdown__backdrop {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        /* Не перекрываем нижнюю панель — можно снова нажать «Меню» */
+        bottom: calc(var(--landing-bottom-nav-h) + env(safe-area-inset-bottom, 0px));
+        z-index: 1001;
+        background: rgba(82, 47, 129, 0.45);
+        opacity: 0;
+        visibility: hidden;
+        pointer-events: none;
+        transition: opacity 0.25s ease, visibility 0.25s ease;
+      }
+      .mobile-nav-dropdown__backdrop.is-visible {
+        opacity: 1;
+        visibility: visible;
+        pointer-events: auto;
+      }
+      .mobile-nav-dropdown .nav-link {
+        display: flex;
+        align-items: center;
+        margin: 0;
+        padding: 14px 20px;
+        border-bottom: 1px solid rgba(245, 245, 245, 0.12);
+        font-size: 1rem;
+        font-weight: 600;
+      }
+      .mobile-nav-dropdown .nav-link:last-child {
+        border-bottom: none;
+      }
+    }
     @media (max-width: 640px) {
-      main { padding-top: 72px; }
       .site-header .header-inner { min-height: 64px; padding: 10px 0; }
       .site-header .logo-img { height: 52px; }
       .site-header .nav-link,
@@ -1082,6 +1324,45 @@
     }
     .hero-cta-main:hover {
       box-shadow: 0 10px 32px rgba(251, 186, 45, 0.5), 0 4px 12px rgba(251, 186, 45, 0.3);
+    }
+    /* Мобильные / планшет: Пуф и CTA ниже (к нижней панели-«хедеру»), компактная кнопка */
+    @media (max-width: 1023px) {
+      #hero.min-h-screen {
+        align-items: flex-start !important;
+        justify-content: flex-start !important;
+        padding-top: clamp(0.5rem, 2.5vw, 1rem);
+        padding-bottom: clamp(2rem, 8vw, 4rem);
+      }
+      #hero .hero-grid {
+        width: 100%;
+        margin-top: 0.35rem;
+      }
+      .hero-grid .hero-video-col {
+        margin-top: 0.5rem;
+      }
+      .hero-grid .hero-video-col .hero-video-wrap {
+        height: min(42vh, 300px);
+        max-height: 340px;
+      }
+      .hero-cta-main.hero-cta-main--compact {
+        padding: 0.45rem 1.1rem !important;
+        font-size: 0.8125rem;
+        line-height: 1.3;
+        min-height: 0;
+      }
+      .hero-cta-main.hero-cta-main--compact svg {
+        width: 1rem !important;
+        height: 1rem !important;
+      }
+      .hero-text-col .hero-cta-row {
+        margin-top: 0.15rem;
+      }
+    }
+    /* Мобильные: второй Пуф в герое убран — остаётся только круг у нижней панели (в приложении или .landing-mobile-float-puff) */
+    @media (max-width: 767px) {
+      .hero-grid .hero-video-col {
+        display: none !important;
+      }
     }
     .hero-feature-stat--orange .hero-feature-num { color: var(--color-orange); }
     .hero-feature-stat--violet .hero-feature-num { color: var(--color-primary); }
@@ -1268,6 +1549,21 @@
   </style>
 </head>
 <body>
+  <div class="landing-mobile-float-puff md:hidden" aria-hidden="true">
+    <span class="landing-mobile-float-puff__inner">
+      <video
+        id="landing-strip-puff-video"
+        src="puf-krug-obrez-new.MP4"
+        muted
+        playsinline
+        loop
+        preload="auto"
+        disablePictureInPicture
+        disableRemotePlayback
+        controlsList="noremoteplayback noPictureInPicture"
+      ></video>
+    </span>
+  </div>
   <script>
     (function() {
       var params = new URLSearchParams(window.location.search);
@@ -1278,7 +1574,20 @@
   </script>
 
   <header class="site-header" id="site-header">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <!-- Мобильные: CTA по центру над строкой с логотипом; Пуф — fixed вверху справа -->
+    <div class="landing-mobile-above-strip md:hidden" aria-label="Быстрый старт">
+      <a href="/register" target="_parent" class="landing-mobile-above-strip__cta">Начать бесплатно</a>
+    </div>
+    <div id="mobile-nav-backdrop" class="mobile-nav-dropdown__backdrop md:hidden" aria-hidden="true"></div>
+    <nav id="mobile-nav-dropdown" class="mobile-nav-dropdown md:hidden" aria-hidden="true" aria-label="Разделы сайта">
+      <a href="/" class="nav-link active" target="_parent">Главная</a>
+      <a href="/pet-id" class="nav-link" target="_parent">Мои питомцы</a>
+      <a href="/food-recommendation" class="nav-link" target="_parent">Подбор корма</a>
+      <a href="/shop" class="nav-link" target="_parent">Магазин</a>
+      <a href="/courses" class="nav-link" target="_parent">Курсы</a>
+      <a href="/health-diary" class="nav-link" target="_parent">Дневник здоровья</a>
+    </nav>
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
       <div class="flex items-center justify-between header-inner">
         <a href="/" class="flex items-center shrink-0" target="_parent">
           <img src="logo-pitometsplus.png" alt="ПИТОМЕЦПЛЮС" class="logo-img">
@@ -1293,7 +1602,11 @@
           <a href="/health-diary" class="nav-link" target="_parent">Дневник здоровья</a>
         </nav>
 
-        <div class="flex items-center gap-4">
+        <div class="flex items-center gap-2 sm:gap-4">
+          <button type="button" id="mobile-menu-btn" class="mobile-menu-btn md:hidden" aria-expanded="false" aria-controls="mobile-nav-dropdown" aria-haspopup="true">
+            <i class="fa-solid fa-bars" aria-hidden="true"></i>
+            <span>Меню</span>
+          </button>
           <a href="/login" class="btn-login" target="_parent">Вход</a>
           <a href="/register" class="btn-register" target="_parent">Регистрация</a>
         </div>
@@ -1308,9 +1621,9 @@
   <!-- Hero секция с Пуф Пуфычем -->
   <section id="hero" class="min-h-screen flex items-center justify-center relative pt-8 pb-12">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-      <div class="grid lg:grid-cols-2 gap-10 items-center">
-        <!-- Левая часть - Текст -->
-        <div class="fade-in">
+      <div class="grid lg:grid-cols-2 gap-10 items-center hero-grid">
+        <!-- Текст (на мобильных и планшетах — под блоком с Пуфом) -->
+        <div class="fade-in hero-text-col">
           <h1 class="text-5xl lg:text-6xl font-bold mb-6" style="color: var(--color-primary);">
             Ваш питомец заслуживает лучшего
           </h1>
@@ -1319,8 +1632,8 @@
             Перестаньте переживать о здоровье и поведении питомца. Мы создали экосистему, где профессиональные ветеринары, кинологи и ИИ-технологии работают для счастья вашего домашнего любимца.
           </p>
 
-          <div class="flex flex-col sm:flex-row gap-4 mb-8">
-            <a href="/register" target="_parent" class="hero-cta-main px-8 py-4 rounded-full hover:shadow-2xl hover:scale-105 transition-all duration-300 flex items-center justify-center gap-2" style="text-decoration: none; color: inherit;">
+          <div class="flex flex-col sm:flex-row gap-4 mb-8 hero-cta-row">
+            <a href="/register" target="_parent" class="hero-cta-main hero-cta-main--compact px-8 py-4 rounded-full hover:shadow-2xl hover:scale-105 transition-all duration-300 flex items-center justify-center gap-2" style="text-decoration: none; color: inherit;">
               Начать бесплатно
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
@@ -1850,6 +2163,68 @@
     document.addEventListener('DOMContentLoaded', function() {
       initScrollToTop();
       var heroSection = document.getElementById('hero');
+
+      // Мобильное меню: те же пункты, что в десктоп-навигации
+      (function() {
+        var menuBtn = document.getElementById('mobile-menu-btn');
+        var panel = document.getElementById('mobile-nav-dropdown');
+        var backdrop = document.getElementById('mobile-nav-backdrop');
+        if (!menuBtn || !panel || !backdrop) return;
+
+        function setOpen(open) {
+          menuBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+          panel.setAttribute('aria-hidden', open ? 'false' : 'true');
+          panel.classList.toggle('is-open', open);
+          backdrop.setAttribute('aria-hidden', open ? 'false' : 'true');
+          backdrop.classList.toggle('is-visible', open);
+          document.body.style.overflow = open ? 'hidden' : '';
+        }
+
+        menuBtn.addEventListener('click', function(e) {
+          e.preventDefault();
+          e.stopPropagation();
+          if (panel.classList.contains('is-open')) {
+            setOpen(false);
+          } else {
+            setOpen(true);
+          }
+        });
+
+        backdrop.addEventListener('click', function() {
+          setOpen(false);
+        });
+
+        panel.querySelectorAll('a.nav-link').forEach(function(link) {
+          link.addEventListener('click', function() {
+            setOpen(false);
+          });
+        });
+
+        document.addEventListener('keydown', function(e) {
+          if (e.key === 'Escape' && panel.classList.contains('is-open')) {
+            setOpen(false);
+          }
+        });
+
+        window.addEventListener('resize', function() {
+          if (window.matchMedia('(min-width: 768px)').matches && panel.classList.contains('is-open')) {
+            setOpen(false);
+          }
+        });
+      })();
+
+      // Видео Пуфа в полоске над нижней панелью (мобильные)
+      (function() {
+        var v = document.getElementById('landing-strip-puff-video');
+        if (!v) return;
+        v.addEventListener('ended', function() {
+          v.currentTime = 0;
+          v.play().catch(function() {});
+        });
+        setTimeout(function() {
+          v.play().catch(function() {});
+        }, 120);
+      })();
 
       // Шапка: исчезает при прокрутке вниз ниже главного блока, появляется при скролле вверх
       var siteHeader = document.querySelector('.site-header');
