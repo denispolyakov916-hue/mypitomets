@@ -34,7 +34,7 @@ const pageTransition = {
  * Компонент Layout, оборачивающий все страницы
  *
  * Обеспечивает единую структуру с навигацией и подвалом.
- * На главной (/) футер не показываем — лендинг в iframe уже содержит свой футер.
+ * Футер один на всех страницах (в т.ч. главная): в iframe лендинга футер скрыт (?nofooter=1).
  */
 function Layout({ children }) {
   const { pathname } = useLocation()
@@ -96,8 +96,7 @@ function Layout({ children }) {
       {/* Toast уведомления */}
       <ToastContainer toasts={toasts} removeToast={removeToast} />
 
-      {/* Подвал — на главной не показываем, т.к. футер уже есть в лендинге (iframe) */}
-      {!isLanding && <Footer />}
+      <Footer />
 
       {/* Чат с Пуфом: на внутренних страницах всегда; на главной — вместо дубля в iframe (embed) */}
       {showPuffWidget && (

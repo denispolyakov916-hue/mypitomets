@@ -1051,6 +1051,10 @@
     html.embed-no-header .floating-cta-btn {
       display: none !important;
     }
+    /* Футер рендерится в приложении снаружи iframe — дубль в лендинге скрываем */
+    html.embed-no-footer footer {
+      display: none !important;
+    }
     /* В приложении нижняя навигация снаружи iframe — запас снизу; фон как у футера/панели, без белой полосы */
     @media (max-width: 767px) {
       html.embed-no-header {
@@ -1636,6 +1640,9 @@
       if (params.get('noheader') === '1') {
         document.documentElement.classList.add('embed-no-header');
       }
+      if (params.get('nofooter') === '1') {
+        document.documentElement.classList.add('embed-no-footer');
+      }
     })();
   </script>
 
@@ -2095,7 +2102,7 @@
   </section>
 
   <!-- Footer -->
-  <footer class="bg-gray-900 text-white">
+  <footer class="bg-gray-900 text-white rounded-t-3xl overflow-hidden">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-12 pb-6">
       <div class="grid grid-cols-1 md:grid-cols-7 gap-8 md:gap-6">
         <!-- Колонка 1: Копирайт и описание -->

@@ -91,9 +91,9 @@ function TikTokIcon({ className = 'w-6 h-6' }) {
 
 function FooterColumn({ title, links }) {
   return (
-    <div className="md:col-span-1">
+    <div className="min-w-0 md:col-span-1">
       <h4 className="font-semibold text-white mb-4">{title}</h4>
-      <ul className="space-y-2.5 text-sm">
+      <ul className="space-y-2.5 text-sm text-white/90">
         {links.map(({ to, label }) => (
           <li key={label}>
             <Link
@@ -120,7 +120,6 @@ export function Footer() {
 
   return (
     <footer className="footer-landing bg-primary-700 text-white rounded-t-3xl overflow-hidden">
-      <div className="border-t border-white/20" aria-hidden="true" />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-12 pb-6">
         <div className="grid grid-cols-1 md:grid-cols-7 gap-8 md:gap-6">
           <div className="md:col-span-1">
@@ -129,10 +128,13 @@ export function Footer() {
               Умная экосистема заботы о вашем питомце.
             </p>
           </div>
-          <FooterColumn title="Сервисы" links={FOOTER_SERVICES} />
-          <FooterColumn title="Каталог" links={FOOTER_CATALOG} />
-          <FooterColumn title="Компания" links={FOOTER_COMPANY} />
-          <FooterColumn title="Документы" links={FOOTER_DOCS} />
+          {/* Как на лендинге: на мобильных две колонки ссылок, с md — общая сетка */}
+          <div className="grid w-full grid-cols-2 gap-x-6 gap-y-8 md:contents">
+            <FooterColumn title="Сервисы" links={FOOTER_SERVICES} />
+            <FooterColumn title="Каталог" links={FOOTER_CATALOG} />
+            <FooterColumn title="Компания" links={FOOTER_COMPANY} />
+            <FooterColumn title="Документы" links={FOOTER_DOCS} />
+          </div>
 
           <div className="md:col-span-2">
             <div className="footer-subscribe">
@@ -169,21 +171,23 @@ export function Footer() {
       </div>
 
       <div className="footer-bottom border-t border-white/20 py-5">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-wrap items-center gap-4">
-          {SOCIAL_LINKS.map(({ href, label, icon: Icon }) => (
-            <a
-              key={label}
-              href={href}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="footer-social-circle"
-              aria-label={label}
-              title={label}
-            >
-              <Icon className="w-6 h-6" />
-            </a>
-          ))}
-          <span className="text-white/85 text-sm font-medium">@pitometsplus</span>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex min-w-0 flex-col gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            {SOCIAL_LINKS.map(({ href, label, icon: Icon }) => (
+              <a
+                key={label}
+                href={href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="footer-social-circle"
+                aria-label={label}
+                title={label}
+              >
+                <Icon className="w-6 h-6" />
+              </a>
+            ))}
+          </div>
+          <span className="footer-handle text-white/85 text-sm font-medium">@pitometsplus</span>
         </div>
       </div>
     </footer>

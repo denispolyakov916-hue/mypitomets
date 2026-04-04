@@ -13,7 +13,7 @@ import {
   UtensilsCrossed, Loader2, AlertCircle, RefreshCw,
   ChevronLeft, ChevronRight, ShoppingCart, Sparkles,
   Check, Zap, Award, Download, Info, TrendingUp, ChevronDown,
-  Calendar, MapPin, Bone, Package, Circle
+  Calendar, MapPin, Bone, Package, Circle, Calculator,
 } from 'lucide-react';
 import { 
   getPets, 
@@ -157,13 +157,13 @@ const PetDropdown = ({ pets, selectedPet, onSelect, isLoading }) => {
   );
   
   return (
-    <div className="relative" ref={dropdownRef}>
-      <label className="block text-sm font-medium text-gray-700 mb-2">Питомец</label>
+    <div className="relative font-sans" ref={dropdownRef}>
+      <label className="mb-2 block font-sans text-sm font-semibold text-gray-800">Питомец</label>
       <button
         ref={triggerRef}
         onClick={() => setIsOpen(!isOpen)}
         disabled={isLoading}
-        className={`w-full flex items-center justify-between gap-3 px-4 py-3 bg-white border border-gray-200 rounded-xl transition-all
+        className={`flex w-full items-center justify-between gap-3 rounded-2xl border border-gray-200 bg-white px-4 py-3 transition-all
           ${isOpen ? 'border-primary-500 ring-2 ring-primary-100' : 'hover:border-gray-300'}
           ${isLoading ? 'opacity-50 cursor-wait' : ''}`}
         role="combobox"
@@ -210,16 +210,16 @@ const PetDropdown = ({ pets, selectedPet, onSelect, isLoading }) => {
         }}
       >
         {selectedPet ? (
-          <div className="flex items-center gap-3">
+          <div className="flex min-w-0 flex-1 items-center gap-3">
             <span className={`text-xl flex-shrink-0 ${selectedPet.species === 'cat' ? 'opacity-90' : ''}`} title={selectedPet.species === 'cat' ? 'Кошка' : 'Собака'}>
               {selectedPet.species === 'dog' ? '🐕' : '🐱'}
             </span>
-            <div className="text-left min-w-0">
-              <span className="font-medium text-gray-800">{selectedPet.name}</span>
-              <span className="text-gray-400 mx-2">•</span>
-              <span className="text-sm text-gray-500">
+            <div className="min-w-0 flex-1 text-left">
+              <p className="truncate font-semibold text-gray-900">{selectedPet.name}</p>
+              <p className="truncate text-sm text-gray-500">
                 {selectedPet.breed_name || 'Порода не указана'}
-              </span>
+                {(selectedPet.weight_kg || selectedPet.weight) && ` • ${selectedPet.weight_kg || selectedPet.weight} кг`}
+              </p>
             </div>
           </div>
         ) : (
@@ -356,13 +356,13 @@ const SelectDropdown = ({ options, value, onChange, label, disabled }) => {
   );
 
   return (
-    <div className="relative" ref={dropdownRef}>
-      <label className="block text-sm font-medium text-gray-700 mb-2">{label}</label>
+    <div className="relative font-sans" ref={dropdownRef}>
+      <label className="mb-2 block font-sans text-sm font-semibold text-gray-800">{label}</label>
       <button
         ref={triggerRef}
         onClick={() => !disabled && setIsOpen(!isOpen)}
         disabled={disabled}
-        className={`w-full flex items-center justify-between px-4 py-3 bg-white border-2 rounded-xl transition-all
+        className={`flex w-full items-center justify-between rounded-2xl border-2 bg-white px-4 py-3 transition-all
           ${isOpen ? 'border-primary-500 ring-4 ring-primary-100' : 'border-gray-200 hover:border-primary-300'}
           ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
         role="combobox"
@@ -411,7 +411,7 @@ const SelectDropdown = ({ options, value, onChange, label, disabled }) => {
       >
         <div className="flex items-center gap-2">
           {selectedOption?.icon && <span>{selectedOption.icon}</span>}
-          <span className="font-medium text-gray-800">{selectedOption?.label || 'Выберите...'}</span>
+          <span className="font-sans text-base font-medium text-gray-800">{selectedOption?.label || 'Выберите...'}</span>
         </div>
         <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
       </button>
@@ -571,8 +571,8 @@ const PeriodInput = ({ value, onChange, disabled }) => {
   );
 
   return (
-    <div className="relative" ref={dropdownRef}>
-      <label className="block text-sm font-medium text-gray-700 mb-2 leading-snug break-words">
+    <div className="relative font-sans" ref={dropdownRef}>
+      <label className="mb-2 block break-words font-sans text-sm font-semibold leading-snug text-gray-800">
         Период (дней), на который рассчитан комплект питания
       </label>
       
@@ -586,8 +586,8 @@ const PeriodInput = ({ value, onChange, disabled }) => {
           onBlur={handleBlur}
           disabled={disabled}
           maxLength={2}
-          className={`w-full pl-4 pr-11 py-3 border border-gray-200 rounded-xl text-sm font-medium transition-all
-            ${disabled ? 'opacity-50 cursor-not-allowed bg-gray-50' : 'bg-white'}
+          className={`w-full rounded-2xl border border-gray-200 py-3 pl-4 pr-28 font-sans text-base font-semibold text-violet-600 transition-all placeholder:text-gray-400
+            ${disabled ? 'cursor-not-allowed bg-gray-50 opacity-50' : 'bg-white'}
             ${isOpen ? 'border-primary-500 ring-2 ring-primary-100' : 'hover:border-gray-300'}
             ${showWarning ? 'border-secondary-400 ring-2 ring-secondary-100' : ''}`}
           placeholder="Дни..."
@@ -633,10 +633,12 @@ const PeriodInput = ({ value, onChange, disabled }) => {
             }
           }}
         />
-        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" aria-hidden>
-          <Calendar className="w-5 h-5" />
+        <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" aria-hidden>
+          <Calendar className="h-5 w-5" />
         </span>
-        <span className="absolute right-11 top-1/2 -translate-y-1/2 text-sm text-gray-500">дней</span>
+        <span className="pointer-events-none absolute right-11 top-1/2 -translate-y-1/2 font-sans text-sm font-medium text-gray-700">
+          дней
+        </span>
       </div>
       {dropdownContent}
       
@@ -673,15 +675,15 @@ const RatioSlider = ({ options, value, onChange, disabled }) => {
   const position = options.length > 1 ? (currentIndex / (options.length - 1)) * 100 : 50;
 
   return (
-    <div className="space-y-2">
-      <label className="block text-sm font-medium text-gray-700">
+    <div className="space-y-2 font-sans text-base">
+      <label className="block font-sans text-sm font-semibold text-gray-800">
         Соотношение сухой / влажный корм
       </label>
       <div className="flex items-center gap-3">
-        <span className="text-sm font-medium text-gray-700 flex items-center gap-1 shrink-0">
+        <span className="flex shrink-0 items-center gap-1 font-sans text-sm font-semibold text-gray-800">
           <span aria-hidden>🥫</span> {dryPct}%
         </span>
-        <div className="flex-1 relative h-3.5 flex items-center">
+        <div className="relative flex h-3.5 flex-1 items-center">
           <div
             className="absolute inset-0 rounded-full bg-gradient-to-r from-accent-400 via-accent-300 to-primary-500 overflow-hidden"
             aria-hidden
@@ -704,12 +706,12 @@ const RatioSlider = ({ options, value, onChange, disabled }) => {
             className="absolute inset-0 w-full cursor-pointer disabled:cursor-not-allowed rounded-full"
           />
           <span
-            className="absolute w-4 h-4 rounded-full bg-primary-600 border-2 border-white shadow pointer-events-none transition-all duration-200"
+            className="pointer-events-none absolute h-4 w-4 rounded-full border-2 border-white bg-violet-600 shadow transition-all duration-200"
             style={{ left: `calc(${position}% - 8px)`, top: '50%', transform: 'translateY(-50%)' }}
             aria-hidden
           />
         </div>
-        <span className="text-sm font-medium text-gray-700 flex items-center gap-1 shrink-0">
+        <span className="flex shrink-0 items-center gap-1 font-sans text-sm font-semibold text-gray-800">
           {wetPct}% <span aria-hidden>🍖</span>
         </span>
       </div>
@@ -721,18 +723,18 @@ const RatioSlider = ({ options, value, onChange, disabled }) => {
 // КОМПОНЕНТ: Переключатель варианта набора (Базовый/Продвинутый)
 // ============================================================================
 const VariantToggle = ({ value, onChange, disabled }) => (
-  <div className="flex rounded-full overflow-hidden border border-gray-200 bg-[#F8F8F8] p-0.5">
+  <div className="flex rounded-full overflow-hidden border border-gray-300 bg-white p-1 shadow-sm lg:border-gray-200 lg:bg-[#F8F8F8] lg:p-0.5 lg:shadow-none">
     {PLAN_VARIANT_OPTIONS.map((option) => (
       <button
         key={option.value}
         onClick={() => onChange(option.value)}
         disabled={disabled}
-        className={`flex-1 py-2.5 px-4 text-sm font-medium transition-all rounded-full
+        className={`flex-1 py-2.5 px-3 text-sm font-semibold transition-all rounded-full sm:px-4
           ${value === option.value 
             ? option.value === 'advanced'
               ? 'bg-gradient-to-r from-[#B8A4E6] to-[#7A4EC8] text-white shadow-sm'
               : 'bg-gradient-to-r from-[#FECD48] via-[#F5A623] to-[#E8952A] text-white shadow-sm'
-            : 'bg-transparent text-gray-700 hover:bg-white/60'}
+            : 'bg-transparent text-gray-600 hover:bg-gray-50 lg:hover:bg-white/60 lg:text-gray-700'}
           ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
       >
         {option.label}
@@ -888,6 +890,22 @@ const adjustTreatComponentForFrequency = (component, frequencyDays, periodDays) 
   };
 };
 
+/** Залитая лапка без обводки (мобильная карусель рациона). `mirrored` — поворот к центру карточки. */
+const MobileRationPawIcon = ({ mirrored, inactive }) => (
+  <svg
+    viewBox="0 0 24 24"
+    className={`h-7 w-7 ${mirrored ? '-scale-x-100' : ''}`}
+    aria-hidden
+  >
+    <g fill={inactive ? '#d1d5db' : '#FFB84D'} stroke="none">
+      <circle cx="11" cy="4" r="2" />
+      <circle cx="18" cy="8" r="2" />
+      <circle cx="20" cy="16" r="2" />
+      <path d="M9 10a5 5 0 0 1 5 5v3.5a3.5 3.5 0 0 1-6.84 1.045Q6.52 17.48 4.46 16.84A3.5 3.5 0 0 1 5.5 10Z" />
+    </g>
+  </svg>
+);
+
 // ============================================================================
 // КОМПОНЕНТ: Компактная карточка компонента рациона
 // ============================================================================
@@ -964,19 +982,27 @@ const RationComponentCard = ({
     ? `1×${(component.weight_grams / 1000).toFixed(component.weight_grams >= 1000 ? 1 : 2)} кг`
     : component.package_summary || null;
   const daysLine = component.days_supply > 0 ? `−${component.days_supply} дн.` : null;
+  const packLineMobile = component.weight_grams
+    ? `1 × ${(component.weight_grams / 1000).toFixed(component.weight_grams >= 1000 ? 1 : 2)} кг`
+    : component.package_summary || null;
+  const daysTilde = component.days_supply > 0 ? `~${component.days_supply} дн.` : null;
+  const specLineMobile = [packLineMobile, daysTilde].filter(Boolean).join(' ');
+  const priceTotal = component.price
+    ? parseFloat(component.price) * (component.packages_needed || 1)
+    : null;
 
   const cardBg = 'bg-white border-gray-200';
   return (
     <motion.div 
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className={`rounded-xl border overflow-hidden max-w-full min-w-0 ${cardBg}`}
+      className={`max-w-full min-w-0 overflow-hidden max-lg:rounded-none max-lg:border-0 max-lg:bg-transparent max-lg:shadow-none max-lg:overflow-visible rounded-2xl border shadow-[0_4px_24px_rgba(0,0,0,0.07)] lg:rounded-xl lg:shadow-none ${cardBg}`}
     >
       {/* Заголовок типа с иконкой и галочкой — без цвета */}
-      <div className="flex items-center justify-between px-3 py-2 border-b border-gray-200/80 bg-gray-50">
-        <div className="flex items-center gap-2">
-          <span className="opacity-90" aria-hidden>{typeEmoji[baseType] || '📦'}</span>
-          <span className="text-xs font-medium text-gray-900">
+      <div className="flex items-center justify-between px-3 py-2.5 border-b border-gray-100 bg-white max-lg:border-0 max-lg:bg-transparent max-lg:px-0 max-lg:py-3 lg:border-gray-200/80 lg:bg-gray-50 lg:py-2">
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="opacity-90 shrink-0" aria-hidden>{typeEmoji[baseType] || '📦'}</span>
+          <span className="text-sm font-bold text-[#3d2f25] truncate lg:text-xs lg:font-medium lg:text-gray-900">
             {typeLabels[baseType] || baseType}
           </span>
         </div>
@@ -992,12 +1018,12 @@ const RationComponentCard = ({
             </button>
           )}
           {totalItems > 1 && (
-            <span className="text-xs text-gray-700 bg-white/80 px-2 py-0.5 rounded-full">
+            <span className="text-xs font-semibold text-gray-700 bg-amber-50/90 px-2 py-0.5 rounded-full border-0 lg:bg-white/80">
               {currentIndex + 1}/{totalItems}
             </span>
           )}
-          <span className="text-success-600 flex-shrink-0" aria-hidden>
-            <Check className="w-5 h-5" />
+          <span className="text-emerald-600 flex-shrink-0" aria-hidden>
+            <Check className="w-5 h-5 stroke-[2.5]" />
           </span>
           {removeButtonRight && showRemove && (
             <button
@@ -1012,8 +1038,80 @@ const RationComponentCard = ({
         </div>
       </div>
       
-      {/* Контент */}
-      <div className="flex items-stretch bg-white min-w-0 max-w-full">
+      {/* Контент: мобильный макет (карусель с лапками) */}
+      <div className="lg:hidden min-w-0 max-w-full bg-transparent">
+        <div className="flex items-stretch min-w-0">
+          <button
+            type="button"
+            onClick={() => canNavigate && onChangeIndex(currentIndex - 1)}
+            disabled={!canNavigate || isLoading}
+            className={`flex flex-col items-center justify-center gap-1 w-[3.35rem] shrink-0 py-3 transition-transform active:scale-[0.97]
+              ${canNavigate && !isLoading ? 'text-amber-800' : 'text-gray-300 cursor-not-allowed'}`}
+            aria-label="Предыдущий вариант"
+          >
+            <MobileRationPawIcon mirrored inactive={!canNavigate || isLoading} />
+            <span className="text-[10px] font-bold text-[#E8952A] leading-none tracking-tight">ЖМИ</span>
+          </button>
+          <button
+            type="button"
+            className="flex-1 min-w-0 flex flex-col items-center px-2 pt-2 pb-4 text-left cursor-pointer active:bg-black/[0.03] transition-colors rounded-xl"
+            onClick={handleProductClick}
+          >
+            <div className="w-full max-w-[220px] aspect-square overflow-hidden bg-transparent">
+              {component.image_url ? (
+                <img
+                  src={component.image_url}
+                  alt=""
+                  className="w-full h-full object-contain p-1 rounded-2xl"
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none';
+                  }}
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-5xl">
+                  {typeEmoji[baseType] || '📦'}
+                </div>
+              )}
+            </div>
+            <h4 className="mt-3 w-full text-center font-bold text-[13px] leading-snug text-[#2c2419] line-clamp-3 px-1">
+              {component.product_name}
+            </h4>
+            {kcalLine && (
+              <p className="text-xs text-gray-600 mt-1 text-center">{kcalLine}</p>
+            )}
+            {(baseType === 'treat') && (component.daily_grams || component.pieces_per_day) && (
+              <p className="text-xs text-gray-600 mt-1 text-center">
+                {component.daily_grams ? `${component.daily_grams} г/день` : ''}
+                {component.daily_grams && component.pieces_per_day ? ' • ' : ''}
+                {component.pieces_per_day ? `${component.pieces_per_day} шт/день` : ''}
+              </p>
+            )}
+            {baseType === 'supplement' && component.dosage_text && (
+              <p className="text-xs text-primary-600 mt-1 text-center px-2">{component.dosage_text}</p>
+            )}
+            {specLineMobile ? (
+              <p className="mt-2 text-xs text-gray-400 text-center">{specLineMobile}</p>
+            ) : null}
+            <p className="mt-3 text-xl font-bold text-gray-900 tabular-nums">
+              {priceTotal != null ? `${priceTotal.toLocaleString('ru-RU')} ₽` : '—'}
+            </p>
+          </button>
+          <button
+            type="button"
+            onClick={() => canNavigate && onChangeIndex(currentIndex + 1)}
+            disabled={!canNavigate || isLoading}
+            className={`flex flex-col items-center justify-center gap-1 w-[3.35rem] shrink-0 py-3 transition-transform active:scale-[0.97]
+              ${canNavigate && !isLoading ? 'text-amber-800' : 'text-gray-300 cursor-not-allowed'}`}
+            aria-label="Следующий вариант"
+          >
+            <MobileRationPawIcon mirrored={false} inactive={!canNavigate || isLoading} />
+            <span className="text-[10px] font-bold text-[#E8952A] leading-none tracking-tight">ЖМИ</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Контент: десктоп / планшет (как раньше) */}
+      <div className="hidden lg:flex items-stretch bg-white min-w-0 max-w-full">
         <button 
           onClick={() => canNavigate && onChangeIndex(currentIndex - 1)}
           disabled={!canNavigate || isLoading}
@@ -1095,33 +1193,6 @@ const RationComponentCard = ({
         </button>
       </div>
 
-      {canNavigate && alternatives?.length > 0 && (
-        <div className="md:hidden border-t border-gray-100 bg-gray-50/90 px-2 py-2">
-          <p className="text-[10px] text-gray-500 mb-1.5 px-1">Варианты корма</p>
-          <div className="flex gap-2 overflow-x-auto pb-1 snap-x snap-mandatory [-webkit-overflow-scrolling:touch]">
-            {alternatives.map((alt, idx) => (
-              <button
-                type="button"
-                key={alt.product_id ?? `alt-${idx}`}
-                onClick={() => onChangeIndex(idx)}
-                className={`shrink-0 snap-start w-14 h-14 rounded-lg border-2 overflow-hidden bg-white transition-all ${
-                  idx === currentIndex
-                    ? isPurple
-                      ? 'border-primary-500 ring-2 ring-primary-200'
-                      : 'border-amber-500 ring-2 ring-amber-200'
-                    : 'border-gray-200 opacity-90'
-                }`}
-              >
-                {alt.image_url ? (
-                  <img src={alt.image_url} alt="" className="w-full h-full object-cover" />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-lg">{typeEmoji[baseType] || '📦'}</div>
-                )}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
     </motion.div>
   );
 };
@@ -1420,9 +1491,9 @@ const FeedingPlanBlock = ({ plan, isLoading, selectedComponents, treatFrequencyD
 
   if (isLoading) {
     return (
-      <div className={`rounded-2xl border border-gray-200 overflow-hidden bg-white ${!isSidebar ? 'border-primary-200 bg-primary-50/50' : ''}`}>
+      <div className={`overflow-hidden ${isSidebar ? 'rounded-none border-0 bg-transparent shadow-none' : 'rounded-2xl border border-gray-200 bg-white border-primary-200 bg-primary-50/50'}`}>
         {!isSidebar && <div className="border-b border-primary-200 bg-gradient-to-r from-primary-100 to-primary-200 h-14" />}
-        <div className="p-5 animate-pulse space-y-4">
+        <div className={`animate-pulse space-y-4 ${isSidebar ? 'rounded-xl border border-gray-100 bg-white p-4' : 'p-5'}`}>
           <div className="h-6 bg-gray-100 rounded w-1/2" />
           <div className="h-4 bg-gray-100/60 rounded w-3/4" />
           <div className="h-20 bg-gray-50 rounded-xl" />
@@ -1575,9 +1646,16 @@ const FeedingPlanBlock = ({ plan, isLoading, selectedComponents, treatFrequencyD
       note: `БЖУ на сухое вещество (DM ${Math.round(100 - avgMoisture)}%)`,
     };
   })();
+
+  const sidebarSectionCard = 'rounded-xl border border-gray-100 bg-white p-3 sm:p-4';
+  const defaultNormCard = 'rounded-xl p-4 mb-4 bg-gradient-to-b from-slate-50/95 to-gray-50/90 border border-gray-200/80 shadow-sm';
+  const macroGramClass = isSidebar
+    ? 'text-sm font-semibold text-gray-900 tabular-nums'
+    : 'text-[11px] font-semibold text-gray-900 sm:text-sm tabular-nums';
+  const macroLabelClass = isSidebar ? 'text-xs text-gray-900 leading-tight' : 'text-[9px] text-gray-900 sm:text-[10px] leading-tight';
   
   return (
-    <div className={`rounded-2xl border overflow-hidden max-w-full min-w-0 ${isSidebar ? 'border-gray-200 bg-white shadow-sm' : 'border-primary-200 bg-primary-50/50'}`}>
+    <div className={`overflow-hidden max-w-full min-w-0 ${isSidebar ? 'rounded-none border-0 bg-transparent shadow-none' : 'rounded-2xl border border-primary-200 bg-primary-50/50'}`}>
       {!isSidebar && (
         <div className="px-5 py-4 bg-gradient-to-r from-primary-100 to-primary-200 border-b border-primary-200">
           <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
@@ -1586,9 +1664,9 @@ const FeedingPlanBlock = ({ plan, isLoading, selectedComponents, treatFrequencyD
           </h3>
         </div>
       )}
-      <div className={isSidebar ? 'p-3 sm:p-4 max-w-full min-w-0 overflow-x-hidden' : 'p-5 bg-white/70'}>
-      {/* Дневная норма и БЖУ — градиент как на референсе (светлый голубовато-серый) */}
-      <div className="rounded-xl p-4 mb-4 bg-gradient-to-b from-slate-50/95 to-gray-50/90 border border-gray-200/80 shadow-sm">
+      <div className={isSidebar ? 'p-0 max-w-full min-w-0 overflow-x-hidden bg-white font-sans text-base' : 'p-5 bg-white/70'}>
+      {/* Дневная норма и БЖУ — в сайдбаре тот же плоский стиль, что у блока «Подбор корма» */}
+      <div className={isSidebar ? `${sidebarSectionCard} mb-4` : defaultNormCard}>
         <p className="text-xs font-semibold bg-gradient-to-r from-accent-400 to-accent-600 bg-clip-text text-transparent inline-block mb-1">Дневная норма</p>
         <p className="text-2xl font-bold text-gray-900">
           {(caloriesForUi?.total ?? regularDay.total_kcal ?? Math.round(plan.daily_calories))} ккал
@@ -1665,17 +1743,21 @@ const FeedingPlanBlock = ({ plan, isLoading, selectedComponents, treatFrequencyD
             : null;
 
           return (
-            <div className="mt-3 pt-3 border-t border-gray-200">
+            <div className={`mt-3 pt-3 border-t ${isSidebar ? 'border-gray-100' : 'border-gray-200'}`}>
               <p className="text-xs font-semibold bg-gradient-to-r from-accent-400 to-accent-600 bg-clip-text text-transparent inline-block mb-2">Питательные вещества (день)</p>
               {/* Диаграмма; при наведении — подсказка с белками, жирами, углеводами */}
               {chartData && (
                 <div className="flex justify-center mb-4 w-full min-w-0 px-1">
                   <div
                     className="relative w-36 h-36 sm:w-48 sm:h-48 max-w-full flex items-center justify-center mx-auto"
-                    style={{
-                      filter: 'drop-shadow(0 24px 48px rgba(0,0,0,0.22)) drop-shadow(0 12px 24px rgba(0,0,0,0.16)) drop-shadow(0 6px 12px rgba(0,0,0,0.1)) drop-shadow(0 2px 4px rgba(0,0,0,0.06))',
-                      transform: 'perspective(280px) rotateX(8deg) rotateY(-2deg)',
-                    }}
+                    style={
+                      isSidebar
+                        ? { filter: 'drop-shadow(0 2px 8px rgba(0,0,0,0.06))' }
+                        : {
+                            filter: 'drop-shadow(0 24px 48px rgba(0,0,0,0.22)) drop-shadow(0 12px 24px rgba(0,0,0,0.16)) drop-shadow(0 6px 12px rgba(0,0,0,0.1)) drop-shadow(0 2px 4px rgba(0,0,0,0.06))',
+                            transform: 'perspective(280px) rotateX(8deg) rotateY(-2deg)',
+                          }
+                    }
                   >
                     <Pie
                       data={chartData}
@@ -1700,19 +1782,19 @@ const FeedingPlanBlock = ({ plan, isLoading, selectedComponents, treatFrequencyD
                   </div>
                 </div>
               )}
-              {/* Окошки БЖУ — оконтовка в цветах диаграммы (#2563eb, #e5a41e, #9ca3af) */}
-              <div className="grid grid-cols-3 gap-1.5 sm:gap-2 text-xs min-w-0">
-                <div className="rounded-xl p-1.5 sm:p-2.5 text-center border-2 border-[#2563eb] bg-blue-100/90 shadow-sm min-w-0">
-                  <p className="font-semibold text-gray-900 text-[11px] sm:text-sm tabular-nums">{proteinG != null ? `${proteinG}г` : '—'}</p>
-                  <p className="text-[9px] sm:text-[10px] text-gray-900 leading-tight">Белок</p>
+              {/* Окошки БЖУ — в сайдбаре белый фон и обводка как у полей «Подбор корма» */}
+              <div className="grid min-w-0 grid-cols-3 gap-1.5 sm:gap-2 text-xs">
+                <div className={`rounded-xl p-1.5 text-center min-w-0 border-2 border-[#2563eb] sm:p-2.5 ${isSidebar ? 'bg-white' : 'bg-blue-100/90 shadow-sm'}`}>
+                  <p className={macroGramClass}>{proteinG != null ? `${proteinG}г` : '—'}</p>
+                  <p className={macroLabelClass}>Белок</p>
                 </div>
-                <div className="rounded-xl p-1.5 sm:p-2.5 text-center border-2 border-[#e5a41e] bg-amber-100/90 shadow-sm min-w-0">
-                  <p className="font-semibold text-gray-900 text-[11px] sm:text-sm tabular-nums">{fatG != null ? `${fatG}г` : '—'}</p>
-                  <p className="text-[9px] sm:text-[10px] text-gray-900 leading-tight">Жир</p>
+                <div className={`rounded-xl p-1.5 text-center min-w-0 border-2 border-[#e5a41e] sm:p-2.5 ${isSidebar ? 'bg-white' : 'bg-amber-100/90 shadow-sm'}`}>
+                  <p className={macroGramClass}>{fatG != null ? `${fatG}г` : '—'}</p>
+                  <p className={macroLabelClass}>Жир</p>
                 </div>
-                <div className="rounded-xl p-1.5 sm:p-2.5 text-center border-2 border-[#9ca3af] bg-slate-100/90 shadow-sm min-w-0">
-                  <p className="font-semibold text-gray-900 text-[11px] sm:text-sm tabular-nums">{carbsG != null ? `${carbsG}г` : '—'}</p>
-                  <p className="text-[9px] sm:text-[10px] text-gray-900 leading-tight">Углеводы</p>
+                <div className={`rounded-xl p-1.5 text-center min-w-0 border-2 border-[#9ca3af] sm:p-2.5 ${isSidebar ? 'bg-white' : 'bg-slate-100/90 shadow-sm'}`}>
+                  <p className={macroGramClass}>{carbsG != null ? `${carbsG}г` : '—'}</p>
+                  <p className={macroLabelClass}>Углеводы</p>
                 </div>
               </div>
             </div>
@@ -1726,7 +1808,7 @@ const FeedingPlanBlock = ({ plan, isLoading, selectedComponents, treatFrequencyD
           <p className="text-xs font-semibold bg-gradient-to-r from-accent-400 to-accent-600 bg-clip-text text-transparent inline-block uppercase tracking-wide mb-3">
             Дневное расписание кормления
           </p>
-          <div className="rounded-xl border-2 border-amber-300/70 bg-gradient-to-b from-blue-50/90 to-slate-50/80 shadow-sm overflow-hidden">
+          <div className={isSidebar ? 'rounded-xl border border-gray-100 bg-white overflow-hidden' : 'rounded-xl border-2 border-amber-300/70 bg-gradient-to-b from-blue-50/90 to-slate-50/80 shadow-sm overflow-hidden'}>
             {(() => {
               const dryFood = componentsForUi.find(c => c.product_type?.includes('dry'));
               const wetFood = componentsForUi.find(c => c.product_type?.includes('wet'));
@@ -1762,8 +1844,13 @@ const FeedingPlanBlock = ({ plan, isLoading, selectedComponents, treatFrequencyD
               };
               return schedule.map((meal, i) => (
                 <div key={i} className="relative">
-                  {i > 0 && <div className="absolute left-0 right-0 top-0 border-t-2 border-dashed border-amber-400/80" aria-hidden />}
-                  <div className="p-2.5 sm:p-3 flex flex-col gap-2 min-w-0 bg-gradient-to-b from-white/70 to-blue-50/30">
+                  {i > 0 && (
+                    <div
+                      className={isSidebar ? 'absolute left-0 right-0 top-0 border-t border-dashed border-gray-200' : 'absolute left-0 right-0 top-0 border-t-2 border-dashed border-amber-400/80'}
+                      aria-hidden
+                    />
+                  )}
+                  <div className={`p-2.5 sm:p-3 flex flex-col gap-2 min-w-0 ${isSidebar ? 'bg-white' : 'bg-gradient-to-b from-white/70 to-blue-50/30'}`}>
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="text-sm font-bold text-gray-900 shrink-0">{meal.time}</span>
                       <span className={`px-2 py-0.5 rounded-full text-xs font-medium shrink-0 ${pillClass(meal.label)}`}>
@@ -1815,7 +1902,7 @@ const FeedingPlanBlock = ({ plan, isLoading, selectedComponents, treatFrequencyD
             <p className="text-xs font-semibold bg-gradient-to-r from-accent-400 to-accent-600 bg-clip-text text-transparent inline-block uppercase tracking-wide mb-3">
               Лакомства (между кормлениями)
             </p>
-            <div className="p-3 rounded-xl bg-gradient-to-b from-slate-50/95 to-gray-50/90 border-2 border-amber-300/70 shadow-sm">
+            <div className={isSidebar ? `${sidebarSectionCard} p-3` : 'p-3 rounded-xl bg-gradient-to-b from-slate-50/95 to-gray-50/90 border-2 border-amber-300/70 shadow-sm'}>
               <div className="flex items-center gap-2 mb-3">
                 <Bone className="w-4 h-4 shrink-0 text-amber-700/90" aria-hidden />
                 <span className="text-sm font-medium text-gray-800 line-clamp-1 flex-1 min-w-0">{productName}</span>
@@ -1849,7 +1936,7 @@ const FeedingPlanBlock = ({ plan, isLoading, selectedComponents, treatFrequencyD
                 <MapPin className="w-3.5 h-3.5 shrink-0 mt-0.5 text-amber-600" aria-hidden />
                 <span className="font-medium">Распределить в течение дня, не более 10% от суточной нормы</span>
               </p>
-              <div className="mt-4 pt-3 border-t-2 border-dashed border-amber-400/80">
+              <div className={`mt-4 pt-3 border-t border-dashed ${isSidebar ? 'border-gray-200' : 'border-t-2 border-amber-400/80'}`}>
                 <PdfDownloadButton plan={plan} pet={pet} selectedComponents={componentsForUi} treatFrequencyDays={treatFrequencyDays} variant="secondary" />
               </div>
             </div>
@@ -1980,6 +2067,21 @@ export default function FoodRecommendationPage() {
   const [isTreatPoolLoading, setIsTreatPoolLoading] = useState(false);
   const [restoreState, setRestoreState] = useState(null);
   const restoreAppliedRef = useRef(false);
+  const [mobileRationCalcOpen, setMobileRationCalcOpen] = useState(false);
+
+  useEffect(() => {
+    if (!mobileRationCalcOpen) return undefined;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const onKeyDown = (e) => {
+      if (e.key === 'Escape') setMobileRationCalcOpen(false);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      window.removeEventListener('keydown', onKeyDown);
+    };
+  }, [mobileRationCalcOpen]);
   
   // Загрузка питомцев
   useEffect(() => {
@@ -2521,7 +2623,7 @@ export default function FoodRecommendationPage() {
   }
   
   return (
-    <div className="page-container animate-fadeIn pb-8 w-full min-w-0 max-w-full overflow-x-hidden">
+    <div className="page-container animate-fadeIn pb-8 w-full min-w-0 max-w-full overflow-x-hidden bg-white">
       {/* Ошибка */}
       <AnimatePresence>
         {error && (
@@ -2566,19 +2668,30 @@ export default function FoodRecommendationPage() {
       {/* Основной контент: на мобильных сначала блок «Расчёт рациона», затем подбор и конструктор */}
       <div className="grid lg:grid-cols-3 gap-4 sm:gap-6 w-full min-w-0 max-w-full">
         <div className="lg:col-span-2 space-y-6 order-2 lg:order-1 min-w-0 max-w-full">
-          {/* Подбор корма — градиент по референсу (оранжево-жёлтый → бледно-жёлтый) */}
-          <div className="rounded-2xl border border-amber-200/80 overflow-hidden bg-amber-50/30 max-w-full min-w-0">
-            <div className="rounded-t-2xl px-4 sm:px-6 py-3 sm:py-4 bg-gradient-to-r from-[#F6B537] via-[#FDE28F] to-[#FEE9AE] border-b border-amber-200/60">
-              <h1 className="text-base sm:text-lg font-semibold text-amber-900 flex items-center gap-2 min-w-0">
-                <Sparkles className="w-5 h-5 flex-shrink-0 text-amber-800" aria-hidden />
-                Подбор корма
-              </h1>
+          {/* Подбор корма — тот же каркас, что у конструктора рациона */}
+          <div className="rounded-2xl border border-amber-200/80 overflow-hidden bg-amber-50/30 max-w-full min-w-0 max-lg:mx-auto max-lg:w-full max-lg:max-w-[min(100%,28rem)] max-lg:border-0 max-lg:rounded-none max-lg:bg-transparent max-lg:overflow-visible">
+            <div className="rounded-t-2xl px-4 sm:px-6 py-3 sm:py-4 bg-gradient-to-r from-[#F6B537] via-[#FDE28F] to-[#FEE9AE] border-b border-amber-200/60 max-lg:rounded-xl lg:rounded-t-2xl">
+              <div className="flex items-center justify-between gap-2 min-w-0">
+                <h1 className="text-base sm:text-lg font-bold text-[#4a3728] flex items-center gap-2 min-w-0 flex-1 lg:font-semibold lg:text-amber-900">
+                  <Sparkles className="w-5 h-5 flex-shrink-0 text-amber-900/85 lg:text-amber-800" aria-hidden />
+                  <span className="truncate">Подбор корма</span>
+                </h1>
+                <button
+                  type="button"
+                  onClick={() => setMobileRationCalcOpen(true)}
+                  className="lg:hidden shrink-0 inline-flex items-center gap-1.5 rounded-full border-2 border-[#fbba2d] bg-gradient-to-r from-[#8B5CF0] to-[#6D28D9] px-3 py-2 text-[11px] font-bold text-white shadow-md shadow-purple-900/25 active:scale-[0.98] transition-transform"
+                >
+                  <Calculator className="w-4 h-4 shrink-0 opacity-95" strokeWidth={2.25} aria-hidden />
+                  Расчёт рациона
+                </button>
+              </div>
             </div>
-            <div className="p-4 sm:p-7 overflow-x-hidden bg-white/90">
-              <h2 className="text-xs font-semibold bg-gradient-to-r from-accent-400 to-accent-600 bg-clip-text text-transparent inline-block uppercase tracking-wide mb-4">
+            <div className="relative min-w-0 max-w-full">
+              <div className="rounded-b-2xl bg-white p-4 font-sans text-base antialiased max-lg:rounded-none max-lg:px-3 max-lg:pb-5 max-lg:pt-4 sm:p-6 lg:rounded-b-none lg:p-7 overflow-x-hidden">
+              <h2 className="mb-4 inline-block bg-gradient-to-r from-accent-400 to-accent-600 bg-clip-text font-sans text-xs font-semibold uppercase tracking-wide text-transparent">
                 Параметры подбора
               </h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5 overflow-x-hidden rounded-xl p-3 sm:p-4 bg-[#F8F8F8]/60 border border-gray-100 min-w-0 max-w-full">
+              <div className="grid min-w-0 max-w-full grid-cols-1 gap-4 overflow-x-hidden rounded-2xl border border-gray-100 bg-white p-4 font-sans text-base sm:grid-cols-2 sm:gap-5 sm:p-4">
                 <div className="space-y-1">
                   <PetDropdown 
                     pets={pets} 
@@ -2615,21 +2728,32 @@ export default function FoodRecommendationPage() {
                   <div aria-hidden="true" />
                 )}
               </div>
+              </div>
             </div>
           </div>
           
           {/* Конструктор рациона — градиент по референсу (оранжево-жёлтый → бледно-жёлтый); контент размыт, пока не выбран питомец */}
-          <div className="rounded-2xl border border-amber-200/80 overflow-hidden bg-amber-50/30 max-w-full min-w-0">
-            <div className="px-4 sm:px-6 py-3 sm:py-4 bg-gradient-to-r from-[#F6B537] via-[#FDE28F] to-[#FEE9AE] border-b border-amber-200/60">
-              <h3 className="text-base sm:text-lg font-semibold text-amber-900 flex items-center gap-2 min-w-0">
-                <Sparkles className="w-5 h-5 flex-shrink-0 text-amber-800" aria-hidden />
-                Конструктор рациона
-              </h3>
+          <div className="rounded-2xl border border-amber-200/80 overflow-hidden bg-amber-50/30 max-w-full min-w-0 max-lg:mx-auto max-lg:w-full max-lg:max-w-[min(100%,28rem)] max-lg:border-0 max-lg:rounded-none max-lg:bg-transparent max-lg:overflow-visible">
+            <div className="rounded-t-2xl px-4 sm:px-6 py-3 sm:py-4 bg-gradient-to-r from-[#F6B537] via-[#FDE28F] to-[#FEE9AE] border-b border-amber-200/60 max-lg:rounded-xl lg:rounded-t-2xl">
+              <div className="flex items-center justify-between gap-2 min-w-0">
+                <h3 className="text-base sm:text-lg font-bold text-[#4a3728] flex items-center gap-2 min-w-0 flex-1 lg:font-semibold lg:text-amber-900">
+                  <Sparkles className="w-5 h-5 flex-shrink-0 text-amber-900/85 lg:text-amber-800" aria-hidden />
+                  <span className="truncate">Конструктор рациона</span>
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => setMobileRationCalcOpen(true)}
+                  className="lg:hidden shrink-0 inline-flex items-center gap-1.5 rounded-full border-2 border-[#fbba2d] bg-gradient-to-r from-[#8B5CF0] to-[#6D28D9] px-3 py-2 text-[11px] font-bold text-white shadow-md shadow-purple-900/25 active:scale-[0.98] transition-transform"
+                >
+                  <Calculator className="w-4 h-4 shrink-0 opacity-95" strokeWidth={2.25} aria-hidden />
+                  Расчёт рациона
+                </button>
+              </div>
             </div>
             <div className="relative min-w-0 max-w-full">
-              <div className="p-4 sm:p-6 bg-white/80 overflow-x-hidden">
+              <div className="p-4 sm:p-6 bg-white overflow-x-hidden rounded-b-2xl lg:rounded-b-none max-lg:rounded-none max-lg:px-3 max-lg:pb-5 max-lg:pt-3">
               {/* Переключатель Базовый / Продвинутый */}
-              <div className="mb-6">
+              <div className="mb-5 lg:mb-6">
                 <VariantToggle
                   value={planVariant}
                   onChange={setPlanVariant}
@@ -2650,7 +2774,7 @@ export default function FoodRecommendationPage() {
               
               {/* Компоненты */}
               {!isPlanLoading && currentComponents.length > 0 && (
-                <div className="space-y-4">
+                <div className="space-y-10 lg:space-y-4">
                   {(() => {
                     const foodComponents = currentComponents.filter(({ type }) => !type.startsWith('supplement_'));
                     const supplementComponents = currentComponents
@@ -2814,14 +2938,18 @@ export default function FoodRecommendationPage() {
           </div>
         </div>
         
-        <div className="lg:col-span-1 order-1 lg:order-2 min-w-0 max-w-full">
-          <div className="rounded-2xl border border-amber-200/80 overflow-hidden bg-amber-50/30 max-w-full min-w-0">
-            <div className="rounded-t-2xl px-4 sm:px-6 py-3 sm:py-4 bg-gradient-to-r from-[#F6B537] via-[#FDE28F] to-[#FEE9AE] border-b border-amber-200/60">
-              <h2 className="text-base sm:text-lg font-semibold text-amber-900 flex items-center gap-2 min-w-0">
-                <Sparkles className="w-5 h-5 flex-shrink-0 text-amber-800" aria-hidden />
-                Расчёт рациона
-              </h2>
+        <div className="hidden lg:block lg:col-span-1 lg:order-2 min-w-0 max-w-full scroll-mt-24" id="mobile-feeding-plan">
+          <div className="rounded-2xl border border-amber-200/80 overflow-hidden bg-amber-50/30 max-w-full min-w-0 max-lg:border-0 max-lg:rounded-none max-lg:bg-transparent max-lg:overflow-visible">
+            <div className="rounded-t-2xl px-4 sm:px-6 py-3 sm:py-4 bg-gradient-to-r from-[#F6B537] via-[#FDE28F] to-[#FEE9AE] border-b border-amber-200/60 max-lg:rounded-xl lg:rounded-t-2xl">
+              <div className="flex items-center justify-between gap-2 min-w-0">
+                <h2 className="flex min-w-0 flex-1 items-center gap-2 font-sans text-base font-bold text-[#4a3728] sm:text-lg lg:font-semibold lg:text-amber-900">
+                  <Sparkles className="w-5 h-5 flex-shrink-0 text-amber-900/85 lg:text-amber-800" aria-hidden />
+                  <span className="truncate">Расчёт рациона</span>
+                </h2>
+              </div>
             </div>
+            <div className="relative min-w-0 max-w-full">
+              <div className="rounded-b-2xl bg-white p-4 font-sans text-base antialiased max-lg:rounded-none max-lg:px-3 max-lg:pb-5 max-lg:pt-3 sm:p-6 lg:rounded-b-none overflow-x-hidden">
             <div className="sticky top-3 md:top-24 min-w-0 max-w-full overflow-x-hidden">
               {selectedPet ? (
                 <FeedingPlanBlock
@@ -2834,25 +2962,25 @@ export default function FoodRecommendationPage() {
                 pet={selectedPet}
               />
             ) : (
-              <div className="relative rounded-2xl border border-gray-200 overflow-hidden bg-white shadow-sm">
-                <div className="p-4">
-                  <div className="rounded-xl p-4 mb-4 bg-gradient-to-b from-slate-50/95 to-gray-50/90 border border-gray-200/80 shadow-sm">
+              <div className="relative">
+                <div className="p-1 sm:p-0">
+                  <div className="rounded-xl border border-gray-100 bg-white p-4 mb-4">
                     <p className="text-xs font-semibold bg-gradient-to-r from-accent-400 to-accent-600 bg-clip-text text-transparent inline-block mb-1">Дневная норма</p>
                     <p className="text-2xl font-bold text-gray-900">— ккал</p>
-                    <div className="mt-3 pt-3 border-t border-gray-200">
+                    <div className="mt-3 pt-3 border-t border-gray-100">
                       <p className="text-xs font-semibold bg-gradient-to-r from-accent-400 to-accent-600 bg-clip-text text-transparent inline-block mb-2">Питательные вещества (день)</p>
                       <div className="grid grid-cols-3 gap-2 text-xs">
-                        <div className="rounded-xl p-2.5 text-center border-2 border-[#2563eb] bg-blue-100/90 shadow-sm">
+                        <div className="rounded-xl p-2.5 text-center border-2 border-[#2563eb] bg-white">
                           <p className="font-semibold text-gray-900">— г</p>
-                          <p className="text-[10px] text-gray-900">Белок</p>
+                          <p className="text-xs text-gray-900">Белок</p>
                         </div>
-                        <div className="rounded-xl p-2.5 text-center border-2 border-[#e5a41e] bg-amber-100/90 shadow-sm">
+                        <div className="rounded-xl p-2.5 text-center border-2 border-[#e5a41e] bg-white">
                           <p className="font-semibold text-gray-900">— г</p>
-                          <p className="text-[10px] text-gray-900">Жир</p>
+                          <p className="text-xs text-gray-900">Жир</p>
                         </div>
-                        <div className="rounded-xl p-2.5 text-center border-2 border-[#9ca3af] bg-slate-100/90 shadow-sm">
+                        <div className="rounded-xl p-2.5 text-center border-2 border-[#9ca3af] bg-white">
                           <p className="font-semibold text-gray-900">— г</p>
-                          <p className="text-[10px] text-gray-900">Углеводы</p>
+                          <p className="text-xs text-gray-900">Углеводы</p>
                         </div>
                       </div>
                     </div>
@@ -2861,8 +2989,8 @@ export default function FoodRecommendationPage() {
                     <p className="text-xs font-semibold bg-gradient-to-r from-accent-400 to-accent-600 bg-clip-text text-transparent inline-block uppercase tracking-wide mb-3">
                       Дневное расписание кормления
                     </p>
-                    <div className="rounded-xl border-2 border-amber-300/70 bg-gradient-to-b from-blue-50/90 to-slate-50/80 shadow-sm overflow-hidden">
-                      <div className="p-3 flex items-start gap-3 bg-gradient-to-b from-white/70 to-blue-50/30 border-b-2 border-dashed border-amber-400/80">
+                    <div className="rounded-xl border border-gray-100 bg-white overflow-hidden">
+                      <div className="p-3 flex items-start gap-3 bg-white border-b border-dashed border-gray-200">
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 flex-wrap mb-1.5">
                             <span className="text-sm font-bold text-gray-900">08:00</span>
@@ -2875,7 +3003,7 @@ export default function FoodRecommendationPage() {
                           </div>
                         </div>
                       </div>
-                      <div className="p-3 flex items-start gap-3 bg-gradient-to-b from-white/70 to-blue-50/30">
+                      <div className="p-3 flex items-start gap-3 bg-white">
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 flex-wrap mb-1.5">
                             <span className="text-sm font-bold text-gray-900">13:00</span>
@@ -2891,13 +3019,139 @@ export default function FoodRecommendationPage() {
                     </div>
                   </div>
                 </div>
-                <div className="absolute inset-0 rounded-2xl bg-white/50 backdrop-blur-md pointer-events-auto z-10" aria-hidden />
+                <div className="absolute inset-0 rounded-xl bg-white/50 backdrop-blur-md pointer-events-auto z-10" aria-hidden />
               </div>
             )}
+            </div>
+              </div>
             </div>
           </div>
         </div>
       </div>
+
+      <AnimatePresence>
+        {mobileRationCalcOpen && (
+          <>
+            <motion.div
+              key="ration-calc-backdrop"
+              role="presentation"
+              className="fixed inset-0 z-[50190] bg-black/45 lg:hidden"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.22 }}
+              onClick={() => setMobileRationCalcOpen(false)}
+            />
+            <motion.div
+              key="ration-calc-sheet"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="mobile-ration-calc-title"
+              className="fixed inset-y-0 right-0 z-[50200] flex h-full w-full max-w-[min(100%,28rem)] flex-col bg-white font-sans text-base antialiased shadow-[-12px_0_40px_rgba(0,0,0,0.12)] lg:hidden"
+              initial={{ x: '100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '100%' }}
+              transition={{ type: 'tween', duration: 0.38, ease: [0.32, 0.72, 0, 1] }}
+            >
+              <div className="shrink-0 px-3 pt-3 pb-2">
+                <div className="flex min-w-0 items-center justify-between gap-2 rounded-2xl border border-amber-200/70 bg-gradient-to-r from-[#F6B537] via-[#FDE28F] to-[#FEE9AE] px-4 sm:px-5 py-3 sm:py-3.5 shadow-sm shadow-amber-900/10">
+                  <h2
+                    id="mobile-ration-calc-title"
+                    className="flex min-w-0 flex-1 items-center gap-2 font-sans text-base sm:text-lg font-bold text-[#4a3728]"
+                  >
+                    <Sparkles className="h-5 w-5 shrink-0 text-amber-900/85" aria-hidden />
+                    <span className="truncate">Расчёт рациона</span>
+                  </h2>
+                  <button
+                    type="button"
+                    onClick={() => setMobileRationCalcOpen(false)}
+                    className="inline-flex min-h-10 shrink-0 items-center gap-1 rounded-full border-2 border-[#fbba2d] bg-gradient-to-r from-[#8B5CF0] to-[#6D28D9] px-2.5 py-1.5 text-xs font-bold text-white shadow-md shadow-purple-900/30 transition-transform active:scale-[0.98] sm:gap-1.5 sm:px-3 sm:py-2 sm:text-sm"
+                    aria-label="Вернуться к подбору корма"
+                  >
+                    <ChevronLeft className="h-4 w-4 shrink-0 -mr-0.5" strokeWidth={2.5} aria-hidden />
+                    Подбор корма
+                  </button>
+                </div>
+              </div>
+              <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-4 pb-[max(1.5rem,env(safe-area-inset-bottom))]">
+                <div className="min-w-0 max-w-full overflow-x-hidden">
+                  {selectedPet ? (
+                    <FeedingPlanBlock
+                      variant="sidebar"
+                      plan={feedingPlan}
+                      isLoading={isPlanLoading}
+                      selectedComponents={currentComponents.map((x) => x.component).filter(Boolean)}
+                      treatFrequencyDays={treatFrequencyDays}
+                      onTreatFrequencyChange={setTreatFrequencyDays}
+                      pet={selectedPet}
+                    />
+                  ) : (
+                    <div className="relative">
+                      <div className="p-1 sm:p-0">
+                        <div className="rounded-xl border border-gray-100 bg-white p-4 mb-4">
+                          <p className="text-xs font-semibold bg-gradient-to-r from-accent-400 to-accent-600 bg-clip-text text-transparent inline-block mb-1">Дневная норма</p>
+                          <p className="text-2xl font-bold text-gray-900">— ккал</p>
+                          <div className="mt-3 pt-3 border-t border-gray-100">
+                            <p className="text-xs font-semibold bg-gradient-to-r from-accent-400 to-accent-600 bg-clip-text text-transparent inline-block mb-2">Питательные вещества (день)</p>
+                            <div className="grid grid-cols-3 gap-2 text-xs">
+                              <div className="rounded-xl p-2.5 text-center border-2 border-[#2563eb] bg-white">
+                                <p className="font-semibold text-gray-900">— г</p>
+                                <p className="text-xs text-gray-900">Белок</p>
+                              </div>
+                              <div className="rounded-xl p-2.5 text-center border-2 border-[#e5a41e] bg-white">
+                                <p className="font-semibold text-gray-900">— г</p>
+                                <p className="text-xs text-gray-900">Жир</p>
+                              </div>
+                              <div className="rounded-xl p-2.5 text-center border-2 border-[#9ca3af] bg-white">
+                                <p className="font-semibold text-gray-900">— г</p>
+                                <p className="text-xs text-gray-900">Углеводы</p>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="mb-4">
+                          <p className="text-xs font-semibold bg-gradient-to-r from-accent-400 to-accent-600 bg-clip-text text-transparent inline-block uppercase tracking-wide mb-3">
+                            Дневное расписание кормления
+                          </p>
+                          <div className="rounded-xl border border-gray-100 bg-white overflow-hidden">
+                            <div className="p-3 flex items-start gap-3 bg-white border-b border-dashed border-gray-200">
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 flex-wrap mb-1.5">
+                                  <span className="text-sm font-bold text-gray-900">08:00</span>
+                                  <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-amber-50/90 text-amber-800 border border-amber-200/60">Завтрак</span>
+                                </div>
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <Package className="w-4 h-4 shrink-0 text-red-500/90" />
+                                  <span className="text-sm text-gray-500">—</span>
+                                  <span className="text-sm"><span className="font-bold text-blue-600">—</span> г</span>
+                                </div>
+                              </div>
+                            </div>
+                            <div className="p-3 flex items-start gap-3 bg-white">
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 flex-wrap mb-1.5">
+                                  <span className="text-sm font-bold text-gray-900">13:00</span>
+                                  <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-blue-50/90 text-blue-800 border border-blue-200/60">Обед</span>
+                                </div>
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <Circle className="w-3.5 h-3.5 shrink-0 fill-amber-700/80 text-amber-700/80" />
+                                  <span className="text-sm text-gray-500">—</span>
+                                  <span className="text-sm"><span className="font-bold text-blue-600">—</span> г</span>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="absolute inset-0 rounded-xl bg-white/50 backdrop-blur-md pointer-events-auto z-10" aria-hidden />
+                    </div>
+                  )}
+                </div>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
