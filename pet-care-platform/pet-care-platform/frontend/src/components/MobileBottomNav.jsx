@@ -19,7 +19,10 @@ import { useAuthStore } from '../store/authStore'
 import { useCartStore } from '../store/cartStore'
 
 const pillShadow =
-  '0 14px 36px rgba(82, 47, 129, 0.32), 0 6px 16px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.1)'
+  '0 10px 28px rgba(0, 0, 0, 0.14), 0 3px 10px rgba(0, 0, 0, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.14), inset 0 -2px 6px rgba(0, 0, 0, 0.12)'
+
+const ctaVolumeShadow =
+  'inset 0 1px 0 rgba(255, 255, 255, 0.4), inset 0 -1px 0 rgba(0, 0, 0, 0.1), 0 6px 16px rgba(0, 0, 0, 0.12), 0 2px 6px rgba(0, 0, 0, 0.08)'
 
 function MobileBottomNav() {
   const location = useLocation()
@@ -50,7 +53,8 @@ function MobileBottomNav() {
         <div className="pointer-events-auto mb-2 flex w-full max-w-[min(92vw,28rem)] justify-center">
           <Link
             to="/register"
-            className="inline-flex min-h-[36px] shrink-0 items-center justify-center rounded-full bg-gradient-to-r from-[#fbba2d] via-[#fccf4d] to-[#fbba2d] px-5 py-2 text-center text-xs font-semibold leading-tight text-[#522f81] shadow-[0_4px_16px_rgba(251,186,45,0.4)] transition-transform active:scale-[0.98]"
+            className="inline-flex min-h-[38px] shrink-0 items-center justify-center rounded-full border border-black/10 bg-[#fbba2d] px-5 py-2.5 text-center text-xs font-semibold leading-tight text-[#522f81] transition-transform duration-200 active:scale-[0.98]"
+            style={{ boxShadow: ctaVolumeShadow }}
           >
             Начать бесплатно
           </Link>
@@ -58,7 +62,7 @@ function MobileBottomNav() {
       )}
 
       <nav
-        className="pointer-events-auto flex w-full max-w-[min(92vw,28rem)] min-h-[3.75rem] min-w-0 items-stretch gap-0 rounded-full border border-white/15 bg-primary-700 px-1 py-1.5 pb-[max(0.5rem,env(safe-area-inset-bottom,0px))] shadow-none"
+        className="pointer-events-auto flex w-full max-w-[min(92vw,28rem)] min-h-[3.75rem] min-w-0 items-stretch gap-0 rounded-full border border-black/10 bg-primary-700 px-1 py-1.5 pb-[max(0.5rem,env(safe-area-inset-bottom,0px))] shadow-none"
         style={{ boxShadow: pillShadow }}
         aria-label="Основная навигация"
       >
