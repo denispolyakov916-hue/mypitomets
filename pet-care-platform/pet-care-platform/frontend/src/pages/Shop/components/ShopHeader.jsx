@@ -1,4 +1,4 @@
-import { memo } from 'react'
+import { memo, useMemo } from 'react'
 import {
   LayoutGrid,
   UtensilsCrossed,
@@ -12,10 +12,82 @@ import {
   Home,
   Brain,
   Tag,
+  Cat,
+  Dog,
+  Fish,
 } from 'lucide-react'
 
 const ICON_SIZE = 19
 const ICON_STROKE = 2
+
+function flattenShopCategories(hierarchical) {
+  const out = []
+  for (const c of hierarchical || []) {
+    out.push(c)
+    for (const ch of c.children || []) out.push(ch)
+  }
+  return out
+}
+
+function scoreQuickCategory(item, kind) {
+  const code = (item.code || '').toLowerCase()
+  const name = (item.name || '').toLowerCase()
+  switch (kind) {
+    case 'food':
+      if (code === 'food') return 100
+      if (code.startsWith('food.') && !code.includes('treat')) return 45
+      if (name.includes('питан') || (name.includes('корм') && !name.includes('лакомств'))) return 28
+      return 0
+    case 'treats':
+      if (code.includes('treat')) return 100
+      if (name.includes('лакомств')) return 65
+      return 0
+    case 'toys':
+      if (code === 'toys') return 100
+      if (code.startsWith('toys.')) return 55
+      if (name.includes('игруш')) return 42
+      return 0
+    case 'litter':
+      if (code.includes('litter')) return 100
+      if (name.includes('наполнител')) return 78
+      if (code === 'toilet') return 35
+      if (code.startsWith('toilet.')) return 28
+      return 0
+    default:
+      return 0
+  }
+}
+
+function pickQuickCategoryCode(flat, kind) {
+  let best = null
+  let bestScore = 0
+  for (const item of flat) {
+    const sc = scoreQuickCategory(item, kind)
+    if (sc > bestScore) {
+      bestScore = sc
+      best = item
+    }
+  }
+  if (!best || bestScore < 12) return ''
+  return best.code || best.slug || ''
+}
+
+function isQuickKindActive(categoryCode, kind) {
+  const code = (categoryCode || '').toLowerCase()
+  if (!code) return false
+  switch (kind) {
+    case 'food':
+      return code === 'food' || (code.startsWith('food.') && !code.includes('treat'))
+    case 'treats':
+      return code.includes('treat')
+    case 'toys':
+      return code === 'toys' || code.startsWith('toys.')
+    case 'litter':
+      return code.includes('litter') || code.startsWith('toilet.')
+    default:
+      return false
+  }
+}
 
 /** Подбор минималистичной иконки под текст/код категории */
 function getCategoryIcon(item) {
@@ -136,6 +208,7 @@ const ShopHeader = memo(function ShopHeader({
   onSearch,
   onOpenMobileFilters,
   onCategoryChange,
+  onShopNavUpdate,
   filters,
   availableFilters,
   onRemoveChip,
@@ -146,6 +219,18 @@ const ShopHeader = memo(function ShopHeader({
 }) {
   const categories = availableFilters?.hierarchical_categories || []
   const topCategories = categories
+
+  const quickCodes = useMemo(() => {
+    const flat = flattenShopCategories(categories)
+    return {
+      food: pickQuickCategoryCode(flat, 'food'),
+      treats: pickQuickCategoryCode(flat, 'treats'),
+      toys: pickQuickCategoryCode(flat, 'toys'),
+      litter: pickQuickCategoryCode(flat, 'litter'),
+    }
+  }, [categories])
+
+  const currentCategoryCode = filters.category_code || ''
 
   const allTabs = [
     { type: 'all', id: 'all', name: 'Все' },
@@ -193,10 +278,106 @@ const ShopHeader = memo(function ShopHeader({
     )
   }
 
+  const animal = filters.animal || ''
+  const mobileTopLeftActive = animal === 'cat'
+  const mobileTopRightActive = animal === 'dog'
+
+  const handleMobileTopLeft = () => {
+    if (!onShopNavUpdate) return
+    onShopNavUpdate({ pet_id: '', animal: 'cat', age_group: '' })
+  }
+
+  const handleMobileTopRight = () => {
+    if (!onShopNavUpdate) return
+    onShopNavUpdate({ pet_id: '', animal: 'dog', age_group: '' })
+  }
+
+  const handleQuickCategory = (code) => {
+    if (!onShopNavUpdate || !code) return
+    onShopNavUpdate({ pet_id: '', category_code: code })
+  }
+
+  const mobileQuickItems = [
+    { kind: 'food', code: quickCodes.food, label: 'Корм', Icon: UtensilsCrossed },
+    { kind: 'treats', code: quickCodes.treats, label: 'Лакомства', Icon: Fish },
+    { kind: 'toys', code: quickCodes.toys, label: 'Игрушки', Icon: Gamepad2 },
+    { kind: 'litter', code: quickCodes.litter, label: 'Туалет', Icon: Bath },
+  ]
+
   return (
     <div className="mb-6">
+      {onShopNavUpdate && (
+        <div
+          className="lg:hidden mb-3 rounded-2xl border border-primary-200/90 bg-white shadow-md shadow-primary-900/5 overflow-hidden"
+          aria-label="Быстрый выбор в каталоге"
+        >
+          <div className="flex min-h-[52px]">
+            <button
+              type="button"
+              onClick={handleMobileTopLeft}
+              className={`flex flex-1 min-w-0 items-center justify-center gap-2 px-2 py-3 border-r border-primary-200/80 transition-colors ${
+                mobileTopLeftActive
+                  ? 'bg-accent-400 text-gray-900 font-semibold'
+                  : 'bg-primary-50 text-primary-800 font-medium'
+              }`}
+              aria-pressed={mobileTopLeftActive}
+            >
+              <Cat className="w-6 h-6 shrink-0 opacity-90" strokeWidth={2} aria-hidden />
+              <span className="text-sm sm:text-base truncate">Кошка</span>
+            </button>
+            <button
+              type="button"
+              onClick={handleMobileTopRight}
+              className={`flex flex-1 min-w-0 items-center justify-center gap-2 px-2 py-3 transition-colors ${
+                mobileTopRightActive
+                  ? 'bg-accent-400 text-gray-900 font-semibold'
+                  : 'bg-primary-50 text-primary-800 font-medium'
+              }`}
+              aria-pressed={mobileTopRightActive}
+            >
+              <Dog className="w-6 h-6 shrink-0 opacity-90" strokeWidth={2} aria-hidden />
+              <span className="text-sm sm:text-base truncate">Собака</span>
+            </button>
+          </div>
+          <div className="flex bg-white border-t border-gray-100">
+            {mobileQuickItems.map((item, idx) => {
+              const disabled = !item.code
+              const active = isQuickKindActive(currentCategoryCode, item.kind)
+              const { Icon } = item
+              return (
+                <button
+                  key={item.kind}
+                  type="button"
+                  disabled={disabled}
+                  onClick={() => handleQuickCategory(item.code)}
+                  className={`flex flex-1 min-w-0 flex-col items-center justify-center gap-1 min-h-[56px] px-0.5 py-2 text-center transition-colors ${
+                    idx < mobileQuickItems.length - 1 ? 'border-r border-gray-200' : ''
+                  } ${disabled ? 'opacity-40 cursor-not-allowed' : 'active:bg-primary-50/80'} ${
+                    active ? 'bg-primary-50/90' : ''
+                  }`}
+                  aria-pressed={active}
+                >
+                  <Icon
+                    className={`w-[22px] h-[22px] shrink-0 ${active ? 'text-primary-700' : 'text-accent-500'}`}
+                    strokeWidth={2}
+                    aria-hidden
+                  />
+                  <span
+                    className={`text-[11px] leading-tight font-semibold text-gray-900 max-w-full px-0.5 line-clamp-2 ${
+                      active ? 'text-primary-800' : ''
+                    }`}
+                  >
+                    {item.label}
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
       {allTabs.length > 0 && (
-        <nav className="shop-header-nav flex flex-col gap-3 py-2 w-full overflow-hidden">
+        <nav className="hidden lg:flex shop-header-nav flex-col gap-3 py-2 w-full overflow-hidden">
           <div className="flex flex-nowrap items-center gap-2 w-full min-w-0">
             {row1.map(renderSlideButton)}
           </div>

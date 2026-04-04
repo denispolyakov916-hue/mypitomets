@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Skeleton компонент для карточки товара
  * 
  * Показывается во время загрузки для улучшения perceived performance.
@@ -53,7 +53,7 @@ function ProductCardSkeleton() {
  */
 export function ProductGridSkeleton({ count = 20 }) {
   return (
-    <div className="grid responsive-grid gap-4">
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 lg:gap-5">
       {[...Array(count)].map((_, index) => (
         <div
           key={index}

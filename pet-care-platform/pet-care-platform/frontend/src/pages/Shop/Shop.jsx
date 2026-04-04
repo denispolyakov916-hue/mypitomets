@@ -109,6 +109,32 @@ function Shop() {
     setSearchParams(newParams)
   }, [searchParams, setSearchParams])
 
+  /** Атомарное обновление нескольких параметров (мобильная шапка магазина) */
+  const applyShopNavUpdates = useCallback((updates) => {
+    setSearchParams((prev) => {
+      const p = new URLSearchParams(prev)
+      for (const [name, value] of Object.entries(updates)) {
+        if (value === '' || value === null || value === undefined) p.delete(name)
+        else p.set(name, String(value))
+      }
+      if (!('page' in updates)) p.set('page', '1')
+      if ('category_code' in updates) p.delete('category_slug')
+
+      const petIdAfter = p.get('pet_id')
+      if (petIdAfter) {
+        p.delete('animal')
+        p.delete('age_group')
+      } else {
+        if ('animal' in updates && updates.animal) p.delete('pet_id')
+        const animal = p.get('animal')
+        const ageGroup = p.get('age_group')
+        if (animal === 'dog' && ageGroup === 'kitten') p.set('age_group', 'puppy')
+        if (animal === 'cat' && ageGroup === 'puppy') p.set('age_group', 'kitten')
+      }
+      return p
+    })
+  }, [setSearchParams])
+
   const handlePriceApply = useCallback((min, max) => {
     const newParams = new URLSearchParams(searchParams)
     if (min) {
@@ -230,6 +256,7 @@ function Shop() {
         onSearch={handleSearch}
         onOpenMobileFilters={() => setIsMobileFiltersOpen(true)}
         onCategoryChange={handleFilterChange}
+        onShopNavUpdate={applyShopNavUpdates}
         filters={filters}
         availableFilters={filtersWithPets}
         onRemoveChip={handleRemoveChip}
