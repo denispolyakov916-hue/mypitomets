@@ -1,8 +1,8 @@
 # Резервная копия фронтенда (мобильная вёрстка и связанные файлы)
 
-**Дата:** 2026-04-04 (обновлено: архив и тег v2)  
+**Дата:** 2026-04-04 (обновлено: архив и тег v3)  
 **Ветка Git:** `backup/2026-04-04-mobile-ui`  
-**Теги снимка кода:** `backup/mobile-ui-2026-04-04`, `backup/mobile-ui-2026-04-04-stable`, **`backup/mobile-ui-2026-04-04-v2`** (минималистичный объём панели и CTA «Начать бесплатно», позиция Пуфа)
+**Теги снимка кода:** `backup/mobile-ui-2026-04-04`, `backup/mobile-ui-2026-04-04-stable`, `backup/mobile-ui-2026-04-04-v2`, **`backup/mobile-ui-2026-04-04-v3`** — актуальный снимок: лендинг (герой, футер, соцсети), фиолетовый фон под нижней панелью в embed и на главной, без кнопки «наверх» (`Footer.jsx`, `Layout.jsx`, `index.css`).
 
 ## Содержимое `frontend-src.tar.gz`
 
@@ -13,9 +13,11 @@
 | Файл | Назначение |
 |------|------------|
 | `src/components/MobileBottomNav.jsx` | Нижняя панель (иконки, таблетка, бейдж корзины) |
-| `src/components/Layout.jsx` | Отступы `main` под нижний бар и CTA |
+| `src/components/Layout.jsx` | Отступы `main`, фон главной на мобилках под нижнюю панель |
 | `src/components/PuffSupportWidget.jsx` | Позиция виджета Пуфа на мобилках |
-| `public/landing/index.html` | Лендинг в iframe: мобильная нижняя «шапка», переменные отступов |
+| `public/landing/index.html` | Лендинг в iframe: шапка/отступы, герой, футер (2 колонки навигации) |
+| `src/components/Footer.jsx` | Футер приложения (без кнопки «наверх») |
+| `src/index.css` | Стили футера лендинга |
 
 ## Восстановление из архива
 
@@ -30,9 +32,9 @@ cd pet-care-platform/pet-care-platform/frontend && npm install
 ## Восстановление через Git
 
 ```bash
-git checkout backup/mobile-ui-2026-04-04-v2
+git checkout backup/mobile-ui-2026-04-04-v3
 # или предыдущий снимок:
-git checkout backup/mobile-ui-2026-04-04-stable
+git checkout backup/mobile-ui-2026-04-04-v2
 # только папка frontend:
-git checkout backup/mobile-ui-2026-04-04-v2 -- pet-care-platform/pet-care-platform/frontend
+git checkout backup/mobile-ui-2026-04-04-v3 -- pet-care-platform/pet-care-platform/frontend
 ```
