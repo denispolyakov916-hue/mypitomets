@@ -6,7 +6,6 @@
 
 import { useState, useEffect, useRef, memo, useMemo } from 'react'
 import { Link } from 'react-router-dom'
-import Modal from '../../../components/ui/Modal'
 
 const PET_TYPE_OPTIONS = [
   { value: '', label: 'Все курсы' },
@@ -64,6 +63,10 @@ const FilterSidebar = memo(function FilterSidebar({
   isLoading = false,
   courseCount = 0,
   largeButtons = false,
+  /** Скрыть верхнюю строку «Фильтры»+сброс (шапка в bottom sheet) */
+  hideShellHeader = false,
+  /** После «Показать N курсов» (например закрыть шторку) */
+  onShowResults,
   className = '',
 }) {
   const [priceRange, setPriceRange] = useState({
@@ -145,28 +148,30 @@ const FilterSidebar = memo(function FilterSidebar({
       ref={sidebarRef}
       className={`rounded-2xl border border-stone-200 bg-white shadow-sm overflow-hidden flex flex-col h-full min-h-0 ${className} ${isLoading ? 'opacity-70 pointer-events-none' : ''}`}
     >
-      <div className={`flex items-center justify-between border-b border-stone-200 bg-white flex-shrink-0 ${largeButtons ? 'p-4' : 'p-2.5'}`}>
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={onReset}
-            disabled={activeFilterCount === 0}
-            className={`rounded-full text-slate-600 hover:bg-stone-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors ${largeButtons ? 'p-2' : 'p-1'}`}
-            title="Сбросить фильтры"
-            aria-label="Сбросить фильтры"
-          >
-            <svg className={largeButtons ? 'w-5 h-5' : 'w-4 h-4'} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-            </svg>
-          </button>
-          <h3 className={`font-semibold text-gray-800 ${largeButtons ? 'text-lg' : 'text-sm'}`}>Фильтры</h3>
-          {activeFilterCount > 0 && (
-            <span className={`font-medium bg-slate-700 text-white rounded-full ${largeButtons ? 'px-2.5 py-1 text-xs' : 'px-1.5 py-0.5 text-[10px]'}`}>
-              {activeFilterCount}
-            </span>
-          )}
+      {!hideShellHeader && (
+        <div className={`flex items-center justify-between border-b border-stone-200 bg-white flex-shrink-0 ${largeButtons ? 'p-4' : 'p-2.5'}`}>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={onReset}
+              disabled={activeFilterCount === 0}
+              className={`rounded-full text-slate-600 hover:bg-stone-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors ${largeButtons ? 'p-2' : 'p-1'}`}
+              title="Сбросить фильтры"
+              aria-label="Сбросить фильтры"
+            >
+              <svg className={largeButtons ? 'w-5 h-5' : 'w-4 h-4'} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+            </button>
+            <h3 className={`font-semibold text-gray-800 ${largeButtons ? 'text-lg' : 'text-sm'}`}>Фильтры</h3>
+            {activeFilterCount > 0 && (
+              <span className={`font-medium bg-slate-700 text-white rounded-full ${largeButtons ? 'px-2.5 py-1 text-xs' : 'px-1.5 py-0.5 text-[10px]'}`}>
+                {activeFilterCount}
+              </span>
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
       <div className={`course-filter-sidebar flex-1 min-h-0 overflow-y-auto flex flex-col ${largeButtons ? 'p-4 space-y-4 min-h-full' : 'p-2.5 space-y-2'}`}>
         {/* Окно питомцев — как в магазине питания: заголовок с иконкой, горизонтальная полоса карточек, кнопка «Добавить питомца» */}
@@ -423,6 +428,7 @@ const FilterSidebar = memo(function FilterSidebar({
       <div className={`pt-0 flex flex-col border-t border-stone-200 bg-stone-50/80 flex-shrink-0 ${largeButtons ? 'p-4 gap-3' : 'p-2.5 gap-1.5'}`}>
         <button
           type="button"
+          onClick={() => onShowResults?.()}
           className={`w-full rounded-xl bg-primary-700 hover:bg-primary-800 text-white font-medium flex items-center justify-center transition-colors ${largeButtons ? 'py-5 px-4 text-base' : 'py-3.5 px-4 text-sm'}`}
           aria-label={`Показать ${courseCount.toLocaleString('ru-RU')} курсов`}
         >
@@ -440,44 +446,4 @@ const FilterSidebar = memo(function FilterSidebar({
   )
 })
 
-/**
- * Мобильные фильтры в модальном окне
- */
-const MobileFiltersModal = memo(function MobileFiltersModal({
-  isOpen,
-  onClose,
-  filters,
-  availableFilters,
-  onFilterChange,
-  onPriceApply,
-  onReset,
-  isLoading,
-  courseCount = 0,
-}) {
-  return (
-    <Modal
-      isOpen={isOpen}
-      onClose={onClose}
-      title="Фильтры"
-      size="full"
-      centered={false}
-      className="rounded-2xl overflow-hidden"
-    >
-      <div className="min-h-[calc(100vh-12rem)] flex flex-col">
-        <FilterSidebar
-          filters={filters}
-          availableFilters={availableFilters}
-          onFilterChange={onFilterChange}
-          onPriceApply={onPriceApply}
-          onReset={onReset}
-          isLoading={isLoading}
-          courseCount={courseCount}
-          largeButtons
-          className="courses-filter-skin border-0 shadow-none flex-1 min-h-0"
-        />
-      </div>
-    </Modal>
-  )
-})
-
-export { FilterSidebar, MobileFiltersModal }
+export { FilterSidebar }

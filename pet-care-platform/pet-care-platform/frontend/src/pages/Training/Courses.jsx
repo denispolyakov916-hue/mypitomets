@@ -17,7 +17,7 @@ import { useCourses } from '../../hooks/useCourses'
 
 import {
   FilterSidebar,
-  MobileFiltersModal,
+  MobileCourseFilterBottomSheet,
   CourseGrid,
   CourseHeader,
   FreeEnrollModal,
@@ -233,7 +233,7 @@ function Courses() {
         </aside>
 
         <main className="flex-1 min-w-0 animate-fadeIn">
-          <MobileFiltersModal
+          <MobileCourseFilterBottomSheet
             isOpen={isMobileFiltersOpen}
             onClose={() => setIsMobileFiltersOpen(false)}
             filters={filters}

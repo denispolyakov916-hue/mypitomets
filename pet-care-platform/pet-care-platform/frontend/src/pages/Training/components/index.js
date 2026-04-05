@@ -1,4 +1,5 @@
-export { FilterSidebar, MobileFiltersModal } from './CourseFilters'
+export { FilterSidebar } from './CourseFilters'
+export { default as MobileCourseFilterBottomSheet } from './MobileCourseFilterBottomSheet'
 export { CourseGrid, Pagination } from './CourseGrid'
 export { CourseHeader } from './CourseHeader'
 export { FreeEnrollModal } from './FreeEnrollModal'
