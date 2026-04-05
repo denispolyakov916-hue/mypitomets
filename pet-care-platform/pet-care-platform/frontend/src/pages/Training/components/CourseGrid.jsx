@@ -16,8 +16,8 @@ import { Skeleton } from '../../../components/ui/Skeleton'
  */
 function CourseCardSkeleton() {
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-gray-200 flex flex-col h-full overflow-hidden animate-pulse">
-      <div className="aspect-square bg-gradient-to-br from-primary-100 to-accent-100" />
+    <div className="courses-catalog-card-frame flex flex-col h-full overflow-hidden animate-pulse">
+      <div className="aspect-square bg-gradient-to-br from-stone-100 to-slate-100" />
       <div className="flex-1 flex flex-col p-4">
         <Skeleton className="h-5 w-20 mb-2" />
         <Skeleton className="h-4 w-full rounded mb-1" />
@@ -73,11 +73,11 @@ const Pagination = memo(function Pagination({ pagination, onPageChange, isLoadin
   }
 
   return (
-    <div className={`flex justify-center items-center gap-2 mt-8 p-4 rounded-xl border border-primary-200/60 bg-[#F7F5FC]/50 transition-opacity ${isLoading ? 'opacity-50 pointer-events-none' : ''}`}>
+    <div className={`courses-catalog-pagination flex justify-center items-center gap-2 mt-8 p-4 rounded-xl border transition-opacity ${isLoading ? 'opacity-50 pointer-events-none' : ''}`}>
       <button
         onClick={() => onPageChange(page - 1)}
         disabled={page === 1 || isLoading}
-        className="p-2.5 rounded-xl border border-primary-200 bg-white text-primary-700 hover:bg-primary-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        className="p-2.5 rounded-xl border border-stone-200 bg-white text-slate-700 hover:bg-stone-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         aria-label="Предыдущая страница"
       >
         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -90,7 +90,7 @@ const Pagination = memo(function Pagination({ pagination, onPageChange, isLoadin
           onClick={() => onPageChange(num)}
           disabled={isLoading}
           className={`min-w-[2.5rem] py-2.5 px-3 rounded-xl font-medium transition-colors ${
-            num === page ? 'bg-primary-700 text-white' : 'border border-primary-200 bg-white text-primary-700 hover:bg-primary-50'
+            num === page ? 'bg-slate-700 text-white' : 'border border-stone-200 bg-white text-slate-700 hover:bg-stone-50'
           }`}
         >
           {num}
@@ -99,7 +99,7 @@ const Pagination = memo(function Pagination({ pagination, onPageChange, isLoadin
       <button
         onClick={() => onPageChange(page + 1)}
         disabled={page === total_pages || isLoading}
-        className="p-2.5 rounded-xl border border-primary-200 bg-white text-primary-700 hover:bg-primary-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        className="p-2.5 rounded-xl border border-stone-200 bg-white text-slate-700 hover:bg-stone-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         aria-label="Следующая страница"
       >
         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -163,11 +163,12 @@ const CourseGrid = memo(function CourseGrid({
         {courses.map((course, index) => (
           <div
             key={course.id}
-            className="animate-scaleIn"
+            className="courses-grid-card animate-scaleIn h-full"
             style={{ animationDelay: `${Math.min(index * 0.03, 0.3)}s` }}
           >
             <CourseCard
               course={course}
+              tone="neutral"
               isOwned={ownedCourseIds.has(course.id)}
               isInCart={!!getCourseInCart(course.id)}
               onAddToCart={onAddToCart}

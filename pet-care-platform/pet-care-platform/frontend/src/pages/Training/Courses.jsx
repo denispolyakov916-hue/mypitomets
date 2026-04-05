@@ -1,9 +1,8 @@
 /**
  * Страница магазина курсов
  *
- * Каталог обучающих курсов. Дизайн и структура страницы совпадают с магазином
- * кормов и аксессуаров (Shop): контейнер, хедер с табами и поиском, боковая панель
- * фильтров, модальное окно фильтров на мобильных, сетка карточек, пагинация.
+ * Каталог обучающих курсов. Структура как у витрины магазина; courses-catalog-shell —
+ * нейтральные рамки/тени карточек и сайдбара (без лаванды и янтаря витрины).
  * Бэкенд не изменяется.
  */
 
@@ -89,6 +88,15 @@ function Courses() {
     if (name === 'pet_type') {
       newParams.delete('personal')
       newParams.delete('pet_id')
+      const prev = searchParams.get('pet_type') || ''
+      if (value && prev !== value) {
+        newParams.delete('category')
+        newParams.delete('subcategory')
+      }
+      if (!value) {
+        newParams.delete('category')
+        newParams.delete('subcategory')
+      }
     }
     setSearchParams(newParams)
   }, [searchParams, setSearchParams])
@@ -201,7 +209,7 @@ function Courses() {
   }, [filters.pet_id, filtersWithPets.user_pets])
 
   return (
-    <div className="animate-fadeIn page-container-with-sidebar flex flex-col min-h-[calc(100vh-4rem)]">
+    <div className="animate-fadeIn page-container-with-sidebar courses-catalog-shell flex flex-col min-h-[calc(100vh-4rem)]">
       <CourseHeader
         onOpenMobileFilters={() => setIsMobileFiltersOpen(true)}
         onCategoryChange={handleFilterChange}
@@ -220,6 +228,7 @@ function Courses() {
             onReset={handleReset}
             isLoading={isLoading}
             courseCount={courseCount}
+            className="courses-filter-skin"
           />
         </aside>
 
@@ -251,10 +260,10 @@ function Courses() {
           {(courses.length > 0 || isLoading) && !error && (
             <>
               {selectedPet && (
-                <div className="mb-4 p-3 bg-primary-50 border border-primary-200 rounded-lg">
-                  <p className="text-sm text-primary-800">
+                <div className="mb-4 p-3 rounded-xl border border-stone-200 bg-stone-50 shadow-sm shadow-stone-200/40">
+                  <p className="text-sm text-slate-800">
                     <span className="font-medium">⭐ Персональная подборка для {selectedPet.name}</span>
-                    <span className="text-primary-600 ml-2">({selectedPet.species_label})</span>
+                    <span className="text-slate-600 ml-2">({selectedPet.species_label})</span>
                   </p>
                 </div>
               )}

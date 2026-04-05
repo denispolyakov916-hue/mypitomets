@@ -852,6 +852,10 @@ const ShopFilters = memo(function ShopFilters({
   className = '',
   productCount = 0,
   largeButtons = false,
+  /** Скрыть верхнюю строку «Фильтры»+сброс (когда шапка даёт bottom sheet) */
+  hideShellHeader = false,
+  /** После «Показать N товаров» (например закрыть шторку) */
+  onShowResults,
 }) {
   const activeFilterCount = useMemo(() => {
     let count = 0
@@ -910,29 +914,31 @@ const ShopFilters = memo(function ShopFilters({
   return (
     <div className={`rounded-2xl border border-gray-200 bg-white shadow-sm overflow-hidden flex flex-col h-full min-h-0 ${className} ${isLoading ? 'opacity-70 pointer-events-none' : ''}`}>
       {/* Заголовок: Фильтры + иконка сброса */}
-      <div className={`flex items-center justify-between border-b border-gray-200 bg-white flex-shrink-0 ${largeButtons ? 'p-4' : 'p-2.5'}`}>
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={onReset}
-            disabled={activeFilterCount === 0}
-            className={`rounded-full text-gray-600 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors ${largeButtons ? 'p-2' : 'p-1'}`}
-            title="Сбросить фильтры"
-            aria-label="Сбросить фильтры"
-          >
-            <svg className={largeButtons ? 'w-5 h-5' : 'w-4 h-4'} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-            </svg>
-          </button>
-          <h3 className={`font-semibold text-gray-800 ${largeButtons ? 'text-lg' : 'text-sm'}`}>Фильтры</h3>
-          {activeFilterCount > 0 && (
-            <span className={`font-medium bg-primary-600 text-white rounded-full ${largeButtons ? 'px-2.5 py-1 text-xs' : 'px-1.5 py-0.5 text-[10px]'}`}>
-              {activeFilterCount}
-            </span>
-          )}
+      {!hideShellHeader && (
+        <div className={`flex items-center justify-between border-b border-gray-200 bg-white flex-shrink-0 ${largeButtons ? 'p-4' : 'p-2.5'}`}>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={onReset}
+              disabled={activeFilterCount === 0}
+              className={`rounded-full text-gray-600 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors ${largeButtons ? 'p-2' : 'p-1'}`}
+              title="Сбросить фильтры"
+              aria-label="Сбросить фильтры"
+            >
+              <svg className={largeButtons ? 'w-5 h-5' : 'w-4 h-4'} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+            </button>
+            <h3 className={`font-semibold text-gray-800 ${largeButtons ? 'text-lg' : 'text-sm'}`}>Фильтры</h3>
+            {activeFilterCount > 0 && (
+              <span className={`font-medium bg-primary-600 text-white rounded-full ${largeButtons ? 'px-2.5 py-1 text-xs' : 'px-1.5 py-0.5 text-[10px]'}`}>
+                {activeFilterCount}
+              </span>
+            )}
+          </div>
         </div>
-      </div>
-      
+      )}
+
       {/* Секции фильтров — растягиваются на всё свободное место, при переполнении прокрутка */}
       <div className={`shop-filter-sidebar flex-1 min-h-0 overflow-y-auto flex flex-col ${largeButtons ? 'p-4 space-y-4 min-h-full' : 'p-2.5 space-y-2'}`}>
         {/* Окно питомцев — заголовок с иконкой, горизонтальная полоса карточек, кнопка «Добавить питомца» */}
@@ -1118,7 +1124,7 @@ const ShopFilters = memo(function ShopFilters({
       <div className={`pt-0 flex flex-col border-t border-gray-200 bg-gray-50 flex-shrink-0 ${largeButtons ? 'p-4 gap-3' : 'p-2.5 gap-1.5'}`}>
         <button
           type="button"
-          onClick={() => {}}
+          onClick={() => onShowResults?.()}
           className={`w-full rounded-xl bg-primary-700 hover:bg-primary-800 text-white font-medium flex items-center justify-center transition-colors ${largeButtons ? 'py-5 px-4 text-base' : 'py-3.5 px-4 text-sm'}`}
           aria-label={`Показать ${productCount.toLocaleString('ru-RU')} товаров`}
         >

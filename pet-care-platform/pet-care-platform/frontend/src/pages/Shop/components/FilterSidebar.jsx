@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef, memo } from 'react'
-import Modal from '../../../components/ui/Modal'
-import ShopFilters from '../../../components/Shop/ShopFilters'
+import MobileFilterBottomSheet from './MobileFilterBottomSheet'
 
 /**
  * Компонент боковой панели фильтров (мемоизированный)
@@ -442,41 +441,8 @@ const FilterSidebar = memo(function FilterSidebar({
 /**
  * Мобильные фильтры в модальном окне
  */
-const MobileFiltersModal = memo(function MobileFiltersModal({
-  isOpen,
-  onClose,
-  filters,
-  availableFilters,
-  onFilterChange,
-  onPriceApply,
-  onReset,
-  isLoading,
-  productCount = 0,
-}) {
-  return (
-    <Modal
-      isOpen={isOpen}
-      onClose={onClose}
-      title="Фильтры"
-      size="full"
-      centered={false}
-      className="rounded-2xl overflow-hidden"
-    >
-      <div className="min-h-[calc(100vh-12rem)] flex flex-col">
-        <ShopFilters
-          filters={filters}
-          availableFilters={availableFilters}
-          onChange={onFilterChange}
-          onPriceApply={onPriceApply}
-          onReset={onReset}
-          isLoading={isLoading}
-          productCount={productCount}
-          largeButtons
-          className="border-0 shadow-none flex-1 min-h-0"
-        />
-      </div>
-    </Modal>
-  )
+const MobileFiltersModal = memo(function MobileFiltersModal(props) {
+  return <MobileFilterBottomSheet {...props} />
 })
 
 export { FilterSidebar, MobileFiltersModal }

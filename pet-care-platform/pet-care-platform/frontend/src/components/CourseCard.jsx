@@ -82,7 +82,8 @@ const formatDuration = (minutes) => {
 /**
  * Компонент CourseCard
  */
-function CourseCard({ course, onAddToCart, onEnrollFree, isOwned = false, isLoading = false, isInCart = false }) {
+function CourseCard({ course, onAddToCart, onEnrollFree, isOwned = false, isLoading = false, isInCart = false, tone = 'default' }) {
+  const neutralCatalog = tone === 'neutral' || tone === 'lavender'
   const [isAdding, setIsAdding] = useState(false)
   const [imageError, setImageError] = useState(false)
   const navigate = useNavigate()
@@ -158,7 +159,7 @@ function CourseCard({ course, onAddToCart, onEnrollFree, isOwned = false, isLoad
           
           {/* Формат курса */}
           {course.format_type && (
-            <span className="px-2 py-0.5 bg-white/90 text-gray-700 text-[10px] font-semibold rounded shadow-sm border border-gray-200">
+            <span className={`px-2 py-0.5 bg-white/90 text-gray-700 text-[10px] font-semibold rounded shadow-sm border ${neutralCatalog ? 'border-stone-200' : 'border-gray-200'}`}>
               {formatLabels[course.format_type] || course.format_type}
             </span>
           )}
@@ -173,7 +174,7 @@ function CourseCard({ course, onAddToCart, onEnrollFree, isOwned = false, isLoad
         <div className="absolute bottom-2 left-2">
           <span className={`px-2 py-0.5 text-[10px] font-medium rounded ${
             course.pet_type === 'dog' ? 'bg-blue-100 text-blue-700' :
-            course.pet_type === 'cat' ? 'bg-primary-100 text-primary-700' :
+            course.pet_type === 'cat' ? (neutralCatalog ? 'bg-stone-200 text-slate-800' : 'bg-primary-100 text-primary-700') :
             'bg-gray-100 text-gray-700'
           }`}>
             {petTypeLabels[course.pet_type] || course.pet_type}
@@ -194,14 +195,14 @@ function CourseCard({ course, onAddToCart, onEnrollFree, isOwned = false, isLoad
         
         {/* Категория (как бренд в ProductCard) */}
         {course.category && (
-          <p className="text-xs text-primary-700 font-semibold mb-1 truncate">
+          <p className={`text-xs font-semibold mb-1 truncate ${neutralCatalog ? 'text-slate-600' : 'text-primary-700'}`}>
             {categoryLabels[course.category] || course.category}
           </p>
         )}
         
         {/* Название - кликабельное */}
         <Link to={`/courses/${course.id}`} className="block">
-          <h3 className="text-sm text-gray-900 leading-snug line-clamp-2 hover:text-primary-700 transition-colors mb-2 min-h-[2.6rem]">
+          <h3 className={`text-sm text-gray-900 leading-snug line-clamp-2 transition-colors mb-2 min-h-[2.6rem] ${neutralCatalog ? 'hover:text-slate-800' : 'hover:text-primary-700'}`}>
             {course.title}
           </h3>
         </Link>
@@ -289,6 +290,7 @@ CourseCard.propTypes = {
   isOwned: PropTypes.bool,
   isLoading: PropTypes.bool,
   isInCart: PropTypes.bool,
+  tone: PropTypes.oneOf(['default', 'neutral', 'lavender']),
 }
 
 export default CourseCard

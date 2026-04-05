@@ -148,6 +148,9 @@ class CourseListView(APIView):
                 courses = courses.for_pet_type(pet_type)
             # Для pet_type='all' или отсутствия фильтра - показываем все
 
+        # До фильтра по категории: для фасетов «темы» с учётом кошка/собака/персоналки
+        courses_before_category = courses
+
         # Фильтрация по категории и подкатегории
         category = request.query_params.get('category')
         subcategory = request.query_params.get('subcategory')
@@ -281,6 +284,17 @@ class CourseListView(APIView):
             except Exception:
                 pass
 
+        present_categories = set(courses_before_category.values_list('category', flat=True).distinct())
+        categories_for_filters = [
+            {'value': value, 'label': label}
+            for value, label in Course.CATEGORY_CHOICES
+            if value in present_categories
+        ]
+        if not categories_for_filters:
+            categories_for_filters = [
+                {'value': value, 'label': label} for value, label in Course.CATEGORY_CHOICES
+            ]
+
         response_data = {
             'courses': courses_data,
             'pagination': {
@@ -295,16 +309,7 @@ class CourseListView(APIView):
                     {'value': 'cat', 'label': 'Кошек'},
                     {'value': 'all', 'label': 'Все'},
                 ],
-                'categories': [
-                    {'value': 'basics', 'label': 'Основы'},
-                    {'value': 'training', 'label': 'Дрессировка'},
-                    {'value': 'care', 'label': 'Уход'},
-                    {'value': 'health', 'label': 'Здоровье'},
-                    {'value': 'nutrition', 'label': 'Питание'},
-                    {'value': 'behavior', 'label': 'Поведение'},
-                    {'value': 'specialized', 'label': 'Специализированные'},
-                    {'value': 'entertainment', 'label': 'Развлечения'},
-                ],
+                'categories': categories_for_filters,
                 'levels': [
                     {'value': 'beginner', 'label': 'Начинающий'},
                     {'value': 'intermediate', 'label': 'Средний'},

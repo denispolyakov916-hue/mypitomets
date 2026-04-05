@@ -49,8 +49,8 @@ const tagBase = (large) =>
   large
     ? 'px-4 py-4 rounded-full text-sm font-medium transition-colors border-2 '
     : 'px-3 py-2.5 rounded-full text-sm font-medium transition-colors border-2 '
-const tagInactive = 'border-primary-200 bg-primary-50 text-primary-800 hover:bg-primary-100 hover:border-primary-300 '
-const tagActive = 'border-primary-600 bg-primary-600 text-white '
+const tagInactive = 'border-stone-200 bg-stone-50 text-slate-800 hover:bg-stone-100 hover:border-stone-300 '
+const tagActive = 'border-slate-600 bg-slate-700 text-white '
 
 /**
  * Боковая панель фильтров (десктоп) — в стиле ShopFilters
@@ -125,8 +125,8 @@ const FilterSidebar = memo(function FilterSidebar({
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  const btnClass = `w-full flex items-center justify-between bg-white border border-gray-200 hover:border-gray-300 transition-colors rounded-xl text-sm ${largeButtons ? 'px-4 py-4' : 'px-3 py-3'}`
-  const panelClass = 'absolute z-20 mt-1 w-full bg-white border border-gray-200 rounded-xl shadow-lg max-h-48 overflow-y-auto'
+  const btnClass = `w-full flex items-center justify-between bg-white border border-stone-200 hover:border-stone-300 transition-colors rounded-xl text-sm ${largeButtons ? 'px-4 py-4' : 'px-3 py-3'}`
+  const panelClass = 'absolute z-20 mt-1 w-full bg-white border border-stone-200 rounded-xl shadow-lg shadow-stone-200/30 max-h-48 overflow-y-auto'
 
   const categoryOptions = availableFilters?.categories?.length
     ? [{ value: '', id: '', label: 'Все категории', name: 'Все категории' }, ...availableFilters.categories]
@@ -143,15 +143,15 @@ const FilterSidebar = memo(function FilterSidebar({
   return (
     <div
       ref={sidebarRef}
-      className={`rounded-2xl border border-gray-200 bg-white shadow-sm overflow-hidden flex flex-col h-full min-h-0 ${className} ${isLoading ? 'opacity-70 pointer-events-none' : ''}`}
+      className={`rounded-2xl border border-stone-200 bg-white shadow-sm overflow-hidden flex flex-col h-full min-h-0 ${className} ${isLoading ? 'opacity-70 pointer-events-none' : ''}`}
     >
-      <div className={`flex items-center justify-between border-b border-gray-200 bg-white flex-shrink-0 ${largeButtons ? 'p-4' : 'p-2.5'}`}>
+      <div className={`flex items-center justify-between border-b border-stone-200 bg-white flex-shrink-0 ${largeButtons ? 'p-4' : 'p-2.5'}`}>
         <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={onReset}
             disabled={activeFilterCount === 0}
-            className={`rounded-full text-gray-600 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors ${largeButtons ? 'p-2' : 'p-1'}`}
+            className={`rounded-full text-slate-600 hover:bg-stone-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors ${largeButtons ? 'p-2' : 'p-1'}`}
             title="Сбросить фильтры"
             aria-label="Сбросить фильтры"
           >
@@ -161,7 +161,7 @@ const FilterSidebar = memo(function FilterSidebar({
           </button>
           <h3 className={`font-semibold text-gray-800 ${largeButtons ? 'text-lg' : 'text-sm'}`}>Фильтры</h3>
           {activeFilterCount > 0 && (
-            <span className={`font-medium bg-primary-600 text-white rounded-full ${largeButtons ? 'px-2.5 py-1 text-xs' : 'px-1.5 py-0.5 text-[10px]'}`}>
+            <span className={`font-medium bg-slate-700 text-white rounded-full ${largeButtons ? 'px-2.5 py-1 text-xs' : 'px-1.5 py-0.5 text-[10px]'}`}>
               {activeFilterCount}
             </span>
           )}
@@ -170,10 +170,10 @@ const FilterSidebar = memo(function FilterSidebar({
 
       <div className={`course-filter-sidebar flex-1 min-h-0 overflow-y-auto flex flex-col ${largeButtons ? 'p-4 space-y-4 min-h-full' : 'p-2.5 space-y-2'}`}>
         {/* Окно питомцев — как в магазине питания: заголовок с иконкой, горизонтальная полоса карточек, кнопка «Добавить питомца» */}
-        <div className={`border-b border-gray-200 ${largeButtons ? 'pb-4' : 'pb-2'}`}>
+        <div className={`border-b border-stone-200 ${largeButtons ? 'pb-4' : 'pb-2'}`}>
           <div className="flex items-center justify-between mb-2">
             <h3 className={`font-semibold text-gray-800 flex items-center gap-2 ${largeButtons ? 'text-base' : 'text-xs'}`}>
-              <span className="text-primary-600" aria-hidden>🐾</span>
+              <span className="text-slate-500" aria-hidden>🐾</span>
               Мои питомцы
             </h3>
           </div>
@@ -185,7 +185,7 @@ const FilterSidebar = memo(function FilterSidebar({
                   const isSelected = String(filters.pet_id) === String(pet.id)
                   const photoUrl = pet.photo || null
                   const placeholderEmoji = pet.species === 'cat' ? '🐈' : pet.species === 'dog' ? '🐕' : '🐾'
-                  const cardBg = pet.species === 'dog' ? 'bg-blue-50' : 'bg-amber-50/80'
+                  const cardBg = pet.species === 'dog' ? 'bg-slate-100' : 'bg-stone-100'
                   return (
                     <button
                       key={pet.id}
@@ -193,8 +193,8 @@ const FilterSidebar = memo(function FilterSidebar({
                       onClick={() => onFilterChange('pet_id', isSelected ? '' : pet.id)}
                       className={`flex-shrink-0 w-[100px] ${largeButtons ? 'w-[110px]' : ''} rounded-xl border-2 overflow-hidden transition-all duration-200 flex flex-col ${
                         isSelected
-                          ? 'border-accent-400 bg-accent-400/20 shadow-sm'
-                          : 'border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50'
+                          ? 'border-slate-500 bg-slate-100 shadow-sm shadow-stone-200/50'
+                          : 'border-stone-200 bg-white hover:border-stone-300 hover:bg-stone-50'
                       }`}
                     >
                       <div className={`aspect-square flex items-center justify-center overflow-hidden ${!isSelected ? cardBg : ''}`}>
@@ -204,7 +204,7 @@ const FilterSidebar = memo(function FilterSidebar({
                           <span className="text-3xl" aria-hidden>{placeholderEmoji}</span>
                         )}
                       </div>
-                      <div className="p-2 text-center bg-white border-t border-gray-100">
+                      <div className="p-2 text-center bg-white border-t border-stone-100">
                         <span className={`block font-medium truncate text-gray-800 ${largeButtons ? 'text-sm' : 'text-xs'}`}>{pet.name}</span>
                       </div>
                     </button>
@@ -219,7 +219,7 @@ const FilterSidebar = memo(function FilterSidebar({
               </p>
               <Link
                 to="/profile"
-                className={`inline-flex items-center gap-1.5 text-primary-600 hover:text-primary-700 font-medium ${largeButtons ? 'text-sm' : 'text-xs'}`}
+                className={`inline-flex items-center gap-1.5 text-slate-600 hover:text-slate-900 font-medium ${largeButtons ? 'text-sm' : 'text-xs'}`}
               >
                 Перейти в профиль
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -230,7 +230,7 @@ const FilterSidebar = memo(function FilterSidebar({
           )}
         </div>
 
-        <div className={`border-b border-gray-200 ${largeButtons ? 'pb-4' : 'pb-2'}`}>
+        <div className={`border-b border-stone-200 ${largeButtons ? 'pb-4' : 'pb-2'}`}>
           <div className={`font-medium text-gray-800 ${largeButtons ? 'text-sm mb-2' : 'text-xs mb-1'}`}>Тип питомца</div>
           <div className="flex flex-wrap gap-2">
             {(availableFilters?.pet_types || PET_TYPE_OPTIONS).map(opt => {
@@ -252,7 +252,7 @@ const FilterSidebar = memo(function FilterSidebar({
         </div>
 
         <div ref={dropdownRef}>
-        <div className={`border-b border-gray-200 ${largeButtons ? 'pb-4' : 'pb-2'}`}>
+        <div className={`border-b border-stone-200 ${largeButtons ? 'pb-4' : 'pb-2'}`}>
           <label className={`block font-medium text-gray-900 ${largeButtons ? 'text-sm mb-2' : 'text-xs mb-1.5'}`}>
             Категория
           </label>
@@ -280,7 +280,7 @@ const FilterSidebar = memo(function FilterSidebar({
                       key={val}
                       type="button"
                       onClick={() => { onFilterChange('category', val); setOpenDropdown(null) }}
-                      className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-50 ${isSelected ? 'bg-primary-50 text-gray-900 font-medium' : 'text-gray-700'}`}
+                      className={`w-full text-left px-3 py-2 text-sm hover:bg-stone-50 ${isSelected ? 'bg-stone-100 text-slate-900 font-medium' : 'text-gray-700'}`}
                     >
                       {label}
                     </button>
@@ -291,7 +291,7 @@ const FilterSidebar = memo(function FilterSidebar({
           </div>
         </div>
 
-        <div className={`border-b border-gray-200 ${largeButtons ? 'pb-4' : 'pb-2'}`}>
+        <div className={`border-b border-stone-200 ${largeButtons ? 'pb-4' : 'pb-2'}`}>
           <label className={`block font-medium text-gray-900 ${largeButtons ? 'text-sm mb-2' : 'text-xs mb-1.5'}`}>
             Уровень сложности
           </label>
@@ -319,7 +319,7 @@ const FilterSidebar = memo(function FilterSidebar({
                       key={val}
                       type="button"
                       onClick={() => { onFilterChange('level', val); setOpenDropdown(null) }}
-                      className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-50 ${isSelected ? 'bg-primary-50 text-gray-900 font-medium' : 'text-gray-700'}`}
+                      className={`w-full text-left px-3 py-2 text-sm hover:bg-stone-50 ${isSelected ? 'bg-stone-100 text-slate-900 font-medium' : 'text-gray-700'}`}
                     >
                       {label}
                     </button>
@@ -330,7 +330,7 @@ const FilterSidebar = memo(function FilterSidebar({
           </div>
         </div>
 
-        <div className={`border-b border-gray-200 ${largeButtons ? 'pb-4' : 'pb-2'}`}>
+        <div className={`border-b border-stone-200 ${largeButtons ? 'pb-4' : 'pb-2'}`}>
           <label className={`block font-medium text-gray-900 ${largeButtons ? 'text-sm mb-2' : 'text-xs mb-1.5'}`}>
             Формат обучения
           </label>
@@ -358,7 +358,7 @@ const FilterSidebar = memo(function FilterSidebar({
                       key={val}
                       type="button"
                       onClick={() => { onFilterChange('format_type', val); setOpenDropdown(null) }}
-                      className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-50 ${isSelected ? 'bg-primary-50 text-gray-900 font-medium' : 'text-gray-700'}`}
+                      className={`w-full text-left px-3 py-2 text-sm hover:bg-stone-50 ${isSelected ? 'bg-stone-100 text-slate-900 font-medium' : 'text-gray-700'}`}
                     >
                       {label}
                     </button>
@@ -371,7 +371,7 @@ const FilterSidebar = memo(function FilterSidebar({
         </div>
 
         {availableFilters?.price_types?.length > 0 && (
-          <div className={`border-b border-gray-200 ${largeButtons ? 'pb-4' : 'pb-2'}`}>
+          <div className={`border-b border-stone-200 ${largeButtons ? 'pb-4' : 'pb-2'}`}>
             <div className={`font-medium text-gray-800 ${largeButtons ? 'text-sm mb-2' : 'text-xs mb-1'}`}>Тип цены</div>
             <div className="space-y-2">
               {availableFilters.price_types.map(opt => (
@@ -382,7 +382,7 @@ const FilterSidebar = memo(function FilterSidebar({
                     value={opt.value}
                     checked={filters.price_type === opt.value}
                     onChange={e => onFilterChange('price_type', e.target.value)}
-                    className="w-4 h-4 text-primary-600 focus:ring-primary-500"
+                    className="w-4 h-4 text-slate-600 focus:ring-slate-400"
                   />
                   <span className="ml-2 text-gray-700">{opt.label}</span>
                 </label>
@@ -391,7 +391,7 @@ const FilterSidebar = memo(function FilterSidebar({
           </div>
         )}
 
-        <div className={`border-b border-gray-200 ${largeButtons ? 'pb-4' : 'pb-2'}`}>
+        <div className={`border-b border-stone-200 ${largeButtons ? 'pb-4' : 'pb-2'}`}>
           <div className={`font-medium text-gray-800 ${largeButtons ? 'text-sm mb-2' : 'text-xs mb-1'}`}>Цена, ₽</div>
           <div className={`flex gap-2 items-center ${largeButtons ? 'gap-2' : 'gap-1.5'}`}>
             <input
@@ -399,7 +399,7 @@ const FilterSidebar = memo(function FilterSidebar({
               placeholder={availableFilters?.price_range ? `от ${Math.floor(availableFilters.price_range.min)}` : 'от'}
               value={priceRange.min}
               onChange={e => setPriceRange(prev => ({ ...prev, min: e.target.value }))}
-              className={`w-full border border-gray-200 rounded-lg focus:ring-primary-500 focus:border-primary-500 bg-white ${largeButtons ? 'px-3 py-2.5 text-sm rounded-xl' : 'px-2 py-1.5 text-xs'}`}
+              className={`w-full border border-stone-200 rounded-lg focus:ring-slate-300 focus:border-slate-400 bg-white ${largeButtons ? 'px-3 py-2.5 text-sm rounded-xl' : 'px-2 py-1.5 text-xs'}`}
             />
             <span className={`text-gray-400 ${largeButtons ? 'text-sm' : 'text-xs'}`}>—</span>
             <input
@@ -407,20 +407,20 @@ const FilterSidebar = memo(function FilterSidebar({
               placeholder={availableFilters?.price_range ? `до ${Math.ceil(availableFilters.price_range.max)}` : 'до'}
               value={priceRange.max}
               onChange={e => setPriceRange(prev => ({ ...prev, max: e.target.value }))}
-              className={`w-full border border-gray-200 rounded-lg focus:ring-primary-500 focus:border-primary-500 bg-white ${largeButtons ? 'px-3 py-2.5 text-sm rounded-xl' : 'px-2 py-1.5 text-xs'}`}
+              className={`w-full border border-stone-200 rounded-lg focus:ring-slate-300 focus:border-slate-400 bg-white ${largeButtons ? 'px-3 py-2.5 text-sm rounded-xl' : 'px-2 py-1.5 text-xs'}`}
             />
           </div>
           <button
             type="button"
             onClick={handlePriceApply}
-            className={`w-full font-medium bg-gray-100 hover:bg-gray-200 text-gray-800 transition-colors mt-2 ${largeButtons ? 'py-4 text-sm rounded-xl' : 'py-2.5 text-sm rounded-xl'}`}
+            className={`w-full font-medium bg-stone-100 hover:bg-stone-200/90 text-slate-800 transition-colors mt-2 ${largeButtons ? 'py-4 text-sm rounded-xl' : 'py-2.5 text-sm rounded-xl'}`}
           >
             Применить
           </button>
         </div>
       </div>
 
-      <div className={`pt-0 flex flex-col border-t border-gray-200 bg-gray-50 flex-shrink-0 ${largeButtons ? 'p-4 gap-3' : 'p-2.5 gap-1.5'}`}>
+      <div className={`pt-0 flex flex-col border-t border-stone-200 bg-stone-50/80 flex-shrink-0 ${largeButtons ? 'p-4 gap-3' : 'p-2.5 gap-1.5'}`}>
         <button
           type="button"
           className={`w-full rounded-xl bg-primary-700 hover:bg-primary-800 text-white font-medium flex items-center justify-center transition-colors ${largeButtons ? 'py-5 px-4 text-base' : 'py-3.5 px-4 text-sm'}`}
@@ -431,7 +431,7 @@ const FilterSidebar = memo(function FilterSidebar({
         <button
           type="button"
           onClick={onReset}
-          className={`w-full rounded-xl border-2 border-gray-300 text-gray-800 font-medium hover:bg-gray-100 transition-colors ${largeButtons ? 'py-5 text-base' : 'py-3 text-sm'}`}
+          className={`w-full rounded-xl border-2 border-stone-300 text-slate-800 font-medium hover:bg-stone-100 transition-colors ${largeButtons ? 'py-5 text-base' : 'py-3 text-sm'}`}
         >
           Сбросить
         </button>
@@ -473,7 +473,7 @@ const MobileFiltersModal = memo(function MobileFiltersModal({
           isLoading={isLoading}
           courseCount={courseCount}
           largeButtons
-          className="border-0 shadow-none flex-1 min-h-0"
+          className="courses-filter-skin border-0 shadow-none flex-1 min-h-0"
         />
       </div>
     </Modal>
