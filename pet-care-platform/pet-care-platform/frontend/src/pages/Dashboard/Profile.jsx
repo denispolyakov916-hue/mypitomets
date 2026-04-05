@@ -361,12 +361,12 @@ function Profile() {
 
   return (
     <div className="page-container w-full max-w-none flex flex-col lg:flex-row gap-6 lg:gap-8 min-h-[60vh] text-gray-900 overflow-visible">
-      {/* Боковое меню слева */}
-      <aside className="lg:w-72 flex-shrink-0 flex flex-col gap-4">
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-200/80 p-5">
+      {/* Боковое меню слева (на мобильных — после шапки профиля и контента) */}
+      <aside className="order-2 lg:order-none lg:w-72 flex-shrink-0 flex flex-col gap-4">
+        {/* Карточка «Личный кабинет» — только десктоп; на мобильных блок приветствия и оплата в шапке */}
+        <div className="hidden lg:block bg-white rounded-2xl shadow-sm border border-gray-200/80 p-5">
           <h2 className="text-xl font-bold text-gray-900">Личный кабинет</h2>
           <p className="text-sm text-gray-600 mt-1">{user.email}</p>
-          {/* Способ оплаты */}
           <div className="mt-4 pt-4 border-t border-gray-100">
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2 min-w-0">
@@ -385,8 +385,6 @@ function Profile() {
             </p>
           </div>
         </div>
-        {/* Напоминания — между Личный кабинет и Поддержка */}
-        <RemindersWidget limit={3} />
         <div className="bg-amber-50/80 rounded-2xl shadow-sm border border-amber-200/60 p-4">
           <div className="flex items-center gap-2 mb-2">
             <Phone className="w-5 h-5 text-amber-600" />
@@ -403,8 +401,8 @@ function Profile() {
         </div>
       </aside>
 
-      {/* Основная область: шапка + контент */}
-      <div className="flex-1 min-w-0 flex flex-col gap-6 lg:gap-8 overflow-visible">
+      {/* Основная область: шапка + контент (на мобильных — первым на странице) */}
+      <div className="order-1 lg:order-none flex-1 min-w-0 flex flex-col gap-6 lg:gap-8 overflow-visible">
         <header className="bg-white rounded-2xl shadow-sm border border-gray-200/80 p-5">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div className="flex items-center gap-4 min-w-0">
@@ -451,64 +449,32 @@ function Profile() {
               </button>
             </div>
           </div>
+          {/* Способ оплаты — только мобильная версия (в блоке с приветствием) */}
+          <div className="mt-4 pt-4 border-t border-gray-100 lg:hidden">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 min-w-0">
+                <CreditCard className="w-5 h-5 flex-shrink-0 text-gray-500" />
+                <span className="text-sm font-medium text-gray-700">Способ оплаты</span>
+              </div>
+              <Link
+                to="/settings"
+                className="text-sm text-primary-600 hover:text-primary-700 font-medium whitespace-nowrap"
+              >
+                {profile?.user?.default_payment_method ? 'Изменить' : 'Настроить'}
+              </Link>
+            </div>
+            <p className="text-sm text-gray-500 mt-1 truncate">
+              {profile?.user?.default_payment_method || 'Не указан'}
+            </p>
+          </div>
         </header>
 
-        {/* Контент: две колонки */}
+        <RemindersWidget limit={3} />
+
+        {/* Контент */}
         <div className="flex-1 min-w-0 min-h-[400px] w-full overflow-visible">
           {activeTab === 'profile' && (
-            <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,360px)_1fr] gap-6 lg:gap-8 overflow-visible items-stretch">
-            {/* Первая строка: Мои питомцы и Последние заказы — одна высота */}
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-200/80 p-5 min-h-0 flex flex-col">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold text-gray-900">Мои питомцы</h2>
-                <Link to="/pet-id" className="text-sm text-primary-600 hover:text-primary-700 font-medium">
-                  Все →
-                </Link>
-              </div>
-              {petsList.length === 0 ? (
-                <div className="text-center py-6 flex-1 flex flex-col justify-center">
-                  <div className="text-4xl mb-2">🐾</div>
-                  <p className="text-gray-600 mb-4">Добавьте первого питомца</p>
-                  <Link to="/pet-id" className="inline-flex items-center gap-2 bg-secondary-400 hover:bg-secondary-500 text-white font-medium py-2.5 px-4 rounded-full">
-                    Создать профиль
-                  </Link>
-                </div>
-              ) : (
-                <div className="space-y-3 flex-1 min-h-0">
-                  {petsList.slice(0, 3).map(pet => {
-                    const petEmoji = pet.species === 'dog' ? '🐕' : pet.species === 'cat' ? '🐱' : '🐾'
-                    return (
-                      <Link
-                        key={pet.id}
-                        to={`/pet-id/${pet.id}`}
-                        className="flex items-center justify-between p-3 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors group"
-                      >
-                        <div className="flex items-center gap-3 min-w-0">
-                          <span className="text-2xl">{petEmoji}</span>
-                          <div className="min-w-0">
-                            <p className="font-medium text-gray-900 truncate">{pet.name}</p>
-                            <p className="text-xs text-gray-500 truncate">
-                              {pet.breed_name || pet.breed || 'Порода не указана'}
-                            </p>
-                          </div>
-                        </div>
-                        <span className="inline-flex items-center gap-1 text-sm font-medium text-white bg-secondary-400 hover:bg-secondary-500 px-3 py-1.5 rounded-full transition-colors">
-                          Открыть →
-                        </span>
-                      </Link>
-                    )
-                  })}
-                  <Link
-                    to="/pet-id"
-                    className="flex items-center justify-center gap-2 py-2.5 text-sm font-medium text-gray-600 hover:text-gray-900 border border-dashed border-gray-300 rounded-xl"
-                  >
-                    + Добавить питомца
-                  </Link>
-                </div>
-              )}
-            </div>
-
-            {/* Последние заказы — в одной строке с «Мои питомцы», высота совпадает */}
+            <div className="grid grid-cols-1 gap-6 lg:gap-8 overflow-visible items-stretch">
             <div className="bg-white rounded-2xl shadow-sm border border-gray-200/80 p-5 relative min-h-0 flex flex-col" ref={detailsMenuRef}>
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold text-gray-900">Последние заказы</h3>
@@ -618,8 +584,7 @@ function Profile() {
               )}
             </div>
 
-            {/* Вторая строка: Курсы на всю ширину */}
-            <Card className="p-6 flex flex-col lg:col-span-2">
+            <Card className="p-6 flex flex-col">
                 <div className="flex items-center justify-between mb-4 flex-shrink-0">
                   <h3 className="text-lg font-semibold text-gray-900">🎓 Курсы</h3>
                   <Link

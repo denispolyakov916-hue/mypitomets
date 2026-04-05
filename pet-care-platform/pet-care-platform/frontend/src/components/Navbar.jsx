@@ -310,10 +310,10 @@ function Navbar() {
 
             {isAuthenticated && (
               <span
-                className="hidden md:inline-flex items-center gap-1.5 text-white/95 font-medium text-sm py-1.5 px-3 rounded-full bg-white/5"
+                className="hidden md:inline-flex items-center gap-2 text-white/95 font-semibold text-base py-2 px-4 rounded-full bg-white/5"
                 title="Ням-коины (заглушка)"
               >
-                <Coins className="w-4 h-4 text-accent-400" aria-hidden />
+                <Coins className="w-5 h-5 text-accent-400 shrink-0" aria-hidden />
                 <span className="whitespace-nowrap">Ням-коины: 0</span>
               </span>
             )}
