@@ -1,0 +1,4 @@
+# Инструменты разработки и качества кода (не для production).
+# Установка: venv/bin/python -m pip install -r requirements-dev.txt
+ruff==0.13.3
+pre-commit==4.3.0

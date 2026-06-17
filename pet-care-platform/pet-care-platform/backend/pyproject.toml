@@ -1,0 +1,74 @@
+# ============================================================
+# Конфигурация Ruff — линтер и форматтер бэкенда (Django/DRF)
+# ============================================================
+# Цель: не пропускать спагетти-код, мёртвый код, print-отладку,
+# магические значения и слишком сложные функции/вью.
+# Применяется к коду приложений: apps/, core/, config/.
+# Документация правил проекта: ../.cursor/rules/
+
+[tool.ruff]
+target-version = "py311"
+line-length = 120
+# venv/служебное не трогаем (на случай прямого запуска ruff по каталогу)
+extend-exclude = [
+    "venv", ".venv", "media", "static", "staticfiles", "logs",
+    "**/migrations/**",  # миграции генерируются Django — не линтуем стиль
+]
+
+[tool.ruff.lint]
+# Строгий, но осмысленный для Django набор.
+select = [
+    "E", "W",     # pycodestyle
+    "F",          # pyflakes (мёртвые импорты/переменные)
+    "I",          # isort (порядок импортов)
+    "N",          # pep8-naming
+    "UP",         # pyupgrade (современный синтаксис)
+    "B",          # flake8-bugbear (типовые баги)
+    "C4",         # flake8-comprehensions
+    "DJ",         # flake8-django (антипаттерны Django)
+    "SIM",        # flake8-simplify (упрощение логики)
+    "RET",        # flake8-return
+    "T20",        # flake8-print — ЗАПРЕТ print() (только logger)
+    "ERA",        # eradicate — ЗАПРЕТ закомментированного кода
+    "C90",        # mccabe — сложность функций
+    "PERF",       # perflint
+    "RUF",        # ruff-специфичные
+    "PLR0911",    # too-many-return-statements
+    "PLR0912",    # too-many-branches      (god view/function)
+    "PLR0913",    # too-many-arguments
+    "PLR0915",    # too-many-statements    (god view/function)
+    "PLR2004",    # magic-value — числа/строки выносить в constants.py
+    "S105", "S106", "S107",  # bandit: хардкод паролей/токенов
+]
+ignore = [
+    "RUF001", "RUF002", "RUF003",  # кириллица в строках/комментах — это норма проекта
+    "SIM105",  # contextlib.suppress — не всегда читабельнее try/except
+]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 10
+
+[tool.ruff.lint.pylint]
+max-args = 6
+max-branches = 12
+max-returns = 6
+max-statements = 50
+
+[tool.ruff.lint.isort]
+known-first-party = ["apps", "core", "config"]
+
+[tool.ruff.lint.per-file-ignores]
+# Миграции (если всё же попадут) — генерируемый код
+"**/migrations/*.py" = ["ALL"]
+# Настройки: длинные строки, star-import допустимы
+"config/settings*.py" = ["E501", "F403", "F405", "S105", "S106"]
+"config/settings/*.py" = ["E501", "F403", "F405", "S105", "S106"]
+# Тесты: assert, магические значения, длинные тела
+"**/tests/**/*.py" = ["S101", "PLR2004", "PLR0915", "ARG", "S105", "S106"]
+"**/test_*.py" = ["S101", "PLR2004", "PLR0915", "ARG", "S105", "S106"]
+# Реэкспорт в пакетах
+"__init__.py" = ["F401", "F403"]
+
+[tool.ruff.format]
+quote-style = "single"
+indent-style = "space"
