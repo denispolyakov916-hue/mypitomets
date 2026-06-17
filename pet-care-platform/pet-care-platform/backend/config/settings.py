@@ -34,9 +34,13 @@ except ImportError:
 # БАЗОВАЯ КОНФИГУРАЦИЯ
 # =============================================================================
 
-SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'django-insecure-change-in-production')
-if not os.getenv('DJANGO_SECRET_KEY') and os.getenv('DEBUG', 'True').lower() != 'true':
-    raise ValueError("DJANGO_SECRET_KEY must be set in production")
+SECRET_KEY = os.getenv('DJANGO_SECRET_KEY')
+if not SECRET_KEY:
+    if os.getenv('DEBUG', 'True').lower() == 'true':
+        # Небезопасный ключ ТОЛЬКО для локальной разработки. В продакшене ключ обязателен из env.
+        SECRET_KEY = 'django-insecure-dev-only-do-not-use-in-production'
+    else:
+        raise ValueError("DJANGO_SECRET_KEY must be set in production")
 
 DEBUG = os.getenv('DEBUG', 'True').lower() == 'true'
 

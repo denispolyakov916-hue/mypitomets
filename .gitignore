@@ -126,3 +126,33 @@ coverage/
 # Local legacy files / archives
 pet-care-platform_myfiles/
 .DS_Store
+
+# =========================================================================
+# Стабилизация (2026-06): секреты, дампы, большие файлы, архивы
+# =========================================================================
+# Реальные .env не коммитим; в git только примеры с плейсхолдерами
+.env
+.env.*
+!.env.example
+!.env.production.example
+
+# Базы данных и дампы
+*.sql
+*.sqlite
+*.sqlite3
+*.db
+*.dump
+*.sql.backup
+pitomets_db
+
+# Большие каталоги товаров
+catalog_filtered.json
+Каталог.xml
+
+# Архивы
+*.tar.gz
+*.zip
+
+# Резервные копии и легаси
+backups/
+pet-care-platform_myfiles/
