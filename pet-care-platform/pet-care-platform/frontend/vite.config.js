@@ -24,6 +24,9 @@ export default defineConfig(({ mode }) => {
   
   return {
     plugins: [react()],
+
+    // Удаление console.*/debugger в production-сборке (замена terserOptions.drop_console)
+    esbuild: mode === 'production' ? { drop: ['console', 'debugger'] } : {},
     
     // Конфигурация сервера разработки
     // ПОРТ 5199 - порт для фронтенда (localhost)
@@ -63,13 +66,10 @@ export default defineConfig(({ mode }) => {
     build: {
       outDir: 'dist',
       sourcemap: false, // Отключить source maps в продакшене для уменьшения размера
-      minify: 'terser',
-      terserOptions: {
-        compress: {
-          drop_console: true, // Удалить console.log в продакшене
-          drop_debugger: true,
-        },
-      },
+      // esbuild-минификация (Vite по умолчанию). terser — опциональная зависимость,
+      // не зафиксирована в package-lock, поэтому npm ci её не ставит. console/debugger
+      // удаляются в production через esbuild.drop (см. ниже) — поведение сохранено.
+      minify: 'esbuild',
       // Разделение на chunks для оптимизации загрузки
       rollupOptions: {
         output: {
@@ -85,8 +85,7 @@ export default defineConfig(({ mode }) => {
               '@tiptap/react',
               '@tiptap/starter-kit',
               '@tiptap/extension-image',
-              '@tiptap/extension-link',
-              '@tiptap/pm'
+              '@tiptap/extension-link'
             ],
             // Zustand
             'zustand-vendor': ['zustand'],
