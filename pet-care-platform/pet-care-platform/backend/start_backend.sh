@@ -71,13 +71,13 @@ if [ ! -f ".env" ]; then
     cat > .env << EOF
 DB_NAME=pitomets_db
 DB_USER=pitomets
-DB_PASSWORD=pitomets_password
+DB_PASSWORD=your-db-password
 DB_HOST=localhost
 DB_PORT=5432
 DEBUG=True
-DJANGO_SECRET_KEY=django-insecure-change-in-production
-CLIENT_URL=http://localhost:5173
-API_URL=http://localhost:8000
+DJANGO_SECRET_KEY=django-insecure-dev-only-do-not-use-in-production
+CLIENT_URL=http://localhost:5199
+API_URL=http://localhost:8077
 EOF
     echo "[OK] .env файл создан"
     echo "[ВАЖНО] Проверьте настройки базы данных в .env файле!"
