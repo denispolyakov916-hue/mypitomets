@@ -16,8 +16,8 @@ export default defineConfig(({ mode }) => {
   
   // URL бэкенда для прокси
   // Бэкенд на порту 8077
-  const backendHost = 'localhost'
-  const backendPort = '8077'
+  const backendHost = env.VITE_BACKEND_HOST || 'localhost'
+  const backendPort = env.VITE_BACKEND_PORT || '8077'
   const proxyTarget = `http://${backendHost}:${backendPort}`
   
   console.log(`[Vite] API proxy target: ${proxyTarget}`)
@@ -39,7 +39,7 @@ export default defineConfig(({ mode }) => {
       // Все запросы на /api/* перенаправляются на localhost:8077
       proxy: {
         '/api': {
-          target: 'http://localhost:8077',
+          target: proxyTarget,
           changeOrigin: true,
           secure: false,
           ws: false,

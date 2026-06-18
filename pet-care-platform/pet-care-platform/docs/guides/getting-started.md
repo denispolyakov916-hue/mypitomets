@@ -110,3 +110,20 @@ SMTP_PASSWORD=your-email-password
 ```
 
 Полный список переменных — в `backend/.env.example`.
+
+## Проблемы запуска (troubleshooting)
+
+- **Frontend на macOS падает с `spawn EPERM` / `Operation not permitted`.**
+  Чаще всего это macOS-карантин (Gatekeeper) на `node_modules` — например, если
+  зависимости переносили через мессенджер/архив. Снять карантин только с папки зависимостей:
+
+  ```bash
+  xattr -dr com.apple.quarantine frontend/node_modules
+  ```
+
+  После этого `npm run dev` запускается штатно.
+
+- **Способы поднять БД.** Docker Compose — опциональный путь (нужен установленный Docker).
+  Локальный PostgreSQL — тоже рабочий вариант и подтверждён smoke-тестом: достаточно,
+  чтобы PostgreSQL слушал `localhost:5432`, существовала БД `pitomets_db` и был корректный
+  `backend/.env`, после чего `python manage.py migrate` и `runserver`.
