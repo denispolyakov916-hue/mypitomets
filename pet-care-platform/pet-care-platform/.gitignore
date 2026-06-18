@@ -293,3 +293,7 @@ catalog_filtered.json
 # Архивы
 *.tar.gz
 *.zip
+
+# Basic Auth password file (создаётся на сервере, секрет — не коммитим)
+.htpasswd
+nginx/.htpasswd

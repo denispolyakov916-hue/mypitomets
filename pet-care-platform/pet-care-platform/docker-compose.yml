@@ -71,7 +71,9 @@ services:
     volumes:
       - backend_static:/app/staticfiles:ro
       - backend_media:/app/media:ro
-      # Раскомментировать при подключении SSL:
+      # Beta-prod: файл паролей Basic Auth (создаётся на сервере, в git не коммитится)
+      - ./nginx/.htpasswd:/etc/nginx/.htpasswd:ro
+      # Раскомментировать при подключении SSL (Let's Encrypt / certbot):
       # - ./certbot/conf:/etc/letsencrypt:ro
       # - ./certbot/www:/var/www/certbot:ro
     depends_on:
