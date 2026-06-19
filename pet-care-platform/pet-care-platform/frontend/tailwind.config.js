@@ -16,6 +16,7 @@ export default {
   theme: {
     extend: {
       colors: {
+        milk: '#F5F5F5',
         primary: {
           50: '#f6f0ff',
           100: '#ede0ff',
@@ -212,6 +213,10 @@ export default {
       boxShadow: {
         'card': '0 4px 20px rgba(82, 47, 129, 0.08)',
         'card-hover': '0 8px 28px rgba(82, 47, 129, 0.12)',
+        'brand-lg': '0 16px 40px rgba(82, 47, 129, 0.14)',
+        'brand-xl': '0 24px 56px rgba(82, 47, 129, 0.16)',
+        'gold-glow': '0 6px 24px rgba(251, 186, 45, 0.45), 0 2px 8px rgba(251, 186, 45, 0.25)',
+        'gold-glow-lg': '0 10px 32px rgba(251, 186, 45, 0.5), 0 4px 12px rgba(251, 186, 45, 0.3)',
       },
     },
   },

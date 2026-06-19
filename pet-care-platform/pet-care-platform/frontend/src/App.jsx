@@ -79,6 +79,7 @@ const FoodRecommendationPage = lazy(() => import('./pages/FoodRecommendation/Foo
 // Ленивая загрузка тяжёлых страниц обучения
 const CoursePageLearning = lazy(() => import('./pages/Training/Learning/CoursePageLearning'))
 const CourseBuilderPage = lazy(() => import('./pages/CourseBuilder/CourseBuilderPage'))
+const BrandKit = lazy(() => import('./pages/BrandKit/BrandKit')) // dev: /brand-kit — витрина Brand UI Kit
 
 // Ленивая загрузка React админ-панели
 const AdminApp = lazy(() => import('./admin/App'))
@@ -149,6 +150,8 @@ function App() {
 
               {/* Заглушка «В разработке» — публичная */}
               <Route path="/coming-soon" element={<ComingSoon />} />
+              {/* Brand UI Kit — внутренняя витрина компонентов (публичный route) */}
+              <Route path="/brand-kit" element={<BrandKit />} />
 
               {/* Магазин - Публичный */}
               <Route path="/shop" element={<Shop />} />
