@@ -322,7 +322,7 @@ const toggleMode = () => {
                     display: 'block', 
                     textAlign: 'center', 
                     marginTop: '12px',
-                    color: '#666',
+                    color: '#522f81',
                     fontSize: '14px',
                     textDecoration: 'none'
                   }}

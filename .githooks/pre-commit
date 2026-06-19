@@ -1,0 +1,130 @@
+#!/bin/sh
+# =============================================================================
+# pre-commit — строгий контроль качества (Pet_dev / Питомец+)
+# -----------------------------------------------------------------------------
+# Не пропускает в историю: секреты, дампы/архивы/БД, build-артефакты, маркеры
+# конфликтов, отладочный мусор (console.log / debugger / pdb), AI-slop, а также
+# код, не проходящий ruff (Python). eslint (JS) — предупреждает, не блокирует.
+#
+# Версионируется в .githooks и включается один раз:
+#     git config core.hooksPath .githooks
+#
+# ВАЖНО: обход через `git commit --no-verify` ЗАПРЕЩЁН правилами проекта.
+# =============================================================================
+set -u
+
+APP="pet-care-platform/pet-care-platform"
+FAIL=0
+TMP=$(mktemp)
+trap 'rm -f "$TMP"' EXIT
+
+git -c core.quotepath=false diff --cached --name-only --diff-filter=ACM > "$TMP"
+if [ ! -s "$TMP" ]; then
+  echo "▶ pre-commit: нет staged-файлов — пропуск."
+  exit 0
+fi
+echo "▶ pre-commit: проверка staged-изменений…"
+
+# ---------------------------------------------------------------------------
+# 1) Запрещённые / секретные / большие файлы (имя, путь, размер)
+# ---------------------------------------------------------------------------
+while IFS= read -r f; do
+  [ -z "$f" ] && continue
+  base=${f##*/}
+
+  case "$base" in
+    .env)            echo "  [BLOCK] секретный env: $f"; FAIL=1 ;;
+    .htpasswd)       echo "  [BLOCK] файл паролей Basic Auth: $f"; FAIL=1 ;;
+    id_rsa|id_dsa|id_ecdsa|id_ed25519) echo "  [BLOCK] приватный SSH-ключ: $f"; FAIL=1 ;;
+    pitomets_db)     echo "  [BLOCK] файл БД: $f"; FAIL=1 ;;
+  esac
+
+  case "$f" in
+    *.env.example|*.env.production.example) : ;;            # разрешено (только плейсхолдеры)
+    *.env|*/.env)    echo "  [BLOCK] секретный env: $f"; FAIL=1 ;;
+  esac
+
+  case "$f" in
+    *.pem|*.key|*.p12|*.pfx|*.keystore) echo "  [BLOCK] ключ/сертификат: $f"; FAIL=1 ;;
+    *.sqlite|*.sqlite3|*.db|*.dump)     echo "  [BLOCK] бинарная БД/дамп: $f"; FAIL=1 ;;
+    *dump*.sql|*_dump_full.sql)         echo "  [BLOCK] SQL-дамп: $f"; FAIL=1 ;;
+    *.tar.gz|*.tgz|*.zip|*.7z|*.rar)    echo "  [BLOCK] архив: $f"; FAIL=1 ;;
+    *catalog_filtered.json)             echo "  [BLOCK] большой каталог данных: $f"; FAIL=1 ;;
+    *"Каталог.xml")                     echo "  [BLOCK] большой каталог данных: $f"; FAIL=1 ;;
+    */dist/*|*/build/*|*/node_modules/*|*/.venv/*|*/venv/*) echo "  [BLOCK] артефакт сборки/зависимостей: $f"; FAIL=1 ;;
+  esac
+
+  sz=$(git cat-file -s ":$f" 2>/dev/null || echo 0)
+  case "$sz" in ''|*[!0-9]*) sz=0 ;; esac
+  [ "$sz" -gt 5242880 ] && { echo "  [BLOCK] файл > 5MB ($sz байт): $f"; FAIL=1; }
+  case "$f" in
+    *.sql) [ "$sz" -gt 1048576 ] && { echo "  [BLOCK] большой .sql (>1MB, похоже на дамп): $f"; FAIL=1; } ;;
+  esac
+done < "$TMP"
+
+# ---------------------------------------------------------------------------
+# 2) Содержимое добавленных строк
+# ---------------------------------------------------------------------------
+# Сканируем содержимое только реального кода: исключаем сам хук, докум-ты и правила
+ADDED=$(git diff --cached --unified=0 --no-color --diff-filter=ACM 2>/dev/null \
+  -- ':(exclude).githooks' ':(exclude)*.md' ':(exclude)*.mdc' ':(exclude)*/.cursor/*' \
+  | grep '^+' | grep -v '^+++')
+
+chk() {
+  if printf '%s\n' "$ADDED" | grep -nEi "$1" >/dev/null 2>&1; then
+    echo "  [BLOCK] $2"; FAIL=1
+  fi
+}
+chk '^\+(<{7}|={7}|>{7})'                                  "маркеры конфликта слияния"
+chk 'BEGIN [A-Z ]*PRIVATE KEY'                            "приватный ключ в содержимом"
+chk '\bdebugger\b'                                        "debugger; — убрать перед коммитом"
+chk 'console\.log[[:space:]]*\('                          "console.log — используйте логгер или удалите"
+chk '(pdb\.set_trace|[^A-Za-z_]breakpoint)[[:space:]]*\(' "отладочный pdb/breakpoint"
+chk 'as an ai|language model|lorem ipsum|your code here|placeholder text' "AI-slop / placeholder-комментарий"
+
+if printf '%s\n' "$ADDED" \
+    | grep -nEi '(SECRET_KEY|SECRET_ACCESS_KEY|ACCESS_KEY_ID|[A-Z_]*PASSWORD|[A-Z_]*TOKEN|API_KEY)[[:space:]]*[:=]' \
+    | grep -vEi '(your-|changeme|placeholder|example|<[a-z0-9_]+>|xxx|paste_|\$\{|os\.getenv|process\.env|import\.meta\.env|get_random_secret_key|env\.)' \
+    | grep -qE '[:=][[:space:]]*["'"'"']?[A-Za-z0-9+/_.=-]{12,}'; then
+  echo "  [BLOCK] похоже на реальный секрет в коде (используйте env/плейсхолдер)"; FAIL=1
+fi
+
+# ---------------------------------------------------------------------------
+# 3) Линтеры: ruff блокирует; eslint — только предупреждает (legacy-долг не блокирует)
+# ---------------------------------------------------------------------------
+PYFILES=$(grep -E '\.py$' "$TMP" || true)
+if [ -n "$PYFILES" ]; then
+  RUFF="$APP/backend/.venv/bin/ruff"
+  [ -x "$RUFF" ] || RUFF=$(command -v ruff 2>/dev/null || true)
+  if [ -n "$RUFF" ] && [ -x "$RUFF" ]; then
+    echo "  • ruff: проверка Python…"
+    # shellcheck disable=SC2086
+    "$RUFF" check --quiet --config "$APP/backend/pyproject.toml" $PYFILES \
+      || { echo "  [BLOCK] ruff: проблемы стиля/сложности/мусора — исправьте"; FAIL=1; }
+  else
+    echo "  [warn] ruff не найден — Python-линт пропущен (нужен backend/.venv)"
+  fi
+fi
+
+JSFILES=$(grep -E "^$APP/frontend/.*\.(js|jsx|ts|tsx)$" "$TMP" | grep -v node_modules || true)
+if [ -n "$JSFILES" ]; then
+  if [ -f "$APP/frontend/node_modules/eslint/bin/eslint.js" ] && command -v node >/dev/null 2>&1; then
+    REL=$(printf '%s\n' "$JSFILES" | sed "s#^$APP/frontend/##")
+    echo "  • eslint: проверка JS…"
+    # shellcheck disable=SC2086
+    ( cd "$APP/frontend" && node node_modules/eslint/bin/eslint.js $REL ) \
+      || echo "  [warn] eslint: замечания (в т.ч. legacy-долг) — НЕ блокируют коммит; почините отдельной задачей"
+  else
+    echo "  [warn] eslint не найден — JS-линт пропущен (нужен frontend/node_modules)"
+  fi
+fi
+
+# ---------------------------------------------------------------------------
+if [ "$FAIL" -ne 0 ]; then
+  echo ""
+  echo "✖ pre-commit: коммит отклонён — исправьте проблемы выше."
+  echo "  Обход через --no-verify ЗАПРЕЩЁН правилами проекта (.cursor/rules/ai-dev-workflow.mdc)."
+  exit 1
+fi
+echo "✔ pre-commit: все проверки пройдены."
+exit 0

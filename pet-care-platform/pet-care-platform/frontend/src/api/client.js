@@ -125,6 +125,21 @@ api.interceptors.response.use(
     
     // Обработка 401 Unauthorized - токен истёк или невалиден
     if (status === 401) {
+      // Анонимный пользователь (токенов нет) на публичной странице дёрнул защищённый
+      // эндпоинт — НЕ редиректим на /login. Отдаём ошибку вызвавшему компоненту,
+      // он покажет гостевое состояние. Редирект — только при истёкшей сессии (ниже).
+      const hasTokens =
+        typeof window !== 'undefined' &&
+        !!(localStorage.getItem('access_token') || localStorage.getItem('refresh_token'))
+      if (!hasTokens) {
+        return Promise.reject({
+          status,
+          message: data?.detail || data?.message || 'Требуется авторизация.',
+          isAuthRequired: true,
+          isNetworkError: false,
+        })
+      }
+
       // Пытаемся обновить токен через refresh
       const originalRequest = error.config
       

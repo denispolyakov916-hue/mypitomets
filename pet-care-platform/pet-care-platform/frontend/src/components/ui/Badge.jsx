@@ -74,7 +74,7 @@ const dotColors = {
   warning: 'bg-secondary-500',
   danger: 'bg-red-500',
   info: 'bg-blue-500',
-  purple: 'bg-primary-500',
+  purple: 'bg-primary-700',
 }
 
 /**
