@@ -1,0 +1,68 @@
+/**
+ * PuffLottie — маскот Пуфыч на Lottie. Ленивая загрузка нужной анимации из
+ * /lottie/puff/{name}.json. Уважает prefers-reduced-motion и имеет статичный fallback.
+ *
+ * Доступные name: hello_wave, think, talk_gesture, talk_gesture2, celebrate_jump2,
+ * sit, sit_down, stand_up, stand_up2, stay, bored_yawn, teleport_in, teleport_out
+ */
+import { useEffect, useState } from 'react'
+import Lottie from 'lottie-react'
+
+const FALLBACK_IMG = '/purple-monster.png'
+
+function prefersReducedMotion() {
+  return typeof window !== 'undefined'
+    && typeof window.matchMedia === 'function'
+    && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+}
+
+export default function PuffLottie({
+  name = 'stay',
+  size = 160,
+  loop = true,
+  autoplay = true,
+  className = '',
+  alt = 'Пуфыч',
+}) {
+  const [data, setData] = useState(null)
+  const [failed, setFailed] = useState(false)
+  const reduced = prefersReducedMotion()
+  const box = { width: size, height: size }
+
+  useEffect(() => {
+    if (reduced) return undefined
+    let alive = true
+    setData(null)
+    setFailed(false)
+    fetch(`/lottie/puff/puff_${name}.json`)
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error('not found'))))
+      .then((j) => { if (alive) setData(j) })
+      .catch(() => { if (alive) setFailed(true) })
+    return () => { alive = false }
+  }, [name, reduced])
+
+  // Статичный fallback: при reduced-motion, ошибке или пока грузится JSON
+  if (reduced || failed || !data) {
+    return (
+      <img
+        src={FALLBACK_IMG}
+        alt={alt}
+        style={box}
+        className={`object-contain select-none pointer-events-none ${className}`}
+        draggable={false}
+      />
+    )
+  }
+
+  return (
+    <Lottie
+      animationData={data}
+      loop={loop}
+      autoplay={autoplay}
+      style={box}
+      className={`select-none ${className}`}
+      aria-label={alt}
+      role="img"
+    />
+  )
+}

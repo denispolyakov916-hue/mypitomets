@@ -75,7 +75,7 @@ function Layout({ children }) {
         className={
           isLanding
             ? /* Главная: не flex-1 — иначе с большим футером снаружи iframe сжимается до полоски и ломается скролл */
-              `flex w-full flex-shrink-0 flex-col bg-transparent ${mobileTopStripPt} pb-0 md:pt-[88px] md:pb-0 lg:pt-[96px]`
+              `flex w-full flex-shrink-0 flex-col bg-white ${mobileTopStripPt} pb-0 md:pt-[88px] md:pb-0 lg:pt-[96px]`
             : showMobileCta
               ? `flex min-h-0 flex-1 flex-col bg-transparent ${mobileTopStripPt} pb-[calc(9.5rem+env(safe-area-inset-bottom))] md:pt-[88px] md:pb-0 lg:pt-[96px]`
               : `flex min-h-0 flex-1 flex-col bg-transparent ${mobileTopStripPt} pb-[calc(6.5rem+env(safe-area-inset-bottom))] md:pt-[88px] md:pb-0 lg:pt-[96px]`

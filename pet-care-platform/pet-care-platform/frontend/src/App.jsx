@@ -45,6 +45,12 @@ import Loader from './components/Loader'
 
 // Компоненты страниц (синхронные - критичные для первой загрузки)
 import LandingPage from './pages/LandingPage'
+// Воронка подбора (синхронные: переход кликом не должен подвешивать lazy-чанк под AnimatePresence)
+import HomePage from './pages/Funnel/HomePage'
+import StartPage from './pages/Funnel/StartPage'
+import PetQuizPage from './pages/Funnel/PetQuizPage'
+import QuizLoadingPage from './pages/Funnel/QuizLoadingPage'
+import RecommendationsPage from './pages/Funnel/RecommendationsPage'
 import AuthModal from './pages/Auth/AuthModal'
 import Activate from './pages/Auth/Activate'
 import ForgotPassword from './pages/Auth/ForgotPassword'
@@ -133,7 +139,14 @@ function App() {
           <Layout>
             <Routes>
               {/* Главная — с тем же хедером и вкладками, что и во всём проекте */}
-              <Route path="/" element={<LandingPage />} />
+              <Route path="/" element={<HomePage />} />
+              {/* Старый статический лендинг сохранён */}
+              <Route path="/landing" element={<LandingPage />} />
+              {/* Воронка подбора (публичная) */}
+              <Route path="/start" element={<StartPage />} />
+              <Route path="/pet-quiz" element={<PetQuizPage />} />
+              <Route path="/pet-quiz/loading" element={<QuizLoadingPage />} />
+              <Route path="/recommendations" element={<RecommendationsPage />} />
               {/* Публичные маршруты */}
               <Route path="/pages/*" element={<PagesRouter />} />
               <Route
