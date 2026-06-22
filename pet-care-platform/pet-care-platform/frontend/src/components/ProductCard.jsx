@@ -13,7 +13,7 @@
 import { useState, useCallback, memo, useRef, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import PropTypes from 'prop-types'
-import { ShoppingCart } from 'lucide-react'
+import { ShoppingCart, Check } from 'lucide-react'
 import { Card, CardMedia } from './ui/Card'
 import { ButtonLoader } from './Loader'
 import { useCartStore } from '../store/cartStore'
@@ -190,7 +190,7 @@ const CartButton = memo(function CartButton({
     return (
       <button
         disabled
-        className="w-full h-10 rounded-2xl flex flex-col items-center justify-center bg-gray-100 text-gray-400 cursor-not-allowed"
+        className="w-full h-10 rounded-full flex flex-col items-center justify-center bg-gray-100 text-gray-400 cursor-not-allowed"
       >
         <span className="text-sm font-medium">Нет в наличии</span>
       </button>
@@ -207,16 +207,16 @@ const CartButton = memo(function CartButton({
       {showCounter ? (
         <button
           onClick={() => navigate('/cart')}
-          className="flex-1 min-w-0 px-3 rounded-2xl flex flex-col items-center justify-center bg-green-500 hover:bg-green-600 text-white transition-all duration-300"
+          className="flex-1 min-w-0 px-3 rounded-full flex items-center justify-center gap-1.5 bg-primary-100 text-primary-700 hover:bg-primary-200 transition-all duration-300 text-sm font-medium"
         >
-          <span className="text-xs font-medium leading-tight">В корзине</span>
-          <span className="text-[10px] opacity-80 leading-tight">Перейти</span>
+          <Check className="w-4 h-4 flex-shrink-0" aria-hidden />
+          <span>В корзине</span>
         </button>
       ) : (
         <button
           onClick={onAdd}
           disabled={isAdding}
-          className="flex-1 min-w-0 h-10 rounded-xl flex items-center justify-center gap-2 text-white transition-all duration-300 bg-primary-700 hover:bg-primary-800 active:scale-[0.98]"
+          className="flex-1 min-w-0 h-10 rounded-full flex items-center justify-center gap-2 text-white transition-all duration-300 bg-primary-700 hover:bg-primary-800 active:scale-[0.98] shadow-card hover:shadow-card-hover"
         >
           {isAdding ? (
             <ButtonLoader />
@@ -232,7 +232,7 @@ const CartButton = memo(function CartButton({
       {/* Счётчик количества - ширина и появление синхронизированы с кнопкой */}
       <div
         className={`
-          flex-shrink-0 flex items-center bg-gray-100 rounded-2xl overflow-hidden
+          flex-shrink-0 flex items-center bg-primary-50 rounded-full overflow-hidden
           transition-all duration-300
           ${counterWidthClass}
           ${showCounter ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-2 pointer-events-none'}
@@ -241,7 +241,7 @@ const CartButton = memo(function CartButton({
       >
         <button
           onClick={() => onQuantityChange(-1)}
-          className="min-w-11 h-11 flex items-center justify-center text-primary-700 hover:bg-gray-200 transition-colors"
+          className="min-w-11 h-11 flex items-center justify-center text-primary-700 hover:bg-primary-100 transition-colors"
           tabIndex={showCounter ? 0 : -1}
           aria-label="Уменьшить количество"
         >
@@ -257,7 +257,7 @@ const CartButton = memo(function CartButton({
         <button
           onClick={() => onQuantityChange(1)}
           disabled={cartQuantity >= (product.stock_count || 999)}
-          className="min-w-11 h-11 flex items-center justify-center text-primary-700 hover:bg-gray-200 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+          className="min-w-11 h-11 flex items-center justify-center text-primary-700 hover:bg-primary-100 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           tabIndex={showCounter ? 0 : -1}
           aria-label="Увеличить количество"
         >
@@ -323,9 +323,9 @@ const ProductCard = memo(function ProductCard({ product, onAddToCart, isLoading 
   }, [cartQuantity, product.id, updateQuantity])
 
   return (
-    <Card as="article" variant="default" hoverable rounded="2xl" className="group flex flex-col h-full overflow-hidden bg-[#F7F5FC]/50 border border-primary-200/50 shadow-card hover:shadow-card-hover">
+    <Card as="article" variant="default" hoverable rounded="3xl" className="group flex flex-col h-full overflow-hidden bg-white border border-primary-100/60 shadow-card hover:shadow-card-hover">
       {/* Изображение */}
-      <CardMedia aspectRatio="square" className="bg-white rounded-t-2xl">
+      <CardMedia aspectRatio="square" className="bg-milk rounded-t-3xl">
         <Link 
           to={`/shop/products/${product.id}`} 
           className="relative block w-full h-full"
@@ -335,43 +335,26 @@ const ProductCard = memo(function ProductCard({ product, onAddToCart, isLoading 
         
         {/* Бейдж скидки по референсу — жёлтый, скруглённый */}
         {discountPercent > 0 && (
-          <span className="absolute top-2 left-2 px-2 py-1 bg-accent-400 text-gray-900 text-xs font-bold rounded-lg shadow-sm">
+          <span className="absolute top-2 left-2 px-2.5 py-1 bg-accent-400 text-primary-800 text-xs font-bold rounded-full shadow-sm">
             -{discountPercent}%
-          </span>
-        )}
-        
-        {/* Особенность (одна по приоритету) */}
-        {discountPercent === 0 && (product.is_veterinary || product.is_hypoallergenic || product.is_grain_free) && (
-          <span className="absolute top-2 left-2 px-2 py-0.5 bg-white/90 text-gray-700 text-[10px] font-semibold rounded-lg shadow-sm border border-primary-200">
-            {product.is_veterinary ? '⚕️ Ветдиета' : product.is_hypoallergenic ? '🛡️ Гипоаллерг.' : '🌾 Без зерна'}
           </span>
         )}
         
         {/* Кнопки вишлиста и избранного */}
         <div className="absolute top-2 right-2 flex items-center gap-1">
-          <WishlistGiftBtn productId={product.id} />
           <FavoriteBtn productId={product.id} />
         </div>
         
         {/* Тип животного */}
         <div className="absolute bottom-2 left-2">
-          <span className={`px-2 py-0.5 text-[10px] font-medium rounded ${
-            animalType === 'dog' ? 'bg-blue-100 text-blue-700' :
+          <span className={`px-2 py-0.5 text-[10px] font-medium rounded-full ${
+            animalType === 'dog' ? 'bg-violet-100 text-violet-700' :
             animalType === 'cat' ? 'bg-primary-100 text-primary-700' :
             'bg-gray-100 text-gray-700'
           }`}>
             {animalType === 'dog' ? 'Собак' : animalType === 'cat' ? 'Кошек' : 'Все'}
           </span>
         </div>
-        
-        {/* Количество вариаций */}
-        {product.sku_count > 1 && (
-          <div className="absolute bottom-2 right-2">
-            <span className="px-2 py-0.5 bg-white/90 text-gray-600 text-[10px] font-medium rounded shadow-sm">
-              {product.sku_count} вариант{product.sku_count > 4 ? 'ов' : product.sku_count > 1 ? 'а' : ''}
-            </span>
-          </div>
-        )}
         
         {/* Нет в наличии */}
         {!isAvailable && (
@@ -414,7 +397,7 @@ const ProductCard = memo(function ProductCard({ product, onAddToCart, isLoading 
             <svg className="w-4 h-4 text-accent-400 fill-current" viewBox="0 0 20 20" aria-hidden="true">
               <path d="M10 15l-5.878 3.09 1.123-6.545L.489 6.91l6.572-.955L10 0l2.939 5.955 6.572.955-4.756 4.635 1.123 6.545z"/>
             </svg>
-            <span className="text-sm font-medium text-gray-700">
+            <span className="text-sm font-medium text-primary-400">
               {(product.rating || 0).toFixed(1)}
             </span>
           </div>

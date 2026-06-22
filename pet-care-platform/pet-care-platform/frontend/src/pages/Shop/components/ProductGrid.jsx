@@ -28,11 +28,11 @@ const Pagination = memo(function Pagination({ pagination, onPageChange, isLoadin
   }
   
   return (
-    <div className={`flex justify-center items-center gap-2 mt-8 p-4 rounded-xl border border-primary-200/60 bg-[#F7F5FC]/50 transition-opacity ${isLoading ? 'opacity-50 pointer-events-none' : ''}`}>
+    <div className={`flex justify-center items-center gap-2 mt-8 p-4 rounded-3xl border border-primary-100 bg-milk transition-opacity ${isLoading ? 'opacity-50 pointer-events-none' : ''}`}>
       <button
         onClick={() => onPageChange(page - 1)}
         disabled={page === 1 || isLoading}
-        className="p-2.5 rounded-xl border border-primary-200 bg-white text-primary-700 hover:bg-primary-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        className="p-2.5 rounded-full border border-primary-200 bg-white text-primary-700 hover:bg-primary-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         aria-label="Предыдущая страница"
       >
         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -45,7 +45,7 @@ const Pagination = memo(function Pagination({ pagination, onPageChange, isLoadin
           key={num}
           onClick={() => onPageChange(num)}
           disabled={isLoading}
-          className={`min-w-[2.5rem] py-2.5 px-3 rounded-xl font-medium transition-colors ${
+          className={`min-w-[2.5rem] py-2.5 px-3 rounded-full font-medium transition-colors ${
             num === page
               ? 'bg-primary-700 text-white'
               : 'border border-primary-200 bg-white text-primary-700 hover:bg-primary-50'
@@ -58,7 +58,7 @@ const Pagination = memo(function Pagination({ pagination, onPageChange, isLoadin
       <button
         onClick={() => onPageChange(page + 1)}
         disabled={page === total_pages || isLoading}
-        className="p-2.5 rounded-xl border border-primary-200 bg-white text-primary-700 hover:bg-primary-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        className="p-2.5 rounded-full border border-primary-200 bg-white text-primary-700 hover:bg-primary-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         aria-label="Следующая страница"
       >
         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -78,7 +78,7 @@ const ProductGrid = memo(function ProductGrid({ products, onAddToCart, isLoading
   }
   
   return (
-    <div className={`grid grid-cols-2 md:grid-cols-4 gap-4 lg:gap-5 transition-opacity duration-200 ${isLoading ? 'opacity-60' : 'opacity-100'}`}>
+    <div className={`grid grid-cols-2 md:grid-cols-3 gap-5 lg:gap-7 transition-opacity duration-200 ${isLoading ? 'opacity-60' : 'opacity-100'}`}>
       {products.map((product, index) => (
         <div
           key={product.id}

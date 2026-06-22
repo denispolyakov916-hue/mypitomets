@@ -462,14 +462,14 @@ const FilterSection = memo(function FilterSection({
   const [isOpen, setIsOpen] = useState(defaultOpen)
   
   return (
-    <div className="border-b border-gray-100 last:border-b-0">
+    <div className="border-b border-primary-100/70 last:border-b-0">
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="w-full flex items-center justify-between py-3 px-1 text-left hover:bg-gray-50/50 transition-colors rounded-lg"
       >
         <div className="flex items-center gap-2">
           {icon && <span className="text-lg">{icon}</span>}
-          <span className="font-medium text-gray-800">{title}</span>
+          <span className="font-medium text-primary-700">{title}</span>
           {badge !== null && badge > 0 && (
             <span className="px-1.5 py-0.5 text-xs font-medium bg-primary-100 text-primary-700 rounded-full">
               {badge}
@@ -581,7 +581,7 @@ const AgeGroupFilter = memo(function AgeGroupFilter({
           value={years}
           onChange={(e) => setYears(e.target.value)}
           placeholder="лет"
-          className="w-16 px-2 py-1.5 text-xs border border-gray-200 rounded-lg focus:ring-primary-500 focus:border-primary-500"
+          className="w-16 px-2 py-1.5 text-xs border border-primary-100 rounded-lg focus:ring-primary-500 focus:border-primary-500"
         />
         <span className="text-xs text-gray-400">и</span>
         <input
@@ -591,7 +591,7 @@ const AgeGroupFilter = memo(function AgeGroupFilter({
           value={months}
           onChange={(e) => setMonths(e.target.value)}
           placeholder="мес"
-          className="w-16 px-2 py-1.5 text-xs border border-gray-200 rounded-lg focus:ring-primary-500 focus:border-primary-500"
+          className="w-16 px-2 py-1.5 text-xs border border-primary-100 rounded-lg focus:ring-primary-500 focus:border-primary-500"
         />
         <button
           type="button"
@@ -720,7 +720,7 @@ const BrandFilter = memo(function BrandFilter({ brands = [], value, onChange, la
     <div className="relative">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className={`w-full flex items-center justify-between bg-white border border-gray-200 hover:border-gray-300 transition-colors text-gray-800 ${largeButtons ? 'px-4 py-4 rounded-xl text-sm' : 'px-3 py-3 rounded-xl text-sm'}`}
+        className={`w-full flex items-center justify-between bg-white border border-primary-100 hover:border-gray-300 transition-colors text-gray-800 ${largeButtons ? 'px-4 py-4 rounded-xl text-sm' : 'px-3 py-3 rounded-xl text-sm'}`}
       >
         <span className={selectedBrand ? 'text-gray-900' : 'text-gray-500'}>
           {selectedBrand ? selectedBrand.name : 'Все бренды'}
@@ -731,14 +731,14 @@ const BrandFilter = memo(function BrandFilter({ brands = [], value, onChange, la
       </button>
       
       {isOpen && (
-        <div className="absolute z-20 mt-1 w-full bg-white border border-gray-200 rounded-xl shadow-lg">
-          <div className="p-2 border-b border-gray-100">
+        <div className="absolute z-20 mt-1 w-full bg-white border border-primary-100 rounded-xl shadow-lg">
+          <div className="p-2 border-b border-primary-100/70">
             <input
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Поиск бренда..."
-              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-gray-400 focus:border-gray-400"
+              className="w-full px-3 py-2 text-sm border border-primary-100 rounded-lg focus:ring-gray-400 focus:border-gray-400"
               autoFocus
             />
           </div>
@@ -799,7 +799,7 @@ const PriceRangeFilter = memo(function PriceRangeFilter({
             value={localMin}
             onChange={(e) => setLocalMin(e.target.value)}
             placeholder={`от ${Math.floor(range.min)}`}
-            className={`w-full border border-gray-200 rounded-lg focus:ring-gray-400 focus:border-gray-400 bg-white ${largeButtons ? 'px-3 py-2.5 text-sm rounded-xl' : 'px-2 py-1.5 text-xs'}`}
+            className={`w-full border border-primary-100 rounded-lg focus:ring-gray-400 focus:border-gray-400 bg-white ${largeButtons ? 'px-3 py-2.5 text-sm rounded-xl' : 'px-2 py-1.5 text-xs'}`}
           />
         </div>
         <span className={`text-gray-400 ${largeButtons ? 'text-sm' : 'text-xs'}`}>—</span>
@@ -809,7 +809,7 @@ const PriceRangeFilter = memo(function PriceRangeFilter({
             value={localMax}
             onChange={(e) => setLocalMax(e.target.value)}
             placeholder={`до ${Math.ceil(range.max)}`}
-            className={`w-full border border-gray-200 rounded-lg focus:ring-gray-400 focus:border-gray-400 bg-white ${largeButtons ? 'px-3 py-2.5 text-sm rounded-xl' : 'px-2 py-1.5 text-xs'}`}
+            className={`w-full border border-primary-100 rounded-lg focus:ring-gray-400 focus:border-gray-400 bg-white ${largeButtons ? 'px-3 py-2.5 text-sm rounded-xl' : 'px-2 py-1.5 text-xs'}`}
           />
         </div>
       </div>
@@ -908,14 +908,14 @@ const ShopFilters = memo(function ShopFilters({
     { value: 'popularity', label: 'По популярности' },
   ]
   const currentSortLabel = SORT_OPTIONS.find(o => (o.value || '') === (filters.sort_by || ''))?.label || 'По умолчанию'
-  const sortBtnClass = `w-full flex items-center justify-between bg-white border border-gray-200 hover:border-gray-300 transition-colors rounded-xl text-sm ${largeButtons ? 'px-4 py-4' : 'px-3 py-3'}`
-  const sortPanelClass = 'absolute z-20 mt-1 w-full bg-white border border-gray-200 rounded-xl shadow-lg max-h-48 overflow-y-auto'
+  const sortBtnClass = `w-full flex items-center justify-between bg-white border border-primary-100 hover:border-gray-300 transition-colors rounded-xl text-sm ${largeButtons ? 'px-4 py-4' : 'px-3 py-3'}`
+  const sortPanelClass = 'absolute z-20 mt-1 w-full bg-white border border-primary-100 rounded-xl shadow-lg max-h-48 overflow-y-auto'
   
   return (
-    <div className={`rounded-2xl border border-gray-200 bg-white shadow-sm overflow-hidden flex flex-col h-full min-h-0 ${className} ${isLoading ? 'opacity-70 pointer-events-none' : ''}`}>
+    <div className={`rounded-3xl border border-primary-100 bg-white shadow-card overflow-hidden flex flex-col h-full min-h-0 ${className} ${isLoading ? 'opacity-70 pointer-events-none' : ''}`}>
       {/* Заголовок: Фильтры + иконка сброса */}
       {!hideShellHeader && (
-        <div className={`flex items-center justify-between border-b border-gray-200 bg-white flex-shrink-0 ${largeButtons ? 'p-4' : 'p-2.5'}`}>
+        <div className={`flex items-center justify-between border-b border-primary-100 bg-white flex-shrink-0 ${largeButtons ? 'p-4' : 'p-2.5'}`}>
           <div className="flex items-center gap-2">
             <button
               type="button"
@@ -929,7 +929,7 @@ const ShopFilters = memo(function ShopFilters({
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
               </svg>
             </button>
-            <h3 className={`font-semibold text-gray-800 ${largeButtons ? 'text-lg' : 'text-sm'}`}>Фильтры</h3>
+            <h3 className={`font-heading font-semibold text-primary-800 ${largeButtons ? 'text-lg' : 'text-sm'}`}>Фильтры</h3>
             {activeFilterCount > 0 && (
               <span className={`font-medium bg-primary-600 text-white rounded-full ${largeButtons ? 'px-2.5 py-1 text-xs' : 'px-1.5 py-0.5 text-[10px]'}`}>
                 {activeFilterCount}
@@ -942,9 +942,9 @@ const ShopFilters = memo(function ShopFilters({
       {/* Секции фильтров — растягиваются на всё свободное место, при переполнении прокрутка */}
       <div className={`shop-filter-sidebar flex-1 min-h-0 overflow-y-auto flex flex-col ${largeButtons ? 'p-4 space-y-4 min-h-full' : 'p-2.5 space-y-2'}`}>
         {/* Окно питомцев — заголовок с иконкой, горизонтальная полоса карточек, кнопка «Добавить питомца» */}
-        <div className={`border-b border-gray-200 ${largeButtons ? 'pb-4' : 'pb-2'}`}>
+        <div className={`border-b border-primary-100 ${largeButtons ? 'pb-4' : 'pb-2'}`}>
           <div className="flex items-center justify-between mb-2">
-            <h3 className={`font-semibold text-gray-800 flex items-center gap-2 ${largeButtons ? 'text-base mb-3' : 'text-xs mb-1.5'}`}>
+            <h3 className={`font-heading font-semibold text-primary-800 flex items-center gap-2 ${largeButtons ? 'text-base mb-3' : 'text-xs mb-1.5'}`}>
               <span className="text-primary-600" aria-hidden>🐾</span>
               Мои питомцы
             </h3>
@@ -1003,8 +1003,8 @@ const ShopFilters = memo(function ShopFilters({
           )}
         </div>
 
-        <div className={`border-b border-gray-200 ${largeButtons ? 'pb-4' : 'pb-2'}`}>
-          <div className={`font-medium text-gray-800 ${largeButtons ? 'text-sm mb-2' : 'text-xs mb-1'}`}>Тип питомца</div>
+        <div className={`border-b border-primary-100 ${largeButtons ? 'pb-4' : 'pb-2'}`}>
+          <div className={`font-medium text-primary-700 ${largeButtons ? 'text-sm mb-2' : 'text-xs mb-1'}`}>Тип питомца</div>
           <div className="flex gap-2">
             <GlassFilterButton
               isActive={!filters.animal}
@@ -1030,8 +1030,8 @@ const ShopFilters = memo(function ShopFilters({
           </div>
         </div>
 
-        <div className={`border-b border-gray-200 ${largeButtons ? 'pb-4' : 'pb-2'}`}>
-          <div className={`font-medium text-gray-800 ${largeButtons ? 'text-sm mb-2' : 'text-xs mb-1'}`}>Возраст питомца</div>
+        <div className={`border-b border-primary-100 ${largeButtons ? 'pb-4' : 'pb-2'}`}>
+          <div className={`font-medium text-primary-700 ${largeButtons ? 'text-sm mb-2' : 'text-xs mb-1'}`}>Возраст питомца</div>
           <div className="flex gap-2">
             {[
               { value: 'adult', label: 'Взрослый' },
@@ -1050,8 +1050,8 @@ const ShopFilters = memo(function ShopFilters({
           </div>
         </div>
 
-        <div className={`border-b border-gray-200 ${largeButtons ? 'pb-4' : 'pb-2'}`}>
-          <div className={`font-medium text-gray-800 ${largeButtons ? 'text-sm mb-2' : 'text-xs mb-1'}`}>Бренд</div>
+        <div className={`border-b border-primary-100 ${largeButtons ? 'pb-4' : 'pb-2'}`}>
+          <div className={`font-medium text-primary-700 ${largeButtons ? 'text-sm mb-2' : 'text-xs mb-1'}`}>Бренд</div>
           <BrandFilter
             brands={availableFilters.brands || []}
             value={filters.brand_id || ''}
@@ -1060,8 +1060,8 @@ const ShopFilters = memo(function ShopFilters({
           />
         </div>
 
-        <div className={`border-b border-gray-200 ${largeButtons ? 'pb-4' : 'pb-2'}`}>
-          <div className={`font-medium text-gray-800 ${largeButtons ? 'text-sm mb-2' : 'text-xs mb-1'}`}>Цена</div>
+        <div className={`border-b border-primary-100 ${largeButtons ? 'pb-4' : 'pb-2'}`}>
+          <div className={`font-medium text-primary-700 ${largeButtons ? 'text-sm mb-2' : 'text-xs mb-1'}`}>Цена</div>
           <PriceRangeFilter
             minPrice={filters.min_price}
             maxPrice={filters.max_price}
@@ -1071,7 +1071,7 @@ const ShopFilters = memo(function ShopFilters({
           />
         </div>
 
-        <div ref={sortDropdownRef} className={`border-b border-gray-200 ${largeButtons ? 'pb-4' : 'pb-2'}`}>
+        <div ref={sortDropdownRef} className={`border-b border-primary-100 ${largeButtons ? 'pb-4' : 'pb-2'}`}>
           <label className={`block font-medium text-gray-900 ${largeButtons ? 'text-sm mb-2' : 'text-xs mb-1.5'}`}>
             Сортировка
           </label>
@@ -1109,8 +1109,8 @@ const ShopFilters = memo(function ShopFilters({
         </div>
 
         {((filters.category_code || '').startsWith('food') || filters.category_code === 'food') && (
-          <div className={`border-b border-gray-200 ${largeButtons ? 'pb-4' : 'pb-2'}`}>
-            <div className={`font-medium text-gray-800 ${largeButtons ? 'text-sm mb-2' : 'text-xs mb-1'}`}>Особенности</div>
+          <div className={`border-b border-primary-100 ${largeButtons ? 'pb-4' : 'pb-2'}`}>
+            <div className={`font-medium text-primary-700 ${largeButtons ? 'text-sm mb-2' : 'text-xs mb-1'}`}>Особенности</div>
             <SpecialDietFilters
               filters={filters}
               onChange={onChange}

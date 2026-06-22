@@ -7,7 +7,7 @@
  */
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams, Link } from 'react-router-dom'
 import { useCartStore } from '../../store/cartStore'
 import { useAuthStore } from '../../store/authStore'
 import { useToastStore } from '../../store/toastStore'
@@ -15,6 +15,8 @@ import { useProducts } from '../../hooks/useProducts'
 import { usePets } from '../../hooks/usePets'
 import ShopFilters from '../../components/Shop/ShopFilters'
 import { ShopHeader, MobileFiltersModal, ProductGrid, Pagination } from './components'
+import { BrandButton, BrandCard, BrandEmptyState } from '../../components/brand'
+import { SearchX, AlertTriangle, Sparkles } from 'lucide-react'
 
 function Shop() {
   const navigate = useNavigate()
@@ -242,7 +244,27 @@ function Shop() {
   }, [searchParams, setSearchParams])
   
   return (
-    <div className="animate-fadeIn page-container-with-sidebar flex flex-col min-h-[calc(100vh-4rem)]">
+    <div className="animate-fadeIn page-container-with-sidebar flex flex-col min-h-[calc(100vh-4rem)] bg-milk">
+      {/* Брендовый герой магазина */}
+      <section className="mb-8 overflow-hidden rounded-3xl border border-primary-100 bg-gradient-to-br from-primary-50 via-milk to-violet-50 px-6 py-8 md:px-10 md:py-10">
+        <div className="max-w-2xl">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-white/70 px-3 py-1 text-xs font-medium text-primary-600">
+            <Sparkles className="h-3.5 w-3.5" aria-hidden /> Магазин заботы
+          </span>
+          <h1 className="mt-3 font-heading font-bold text-3xl md:text-4xl leading-tight text-primary-800">
+            Товары для заботы о питомце
+          </h1>
+          <p className="mt-3 text-base md:text-lg text-primary-600">
+            Подберём питание и уход под вашего питомца — без лишних трат и лишнего шума.
+          </p>
+          <div className="mt-6">
+            <BrandButton as={Link} to="/food-recommendation" variant="primary" leftIcon={<Sparkles className="h-5 w-5" />}>
+              Подобрать корм по питомцу
+            </BrandButton>
+          </div>
+        </div>
+      </section>
+
       {showRefetchIndicator && (
         <div className="fixed top-4 right-4 z-50 px-3 py-1.5 bg-primary-100 text-primary-700 rounded-full text-sm flex items-center gap-2 shadow-lg">
           <div className="w-3 h-3 border-2 border-primary-500 border-t-transparent rounded-full animate-spin" />
@@ -266,7 +288,7 @@ function Shop() {
         productCount={pagination?.total || products.length}
       />
 
-      <div className="flex gap-6 flex-1 min-h-0">
+      <div className="flex gap-8 flex-1 min-h-0">
         {/* Боковая панель с фильтрами — во всю высоту и шире */}
         <aside className="w-72 xl:w-80 flex-shrink-0 hidden lg:flex flex-col sticky top-24 h-[calc(100vh-6rem)] min-h-[320px]">
           <ShopFilters
@@ -298,36 +320,34 @@ function Shop() {
           />
           
           {error && !isLoading && (
-            <div className="card text-center py-12">
-              <p className="text-red-600 mb-4">{error}</p>
-              <button onClick={() => fetchImmediate(filters)} className="btn-primary">
-                Попробовать снова
-              </button>
-            </div>
+            <BrandCard variant="default" padding="lg">
+              <BrandEmptyState
+                icon={<AlertTriangle className="h-8 w-8" />}
+                title="Не удалось загрузить товары"
+                description={error}
+                action={<BrandButton variant="primary" onClick={() => fetchImmediate(filters)}>Попробовать снова</BrandButton>}
+              />
+            </BrandCard>
           )}
           
           {!isLoading && !error && products.length === 0 && (
-            <div className="card text-center py-12">
-              <div className="text-6xl mb-4">🔍</div>
-              <h2 className="section-title mb-2">
-                Товары не найдены
-              </h2>
-              <p className="text-gray-600 mb-4">
-                Попробуйте изменить параметры фильтра
-              </p>
-              <button onClick={handleReset} className="btn-primary">
-                Сбросить фильтры
-              </button>
-            </div>
+            <BrandCard variant="default" padding="lg">
+              <BrandEmptyState
+                icon={<SearchX className="h-8 w-8" />}
+                title="Ничего не нашлось"
+                description="Попробуйте изменить фильтры — подберём подходящее для вашего питомца."
+                action={<BrandButton variant="primary" onClick={handleReset}>Сбросить фильтры</BrandButton>}
+              />
+            </BrandCard>
           )}
           
           {(products.length > 0 || isLoading) && !error && (
             <>
               {selectedPet && (
-                <div className="mb-4 p-3 bg-primary-50 border border-primary-200 rounded-lg">
+                <div className="mb-5 px-4 py-3 rounded-2xl bg-primary-50 border border-primary-100">
                   <p className="text-sm text-primary-800">
-                    <span className="font-medium">⭐ Персональная подборка для {selectedPet.name}</span>
-                    <span className="text-primary-600 ml-2">({selectedPet.species_label})</span>
+                    <span className="font-semibold">★ Персональная подборка для {selectedPet.name}</span>
+                    <span className="text-primary-500 ml-2">({selectedPet.species_label})</span>
                   </p>
                 </div>
               )}

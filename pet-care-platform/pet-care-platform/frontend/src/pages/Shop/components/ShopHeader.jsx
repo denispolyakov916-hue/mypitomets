@@ -89,6 +89,16 @@ function isQuickKindActive(categoryCode, kind) {
   }
 }
 
+/** Активна ли категория при текущих фильтрах */
+function isCategoryActive(item, filters) {
+  if (item.type === 'all') return !filters.category_code && !filters.category_slug
+  const cc = filters.category_code || ''
+  const cs = filters.category_slug || ''
+  const code = item.code || item.slug || ''
+  const slug = item.slug || item.code || ''
+  return Boolean((cc && (cc === code || cc === slug)) || (cs && (cs === slug || cs === code)))
+}
+
 /** Подбор минималистичной иконки под текст/код категории */
 function getCategoryIcon(item) {
   if (item.type === 'all') return LayoutGrid
@@ -179,9 +189,9 @@ const ActiveFilterChips = memo(function ActiveFilterChips({ filters, availableFi
           className="
             group inline-flex items-center gap-2
             px-3 py-1.5 rounded-full
-            bg-white border border-primary-200
-            text-sm text-gray-700
-            hover:bg-primary-50 hover:border-primary-300
+            bg-white border border-primary-100
+            text-sm text-primary-700
+            hover:bg-primary-50
             transition-colors
           "
           title="Убрать фильтр"
@@ -236,23 +246,12 @@ const ShopHeader = memo(function ShopHeader({
     { type: 'all', id: 'all', name: 'Все' },
     ...(topCategories.map(cat => ({ type: 'category', ...cat, id: cat.id || cat.code || cat.slug }))),
   ]
-  const half = Math.ceil(allTabs.length / 2)
-  const row1 = allTabs.slice(0, half)
-  const row2 = allTabs.slice(half)
-
   /**
-   * Кнопка категории в стиле btn-slide; выбранный раздел — с контрастной окантовкой.
+   * Спокойный pill-таб категории (брендовая система). Активный — глубокий фиолетовый.
    */
-  const renderSlideButton = (item) => {
+  const renderCategoryPill = (item) => {
     const isAll = item.type === 'all'
-    const currentCode = filters.category_code || ''
-    const currentSlug = filters.category_slug || ''
-    const itemCode = item.code || item.slug || ''
-    const itemSlug = item.slug || item.code || ''
-    const isActive = isAll
-      ? !currentCode && !currentSlug
-      : (currentCode && (currentCode === itemCode || currentCode === itemSlug)) ||
-        (currentSlug && (currentSlug === itemSlug || currentSlug === itemCode))
+    const isActive = isCategoryActive(item, filters)
     const handleClick = () => {
       if (onCategoryChange) onCategoryChange('category_code', isAll ? '' : (item.code || item.slug))
     }
@@ -261,19 +260,16 @@ const ShopHeader = memo(function ShopHeader({
       <button
         key={item.id}
         type="button"
-        className={`btn-slide flex-1 min-w-0 ${isActive ? 'btn-slide-active' : ''}`}
         onClick={handleClick}
         aria-current={isActive ? 'true' : undefined}
+        className={`inline-flex items-center gap-2 whitespace-nowrap rounded-full px-4 py-2 text-sm font-medium transition-all min-h-[42px] ${
+          isActive
+            ? 'bg-primary-700 text-white shadow-card'
+            : 'bg-white text-primary-700 border border-primary-100 hover:bg-primary-50'
+        }`}
       >
-        <span className="circle">
-          <Icon size={ICON_SIZE} strokeWidth={ICON_STROKE} />
-        </span>
-        <span className="title">
-          <span className="btn-slide-text">{item.name}</span>
-        </span>
-        <span className="title title-hover">
-          <span className="btn-slide-text">{item.name}</span>
-        </span>
+        <Icon size={ICON_SIZE} strokeWidth={ICON_STROKE} className={isActive ? 'text-white' : 'text-primary-400'} aria-hidden />
+        {item.name}
       </button>
     )
   }
@@ -317,7 +313,7 @@ const ShopHeader = memo(function ShopHeader({
               onClick={handleMobileTopLeft}
               className={`flex flex-1 min-w-0 items-center justify-center gap-2 px-2 py-3 border-r border-primary-200/80 transition-colors ${
                 mobileTopLeftActive
-                  ? 'bg-accent-400 text-gray-900 font-semibold'
+                  ? 'bg-primary-700 text-white font-semibold'
                   : 'bg-primary-50 text-primary-800 font-medium'
               }`}
               aria-pressed={mobileTopLeftActive}
@@ -330,7 +326,7 @@ const ShopHeader = memo(function ShopHeader({
               onClick={handleMobileTopRight}
               className={`flex flex-1 min-w-0 items-center justify-center gap-2 px-2 py-3 transition-colors ${
                 mobileTopRightActive
-                  ? 'bg-accent-400 text-gray-900 font-semibold'
+                  ? 'bg-primary-700 text-white font-semibold'
                   : 'bg-primary-50 text-primary-800 font-medium'
               }`}
               aria-pressed={mobileTopRightActive}
@@ -358,7 +354,7 @@ const ShopHeader = memo(function ShopHeader({
                   aria-pressed={active}
                 >
                   <Icon
-                    className={`w-[22px] h-[22px] shrink-0 ${active ? 'text-primary-700' : 'text-accent-500'}`}
+                    className={`w-[22px] h-[22px] shrink-0 ${active ? 'text-primary-700' : 'text-primary-400'}`}
                     strokeWidth={2}
                     aria-hidden
                   />
@@ -377,21 +373,16 @@ const ShopHeader = memo(function ShopHeader({
       )}
 
       {allTabs.length > 0 && (
-        <nav className="hidden lg:flex shop-header-nav flex-col gap-3 py-2 w-full overflow-hidden">
-          <div className="flex flex-nowrap items-center gap-2 w-full min-w-0">
-            {row1.map(renderSlideButton)}
+        <nav className="hidden lg:block py-1" aria-label="Категории товаров">
+          <div className="flex flex-nowrap items-center gap-2 overflow-x-auto pb-1 [scrollbar-width:thin]">
+            {allTabs.map(renderCategoryPill)}
           </div>
-          {row2.length > 0 && (
-            <div className="flex flex-nowrap items-center gap-2 w-full min-w-0">
-              {row2.map(renderSlideButton)}
-            </div>
-          )}
         </nav>
       )}
       <div className="lg:hidden pt-2">
         <button
           onClick={onOpenMobileFilters}
-          className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-primary-200 bg-white text-primary-700 hover:bg-primary-50 transition-colors"
+          className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-full border border-primary-100 bg-white text-primary-700 hover:bg-primary-50 transition-colors"
         >
           <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2a1 1 0 01-.293.707L15 12.414V19a1 1 0 01-1.447.894l-4-2A1 1 0 019 17V12.414L3.293 6.707A1 1 0 013 6V4z" />
