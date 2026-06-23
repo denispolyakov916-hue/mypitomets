@@ -892,7 +892,7 @@ export default function PetIdPage() {
           {hasPetsOrDrafts && (
             <button
               type="button"
-              onClick={() => setShowCreateModal(true)}
+              onClick={() => { setEditingDraft(null); setShowCreateModal(true); }}
               className="flex items-center gap-2 px-6 py-3 min-h-[48px] bg-gradient-to-r from-primary-600 to-accent-500 text-white rounded-xl hover:shadow-lg transition-all font-semibold shrink-0"
             >
               <Plus className="w-5 h-5" />
@@ -953,7 +953,7 @@ export default function PetIdPage() {
             exit={{ opacity: 0, y: -20 }}
             transition={{ duration: 0.3 }}
           >
-            <PetsEmptyState onCreateClick={() => setShowCreateModal(true)} />
+            <PetsEmptyState onCreateClick={() => { setEditingDraft(null); setShowCreateModal(true); }} />
           </motion.div>
         ) : (
           <motion.div
@@ -1056,6 +1056,7 @@ export default function PetIdPage() {
       <AnimatePresence>
         {showCreateModal && (
           <PetCreateForm
+            editingDraft={editingDraft}
             onClose={() => {
               setShowCreateModal(false);
               setEditingDraft(null);

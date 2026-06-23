@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate, useLocation, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   ArrowLeft, Edit, Trash2, Share2, QrCode, AlertCircle,
@@ -235,9 +235,14 @@ function ScoreIndicator({ score }) {
 export default function PetDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [pet, setPet] = useState(null);
+  const location = useLocation();
+  // Bug 1: свежие данные питомца, переданные сразу после создания/сохранения рациона
+  // из воронки (navigate('/pet-id/:id', { state: { pet } })). Рисуем мгновенно, без F5,
+  // затем фоновым refetch заменяем на канонические данные с backend.
+  const seededPet = location.state && location.state.pet ? location.state.pet : null;
+  const [pet, setPet] = useState(seededPet);
   const [comparison, setComparison] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(!seededPet);
   const [error, setError] = useState(null);
   const [showWizard, setShowWizard] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
@@ -247,20 +252,22 @@ export default function PetDetailPage() {
   }, [id]);
 
   const loadPetData = async () => {
-    setIsLoading(true);
+    // Если уже показываем переданные из воронки данные — обновляем в фоне, не пряча карточку.
+    if (!pet) setIsLoading(true);
     setError(null);
     try {
-      // Загружаем данные питомца и сравнение параллельно
+      // Питомца грузим обязательно; сравнение пород не должно ронять загрузку карточки.
       const [petResponse, comparisonResponse] = await Promise.all([
         getPet(id),
-        getPetBreedComparison(id)
+        getPetBreedComparison(id).catch(() => null)
       ]);
       
-      setPet(petResponse.pet || petResponse);
+      setPet(petResponse.data || petResponse.pet || petResponse);
       setComparison(comparisonResponse);
     } catch (err) {
       console.error('Ошибка загрузки данных:', err);
-      setError('Не удалось загрузить данные питомца');
+      // Не затираем уже показанные свежие данные ошибкой фонового refetch.
+      if (!pet) setError('Не удалось загрузить данные питомца');
     } finally {
       setIsLoading(false);
     }
@@ -562,6 +569,35 @@ export default function PetDetailPage() {
                 } />
               </div>
             </div>
+
+            {/* Сохранённый рацион из «Подбора корма» — показываем и для черновика */}
+            {pet.current_food && (pet.current_food.brand_name || pet.current_food.product_name) && (
+              <div className="bg-white rounded-2xl p-6 shadow-sm">
+                <div className="flex items-center gap-2 mb-4">
+                  <UtensilsCrossed className="w-5 h-5 text-accent-600" />
+                  <h3 className="font-semibold text-gray-800">Сохранённый рацион</h3>
+                </div>
+                <div className="grid md:grid-cols-2 gap-4">
+                  {pet.current_food.brand_name && (
+                    <InfoRow label="Бренд" value={pet.current_food.brand_name} />
+                  )}
+                  {pet.current_food.product_name && (
+                    <InfoRow label="Корм" value={pet.current_food.product_name} />
+                  )}
+                  {pet.current_food.daily_amount_grams && (
+                    <InfoRow label="Норма в день" value={`${pet.current_food.daily_amount_grams} г`} />
+                  )}
+                </div>
+                <p className="text-xs text-gray-400 mt-3">Сохранено из подбора корма</p>
+                <button
+                  onClick={() => navigate('/shop')}
+                  className="mt-4 flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-accent-500 to-secondary-500 text-white rounded-xl hover:shadow-lg transition-all"
+                >
+                  <UtensilsCrossed className="w-4 h-4" />
+                  Купить рацион
+                </button>
+              </div>
+            )}
           </motion.div>
         )}
 

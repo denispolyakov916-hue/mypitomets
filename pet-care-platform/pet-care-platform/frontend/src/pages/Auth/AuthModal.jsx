@@ -8,6 +8,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useLocation, Link } from 'react-router-dom'
 import { useAuthStore } from '../../store/authStore'
+import { resolvePostAuthRedirect } from '../../utils/postAuthRedirect'
 import { ButtonLoader } from '../../components/Loader'
 import '../../styles/auth.css'
 
@@ -167,8 +168,7 @@ const toggleMode = () => {
     const success = await login(loginData.email, loginData.password)
 
     if (success) {
-      const from = location.state?.from?.pathname || '/pet-id'
-      navigate(from, { replace: true })
+      navigate(resolvePostAuthRedirect({ location }), { replace: true })
     }
   }
 
@@ -207,7 +207,7 @@ const toggleMode = () => {
     const success = await activateByCode(activationCode)
 
     if (success) {
-      navigate('/pet-id', { replace: true })
+      navigate(resolvePostAuthRedirect({ location }), { replace: true })
     }
   }
 

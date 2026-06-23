@@ -23,7 +23,7 @@ import {
   Camera, Dog, Cat, Search, AlertCircle, CheckCircle2, X, Loader2,
   UtensilsCrossed, GraduationCap, ShoppingBag, FileCheck
 } from 'lucide-react';
-import { createPet, getBreeds } from '../../../api/pets';
+import { createPet, updatePet, getBreeds } from '../../../api/pets';
 
 // ============================================
 // КОНСТАНТЫ
@@ -75,6 +75,37 @@ const initialFormState = {
   weightKg: '',
   isNeutered: null,
 };
+
+// Преобразует существующий черновик питомца (snake_case из API) в состояние формы.
+// Используется при «Продолжить» незавершённый профиль: дозаполняем, а не плодим дубль.
+function draftToFormState(draft) {
+  if (!draft) return initialFormState;
+
+  const weight = draft.weight_kg ?? draft.weightKg;
+  let weightKg = '';
+  if (weight !== null && weight !== undefined) weightKg = String(weight);
+
+  let isNeutered = null;
+  if (typeof draft.is_neutered === 'boolean') isNeutered = draft.is_neutered;
+  else if (typeof draft.isNeutered === 'boolean') isNeutered = draft.isNeutered;
+
+  const rawDob = draft.date_of_birth || draft.dateOfBirth || null;
+  let dateOfBirth = null;
+  if (rawDob) dateOfBirth = rawDob instanceof Date ? rawDob : new Date(rawDob);
+
+  return {
+    ...initialFormState,
+    name: draft.name || '',
+    species: draft.species || '',
+    sex: draft.sex || '',
+    breed: draft.breed || '',
+    breedId: draft.breed_id ?? draft.breedId ?? null,
+    weightKg,
+    isNeutered,
+    dateOfBirth,
+    ageType: rawDob ? 'exact' : 'approximate',
+  };
+}
 
 // ============================================
 // КОМПОНЕНТЫ ПОЛЕЙ
@@ -827,11 +858,11 @@ const WhatNextAfterFirstPetModal = ({ petId, petName, onChoose, onClose }) => {
 // ОСНОВНОЙ КОМПОНЕНТ ФОРМЫ
 // ============================================
 
-const PetCreateForm = ({ onClose }) => {
+const PetCreateForm = ({ onClose, editingDraft = null }) => {
   const navigate = useNavigate();
   const modalRef = useRef(null);
   const previousActiveElement = useRef(null);
-  const [formData, setFormData] = useState(initialFormState);
+  const [formData, setFormData] = useState(() => draftToFormState(editingDraft));
   const [errors, setErrors] = useState({});
   const [breeds, setBreeds] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -1041,9 +1072,6 @@ const PetCreateForm = ({ onClose }) => {
     
     try {
       const dateOfBirth = calculateDateOfBirth();
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/4f373f70-f463-4309-8a8e-4162185b5f36',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'PetCreateForm.jsx:handleSubmit:dob',message:'Calculated date_of_birth for create',data:{ageType:formData.ageType,ageYears:formData.ageYears,ageMonths:formData.ageMonths,dateOfBirthISO:dateOfBirth ? dateOfBirth.toISOString() : null},timestamp:Date.now(),sessionId:'debug-session',runId:'pre',hypothesisId:'A'})}).catch(()=>{});
-      // #endregion
       
       const payload = {
         name: formData.name.trim(),
@@ -1054,30 +1082,37 @@ const PetCreateForm = ({ onClose }) => {
         weight_kg: parseFloat(formData.weightKg),
         is_neutered: formData.isNeutered,
       };
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/4f373f70-f463-4309-8a8e-4162185b5f36',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'PetCreateForm.jsx:handleSubmit:payload',message:'Create pet payload summary',data:{species:payload.species,sex:payload.sex,breed_id:payload.breed_id,weight_kg:payload.weight_kg,date_of_birth:payload.date_of_birth,is_neutered:payload.is_neutered,hasPhoto:!!payload.photo},timestamp:Date.now(),sessionId:'debug-session',runId:'pre',hypothesisId:'B'})}).catch(()=>{});
-      // #endregion
       
-      // Добавляем фото если есть
-      if (formData.photo) {
-        payload.photo = formData.photo;
+      // Продолжаем существующий черновик — обновляем его, а не создаём дубль.
+      let response;
+      if (editingDraft?.id) {
+        // updatePet шлёт JSON (PUT) и не умеет нести File, поэтому фото на этом
+        // шаге не трогаем — его можно добавить позже через редактирование питомца.
+        response = await updatePet(editingDraft.id, { ...payload, is_draft: false });
+      } else {
+        // Создание поддерживает загрузку фото через multipart (см. createPet).
+        if (formData.photo) {
+          payload.photo = formData.photo;
+        }
+        response = await createPet(payload);
       }
-      
-      const response = await createPet(payload);
       // API возвращает {message, data}, берём data
       const createdPet = response.data?.data || response.data;
-      
-      if (!createdPet?.id) {
-        throw new Error('Не удалось получить ID созданного питомца');
+      // При обновлении черновика PetUpdateSerializer не возвращает id —
+      // берём id существующего черновика, который у нас уже есть.
+      const resultPetId = createdPet?.id || editingDraft?.id;
+
+      if (!resultPetId) {
+        throw new Error('Не удалось получить ID сохранённого питомца');
       }
 
-      setCreatedPetId(createdPet.id);
+      setCreatedPetId(resultPetId);
       setCreatedPetName(formData.name.trim() || 'Питомец');
       setShowWhatNextModal(true);
       
     } catch (error) {
-      console.error('Ошибка создания питомца:', error);
-      setErrors({ submit: error.response?.data?.message || 'Ошибка при создании питомца' });
+      console.error('Ошибка сохранения питомца:', error);
+      setErrors({ submit: error.response?.data?.message || 'Не удалось сохранить питомца' });
     } finally {
       setIsSubmitting(false);
     }

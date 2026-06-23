@@ -5,11 +5,11 @@
  * справа), набор заботы на период, «почему подходит», мягкое сохранение.
  * Анонимно; покупка/сохранение → мягкий логин. Реальные товары магазина.
  */
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import {
   Sparkles, Check, ShoppingCart, Bell, Flame, Sunrise, Sun, Sunset,
-  PawPrint, Cake, Scale, Heart, Stethoscope, Wallet, Target, UtensilsCrossed, Calendar,
+  PawPrint, Cake, Scale, Heart, Stethoscope, Wallet, Target, UtensilsCrossed, Calendar, UserPlus,
 } from 'lucide-react'
 import AppShell from '../../components/app/AppShell'
 import { BrandSection, BrandCard, BrandButton, BrandBadge, BrandEmptyState, PuffLottie } from '../../components/brand'
@@ -17,6 +17,9 @@ import { loadQuizDraft } from '../../utils/petQuizDraft'
 import { buildRecommendations } from './recommendationsAdapter'
 import { computeRation } from './rationPlan'
 import { formatPrice } from '../../utils/format'
+import { useAuthStore } from '../../store/authStore'
+import { savePendingFunnelAction, loadPendingFunnelAction } from '../../utils/pendingFunnelAction'
+import { executePendingFunnelAction } from '../../utils/executePendingFunnelAction'
 
 const PROFILE_ICONS = {
   species: PawPrint, breed: PawPrint, age: Cake, weight: Scale,
@@ -237,7 +240,7 @@ function BundleItem({ label, product }) {
 }
 
 /** Блок 6: «Набор заботы на период» с переключателем 14/30 дней. */
-function BundleSection({ main, addon, addonLabel, periodDays, setPeriodDays, total, softAuth }) {
+function BundleSection({ main, addon, addonLabel, periodDays, setPeriodDays, total, onAddToCart }) {
   if (!main) return null
   return (
     <BrandCard variant="elevated" padding="lg">
@@ -271,7 +274,7 @@ function BundleSection({ main, addon, addonLabel, periodDays, setPeriodDays, tot
         <div className="flex flex-col gap-2 md:border-l md:border-primary-100 md:pl-6">
           <p className="font-heading text-lg font-bold text-primary-900">Итого: {formatPrice(total)}</p>
           <p className="text-sm text-primary-600">Хватит примерно на {periodDays} дней</p>
-          <BrandButton variant="primary" size="lg" fullWidth leftIcon={<ShoppingCart className="h-5 w-5" />} onClick={softAuth}>
+          <BrandButton variant="primary" size="lg" fullWidth leftIcon={<ShoppingCart className="h-5 w-5" />} onClick={onAddToCart}>
             Добавить рацион в корзину
           </BrandButton>
           <p className="text-xs text-primary-400">Состав и сроки ориентировочные — уточним после сохранения питомца.</p>
@@ -310,7 +313,7 @@ function WhyBlock({ reasons, petName }) {
 }
 
 /** Блок 8: компактное мягкое сохранение. */
-function SaveBlock({ softAuth }) {
+function SaveBlock({ onSave, onCreateProfile }) {
   return (
     <div className="flex flex-col items-center gap-4 text-center md:flex-row md:text-left">
       <PuffLottie name="stay" size={84} alt="Пуфыч ждёт" />
@@ -319,11 +322,37 @@ function SaveBlock({ softAuth }) {
         <p className="mt-1 text-white/80">Пуфыч напомнит, когда корм будет заканчиваться.</p>
       </div>
       <div className="flex flex-col gap-2 sm:flex-row">
-        <BrandButton variant="primary" leftIcon={<Bell className="h-5 w-5" />} onClick={softAuth}>Сохранить рацион</BrandButton>
+        <BrandButton variant="primary" leftIcon={<Bell className="h-5 w-5" />} onClick={onSave}>Сохранить рацион</BrandButton>
+        <BrandButton variant="outline" leftIcon={<UserPlus className="h-5 w-5" />} onClick={onCreateProfile} className="border-white/40 text-white hover:bg-white/10">Создать профиль питомца</BrandButton>
         <BrandButton as={Link} to="/shop" variant="ghost" className="text-white hover:bg-white/10">Продолжить без сохранения</BrandButton>
       </div>
     </div>
   )
+}
+
+// 1B: уведомление о ходе/ошибке выполнения отложенного действия воронки.
+function FunnelActionNotice({ actionError, savedNotice, onRetry }) {
+  if (actionError) {
+    return (
+      <BrandSection bg="milk" container="max-w-6xl" className="!pb-0">
+        <div className="flex flex-col items-start gap-3 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-800 sm:flex-row sm:items-center sm:justify-between">
+          <span>Не удалось выполнить действие. Данные подбора сохранены — попробуйте ещё раз.</span>
+          <BrandButton variant="secondary" onClick={onRetry}>Попробовать ещё раз</BrandButton>
+        </div>
+      </BrandSection>
+    )
+  }
+  if (savedNotice) {
+    return (
+      <BrandSection bg="milk" container="max-w-6xl" className="!pb-0">
+        <div className="flex items-start gap-3 rounded-2xl border border-green-200 bg-green-50 p-4 text-sm text-green-800">
+          <Check className="mt-0.5 h-5 w-5 flex-shrink-0 text-green-600" />
+          <span>Готовим всё для вашего питомца…</span>
+        </div>
+      </BrandSection>
+    )
+  }
+  return null
 }
 
 export default function RecommendationsPage() {
@@ -332,6 +361,22 @@ export default function RecommendationsPage() {
   const [state, setState] = useState({ loading: true, data: null, error: false })
   const [selectedKey, setSelectedKey] = useState('optimal')
   const [periodDays, setPeriodDays] = useState(30)
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
+  const [savedNotice, setSavedNotice] = useState(false)
+  const [actionError, setActionError] = useState(false)
+  const executedRef = useRef(false)
+
+  // 1B: единый запуск отложенного действия + единая обработка ошибки (DRY).
+  const runPendingAction = useCallback(() => {
+    setSavedNotice(true)
+    setActionError(false)
+    executePendingFunnelAction({ navigate }).then((r) => {
+      if (!r.ok && r.error !== 'no_pending' && r.error !== 'in_flight') {
+        setActionError(true)
+        executedRef.current = false // разрешаем повтор
+      }
+    })
+  }, [navigate])
 
   useEffect(() => {
     let alive = true
@@ -341,8 +386,16 @@ export default function RecommendationsPage() {
     return () => { alive = false }
   }, [draft])
 
+  // 1B: вернулись с логина (или уже авторизованы) и есть подготовленное намерение —
+  // выполняем его (создаём питомца / сохраняем рацион / кладём в корзину) и уходим дальше.
+  useEffect(() => {
+    if (!isAuthenticated || executedRef.current) return
+    if (!loadPendingFunnelAction()) return
+    executedRef.current = true
+    runPendingAction()
+  }, [isAuthenticated, runPendingAction])
+
   const petName = draft.name || 'вашего питомца'
-  const softAuth = () => navigate('/login?next=/recommendations')
 
   const tiers = useMemo(() => state.data?.tiers || [], [state.data])
   const selectedTier = useMemo(
@@ -385,8 +438,29 @@ export default function RecommendationsPage() {
   const { bundle, profile, reasons } = state.data
   const bundleTotal = (selectedTier.product?.price || 0) + (bundle?.addon?.price || 0)
 
+  const pickProduct = (pr) => (pr ? { id: pr.id, name: pr.name, brand_name: pr.brand_name, price: pr.price, image_url: pr.image_url } : null)
+
+  // 1A: только сохраняем намерение + снапшот; питомца/корзину НЕ создаём.
+  const startFunnelAuth = (type) => {
+    savePendingFunnelAction({
+      type,
+      returnTo: '/recommendations',
+      draft: { ...draft },
+      selectedRation: {
+        tierKey: selectedTier.key,
+        periodDays,
+        main: pickProduct(selectedTier.product),
+        addon: pickProduct(bundle?.addon),
+        total: bundleTotal,
+      },
+    })
+    if (isAuthenticated) { runPendingAction(); return }
+    navigate('/login?redirect=/recommendations')
+  }
+
   return (
     <AppShell>
+      <FunnelActionNotice actionError={actionError} savedNotice={savedNotice} onRetry={runPendingAction} />
       <BrandSection bg="milk" container="max-w-6xl">
         <div className="text-center">
           <div className="flex justify-center">
@@ -425,7 +499,7 @@ export default function RecommendationsPage() {
           periodDays={periodDays}
           setPeriodDays={setPeriodDays}
           total={bundleTotal}
-          softAuth={softAuth}
+          onAddToCart={() => startFunnelAuth('add_ration_to_cart')}
         />
       </BrandSection>
 
@@ -434,7 +508,7 @@ export default function RecommendationsPage() {
       </BrandSection>
 
       <BrandSection bg="gradient" container="max-w-5xl">
-        <SaveBlock softAuth={softAuth} />
+        <SaveBlock onSave={() => startFunnelAuth('save_ration')} onCreateProfile={() => startFunnelAuth('create_pet_profile')} />
       </BrandSection>
     </AppShell>
   )

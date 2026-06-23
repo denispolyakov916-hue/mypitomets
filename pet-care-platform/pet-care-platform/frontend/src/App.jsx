@@ -51,6 +51,7 @@ import StartPage from './pages/Funnel/StartPage'
 import PetQuizPage from './pages/Funnel/PetQuizPage'
 import QuizLoadingPage from './pages/Funnel/QuizLoadingPage'
 import RecommendationsPage from './pages/Funnel/RecommendationsPage'
+import { resolvePostAuthRedirect } from './utils/postAuthRedirect'
 import AuthModal from './pages/Auth/AuthModal'
 import Activate from './pages/Auth/Activate'
 import ForgotPassword from './pages/Auth/ForgotPassword'
@@ -151,11 +152,11 @@ function App() {
               <Route path="/pages/*" element={<PagesRouter />} />
               <Route
                 path="/login"
-                element={isAuthenticated ? <Navigate to="/pet-id" /> : <AuthModal />}
+                element={isAuthenticated ? <Navigate to={resolvePostAuthRedirect()} /> : <AuthModal />}
               />
               <Route
                 path="/register"
-                element={isAuthenticated ? <Navigate to="/pet-id" /> : <AuthModal />}
+                element={isAuthenticated ? <Navigate to={resolvePostAuthRedirect()} /> : <AuthModal />}
               />
               <Route path="/activate" element={<Activate />} />
               <Route path="/forgot-password" element={<ForgotPassword />} />
