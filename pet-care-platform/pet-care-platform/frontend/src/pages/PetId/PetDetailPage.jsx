@@ -21,6 +21,7 @@ import Lottie from 'lottie-react';
 import api from '../../api/client';
 import { usePetEvents } from '../../hooks/usePetEvents';
 import { getEventTypeMeta } from '../../constants/eventTypes';
+import EventModal from '../../components/events/EventModal';
 
 // Цвета для статусов
 const STATUS_COLORS = {
@@ -204,6 +205,7 @@ export default function PetDetailPage() {
   const [allergies, setAllergies] = useState([]);
   const [behaviorCourses, setBehaviorCourses] = useState([]);
   const [showReminderModal, setShowReminderModal] = useState(false);
+  const [showEventModal, setShowEventModal] = useState(false);
   // Шаг 1.2: read-only лента «Из дневника здоровья» (backend CalendarEvent, ближайшие запланированные).
   const petDiary = usePetEvents(pet?.id, { status: 'scheduled', limit: 4 });
   // Смена фото питомца: триггерим скрытый input, грузим через существующий эндпоинт.
@@ -572,6 +574,7 @@ export default function PetDetailPage() {
               loading={petDiary.isLoading}
               petId={pet.id}
               navigate={navigate}
+              onAddEvent={() => setShowEventModal(true)}
             />
 
             {/* Быстрая статистика */}
@@ -779,6 +782,13 @@ export default function PetDetailPage() {
           onCreated={() => { setShowReminderModal(false); loadReminders(); }}
         />
       )}
+
+      <EventModal
+        isOpen={showEventModal}
+        onClose={() => setShowEventModal(false)}
+        petId={pet.id}
+        onCreated={() => petDiary.refetch()}
+      />
     </div>
   );
 }
@@ -1429,7 +1439,7 @@ function diaryDateBadge(startDate) {
   return { label: null };
 }
 
-function DiaryFeedBlock({ events, loading, petId, navigate }) {
+function DiaryFeedBlock({ events, loading, petId, navigate, onAddEvent }) {
   const items = (events || []).slice(0, 4);
   const hasItems = items.length > 0;
   return (
@@ -1437,9 +1447,14 @@ function DiaryFeedBlock({ events, loading, petId, navigate }) {
       icon={BookOpen}
       title="Из дневника здоровья"
       action={hasItems ? (
-        <button onClick={() => navigate(`/health-diary?pet_id=${petId}`)} className="inline-flex items-center gap-1 text-sm font-medium text-primary-600 hover:text-primary-800">
-          Открыть дневник <ChevronRight className="w-4 h-4" />
-        </button>
+        <div className="flex items-center gap-3">
+          <button onClick={onAddEvent} className="inline-flex items-center gap-1 text-sm font-medium text-primary-600 hover:text-primary-800">
+            <Plus className="w-4 h-4" /> Добавить
+          </button>
+          <button onClick={() => navigate(`/health-diary?pet_id=${petId}`)} className="inline-flex items-center gap-1 text-sm font-medium text-primary-600 hover:text-primary-800">
+            Дневник <ChevronRight className="w-4 h-4" />
+          </button>
+        </div>
       ) : null}
     >
       {loading ? (
@@ -1473,9 +1488,14 @@ function DiaryFeedBlock({ events, loading, petId, navigate }) {
           title="В дневнике пока нет записей"
           subtitle="Когда появятся прививки, визиты и заметки — Пуфыч покажет их здесь."
         >
-          <button onClick={() => navigate(`/health-diary?pet_id=${petId}`)} className={SOFT_CTA}>
-            <BookOpen className="w-4 h-4" /> Открыть дневник
-          </button>
+          <div className="flex flex-wrap items-center justify-center gap-2">
+            <button onClick={onAddEvent} className={GOLD_CTA}>
+              <Plus className="w-4 h-4" /> Добавить событие
+            </button>
+            <button onClick={() => navigate(`/health-diary?pet_id=${petId}`)} className={SOFT_CTA}>
+              <BookOpen className="w-4 h-4" /> Открыть дневник
+            </button>
+          </div>
         </EmptyState>
       )}
     </SectionCard>

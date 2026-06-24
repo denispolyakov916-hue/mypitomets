@@ -9,9 +9,9 @@ import { usePets } from '../../hooks/usePets'
 import { useToastStore } from '../../store/toastStore'
 import { PageLoader } from '../../components/Loader'
 import SimpleCalendar from './SimpleCalendar'
-import Modal, { ModalFooter, ConfirmModal } from '../../components/ui/Modal'
+import { ConfirmModal } from '../../components/ui/Modal'
+import EventModal from '../../components/events/EventModal'
 import { Button } from '../../components/ui/Button'
-import Input from '../../components/ui/Input'
 import { usePetEvents } from '../../hooks/usePetEvents'
 import { updateCalendarEvent, deleteCalendarEvent, getPetCalendarEvents } from '../../api/calendar'
 import { migrateDiaryEventsToBackend } from '../../utils/migrateDiaryToBackend'
@@ -51,20 +51,9 @@ function parseBackendDate(startDate, startTime) {
 }
 
 /** Дата (Date|строка) → 'YYYY-MM-DD' для backend. */
-function toDateStr(d) {
-  if (typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d)) return d
-  const date = d instanceof Date ? d : new Date(d)
-  if (Number.isNaN(date.getTime())) return null
-  const y = date.getFullYear()
-  const m = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  return `${y}-${m}-${day}`
-}
-
 function HealthDiary() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
-  const showSuccess = useToastStore((s) => s.success)
   const showInfo = useToastStore((s) => s.info)
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
   const { pets, isLoading: petsLoading } = usePets()
@@ -74,7 +63,6 @@ function HealthDiary() {
   const {
     events: rawEvents,
     refetch,
-    createEvent,
     completeEvent,
   } = usePetEvents(selectedPetId)
 
@@ -98,12 +86,6 @@ function HealthDiary() {
   const [activeTab, setActiveTab] = useState('overview')
   const [deleteConfirmId, setDeleteConfirmId] = useState(null)
   const [addModalOpen, setAddModalOpen] = useState(false)
-  const [addForm, setAddForm] = useState({
-    type: 'other',
-    title: '',
-    date: '',
-    description: '',
-  })
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -130,17 +112,6 @@ function HealthDiary() {
       .catch(() => {})
     return () => { alive = false }
   }, [selectedPetId, refetch])
-  // Создание события через backend CalendarEvent.
-  const addEvent = (eventData) => {
-    return createEvent({
-      pet: selectedPetId,
-      title: (eventData.title || '').trim() || 'Событие',
-      event_type: eventData.type || 'other',
-      start_date: toDateStr(eventData.date),
-      description: (eventData.description || '').trim(),
-    })
-  }
-
   // Завершение/возврат события: completed → backend-статус (через новый слой).
   const updateEvent = (eventId, updates) => {
     if (updates && typeof updates.completed === 'boolean') {
@@ -175,29 +146,9 @@ function HealthDiary() {
   }
 
   const openAddModal = (date = selectedDate) => {
-    const d = date instanceof Date ? date : new Date(date)
-    setAddForm({
-      type: 'other',
-      title: '',
-      date: d.toISOString().split('T')[0],
-      description: '',
-    })
+    if (date instanceof Date) setSelectedDate(date)
     setAddModalOpen(true)
   }
-
-  const handleAddSubmit = (e) => {
-    e.preventDefault()
-    if (!addForm.title.trim()) return
-    addEvent({
-      type: addForm.type,
-      title: addForm.title.trim(),
-      date: addForm.date,
-      description: addForm.description.trim(),
-    })
-    showSuccess('Событие добавлено')
-    setAddModalOpen(false)
-  }
-
   const upcomingEvents = useMemo(() => {
     const now = new Date()
     return events
@@ -587,64 +538,13 @@ function HealthDiary() {
         variant="danger"
       />
 
-      <Modal isOpen={addModalOpen} onClose={() => setAddModalOpen(false)} title="Новое событие" size="lg">
-        <form onSubmit={handleAddSubmit}>
-          <p className="text-sm text-gray-600 mb-3">Тип события</p>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-4">
-            {Object.entries(eventTypes).map(([key, info]) => (
-              <button
-                key={key}
-                type="button"
-                onClick={() => setAddForm((f) => ({ ...f, type: key }))}
-                className={`rounded-xl border-2 p-3 text-left transition-all min-h-[72px] ${
-                  addForm.type === key ? 'border-primary-500 bg-primary-50 ring-2 ring-primary-200' : 'border-gray-200 hover:border-gray-300'
-                }`}
-              >
-                <span className="text-2xl block mb-1">{info.icon}</span>
-                <span className="text-xs font-semibold text-gray-900">{info.label}</span>
-              </button>
-            ))}
-          </div>
-
-          <Input
-            label="Дата"
-            type="date"
-            value={addForm.date}
-            onChange={(e) => setAddForm((f) => ({ ...f, date: e.target.value }))}
-            required
-            className="mb-4"
-          />
-
-          <Input
-            label="Название"
-            value={addForm.title}
-            onChange={(e) => setAddForm((f) => ({ ...f, title: e.target.value }))}
-            placeholder="Например: прививка от бешенства"
-            required
-            className="mb-4"
-          />
-
-          <div className="mb-4">
-            <label className="label">Описание</label>
-            <textarea
-              value={addForm.description}
-              onChange={(e) => setAddForm((f) => ({ ...f, description: e.target.value }))}
-              className="input min-h-[88px] w-full"
-              placeholder="Дополнительно (необязательно)"
-              rows={3}
-            />
-          </div>
-
-          <ModalFooter>
-            <Button type="button" variant="secondary" onClick={() => setAddModalOpen(false)}>
-              Отмена
-            </Button>
-            <Button type="submit" variant="primary">
-              Добавить
-            </Button>
-          </ModalFooter>
-        </form>
-      </Modal>
+      <EventModal
+        isOpen={addModalOpen}
+        onClose={() => setAddModalOpen(false)}
+        petId={selectedPetId}
+        defaultDate={selectedDate}
+        onCreated={() => refetch()}
+      />
     </div>
   )
 }
