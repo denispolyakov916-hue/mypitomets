@@ -42,6 +42,7 @@ export { usePets } from './usePets'
 export { useCourses } from './useCourses'
 export { useCourse } from './useCourse'
 export { useOrders } from './useOrders'
+export { usePetEvents } from './usePetEvents'
 
 // Хуки для аналитики (Admin)
 // export { useChartData } from './useChartData' // УДАЛЕН - не используется

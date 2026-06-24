@@ -230,9 +230,20 @@ export {
 } from './reminders'
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// CALENDAR - Календарь событий (УДАЛЕН - не используется)
+// CALENDAR - Дневник здоровья (события календаря)
 // ═══════════════════════════════════════════════════════════════════════════════
-// Функции календаря удалены, так как не используются в приложении
+export {
+  getCalendarEvents,
+  getPetCalendarEvents,
+  createCalendarEvent,
+  updateCalendarEvent,
+  deleteCalendarEvent,
+  completeCalendarEvent,
+  cancelCalendarEvent,
+  getTodayCalendarEvents,
+  getUpcomingCalendarEvents,
+  getCalendarEventTypes,
+} from './calendar'
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // COMMENTS - Комментарии (уроков)
@@ -265,7 +276,7 @@ import * as coursesModule from './courses'
 import * as paymentsModule from './payments'
 import * as reviewsModule from './reviews'
 import * as remindersModule from './reminders'
-// import * as calendarModule from './calendar' // УДАЛЕН - не используется
+import * as calendarModule from './calendar'
 import * as commentsModule from './comments'
 
 export const auth = authModule
@@ -275,7 +286,7 @@ export const courses = coursesModule
 export const payments = paymentsModule
 export const reviews = reviewsModule
 export const reminders = remindersModule
-// export const calendar = calendarModule // УДАЛЕН - не используется
+export const calendar = calendarModule
 export const comments = commentsModule
 
 // Default export - все модули
@@ -287,6 +298,6 @@ export default {
   payments: paymentsModule,
   reviews: reviewsModule,
   reminders: remindersModule,
-  // calendar: calendarModule, // УДАЛЕН - не используется
+  calendar: calendarModule,
   comments: commentsModule,
 }
