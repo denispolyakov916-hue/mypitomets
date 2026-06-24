@@ -12,23 +12,53 @@ import SimpleCalendar from './SimpleCalendar'
 import Modal, { ModalFooter, ConfirmModal } from '../../components/ui/Modal'
 import { Button } from '../../components/ui/Button'
 import Input from '../../components/ui/Input'
+import { usePetEvents } from '../../hooks/usePetEvents'
+import { updateCalendarEvent } from '../../api/calendar'
+import { migrateDiaryEventsToBackend } from '../../utils/migrateDiaryToBackend'
 
 /** Тень как у мобильной кнопки «Начать бесплатно» (MobileBottomNav) */
 const fabCtaShadow =
   'inset 0 1px 0 rgba(255, 255, 255, 0.4), inset 0 -1px 0 rgba(0, 0, 0, 0.1), 0 6px 16px rgba(0, 0, 0, 0.12), 0 2px 6px rgba(0, 0, 0, 0.08)'
 
 const eventTypes = {
-  vet: { icon: '🩺', label: 'Ветеринар', color: '#ef4444', bgColor: '#fee2e2' },
-  birthday: { icon: '🎂', label: 'День рождения', color: '#f59e0b', bgColor: '#fef8e0' },
-  vaccine: { icon: '💉', label: 'Прививка', color: '#10b981', bgColor: '#d1fae5' },
+  veterinary: { icon: '🩺', label: 'Ветеринар', color: '#ef4444', bgColor: '#fee2e2' },
+  vaccination: { icon: '💉', label: 'Прививка', color: '#10b981', bgColor: '#d1fae5' },
   grooming: { icon: '✂️', label: 'Груминг', color: '#C86BFA', bgColor: '#ede0ff' },
-  other: { icon: '❤️', label: 'Другое', color: '#6b7280', bgColor: '#f3f4f6' },
+  birthday: { icon: '🎂', label: 'День рождения', color: '#f59e0b', bgColor: '#fef8e0' },
+  medication: { icon: '💊', label: 'Обработка', color: '#e11d48', bgColor: '#ffe4e6' },
+  training: { icon: '🎓', label: 'Тренировка', color: '#6366f1', bgColor: '#e0e7ff' },
+  walking: { icon: '🚶', label: 'Прогулка', color: '#0ea5e9', bgColor: '#e0f2fe' },
+  feeding: { icon: '🍖', label: 'Кормление', color: '#f59e0b', bgColor: '#fef3c7' },
+  other: { icon: '📝', label: 'Заметка', color: '#6b7280', bgColor: '#f3f4f6' },
 }
 
 function dateKey(d) {
   const x = new Date(d)
   x.setHours(0, 0, 0, 0)
   return x.toISOString().slice(0, 10)
+}
+
+/** Backend start_date('YYYY-MM-DD') [+ start_time] → локальный Date (нужно SimpleCalendar). */
+function parseBackendDate(startDate, startTime) {
+  if (!startDate) return new Date(NaN)
+  const parts = String(startDate).split('-')
+  const dt = new Date(Number(parts[0]), (Number(parts[1]) || 1) - 1, Number(parts[2]) || 1)
+  if (startTime) {
+    const t = String(startTime).split(':')
+    dt.setHours(Number(t[0]) || 0, Number(t[1]) || 0, 0, 0)
+  }
+  return dt
+}
+
+/** Дата (Date|строка) → 'YYYY-MM-DD' для backend. */
+function toDateStr(d) {
+  if (typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d)) return d
+  const date = d instanceof Date ? d : new Date(d)
+  if (Number.isNaN(date.getTime())) return null
+  const y = date.getFullYear()
+  const m = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
 }
 
 function HealthDiary() {
@@ -40,7 +70,28 @@ function HealthDiary() {
   const { pets, isLoading: petsLoading } = usePets()
 
   const [selectedPetId, setSelectedPetId] = useState(null)
-  const [events, setEvents] = useState([])
+  // Шаг 1.3: источник правды — backend CalendarEvent (localStorage больше не источник).
+  const {
+    events: rawEvents,
+    refetch,
+    createEvent,
+    completeEvent,
+    deleteEvent,
+  } = usePetEvents(selectedPetId)
+
+  // Адаптер backend-события → форма, ожидаемая UI и SimpleCalendar (date = Date).
+  const events = useMemo(
+    () => (rawEvents || []).map((e) => ({
+      id: e.id,
+      type: e.event_type,
+      title: e.title,
+      date: parseBackendDate(e.start_date, e.start_time),
+      description: e.description || '',
+      completed: e.status === 'completed',
+      status: e.status,
+    })),
+    [rawEvents]
+  )
   const [selectedDate, setSelectedDate] = useState(new Date())
   const [activeTab, setActiveTab] = useState('overview')
   const [deleteConfirmId, setDeleteConfirmId] = useState(null)
@@ -68,141 +119,43 @@ function HealthDiary() {
     setSelectedPetId((prev) => (prev == null ? pets[0].id : prev))
   }, [pets, searchParams])
 
+  // Разовая миграция старых localStorage-событий в backend (без дублей, без демо).
   useEffect(() => {
-    if (selectedPetId) {
-      loadEventsForPet(selectedPetId)
-    }
-  }, [selectedPetId])
-
-  const loadEventsForPet = (petId) => {
-    try {
-      const storedEvents = localStorage.getItem(`calendar_events_${petId}`)
-      if (storedEvents) {
-        const parsedEvents = JSON.parse(storedEvents).map((event) => ({
-          ...event,
-          date: new Date(event.date),
-        }))
-        setEvents(parsedEvents)
-      } else {
-        generateDemoEvents(petId)
-      }
-    } catch (error) {
-      console.warn('Ошибка загрузки событий:', error)
-      setEvents([])
-    }
-  }
-
-  const generateDemoEvents = (petId) => {
-    const pet = pets.find((p) => p.id === petId)
-    if (!pet) return
-
-    const demoEvents = []
-    const today = new Date()
-
-    if (pet.date_of_birth) {
-      const birthDate = new Date(pet.date_of_birth)
-      const thisYearBirthday = new Date(today.getFullYear(), birthDate.getMonth(), birthDate.getDate())
-      if (thisYearBirthday < today) {
-        thisYearBirthday.setFullYear(today.getFullYear() + 1)
-      }
-      demoEvents.push({
-        id: `birthday_${petId}`,
-        petId,
-        type: 'birthday',
-        title: `День рождения ${pet.name}`,
-        date: thisYearBirthday,
-        description: `Праздник дня рождения ${pet.name}!`,
-        completed: false,
-      })
-    }
-
-    const vaccineDate = new Date(today)
-    vaccineDate.setDate(today.getDate() + 30)
-    demoEvents.push({
-      id: `vaccine_${petId}_1`,
-      petId,
-      type: 'vaccine',
-      title: 'Прививка комплексная',
-      date: vaccineDate,
-      description: 'Ежегодная комплексная вакцинация',
-      completed: false,
-    })
-
-    const vetDate = new Date(today)
-    vetDate.setDate(today.getDate() + 60)
-    demoEvents.push({
-      id: `vet_${petId}_1`,
-      petId,
-      type: 'vet',
-      title: 'Плановый осмотр',
-      date: vetDate,
-      description: 'Регулярный осмотр у ветеринара',
-      completed: false,
-    })
-
-    const groomingDate = new Date(today)
-    groomingDate.setDate(today.getDate() + 45)
-    demoEvents.push({
-      id: `grooming_${petId}_1`,
-      petId,
-      type: 'grooming',
-      title: 'Уход за шерстью',
-      date: groomingDate,
-      description: 'Профессиональный груминг',
-      completed: false,
-    })
-
-    const pastVetDate = new Date(today)
-    pastVetDate.setDate(today.getDate() - 30)
-    demoEvents.push({
-      id: `past_vet_${petId}`,
-      petId,
-      type: 'vet',
-      title: 'Осмотр после болезни',
-      date: pastVetDate,
-      description: 'Контрольное посещение ветеринара',
-      completed: true,
-    })
-
-    setEvents(demoEvents)
-    saveEventsToStorage(petId, demoEvents)
-  }
-
-  const saveEventsToStorage = (petId, eventsList) => {
-    try {
-      localStorage.setItem(`calendar_events_${petId}`, JSON.stringify(eventsList))
-    } catch (error) {
-      console.warn('Ошибка сохранения событий:', error)
-    }
-  }
-
+    if (!selectedPetId) return undefined
+    let alive = true
+    migrateDiaryEventsToBackend(selectedPetId)
+      .then((res) => { if (alive && res && res.migrated > 0) refetch() })
+      .catch(() => {})
+    return () => { alive = false }
+  }, [selectedPetId, refetch])
+  // Создание события через backend CalendarEvent.
   const addEvent = (eventData) => {
-    const newEvent = {
-      id: Date.now().toString(),
-      petId: selectedPetId,
-      ...eventData,
-      completed: false,
-    }
-    const updatedEvents = [...events, newEvent]
-    setEvents(updatedEvents)
-    saveEventsToStorage(selectedPetId, updatedEvents)
+    return createEvent({
+      pet: selectedPetId,
+      title: (eventData.title || '').trim() || 'Событие',
+      event_type: eventData.type || 'other',
+      start_date: toDateStr(eventData.date),
+      description: (eventData.description || '').trim(),
+    })
   }
 
+  // Завершение/возврат события: completed → backend-статус (через новый слой).
   const updateEvent = (eventId, updates) => {
-    const updatedEvents = events.map((event) =>
-      event.id === eventId ? { ...event, ...updates } : event
-    )
-    setEvents(updatedEvents)
-    saveEventsToStorage(selectedPetId, updatedEvents)
+    if (updates && typeof updates.completed === 'boolean') {
+      return updates.completed
+        ? completeEvent(eventId)
+        : updateCalendarEvent(eventId, { status: 'scheduled' }).then(() => refetch())
+    }
+    return refetch()
   }
 
   const performDelete = () => {
-    if (!deleteConfirmId || !selectedPetId) return
-    const updatedEvents = events.filter((event) => event.id !== deleteConfirmId)
-    setEvents(updatedEvents)
-    saveEventsToStorage(selectedPetId, updatedEvents)
+    if (!deleteConfirmId) return
+    const id = deleteConfirmId
     setDeleteConfirmId(null)
-    showInfo('Событие удалено')
+    deleteEvent(id)
+      .then(() => showInfo('Событие удалено'))
+      .catch(() => showInfo('Не удалось удалить событие'))
   }
 
   const openAddModal = (date = selectedDate) => {
@@ -222,7 +175,7 @@ function HealthDiary() {
     addEvent({
       type: addForm.type,
       title: addForm.title.trim(),
-      date: new Date(addForm.date),
+      date: addForm.date,
       description: addForm.description.trim(),
     })
     showSuccess('Событие добавлено')
