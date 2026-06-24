@@ -1,4 +1,5 @@
-import { useState, useMemo, useRef } from 'react'
+import { useState, useMemo, useRef, memo } from 'react'
+import { CalendarDays } from 'lucide-react'
 import { getEventTypeMeta } from '../../constants/eventTypes'
 
 const ChevronLeftIcon = ({ className }) => (
@@ -159,7 +160,7 @@ function SimpleCalendar({
     return { text: `Через ${diffDays} дн.`, urgent: diffDays <= 7 }
   }
 
-  const days = getDaysInMonth(currentMonth)
+  const days = useMemo(() => getDaysInMonth(currentMonth), [currentMonth, events])
   const monthNames = [
     'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
     'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь',
@@ -296,18 +297,18 @@ function SimpleCalendar({
             </span>
           </h2>
           <div className="flex items-center gap-2 flex-wrap justify-end">
-            <div className="flex lg:hidden rounded-lg bg-gray-100 p-0.5 text-xs font-medium">
+            <div className="flex lg:hidden rounded-lg bg-gray-100 p-0.5 text-sm font-medium">
               <button
                 type="button"
                 onClick={() => setMobileCalendarMode('week')}
-                className={`px-2.5 py-1.5 rounded-md ${mobileCalendarMode === 'week' ? 'bg-white text-primary-600 shadow-sm' : 'text-gray-600'}`}
+                className={`min-h-[44px] px-3 py-2 rounded-md ${mobileCalendarMode === 'week' ? 'bg-white text-primary-600 shadow-sm' : 'text-gray-600'}`}
               >
                 Неделя
               </button>
               <button
                 type="button"
                 onClick={() => setMobileCalendarMode('month')}
-                className={`px-2.5 py-1.5 rounded-md ${mobileCalendarMode === 'month' ? 'bg-white text-primary-600 shadow-sm' : 'text-gray-600'}`}
+                className={`min-h-[44px] px-3 py-2 rounded-md ${mobileCalendarMode === 'month' ? 'bg-white text-primary-600 shadow-sm' : 'text-gray-600'}`}
               >
                 Месяц
               </button>
@@ -372,7 +373,9 @@ function SimpleCalendar({
 
         {selectedDateEvents.length === 0 ? (
           <div className="text-center py-8 text-gray-500">
-            <div className="text-4xl mb-2">📅</div>
+            <div className="mx-auto mb-2 w-12 h-12 rounded-2xl bg-gray-100 text-gray-400 flex items-center justify-center">
+              <CalendarDays className="w-6 h-6" />
+            </div>
             <p>На эту дату нет запланированных событий</p>
           </div>
         ) : (
@@ -440,4 +443,4 @@ function SimpleCalendar({
   )
 }
 
-export default SimpleCalendar
+export default memo(SimpleCalendar)

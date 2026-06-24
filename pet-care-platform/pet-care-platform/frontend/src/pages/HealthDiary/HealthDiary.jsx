@@ -2,7 +2,7 @@
  * Дневник здоровья питомца с календарём и вкладками Обзор / Календарь / Список
  */
 
-import { useState, useEffect, useMemo, useRef } from 'react'
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuthStore } from '../../store/authStore'
 import { usePets } from '../../hooks/usePets'
@@ -77,7 +77,6 @@ function parseBackendDate(startDate, startTime) {
   return dt
 }
 
-/** Дата (Date|строка) → 'YYYY-MM-DD' для backend. */
 function HealthDiary() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
@@ -140,14 +139,14 @@ function HealthDiary() {
     return () => { alive = false }
   }, [selectedPetId, refetch])
   // Завершение/возврат события: completed → backend-статус (через новый слой).
-  const updateEvent = (eventId, updates) => {
+  const updateEvent = useCallback((eventId, updates) => {
     if (updates && typeof updates.completed === 'boolean') {
       return updates.completed
         ? completeEvent(eventId)
         : updateCalendarEvent(eventId, { status: 'scheduled' }).then(() => refetch())
     }
     return refetch()
-  }
+  }, [completeEvent, refetch])
 
   const performDelete = async () => {
     if (!deleteConfirmId || deletingRef.current) return
@@ -172,10 +171,11 @@ function HealthDiary() {
     }
   }
 
-  const openAddModal = (date = selectedDate) => {
+  const openAddModal = useCallback((date = selectedDate) => {
     if (date instanceof Date) setSelectedDate(date)
     setAddModalOpen(true)
-  }
+  }, [])
+  const handleCalendarAddEvent = useCallback(() => openAddModal(selectedDate), [openAddModal, selectedDate])
   const upcomingEvents = useMemo(() => {
     const now = new Date()
     return events
@@ -187,7 +187,7 @@ function HealthDiary() {
   const lastVetVisit = useMemo(() => {
     const now = new Date()
     return events
-      .filter((event) => event.type === 'vet' && new Date(event.date) < now)
+      .filter((event) => event.type === 'veterinary' && new Date(event.date) < now)
       .sort((a, b) => new Date(b.date) - new Date(a.date))[0]
   }, [events])
 
@@ -239,7 +239,7 @@ function HealthDiary() {
     return (
       <div className="page-container">
         <div className="card text-center py-12">
-          <div className="text-5xl mb-4">🐾</div>
+          <div aria-hidden="true" className="mx-auto w-32 h-32 mb-3"><PuffLottie name="sit" size={128} alt="Пуфыч" /></div>
           <h3 className="text-lg font-semibold text-gray-900 mb-2">У вас пока нет питомцев</h3>
           <p className="text-gray-600 mb-4">Добавьте профиль питомца, чтобы вести дневник здоровья</p>
           <Link to="/pet-id" className="btn-primary">
@@ -293,10 +293,10 @@ function HealthDiary() {
                       <p className="text-xs text-gray-500">{meta.shortLabel} · {getDaysUntil(event.date)}</p>
                     </div>
                     <div className="flex items-center gap-1 transition-opacity lg:opacity-0 lg:group-hover:opacity-100">
-                      <button type="button" onClick={() => updateEvent(event.id, { completed: true })} title="Отметить выполненным" className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 hover:bg-emerald-100 flex items-center justify-center transition-colors">
+                      <button type="button" onClick={() => updateEvent(event.id, { completed: true })} title="Отметить выполненным" aria-label="Отметить выполненным" className="w-11 h-11 rounded-xl bg-emerald-50 text-emerald-600 hover:bg-emerald-100 flex items-center justify-center transition-colors">
                         <Check className="w-4 h-4" />
                       </button>
-                      <button type="button" onClick={() => setDeleteConfirmId(event.id)} title="Удалить" className="w-9 h-9 rounded-xl bg-red-50 text-red-600 hover:bg-red-100 flex items-center justify-center transition-colors">
+                      <button type="button" onClick={() => setDeleteConfirmId(event.id)} title="Удалить" aria-label="Удалить" className="w-11 h-11 rounded-xl bg-red-50 text-red-600 hover:bg-red-100 flex items-center justify-center transition-colors">
                         <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
@@ -375,7 +375,7 @@ function HealthDiary() {
               <button
                 type="button"
                 onClick={() => openAddModal(new Date())}
-                className="mt-4 inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-full bg-gold-400 hover:bg-gold-500 text-primary-900 font-semibold shadow-sm hover:shadow-md transition-all duration-200"
+                className="mt-4 hidden lg:inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-full bg-gold-400 hover:bg-gold-500 text-primary-900 font-semibold shadow-sm hover:shadow-md transition-all duration-200"
               >
                 <Plus className="w-4 h-4" /> Добавить событие
               </button>
@@ -388,7 +388,7 @@ function HealthDiary() {
               <PawPrint className="w-4 h-4 text-primary-500" />
               <h3 className="text-sm font-semibold text-primary-800">Мои питомцы</h3>
             </div>
-            <div className="flex overflow-x-auto gap-2 pb-2 -mx-0.5 scrollbar-thin" style={{ scrollbarWidth: 'thin' }}>
+            <div className="flex overflow-x-auto gap-2 pb-2 -mx-0.5" style={{ scrollbarWidth: 'thin' }}>
               {pets.map((pet) => {
                 const isSelected = String(selectedPetId) === String(pet.id)
                 const photoUrl = pet.photo || null
@@ -474,7 +474,7 @@ function HealthDiary() {
                   <button
                     type="button"
                     onClick={() => setActiveTab('list')}
-                    className="flex-shrink-0 px-4 py-2 rounded-full bg-white text-amber-700 border border-amber-200 text-sm font-semibold hover:bg-amber-100 transition-colors"
+                    className="flex-shrink-0 inline-flex items-center justify-center min-h-[44px] px-4 py-2 rounded-full bg-white text-amber-700 border border-amber-200 text-sm font-semibold hover:bg-amber-100 transition-colors"
                   >
                     Посмотреть
                   </button>
@@ -500,9 +500,9 @@ function HealthDiary() {
                   events={events}
                   selectedDate={selectedDate}
                   onDateChange={setSelectedDate}
-                  onAddEventClick={() => openAddModal(selectedDate)}
+                  onAddEventClick={handleCalendarAddEvent}
                   onUpdateEvent={updateEvent}
-                  onDeleteRequest={(id) => setDeleteConfirmId(id)}
+                  onDeleteRequest={setDeleteConfirmId}
                 />
               )}
               {activeTab === 'list' && (

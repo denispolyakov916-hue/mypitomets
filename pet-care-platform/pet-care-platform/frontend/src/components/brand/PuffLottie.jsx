@@ -16,6 +16,16 @@ function prefersReducedMotion() {
     && window.matchMedia('(prefers-reduced-motion: reduce)').matches
 }
 
+// Модуль-уровневый кэш Lottie JSON по имени — без перекачивания при смене name.
+const lottieCache = new Map()
+function loadLottie(name) {
+  if (!lottieCache.has(name)) {
+    lottieCache.set(name, fetch(`/lottie/puff/puff_${name}.json`)
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error('not found')))))
+  }
+  return lottieCache.get(name)
+}
+
 export default function PuffLottie({
   name = 'stay',
   size = 160,
@@ -26,16 +36,23 @@ export default function PuffLottie({
 }) {
   const [data, setData] = useState(null)
   const [failed, setFailed] = useState(false)
-  const reduced = prefersReducedMotion()
+  const [reduced, setReduced] = useState(() => prefersReducedMotion())
   const box = { width: size, height: size }
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return undefined
+    const mq = window.matchMedia('(prefers-reduced-motion: reduce)')
+    const handler = (e) => setReduced(e.matches)
+    mq.addEventListener?.('change', handler)
+    return () => mq.removeEventListener?.('change', handler)
+  }, [])
 
   useEffect(() => {
     if (reduced) return undefined
     let alive = true
     setData(null)
     setFailed(false)
-    fetch(`/lottie/puff/puff_${name}.json`)
-      .then((r) => (r.ok ? r.json() : Promise.reject(new Error('not found'))))
+    loadLottie(name)
       .then((j) => { if (alive) setData(j) })
       .catch(() => { if (alive) setFailed(true) })
     return () => { alive = false }
