@@ -19,6 +19,8 @@ import { useToastStore } from '../../store/toastStore';
 import PetProfileEditor from './components/PetProfileEditor';
 import Lottie from 'lottie-react';
 import api from '../../api/client';
+import { usePetEvents } from '../../hooks/usePetEvents';
+import { getEventTypeMeta } from '../../constants/eventTypes';
 
 // Цвета для статусов
 const STATUS_COLORS = {
@@ -202,6 +204,8 @@ export default function PetDetailPage() {
   const [allergies, setAllergies] = useState([]);
   const [behaviorCourses, setBehaviorCourses] = useState([]);
   const [showReminderModal, setShowReminderModal] = useState(false);
+  // Шаг 1.2: read-only лента «Из дневника здоровья» (backend CalendarEvent, ближайшие запланированные).
+  const petDiary = usePetEvents(pet?.id, { status: 'scheduled', limit: 4 });
   // Смена фото питомца: триггерим скрытый input, грузим через существующий эндпоинт.
   const [photoUploading, setPhotoUploading] = useState(false);
   const fileInputRef = useRef(null);
@@ -561,6 +565,14 @@ export default function PetDetailPage() {
               />
               <BehaviorBlock pet={pet} courses={behaviorCourses} navigate={navigate} />
             </div>
+
+            {/* Шаг 1.2 — лента «Из дневника здоровья» (read-only, backend CalendarEvent) */}
+            <DiaryFeedBlock
+              events={petDiary.events}
+              loading={petDiary.isLoading}
+              petId={pet.id}
+              navigate={navigate}
+            />
 
             {/* Быстрая статистика */}
             {comparison?.analysis && comparison.breed_found && (
@@ -1395,6 +1407,78 @@ function PuffPeek({ size = 166, everyMs = 10000 }) {
       className="select-none pointer-events-none"
       aria-hidden="true"
     />
+  );
+}
+
+
+/* Шаг 1.2 — «Из дневника здоровья»: read-only витрина ближайших событий питомца
+   из backend CalendarEvent (через usePetEvents). Смысл отличается от «Напоминаний»:
+   тут — события/записи дневника, там — задачи-напоминания. localStorage не используется. */
+function diaryDateBadge(startDate) {
+  if (!startDate) return { label: null };
+  const parts = String(startDate).split('-');
+  if (parts.length < 3) return { label: null };
+  const d = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+  if (Number.isNaN(d.getTime())) return { label: null };
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const diffDays = Math.round((d - today) / 86400000);
+  if (diffDays < 0) return { label: 'Просрочено', cls: 'bg-red-100 text-red-700', urgent: true };
+  if (diffDays === 0) return { label: 'Сегодня', cls: 'bg-gold-100 text-gold-700' };
+  if (diffDays <= 3) return { label: 'Скоро', cls: 'bg-amber-100 text-amber-700' };
+  return { label: null };
+}
+
+function DiaryFeedBlock({ events, loading, petId, navigate }) {
+  const items = (events || []).slice(0, 4);
+  const hasItems = items.length > 0;
+  return (
+    <SectionCard
+      icon={BookOpen}
+      title="Из дневника здоровья"
+      action={hasItems ? (
+        <button onClick={() => navigate(`/health-diary?pet_id=${petId}`)} className="inline-flex items-center gap-1 text-sm font-medium text-primary-600 hover:text-primary-800">
+          Открыть дневник <ChevronRight className="w-4 h-4" />
+        </button>
+      ) : null}
+    >
+      {loading ? (
+        <div className="space-y-2">
+          {[0, 1, 2].map((i) => <div key={i} className="h-14 rounded-2xl bg-gray-100 animate-pulse" />)}
+        </div>
+      ) : hasItems ? (
+        <div className="relative">
+          <span aria-hidden="true" className="absolute left-[19px] top-3 bottom-3 w-0.5 bg-gray-200 rounded-full" />
+          <div className="space-y-1">
+            {items.map((e) => {
+              const meta = getEventTypeMeta(e.event_type);
+              const Icon = meta.icon;
+              const badge = diaryDateBadge(e.start_date);
+              return (
+                <div key={e.id} className="relative flex items-center gap-3 py-1.5 pr-2 rounded-2xl hover:bg-gray-50 transition-colors">
+                  <span className={`relative z-10 flex-shrink-0 w-10 h-10 rounded-xl ring-4 ring-white flex items-center justify-center ${badge.urgent ? 'bg-red-100 text-red-600' : meta.tint}`}><Icon className="w-4 h-4" /></span>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-gray-900 truncate">{e.title}</p>
+                    <p className="text-xs text-gray-500">{meta.shortLabel} · {formatRuDate(e.start_date)}{e.start_time ? ` · ${String(e.start_time).slice(0, 5)}` : ''}</p>
+                  </div>
+                  {badge.label && <span className={`flex-shrink-0 px-2 py-0.5 rounded-full text-[11px] font-semibold ${badge.cls}`}>{badge.label}</span>}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ) : (
+        <EmptyState
+          icon={BookOpen}
+          title="В дневнике пока нет записей"
+          subtitle="Когда появятся прививки, визиты и заметки — Пуфыч покажет их здесь."
+        >
+          <button onClick={() => navigate(`/health-diary?pet_id=${petId}`)} className={SOFT_CTA}>
+            <BookOpen className="w-4 h-4" /> Открыть дневник
+          </button>
+        </EmptyState>
+      )}
+    </SectionCard>
   );
 }
 
