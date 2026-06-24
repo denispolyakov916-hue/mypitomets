@@ -910,32 +910,35 @@ function EmptyState({ icon: Icon, title, subtitle, children }) {
 }
 
 function QuickActions({ pet, navigate, onAddEvent, onRecordWeight }) {
+  // Спокойная палитра: золото — действия про корм (главная ценность), фиолетовый — остальное.
   const actions = [
-    { label: 'Купить корм', icon: ShoppingCart, tint: 'bg-gold-100 text-gold-600', onClick: () => navigate('/shop') },
-    { label: 'Записать вес', icon: Weight, tint: 'bg-emerald-100 text-emerald-600', onClick: onRecordWeight },
-    { label: 'Добавить событие', icon: CalendarPlus, tint: 'bg-sky-100 text-sky-600', onClick: onAddEvent },
-    { label: 'Открыть дневник', icon: BookOpen, tint: 'bg-violet-100 text-violet-600', onClick: () => navigate(`/health-diary?pet_id=${pet.id}`) },
-    { label: 'Подобрать рацион', icon: UtensilsCrossed, tint: 'bg-amber-100 text-amber-600', onClick: () => navigate(`/food-recommendation?pet_id=${pet.id}`) },
-    { label: 'Курсы', icon: GraduationCap, tint: 'bg-indigo-100 text-indigo-600', onClick: () => navigate('/courses') },
+    { label: 'Купить корм', icon: ShoppingCart, primary: true, onClick: () => navigate('/shop') },
+    { label: 'Подобрать рацион', icon: UtensilsCrossed, primary: true, onClick: () => navigate(`/food-recommendation?pet_id=${pet.id}`) },
+    { label: 'Записать вес', icon: Weight, onClick: onRecordWeight },
+    { label: 'Добавить событие', icon: CalendarPlus, onClick: onAddEvent },
+    { label: 'Дневник', icon: BookOpen, onClick: () => navigate(`/health-diary?pet_id=${pet.id}`) },
+    { label: 'Курсы', icon: GraduationCap, onClick: () => navigate('/courses') },
   ];
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-      {actions.map((a) => {
-        const Icon = a.icon;
-        return (
-          <button
-            key={a.label}
-            onClick={a.onClick}
-            className="group flex flex-col items-center justify-center gap-2 min-h-[96px] p-4 rounded-2xl bg-white border border-primary-100 hover:border-primary-300 hover:shadow-[0_6px_20px_rgba(82,47,129,0.10)] hover:-translate-y-0.5 transition-all duration-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary-200"
-          >
-            <span className={`w-11 h-11 rounded-2xl flex items-center justify-center ${a.tint} group-hover:scale-105 transition-transform duration-200`}>
-              <Icon className="w-5 h-5" />
-            </span>
-            <span className="text-sm font-medium text-gray-700 text-center leading-tight">{a.label}</span>
-          </button>
-        );
-      })}
-    </div>
+    <SectionCard icon={Sparkles} title="Быстрые действия">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2.5">
+        {actions.map((a) => {
+          const Icon = a.icon;
+          return (
+            <button
+              key={a.label}
+              onClick={a.onClick}
+              className="group flex flex-col items-center justify-center gap-2 min-h-[92px] p-3 rounded-2xl bg-gray-50 hover:bg-white hover:shadow-[0_6px_20px_rgba(82,47,129,0.10)] hover:-translate-y-0.5 transition-all duration-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary-200"
+            >
+              <span className={`w-11 h-11 rounded-2xl flex items-center justify-center transition-transform duration-200 group-hover:scale-105 ${a.primary ? 'bg-gold-100 text-gold-600' : 'bg-primary-50 text-primary-600'}`}>
+                <Icon className="w-5 h-5" />
+              </span>
+              <span className="text-[13px] font-medium text-gray-700 text-center leading-tight">{a.label}</span>
+            </button>
+          );
+        })}
+      </div>
+    </SectionCard>
   );
 }
 
@@ -964,7 +967,7 @@ function RationBlock({ pet, navigate }) {
             <button onClick={() => navigate(`/food-recommendation?pet_id=${pet.id}`)} className={SOFT_CTA}><Edit className="w-4 h-4" /> Изменить рацион</button>
           </div>
           <button onClick={() => navigate(`/food-recommendation?pet_id=${pet.id}`)} className={`${GHOST_CTA} mt-3`}>
-            Открыть подбор корма <ChevronRight className="w-4 h-4" />
+            Подобрать заново <ChevronRight className="w-4 h-4" />
           </button>
         </div>
       ) : (
@@ -1060,28 +1063,33 @@ function RemindersBlock({ reminders, loading, petName, onAdd }) {
           {[0, 1, 2].map((i) => <div key={i} className="h-14 rounded-2xl bg-gray-100 animate-pulse" />)}
         </div>
       ) : hasItems ? (
-        <div className="space-y-2">
-          {items.map((r) => {
-            const meta = reminderCategoryMeta[r.category] || reminderCategoryMeta.other;
-            const Icon = meta.icon;
-            return (
-              <div key={r.id} className={`flex items-center gap-3 p-3 rounded-2xl transition-colors ${r.is_overdue ? 'bg-red-50' : 'bg-gray-50 hover:bg-gray-100'}`}>
-                <span className={`flex-shrink-0 w-9 h-9 rounded-xl flex items-center justify-center ${meta.tint}`}><Icon className="w-4 h-4" /></span>
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium text-gray-900 truncate">{r.title}</p>
-                  <p className="text-xs text-gray-500">{meta.label} · {formatRuDate(r.reminder_date)}{r.reminder_time ? ` · ${String(r.reminder_time).slice(0, 5)}` : ''}</p>
+        <div className="relative">
+          {/* Лёгкий timeline: вертикальная линия + узлы-иконки. */}
+          <span aria-hidden="true" className="absolute left-[19px] top-3 bottom-3 w-0.5 bg-gray-200 rounded-full" />
+          <div className="space-y-1">
+            {items.map((r) => {
+              const meta = reminderCategoryMeta[r.category] || reminderCategoryMeta.other;
+              const Icon = meta.icon;
+              const urgent = r.is_overdue;
+              return (
+                <div key={r.id} className="relative flex items-center gap-3 py-1.5 pr-2 rounded-2xl hover:bg-gray-50 transition-colors">
+                  <span className={`relative z-10 flex-shrink-0 w-10 h-10 rounded-xl ring-4 ring-white flex items-center justify-center ${urgent ? 'bg-red-100 text-red-600' : meta.tint}`}><Icon className="w-4 h-4" /></span>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-gray-900 truncate">{r.title}</p>
+                    <p className="text-xs text-gray-500">{meta.label} · {formatRuDate(r.reminder_date)}{r.reminder_time ? ` · ${String(r.reminder_time).slice(0, 5)}` : ''}</p>
+                  </div>
+                  {urgent && <span className="flex-shrink-0 px-2 py-0.5 rounded-full bg-red-100 text-red-700 text-[11px] font-semibold">Просрочено</span>}
+                  {!urgent && r.is_upcoming && <span className="flex-shrink-0 px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 text-[11px] font-semibold">Скоро</span>}
                 </div>
-                {r.is_overdue && <span className="flex-shrink-0 px-2 py-0.5 rounded-full bg-red-100 text-red-700 text-[11px] font-semibold">Просрочено</span>}
-                {!r.is_overdue && r.is_upcoming && <span className="flex-shrink-0 px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 text-[11px] font-semibold">Скоро</span>}
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
         </div>
       ) : (
         <EmptyState
-          icon={CalendarPlus}
-          title="Пока нет напоминаний"
-          subtitle={`Добавьте первое событие для ${petName}: вакцинация, обработка, контроль веса.`}
+          icon={Bell}
+          title="Пуфыч напомнит о важном"
+          subtitle={`Добавьте событие — и не пропустите вакцинацию, обработку или контроль веса${petName ? ` у ${petName}` : ''}.`}
         >
           <button onClick={onAdd} className={GOLD_CTA}><Plus className="w-4 h-4" /> Создать первое напоминание</button>
         </EmptyState>
@@ -1098,21 +1106,20 @@ function BehaviorBlock({ pet, courses, navigate }) {
     <SectionCard icon={Brain} title="Поведение">
       {hasProblems ? (
         <div className="space-y-3">
-          {problems.slice(0, 4).map((code) => (
-            <div key={code} className="rounded-2xl border border-orange-100 bg-orange-50/50 p-3">
-              <div className="flex items-center gap-2 mb-1">
-                <AlertTriangle className="w-4 h-4 text-orange-500 flex-shrink-0" />
-                <p className="font-semibold text-gray-800">{behaviorLabel(code)}</p>
+          <div className="space-y-2">
+            {problems.slice(0, 4).map((code) => (
+              <div key={code} className="rounded-2xl bg-gray-50 p-3.5">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="flex-shrink-0 w-7 h-7 rounded-lg bg-amber-100 text-amber-600 flex items-center justify-center"><Brain className="w-3.5 h-3.5" /></span>
+                  <p className="font-semibold text-gray-800">{behaviorLabel(code)}</p>
+                </div>
+                {behaviorDescriptions[code] && <p className="text-sm text-gray-600 pl-9">{behaviorDescriptions[code]}</p>}
               </div>
-              {behaviorDescriptions[code] && <p className="text-sm text-gray-600 mb-2">{behaviorDescriptions[code]}</p>}
-              <button onClick={() => navigate('/courses')} className="inline-flex items-center gap-1 text-sm font-medium text-primary-600 hover:text-primary-800">
-                Перейти к курсам <ArrowRight className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          ))}
-          {courseList.length > 0 && (
+            ))}
+          </div>
+          {courseList.length > 0 ? (
             <div className="pt-1">
-              <p className="text-sm font-semibold text-gray-700 mb-2">Рекомендуемые курсы</p>
+              <p className="text-sm font-semibold text-gray-700 mb-2">Эти ситуации решают курсы</p>
               <div className="space-y-2">
                 {courseList.map((c) => (
                   <button key={c.id} onClick={() => navigate(`/courses/${c.id}`)} className="w-full flex items-center gap-3 p-3 rounded-2xl border border-primary-100 hover:border-primary-300 hover:shadow-sm transition-all text-left">
@@ -1126,6 +1133,8 @@ function BehaviorBlock({ pet, courses, navigate }) {
                 ))}
               </div>
             </div>
+          ) : (
+            <button onClick={() => navigate('/courses')} className={SOFT_CTA}><GraduationCap className="w-4 h-4" /> Подобрать курсы</button>
           )}
         </div>
       ) : (
