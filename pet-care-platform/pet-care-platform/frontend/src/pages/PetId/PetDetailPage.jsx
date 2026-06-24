@@ -22,6 +22,10 @@ import api from '../../api/client';
 import { usePetEvents } from '../../hooks/usePetEvents';
 import { getEventTypeMeta } from '../../constants/eventTypes';
 import EventModal from '../../components/events/EventModal';
+import QuickWeightModal from '../../components/health/QuickWeightModal';
+import WeightSparkline from '../../components/health/WeightSparkline';
+import { usePetWeightHistory } from '../../hooks/usePetWeightHistory';
+import { isWeightEvent, WEIGHT_META } from '../../constants/weight';
 
 // Цвета для статусов
 const STATUS_COLORS = {
@@ -206,8 +210,10 @@ export default function PetDetailPage() {
   const [behaviorCourses, setBehaviorCourses] = useState([]);
   const [showReminderModal, setShowReminderModal] = useState(false);
   const [showEventModal, setShowEventModal] = useState(false);
+  const [showWeightModal, setShowWeightModal] = useState(false);
   // Шаг 1.2: read-only лента «Из дневника здоровья» (backend CalendarEvent, ближайшие запланированные).
   const petDiary = usePetEvents(pet?.id, { status: 'scheduled', limit: 4 });
+  const weightHistory = usePetWeightHistory(pet?.id);
   // Смена фото питомца: триггерим скрытый input, грузим через существующий эндпоинт.
   const [photoUploading, setPhotoUploading] = useState(false);
   const fileInputRef = useRef(null);
@@ -455,7 +461,7 @@ export default function PetDetailPage() {
             <InfoTile icon={PawPrint} tint="bg-primary-50 text-primary-600" label="Вид" value={pet.species === 'dog' ? 'Собака' : 'Кошка'} />
             <InfoTile icon={BookOpen} tint="bg-violet-50 text-violet-600" label="Порода" value={pet.breed_name} placeholder="Указать породу" onAdd={() => setShowWizard(true)} />
             <InfoTile iconText={pet.sex === 'female' ? '♀' : '♂'} tint={pet.sex === 'female' ? 'bg-pink-50 text-pink-600' : 'bg-sky-50 text-sky-600'} label="Пол" value={pet.sex ? (pet.sex === 'male' ? 'Мужской' : 'Женский') : null} placeholder="Указать пол" onAdd={() => setShowWizard(true)} />
-            <InfoTile icon={Scale} tint="bg-sky-50 text-sky-600" label="Вес" value={pet.weight_kg ? `${pet.weight_kg} кг` : null} placeholder="Записать вес" onAdd={() => setShowWizard(true)} />
+            <InfoTile icon={Scale} tint="bg-sky-50 text-sky-600" label="Вес" value={pet.weight_kg ? `${pet.weight_kg} кг` : null} placeholder="Записать вес" onAdd={() => setShowWeightModal(true)} />
             <InfoTile icon={Activity} tint="bg-amber-50 text-amber-600" label="Активность">
               <ActivityDots level={pet.activity_level} onAdd={() => setShowWizard(true)} />
             </InfoTile>
@@ -548,13 +554,13 @@ export default function PetDetailPage() {
               pet={pet}
               navigate={navigate}
               onAddEvent={() => setShowReminderModal(true)}
-              onRecordWeight={() => setShowWizard(true)}
+              onRecordWeight={() => setShowWeightModal(true)}
             />
 
             {/* Этап 2 — рацион + здоровье */}
             <div className="grid lg:grid-cols-2 gap-6">
               <RationBlock pet={pet} navigate={navigate} />
-              <HealthBlock pet={pet} allergies={allergies} onRecordWeight={() => setShowWizard(true)} />
+              <HealthBlock pet={pet} allergies={allergies} weightHistory={weightHistory} onRecordWeight={() => setShowWeightModal(true)} onEditProfile={() => setShowWizard(true)} />
             </div>
 
             {/* Этап 2 — напоминания + поведение */}
@@ -789,6 +795,14 @@ export default function PetDetailPage() {
         petId={pet.id}
         onCreated={() => petDiary.refetch()}
       />
+
+      <QuickWeightModal
+        isOpen={showWeightModal}
+        onClose={() => setShowWeightModal(false)}
+        pet={pet}
+        latestDate={weightHistory.latest?.date || null}
+        onSaved={() => { loadPetData(); weightHistory.refetch(); petDiary.refetch(); }}
+      />
     </div>
   );
 }
@@ -1007,10 +1021,10 @@ function RationBlock({ pet, navigate }) {
   );
 }
 
-function HealthBlock({ pet, allergies, onRecordWeight }) {
+function HealthBlock({ pet, allergies, onRecordWeight, onEditProfile, weightHistory }) {
   const tiles = [
     { label: 'Вес', icon: Scale, value: pet.weight_kg ? `${pet.weight_kg} кг` : null, hint: 'Записать вес', onHint: onRecordWeight },
-    { label: 'Возраст', icon: Cake, value: ageText(pet), sub: pet.age_category ? ageCategoryLabel[pet.age_category] : null, hint: 'Указать дату', onHint: onRecordWeight },
+    { label: 'Возраст', icon: Cake, value: ageText(pet), sub: pet.age_category ? ageCategoryLabel[pet.age_category] : null, hint: 'Указать дату', onHint: onEditProfile },
     { label: 'Стерилизация', icon: ShieldCheck, value: pet.is_neutered ? 'Да' : 'Нет' },
   ];
   const allergyNames = (allergies || [])
@@ -1038,6 +1052,12 @@ function HealthBlock({ pet, allergies, onRecordWeight }) {
           );
         })}
       </div>
+
+      {weightHistory?.points?.length > 0 && (
+        <div className="mb-4">
+          <WeightSparkline points={weightHistory.points} />
+        </div>
+      )}
 
       <div className="space-y-3">
         <div>
@@ -1466,7 +1486,7 @@ function DiaryFeedBlock({ events, loading, petId, navigate, onAddEvent }) {
           <span aria-hidden="true" className="absolute left-[19px] top-3 bottom-3 w-0.5 bg-gray-200 rounded-full" />
           <div className="space-y-1">
             {items.map((e) => {
-              const meta = getEventTypeMeta(e.event_type);
+              const meta = isWeightEvent(e) ? WEIGHT_META : getEventTypeMeta(e.event_type);
               const Icon = meta.icon;
               const badge = diaryDateBadge(e.start_date);
               return (

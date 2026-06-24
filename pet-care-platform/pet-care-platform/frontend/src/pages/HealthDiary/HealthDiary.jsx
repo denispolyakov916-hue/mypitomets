@@ -15,6 +15,7 @@ import { usePetEvents } from '../../hooks/usePetEvents'
 import { updateCalendarEvent, deleteCalendarEvent, getPetCalendarEvents } from '../../api/calendar'
 import { migrateDiaryEventsToBackend } from '../../utils/migrateDiaryToBackend'
 import { EVENT_TYPES, EVENT_TYPE_OPTIONS, getEventTypeMeta } from '../../constants/eventTypes'
+import { isWeightEvent, WEIGHT_META } from '../../constants/weight'
 import { PuffLottie } from '../../components/brand'
 import { Plus, CalendarDays, CheckCircle2, AlertTriangle, Bell, Check, Trash2, Stethoscope, PawPrint } from 'lucide-react'
 
@@ -281,7 +282,7 @@ function HealthDiary() {
             <span aria-hidden="true" className="absolute left-[19px] top-2 bottom-2 w-0.5 bg-gray-200 rounded-full" />
             <div className="space-y-1">
               {upcomingEvents.map((event) => {
-                const meta = getEventTypeMeta(event.type)
+                const meta = isWeightEvent(event) ? WEIGHT_META : getEventTypeMeta(event.type)
                 const Icon = meta.icon
                 return (
                   <div key={event.id} className="group relative flex items-center gap-3 py-2 pr-1 rounded-2xl hover:bg-gray-50 transition-colors">
@@ -519,7 +520,7 @@ function HealthDiary() {
                           </h3>
                           <div className="space-y-3">
                             {dayEvents.map((event) => {
-                              const meta = getEventTypeMeta(event.type)
+                              const meta = isWeightEvent(event) ? WEIGHT_META : getEventTypeMeta(event.type)
                               const Icon = meta.icon
                               const isPast = new Date(event.date) < new Date()
                               return (
