@@ -11,15 +11,53 @@ import { PageLoader } from '../../components/Loader'
 import SimpleCalendar from './SimpleCalendar'
 import { ConfirmModal } from '../../components/ui/Modal'
 import EventModal from '../../components/events/EventModal'
-import { Button } from '../../components/ui/Button'
 import { usePetEvents } from '../../hooks/usePetEvents'
 import { updateCalendarEvent, deleteCalendarEvent, getPetCalendarEvents } from '../../api/calendar'
 import { migrateDiaryEventsToBackend } from '../../utils/migrateDiaryToBackend'
 import { EVENT_TYPES, EVENT_TYPE_OPTIONS, getEventTypeMeta } from '../../constants/eventTypes'
+import { PuffLottie } from '../../components/brand'
+import { Plus, CalendarDays, CheckCircle2, AlertTriangle, Bell, Check, Trash2, Stethoscope, PawPrint } from 'lucide-react'
 
 /** Тень как у мобильной кнопки «Начать бесплатно» (MobileBottomNav) */
 const fabCtaShadow =
   'inset 0 1px 0 rgba(255, 255, 255, 0.4), inset 0 -1px 0 rgba(0, 0, 0, 0.1), 0 6px 16px rgba(0, 0, 0, 0.12), 0 2px 6px rgba(0, 0, 0, 0.08)'
+
+/** Микро-метрика в hero дневника. */
+function DiaryMetric({ icon: Icon, tint, label, value }) {
+  return (
+    <div className="rounded-2xl bg-gray-50 p-3 text-center">
+      <span className={`inline-flex w-8 h-8 rounded-xl items-center justify-center mb-1 ${tint}`}>
+        <Icon className="w-4 h-4" />
+      </span>
+      <div className="text-base font-bold text-primary-900 leading-tight truncate">{value}</div>
+      <div className="text-[11px] text-gray-500">{label}</div>
+    </div>
+  )
+}
+
+/** Пустое состояние дневника с Пуфычем. */
+function DiaryEmpty({ petName, onAdd }) {
+  return (
+    <div className="bg-white rounded-3xl border border-primary-100 shadow-[0_4px_24px_rgba(82,47,129,0.06)] p-8 text-center">
+      <div aria-hidden="true" className="mx-auto w-40 h-40 mb-1">
+        <PuffLottie name="sit" size={160} alt="Пуфыч ждёт первую запись" />
+      </div>
+      <h3 className="text-lg font-bold text-primary-900" style={{ fontFamily: 'Manrope, system-ui, sans-serif' }}>
+        В дневнике пока нет записей
+      </h3>
+      <p className="text-gray-500 mt-1.5 max-w-sm mx-auto">
+        Добавьте прививку, обработку, визит или заметку{petName ? ` для ${petName}` : ''} — Пуфыч поможет ничего не забыть.
+      </p>
+      <button
+        type="button"
+        onClick={onAdd}
+        className="mt-4 inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-full bg-gold-400 hover:bg-gold-500 text-primary-900 font-semibold shadow-sm hover:shadow-md transition-all duration-200"
+      >
+        <Plus className="w-4 h-4" /> Добавить первое событие
+      </button>
+    </div>
+  )
+}
 
 function dateKey(d) {
   const x = new Date(d)
@@ -215,167 +253,200 @@ function HealthDiary() {
   const selectedPet = pets.find((p) => p.id === selectedPetId)
 
   const tabClass = (id) =>
-    `shrink-0 px-3 sm:px-4 py-2.5 rounded-lg text-sm font-medium transition-colors min-h-[44px] ${
-      activeTab === id ? 'bg-white text-primary-600 shadow-sm' : 'text-gray-600 hover:text-gray-900'
+    `shrink-0 px-4 sm:px-5 py-2.5 rounded-full text-sm font-semibold transition-all min-h-[44px] ${
+      activeTab === id ? 'bg-white text-primary-700 shadow-sm' : 'text-gray-500 hover:text-primary-700'
     }`
 
   /** Блоки обзора (без карточки питомца — выбор уже в чипах / select) */
-  const sidebarCards = selectedPet ? (
-    <>
-      {lastVetVisit && (
-        <div className="card bg-blue-50 border-blue-200">
-          <div className="flex items-center gap-2 mb-2">
-            <span className="text-xl">🩺</span>
-            <h3 className="font-semibold text-blue-900 text-sm">Последний визит к ветеринару</h3>
-          </div>
-          <p className="text-blue-800 text-sm">{lastVetVisit.title}</p>
-          <p className="text-blue-600 text-xs mt-1">{formatDate(lastVetVisit.date)}</p>
-        </div>
-      )}
+  const cardCls = 'bg-white rounded-2xl border border-primary-100 shadow-[0_4px_24px_rgba(82,47,129,0.06)] p-5'
+  const statTypes = EVENT_TYPE_OPTIONS.filter((info) => (eventStats[info.value] || 0) > 0)
 
-      <div className="card">
-        <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
-          <span>📅</span> Ближайшие события
-        </h3>
+  const overviewGrid = selectedPet ? (
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      {/* Ближайшие события — интерактивный timeline (2/3 ширины на десктопе) */}
+      <div className={`lg:col-span-2 ${cardCls}`}>
+        <div className="flex items-center gap-2 mb-3">
+          <span className="w-8 h-8 rounded-xl bg-primary-50 text-primary-600 flex items-center justify-center">
+            <CalendarDays className="w-4 h-4" />
+          </span>
+          <h3 className="font-bold text-primary-900" style={{ fontFamily: 'Manrope, system-ui, sans-serif' }}>Ближайшие события</h3>
+        </div>
         {upcomingEvents.length === 0 ? (
-          <p className="text-gray-500 text-sm">Нет запланированных событий</p>
+          <div className="flex items-center gap-3 rounded-2xl bg-gray-50 p-4">
+            <div aria-hidden="true" className="w-12 h-12 shrink-0"><PuffLottie name="stay" size={48} alt="Пуфыч" /></div>
+            <p className="text-sm text-gray-600">Ближайших событий нет. Запланируйте прививку, обработку или визит — Пуфыч напомнит вовремя.</p>
+          </div>
         ) : (
-          <div className="space-y-3">
-            {upcomingEvents.map((event) => {
-              const meta = getEventTypeMeta(event.type)
-              const Icon = meta.icon
-              return (
-                <div key={event.id} className="flex items-center gap-3">
-                  <div
-                    className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
-                    style={{ backgroundColor: meta.bgColor }}
-                  >
-                    <Icon className="w-4 h-4" style={{ color: meta.color }} />
+          <div className="relative">
+            <span aria-hidden="true" className="absolute left-[19px] top-2 bottom-2 w-0.5 bg-gray-200 rounded-full" />
+            <div className="space-y-1">
+              {upcomingEvents.map((event) => {
+                const meta = getEventTypeMeta(event.type)
+                const Icon = meta.icon
+                return (
+                  <div key={event.id} className="group relative flex items-center gap-3 py-2 pr-1 rounded-2xl hover:bg-gray-50 transition-colors">
+                    <span className="relative z-10 shrink-0 w-10 h-10 rounded-xl ring-4 ring-white flex items-center justify-center" style={{ backgroundColor: meta.bgColor }}>
+                      <Icon className="w-4 h-4" style={{ color: meta.color }} />
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-gray-900 truncate">{event.title}</p>
+                      <p className="text-xs text-gray-500">{meta.shortLabel} · {getDaysUntil(event.date)}</p>
+                    </div>
+                    <div className="flex items-center gap-1 transition-opacity lg:opacity-0 lg:group-hover:opacity-100">
+                      <button type="button" onClick={() => updateEvent(event.id, { completed: true })} title="Отметить выполненным" className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 hover:bg-emerald-100 flex items-center justify-center transition-colors">
+                        <Check className="w-4 h-4" />
+                      </button>
+                      <button type="button" onClick={() => setDeleteConfirmId(event.id)} title="Удалить" className="w-9 h-9 rounded-xl bg-red-50 text-red-600 hover:bg-red-100 flex items-center justify-center transition-colors">
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900 truncate">{event.title}</p>
-                    <p className="text-xs text-gray-500">{getDaysUntil(event.date)}</p>
-                  </div>
-                </div>
-              )
-            })}
+                )
+              })}
+            </div>
           </div>
         )}
       </div>
 
-      <div className="card">
-        <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
-          <span>📊</span> Статистика
-        </h3>
-        <div className="grid grid-cols-2 gap-2">
-          {EVENT_TYPE_OPTIONS.map((info) => {
-            const Icon = info.icon
-            return (
-              <div key={info.value} className="p-2 rounded-lg text-center" style={{ backgroundColor: info.bgColor }}>
-                <Icon className="w-5 h-5 mx-auto mb-0.5" style={{ color: info.color }} />
-                <div className="text-lg font-bold" style={{ color: info.color }}>
-                  {eventStats[info.value] || 0}
-                </div>
-                <div className="text-xs text-gray-600">{info.shortLabel}</div>
-              </div>
-            )
-          })}
+      {/* Aside: компактная статистика (только ненулевые типы) + последний визит */}
+      <div className="space-y-4">
+        <div className={cardCls}>
+          <h3 className="font-bold text-primary-900 mb-3" style={{ fontFamily: 'Manrope, system-ui, sans-serif' }}>Статистика</h3>
+          {statTypes.length === 0 ? (
+            <p className="text-sm text-gray-500">Событий пока нет.</p>
+          ) : (
+            <div className="grid grid-cols-2 gap-2">
+              {statTypes.map((info) => {
+                const Icon = info.icon
+                return (
+                  <div key={info.value} className="flex items-center gap-2 rounded-xl p-2" style={{ backgroundColor: info.bgColor }}>
+                    <Icon className="w-4 h-4 shrink-0" style={{ color: info.color }} />
+                    <span className="text-sm font-bold" style={{ color: info.color }}>{eventStats[info.value]}</span>
+                    <span className="text-xs text-gray-600 truncate">{info.shortLabel}</span>
+                  </div>
+                )
+              })}
+            </div>
+          )}
         </div>
+        {lastVetVisit && (
+          <div className={cardCls}>
+            <div className="flex items-center gap-2 mb-2">
+              <span className="w-8 h-8 rounded-xl bg-red-50 text-red-600 flex items-center justify-center">
+                <Stethoscope className="w-4 h-4" />
+              </span>
+              <h3 className="font-semibold text-gray-800 text-sm">Последний визит</h3>
+            </div>
+            <p className="text-gray-800 text-sm font-medium truncate">{lastVetVisit.title}</p>
+            <p className="text-gray-400 text-xs mt-0.5">{formatDate(lastVetVisit.date)}</p>
+          </div>
+        )}
       </div>
-
-      <div className="card bg-primary-50 border-primary-200">
-        <h3 className="font-semibold text-primary-900 mb-2 text-sm">💡 Совет</h3>
-        <p className="text-primary-800 text-xs">
-          Регулярно обновляйте дневник, чтобы не забыть важные даты прививок и осмотров
-        </p>
-      </div>
-    </>
-  ) : null
-
-  const overviewContent = selectedPet ? (
-    <div className="space-y-4 lg:hidden">
-      <div className="flex flex-col gap-3">
-        <Button type="button" variant="primary" className="w-full min-h-[48px] text-base" onClick={() => openAddModal(selectedDate)}>
-          + Записать событие
-        </Button>
-        <p className="text-sm text-gray-600 text-center">Быстро добавить визит, прививку или напоминание</p>
-      </div>
-      {sidebarCards}
     </div>
   ) : null
 
-  const overviewDesktop = selectedPet ? (
-    <div className="hidden lg:block space-y-4">
-      <Button type="button" variant="primary" className="min-h-[44px]" onClick={() => openAddModal(selectedDate)}>
-        + Записать событие
-      </Button>
-      {sidebarCards}
-    </div>
-  ) : null
+  const nearest = upcomingEvents[0] || null
+  const plannedCount = events.filter((e) => !e.completed).length
+  const doneCount = events.filter((e) => e.completed).length
+  const startOfToday = new Date(); startOfToday.setHours(0, 0, 0, 0)
+  const overdueEvents = events.filter((e) => !e.completed && new Date(e.date) < startOfToday)
+  // Пуфыч в hero отражает статус событий питомца
+  const heroPuffState =
+    events.length === 0
+      ? 'stay' // событий нет — спокойно ждёт первую запись
+      : overdueEvents.length
+        ? 'think' // есть просрочка — мягкое «обрати внимание»
+        : plannedCount === 0
+          ? 'hello_wave' // всё выполнено — спокойная радость
+          : 'talk_gesture' // есть запланированные — подсказывает
 
   return (
     <div className="page-container animate-fadeIn pb-24 lg:pb-8 relative">
-      <div className="mb-6">
-        <h1 className="page-title mb-0">Дневник здоровья</h1>
-        <p className="text-gray-600 mt-1 text-sm sm:text-base">Календарь и история событий для питомцев</p>
-      </div>
-
-      {/* Выбор питомца — как в фильтре магазина (ShopFilters) */}
-      <div className="card mb-4 lg:mb-6">
-        <div className="border-b border-gray-200 pb-4">
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="font-semibold text-gray-800 flex items-center gap-2 text-base">
-              <span className="text-primary-600" aria-hidden>
-                🐾
-              </span>
-              Мои питомцы
-            </h3>
+      <div className="relative overflow-hidden bg-white rounded-3xl border border-primary-100 shadow-[0_8px_30px_rgba(82,47,129,0.08)] p-6 sm:p-8 mb-6">
+        <div aria-hidden="true" className="pointer-events-none absolute -top-24 -right-20 w-72 h-72 rounded-full bg-gradient-to-br from-primary-200/40 to-gold-200/40 blur-3xl" />
+        <div className="relative flex flex-col lg:flex-row lg:items-center gap-6 lg:gap-8">
+          {/* Заголовок + CTA */}
+          <div className="lg:max-w-sm">
+            <h1 className="text-3xl sm:text-4xl font-extrabold text-primary-900 tracking-tight" style={{ fontFamily: 'Manrope, system-ui, sans-serif' }}>Дневник здоровья</h1>
+            <p className="text-gray-500 mt-1.5">
+              Прививки, обработки, визиты и заметки — всё под рукой.{selectedPet ? ` Здоровье ${selectedPet.name} под контролем.` : ''}
+            </p>
+            {selectedPet && (
+              <button
+                type="button"
+                onClick={() => openAddModal(new Date())}
+                className="mt-4 inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-full bg-gold-400 hover:bg-gold-500 text-primary-900 font-semibold shadow-sm hover:shadow-md transition-all duration-200"
+              >
+                <Plus className="w-4 h-4" /> Добавить событие
+              </button>
+            )}
           </div>
-          <div className="flex overflow-x-auto gap-2 pb-2 -mx-0.5 scrollbar-thin" style={{ scrollbarWidth: 'thin' }}>
-            {pets.map((pet) => {
-              const isSelected = String(selectedPetId) === String(pet.id)
-              const photoUrl = pet.photo || null
-              const placeholderEmoji =
-                pet.species === 'cat' ? '🐈' : pet.species === 'dog' ? '🐕' : '🐾'
-              const cardBg =
-                pet.species === 'dog'
-                  ? 'bg-blue-50'
-                  : pet.species === 'cat'
-                    ? 'bg-amber-50/80'
-                    : 'bg-gray-50'
-              return (
-                <button
-                  key={pet.id}
-                  type="button"
-                  onClick={() => setSelectedPetId(pet.id)}
-                  className={`flex-shrink-0 w-[100px] sm:w-[110px] rounded-xl border-2 overflow-hidden transition-all duration-200 flex flex-col ${
-                    isSelected
-                      ? 'border-accent-400 bg-accent-400/20 shadow-sm'
-                      : 'border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50'
-                  }`}
-                >
-                  <div
-                    className={`aspect-square flex items-center justify-center overflow-hidden ${!isSelected ? cardBg : ''}`}
+
+          {/* Выбор питомца — заполняет центральное пространство */}
+          <div className="flex-1 min-w-0 w-full">
+            <div className="flex items-center gap-2 mb-3">
+              <PawPrint className="w-4 h-4 text-primary-500" />
+              <h3 className="text-sm font-semibold text-primary-800">Мои питомцы</h3>
+            </div>
+            <div className="flex overflow-x-auto gap-2 pb-2 -mx-0.5 scrollbar-thin" style={{ scrollbarWidth: 'thin' }}>
+              {pets.map((pet) => {
+                const isSelected = String(selectedPetId) === String(pet.id)
+                const photoUrl = pet.photo || null
+                const placeholderEmoji =
+                  pet.species === 'cat' ? '🐈' : pet.species === 'dog' ? '🐕' : '🐾'
+                const cardBg =
+                  pet.species === 'dog'
+                    ? 'bg-blue-50'
+                    : pet.species === 'cat'
+                      ? 'bg-amber-50/80'
+                      : 'bg-gray-50'
+                return (
+                  <button
+                    key={pet.id}
+                    type="button"
+                    onClick={() => setSelectedPetId(pet.id)}
+                    className={`flex-shrink-0 w-[100px] sm:w-[110px] rounded-xl border-2 overflow-hidden transition-all duration-200 flex flex-col ${
+                      isSelected
+                        ? 'border-accent-400 bg-accent-400/20 shadow-sm'
+                        : 'border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50'
+                    }`}
                   >
-                    {photoUrl ? (
-                      <img src={photoUrl} alt={pet.name} className="w-full h-full object-cover" />
-                    ) : (
-                      <span className="text-3xl" aria-hidden>
-                        {placeholderEmoji}
-                      </span>
-                    )}
-                  </div>
-                  <div className="p-2 text-center bg-white border-t border-gray-100">
-                    <span className="block font-medium truncate text-gray-800 text-sm">{pet.name}</span>
-                  </div>
-                </button>
-              )
-            })}
+                    <div
+                      className={`aspect-square flex items-center justify-center overflow-hidden ${!isSelected ? cardBg : ''}`}
+                    >
+                      {photoUrl ? (
+                        <img src={photoUrl} alt={pet.name} className="w-full h-full object-cover" />
+                      ) : (
+                        <span className="text-3xl" aria-hidden>
+                          {placeholderEmoji}
+                        </span>
+                      )}
+                    </div>
+                    <div className="p-2 text-center bg-white border-t border-gray-100">
+                      <span className="block font-medium truncate text-gray-800 text-sm">{pet.name}</span>
+                    </div>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* Пуфыч — реагирует на статус событий */}
+          <div aria-hidden="true" className="hidden lg:block flex-shrink-0 self-center">
+            <PuffLottie name={heroPuffState} size={140} alt="Пуфыч — помощник по здоровью" />
           </div>
         </div>
+
+        {selectedPet && (
+          <div className="mt-6 pt-5 border-t border-gray-100 grid grid-cols-3 gap-3 sm:gap-4">
+            <DiaryMetric icon={CalendarDays} tint="bg-primary-50 text-primary-600" label="Ближайшее" value={nearest ? getDaysUntil(nearest.date) : '—'} />
+            <DiaryMetric icon={Bell} tint="bg-sky-50 text-sky-600" label="Запланировано" value={plannedCount} />
+            <DiaryMetric icon={CheckCircle2} tint="bg-emerald-50 text-emerald-600" label="Выполнено" value={doneCount} />
+          </div>
+        )}
       </div>
 
-      <div className="flex gap-1 p-1 bg-gray-100 rounded-xl overflow-x-auto mb-6 scrollbar-thin">
+      <div className="inline-flex gap-1 p-1 bg-primary-50/70 rounded-full mb-6 max-w-full overflow-x-auto">
         <button type="button" className={tabClass('overview')} onClick={() => setActiveTab('overview')}>
           Обзор
         </button>
@@ -391,15 +462,35 @@ function HealthDiary() {
         <>
           {activeTab === 'overview' && (
             <>
-              {overviewContent}
-              {overviewDesktop}
+              {overdueEvents.length > 0 && (
+                <div className="mb-4 flex items-center gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4">
+                  <span className="flex-shrink-0 w-10 h-10 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center">
+                    <AlertTriangle className="w-5 h-5" />
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-amber-900">Есть событие, которое стоит проверить</p>
+                    <p className="text-sm text-amber-700">Мягко напоминаем: {overdueEvents.length} не отмечено выполненным.</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('list')}
+                    className="flex-shrink-0 px-4 py-2 rounded-full bg-white text-amber-700 border border-amber-200 text-sm font-semibold hover:bg-amber-100 transition-colors"
+                  >
+                    Посмотреть
+                  </button>
+                </div>
+              )}
+              {events.length === 0 ? (
+                <DiaryEmpty petName={selectedPet.name} onAdd={() => openAddModal(new Date())} />
+              ) : (
+                <>
+                  {overviewGrid}
+                  <p className="mt-4 text-sm text-gray-500 lg:hidden">
+                    Откройте «Календарь» или «Список» для просмотра по датам.
+                  </p>
+                </>
+              )}
             </>
-          )}
-
-          {activeTab === 'overview' && (
-            <p className="mt-4 text-sm text-gray-500 lg:hidden">
-              Откройте вкладки «Календарь» или «Список» для детального просмотра и редактирования по датам.
-            </p>
           )}
 
           {(activeTab === 'calendar' || activeTab === 'list') && (
@@ -418,14 +509,7 @@ function HealthDiary() {
                 <div className="card">
                   <h2 className="section-title mb-4">Все события ({events.length})</h2>
                   {events.length === 0 ? (
-                    <div className="text-center py-12">
-                      <div className="text-5xl mb-4">📅</div>
-                      <h3 className="text-lg font-semibold text-gray-900 mb-2">Нет событий</h3>
-                      <p className="text-gray-600 mb-4">Добавьте первое событие для {selectedPet.name}</p>
-                      <Button type="button" variant="primary" onClick={() => openAddModal(new Date())}>
-                        Добавить событие
-                      </Button>
-                    </div>
+                    <DiaryEmpty petName={selectedPet.name} onAdd={() => openAddModal(new Date())} />
                   ) : (
                     <div className="space-y-8">
                       {groupedEventsForList.map(([key, dayEvents]) => (
