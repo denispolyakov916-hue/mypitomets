@@ -13,6 +13,18 @@
 import api from './client'
 import { createCrudApi, createReadOnlyApi } from './baseApi'
 
+/**
+ * Сообщить приложению, что список питомцев изменился (создан/обновлён/удалён).
+ * Потребители usePets (в т.ч. хедер) подписаны на это событие и делают refetch.
+ * Намеренно НЕ вызывается в updatePetPartial (через него идёт сохранение рациона
+ * и частичные правки дневника) и в read-функциях.
+ */
+const notifyPetsChanged = () => {
+  if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
+    window.dispatchEvent(new CustomEvent('pets:changed'))
+  }
+}
+
 // Создаем CRUD API клиент для питомцев
 const petsApi = createCrudApi('/pets/')
 
@@ -109,9 +121,11 @@ export const createPet = async (petData) => {
       formData.append(key, value)
     })
 
-    return await api.post('/pets/', formData, {
+    const created = await api.post('/pets/', formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     })
+    notifyPetsChanged()
+    return created
   } else {
     // Без файла отправляем JSON (лучше типизация)
     const jsonData = {}
@@ -122,7 +136,9 @@ export const createPet = async (petData) => {
       jsonData[key] = value
     })
 
-    return await api.post('/pets/', jsonData)
+    const created = await api.post('/pets/', jsonData)
+    notifyPetsChanged()
+    return created
   }
 }
 
@@ -140,7 +156,9 @@ export const createPet = async (petData) => {
  *   const { data } = await updatePet(1, { weight: 5.5 })
  */
 export const updatePet = async (petId, petData) => {
-  return await petsApi.update(petId, petData)
+  const updated = await petsApi.update(petId, petData)
+  notifyPetsChanged()
+  return updated
 }
 
 /**
@@ -166,7 +184,9 @@ export const updatePetPartial = async (petId, petData) => {
  * @throws {Object} 403 если не владелец, 404 если не найден
  */
 export const deletePet = async (petId) => {
-  return await petsApi.delete(petId)
+  const res = await petsApi.delete(petId)
+  notifyPetsChanged()
+  return res
 }
 
 /**
@@ -198,14 +218,18 @@ export const savePetDraft = async (draftData, draftId = null) => {
   // Помечаем как черновик
   formData.append('is_draft', 'true')
   
+  let saved
   if (draftId) {
-    return await api.put(`/pets/${draftId}/`, formData, {
+    saved = await api.put(`/pets/${draftId}/`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
+  } else {
+    saved = await api.post('/pets/', formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     })
   }
-  return await api.post('/pets/', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' }
-  })
+  notifyPetsChanged()
+  return saved
 }
 
 /**
@@ -224,7 +248,9 @@ export const getPetDrafts = async () => {
  * @returns {Promise<Object>} Сообщение об успехе
  */
 export const deletePetDraft = async (draftId) => {
-  return await api.delete(`/pets/${draftId}/`)
+  const res = await api.delete(`/pets/${draftId}/`)
+  notifyPetsChanged()
+  return res
 }
 
 /**
