@@ -1,4 +1,5 @@
 import { useState, useMemo, useRef } from 'react'
+import { getEventTypeMeta } from '../../constants/eventTypes'
 
 const ChevronLeftIcon = ({ className }) => (
   <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -44,7 +45,6 @@ function SimpleCalendar({
   onAddEventClick,
   onUpdateEvent,
   onDeleteRequest,
-  eventTypes,
 }) {
   const [currentMonth, setCurrentMonth] = useState(new Date())
   /** 'week' | 'month' — только для визуала &lt; lg */
@@ -378,7 +378,8 @@ function SimpleCalendar({
         ) : (
           <div className="space-y-3">
             {selectedDateEvents.map((event) => {
-              const eventType = eventTypes[event.type] || eventTypes.other
+              const eventType = getEventTypeMeta(event.type)
+              const Icon = eventType.icon
               const daysInfo = getDaysUntil(event.date)
 
               return (
@@ -389,7 +390,7 @@ function SimpleCalendar({
                 >
                   <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-start">
                     <div className="flex items-start gap-3 min-w-0">
-                      <span className="text-xl shrink-0">{eventType.icon}</span>
+                      <span className="shrink-0"><Icon className="w-5 h-5" style={{ color: eventType.color }} /></span>
                       <div className="min-w-0">
                         <h4 className={`font-medium ${event.completed ? 'line-through text-gray-500' : 'text-gray-900'}`}>
                           {event.title}

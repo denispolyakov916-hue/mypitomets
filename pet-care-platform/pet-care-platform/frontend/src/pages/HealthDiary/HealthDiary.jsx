@@ -15,22 +15,11 @@ import { Button } from '../../components/ui/Button'
 import { usePetEvents } from '../../hooks/usePetEvents'
 import { updateCalendarEvent, deleteCalendarEvent, getPetCalendarEvents } from '../../api/calendar'
 import { migrateDiaryEventsToBackend } from '../../utils/migrateDiaryToBackend'
+import { EVENT_TYPES, EVENT_TYPE_OPTIONS, getEventTypeMeta } from '../../constants/eventTypes'
 
 /** Тень как у мобильной кнопки «Начать бесплатно» (MobileBottomNav) */
 const fabCtaShadow =
   'inset 0 1px 0 rgba(255, 255, 255, 0.4), inset 0 -1px 0 rgba(0, 0, 0, 0.1), 0 6px 16px rgba(0, 0, 0, 0.12), 0 2px 6px rgba(0, 0, 0, 0.08)'
-
-const eventTypes = {
-  veterinary: { icon: '🩺', label: 'Ветеринар', color: '#ef4444', bgColor: '#fee2e2' },
-  vaccination: { icon: '💉', label: 'Прививка', color: '#10b981', bgColor: '#d1fae5' },
-  grooming: { icon: '✂️', label: 'Груминг', color: '#C86BFA', bgColor: '#ede0ff' },
-  birthday: { icon: '🎂', label: 'День рождения', color: '#f59e0b', bgColor: '#fef8e0' },
-  medication: { icon: '💊', label: 'Обработка', color: '#e11d48', bgColor: '#ffe4e6' },
-  training: { icon: '🎓', label: 'Тренировка', color: '#6366f1', bgColor: '#e0e7ff' },
-  walking: { icon: '🚶', label: 'Прогулка', color: '#0ea5e9', bgColor: '#e0f2fe' },
-  feeding: { icon: '🍖', label: 'Кормление', color: '#f59e0b', bgColor: '#fef3c7' },
-  other: { icon: '📝', label: 'Заметка', color: '#6b7280', bgColor: '#f3f4f6' },
-}
 
 function dateKey(d) {
   const x = new Date(d)
@@ -166,7 +155,7 @@ function HealthDiary() {
 
   const eventStats = useMemo(() => {
     const stats = {}
-    Object.keys(eventTypes).forEach((type) => {
+    Object.keys(EVENT_TYPES).forEach((type) => {
       stats[type] = events.filter((ev) => ev.type === type).length
     })
     return stats
@@ -253,14 +242,15 @@ function HealthDiary() {
         ) : (
           <div className="space-y-3">
             {upcomingEvents.map((event) => {
-              const typeInfo = eventTypes[event.type] || eventTypes.other
+              const meta = getEventTypeMeta(event.type)
+              const Icon = meta.icon
               return (
                 <div key={event.id} className="flex items-center gap-3">
                   <div
-                    className="w-8 h-8 rounded-lg flex items-center justify-center text-sm shrink-0"
-                    style={{ backgroundColor: typeInfo.bgColor }}
+                    className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+                    style={{ backgroundColor: meta.bgColor }}
                   >
-                    {typeInfo.icon}
+                    <Icon className="w-4 h-4" style={{ color: meta.color }} />
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-gray-900 truncate">{event.title}</p>
@@ -278,15 +268,18 @@ function HealthDiary() {
           <span>📊</span> Статистика
         </h3>
         <div className="grid grid-cols-2 gap-2">
-          {Object.entries(eventTypes).map(([type, info]) => (
-            <div key={type} className="p-2 rounded-lg text-center" style={{ backgroundColor: info.bgColor }}>
-              <div className="text-lg">{info.icon}</div>
-              <div className="text-lg font-bold" style={{ color: info.color }}>
-                {eventStats[type] || 0}
+          {EVENT_TYPE_OPTIONS.map((info) => {
+            const Icon = info.icon
+            return (
+              <div key={info.value} className="p-2 rounded-lg text-center" style={{ backgroundColor: info.bgColor }}>
+                <Icon className="w-5 h-5 mx-auto mb-0.5" style={{ color: info.color }} />
+                <div className="text-lg font-bold" style={{ color: info.color }}>
+                  {eventStats[info.value] || 0}
+                </div>
+                <div className="text-xs text-gray-600">{info.shortLabel}</div>
               </div>
-              <div className="text-xs text-gray-600">{info.label}</div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       </div>
 
@@ -419,7 +412,6 @@ function HealthDiary() {
                   onAddEventClick={() => openAddModal(selectedDate)}
                   onUpdateEvent={updateEvent}
                   onDeleteRequest={(id) => setDeleteConfirmId(id)}
-                  eventTypes={eventTypes}
                 />
               )}
               {activeTab === 'list' && (
@@ -443,7 +435,8 @@ function HealthDiary() {
                           </h3>
                           <div className="space-y-3">
                             {dayEvents.map((event) => {
-                              const typeInfo = eventTypes[event.type] || eventTypes.other
+                              const meta = getEventTypeMeta(event.type)
+                              const Icon = meta.icon
                               const isPast = new Date(event.date) < new Date()
                               return (
                                 <div
@@ -458,10 +451,10 @@ function HealthDiary() {
                                 >
                                   <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
                                     <div
-                                      className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl shrink-0"
-                                      style={{ backgroundColor: typeInfo.bgColor }}
+                                      className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0"
+                                      style={{ backgroundColor: meta.bgColor }}
                                     >
-                                      {typeInfo.icon}
+                                      <Icon className="w-6 h-6" style={{ color: meta.color }} />
                                     </div>
                                     <div className="flex-1 min-w-0">
                                       <h3
