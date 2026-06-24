@@ -38,12 +38,13 @@ export default function EventModal({
   onCreated,
   defaultType = DEFAULT_EVENT_TYPE,
   defaultDate,
+  defaultTitle = '',
 }) {
   const showSuccess = useToastStore((s) => s.success)
   const showError = useToastStore((s) => s.error)
 
   const [type, setType] = useState(defaultType)
-  const [title, setTitle] = useState('')
+  const [title, setTitle] = useState(defaultTitle)
   const [date, setDate] = useState(toDateInput(defaultDate))
   const [time, setTime] = useState('')
   const [description, setDescription] = useState('')
@@ -54,13 +55,13 @@ export default function EventModal({
   useEffect(() => {
     if (!isOpen) return
     setType(defaultType || DEFAULT_EVENT_TYPE)
-    setTitle('')
+    setTitle(defaultTitle)
     setDate(toDateInput(defaultDate))
     setTime('')
     setDescription('')
     setErrors({})
     setSaving(false)
-  }, [isOpen, defaultType, defaultDate])
+  }, [isOpen, defaultType, defaultDate, defaultTitle])
 
   const handleSubmit = async (e) => {
     e.preventDefault()

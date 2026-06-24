@@ -17,7 +17,9 @@ import { migrateDiaryEventsToBackend } from '../../utils/migrateDiaryToBackend'
 import { EVENT_TYPES, EVENT_TYPE_OPTIONS, getEventTypeMeta } from '../../constants/eventTypes'
 import { isWeightEvent, WEIGHT_META } from '../../constants/weight'
 import { PuffLottie } from '../../components/brand'
-import { Plus, CalendarDays, CheckCircle2, AlertTriangle, Bell, Check, Trash2, Stethoscope, PawPrint } from 'lucide-react'
+import QuickWeightModal from '../../components/health/QuickWeightModal'
+import { usePetWeightHistory } from '../../hooks/usePetWeightHistory'
+import { Plus, CalendarDays, CheckCircle2, AlertTriangle, Bell, Check, Trash2, Stethoscope, PawPrint, Sparkles } from 'lucide-react'
 
 /** Тень как у мобильной кнопки «Начать бесплатно» (MobileBottomNav) */
 const fabCtaShadow =
@@ -78,6 +80,47 @@ function parseBackendDate(startDate, startTime) {
   return dt
 }
 
+/** Быстрые шаблоны создания типовых событий дневника. */
+const QUICK_TEMPLATES = [
+  { key: 'vaccination', type: 'vaccination', title: 'Прививка', label: 'Прививка' },
+  { key: 'medication', type: 'medication', title: 'Обработка', label: 'Обработка' },
+  { key: 'veterinary', type: 'veterinary', title: 'Ветеринарный визит', label: 'Ветеринар' },
+  { key: 'grooming', type: 'grooming', title: 'Груминг', label: 'Груминг' },
+  { key: 'other', type: 'other', title: 'Заметка', label: 'Заметка' },
+  { key: 'weight', weight: true, label: 'Вес' },
+]
+
+/** Панель быстрых шаблонов: 1–2 клика до типового события (gold не используем — мягкие акценты). */
+function QuickTemplates({ onPick, onWeight }) {
+  return (
+    <div className="bg-white rounded-3xl border border-primary-100 shadow-[0_4px_24px_rgba(82,47,129,0.06)] p-4 sm:p-5 mb-4">
+      <div className="flex items-center gap-2 mb-3">
+        <Sparkles className="w-4 h-4 text-primary-500" />
+        <h3 className="text-sm font-semibold text-primary-800">Быстрое добавление</h3>
+      </div>
+      <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+        {QUICK_TEMPLATES.map((t) => {
+          const meta = t.weight ? WEIGHT_META : getEventTypeMeta(t.type)
+          const Icon = meta.icon
+          return (
+            <button
+              key={t.key}
+              type="button"
+              onClick={() => (t.weight ? onWeight() : onPick(t))}
+              className="flex flex-col items-center justify-center gap-1.5 rounded-2xl border border-gray-200 p-3 min-h-[76px] transition-all hover:border-primary-300 hover:bg-primary-50/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-200"
+            >
+              <span className={`w-9 h-9 rounded-xl flex items-center justify-center ${meta.tint}`}>
+                <Icon className="w-4 h-4" />
+              </span>
+              <span className="text-xs font-medium text-gray-700 text-center leading-tight">{t.label}</span>
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 function HealthDiary() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
@@ -92,6 +135,7 @@ function HealthDiary() {
     refetch,
     completeEvent,
   } = usePetEvents(selectedPetId)
+  const weightHistory = usePetWeightHistory(selectedPetId)
 
   // Адаптер backend-события → форма, ожидаемая UI и SimpleCalendar (date = Date).
   const events = useMemo(
@@ -113,6 +157,9 @@ function HealthDiary() {
   const [activeTab, setActiveTab] = useState('overview')
   const [deleteConfirmId, setDeleteConfirmId] = useState(null)
   const [addModalOpen, setAddModalOpen] = useState(false)
+  const [addModalType, setAddModalType] = useState(undefined)
+  const [addModalTitle, setAddModalTitle] = useState('')
+  const [weightModalOpen, setWeightModalOpen] = useState(false)
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -174,6 +221,14 @@ function HealthDiary() {
 
   const openAddModal = useCallback((date = selectedDate) => {
     if (date instanceof Date) setSelectedDate(date)
+    setAddModalType(undefined)
+    setAddModalTitle('')
+    setAddModalOpen(true)
+  }, [])
+  const openTemplate = useCallback((tpl) => {
+    setAddModalType(tpl.type)
+    setAddModalTitle(tpl.title)
+    setSelectedDate(new Date())
     setAddModalOpen(true)
   }, [])
   const handleCalendarAddEvent = useCallback(() => openAddModal(selectedDate), [openAddModal, selectedDate])
@@ -463,6 +518,7 @@ function HealthDiary() {
         <>
           {activeTab === 'overview' && (
             <>
+              <QuickTemplates onPick={openTemplate} onWeight={() => setWeightModalOpen(true)} />
               {overdueEvents.length > 0 && (
                 <div className="mb-4 flex items-center gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4">
                   <span className="flex-shrink-0 w-10 h-10 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center">
@@ -620,8 +676,18 @@ function HealthDiary() {
         isOpen={addModalOpen}
         onClose={() => setAddModalOpen(false)}
         petId={selectedPetId}
+        defaultType={addModalType}
+        defaultTitle={addModalTitle}
         defaultDate={selectedDate}
         onCreated={() => refetch()}
+      />
+
+      <QuickWeightModal
+        isOpen={weightModalOpen}
+        onClose={() => setWeightModalOpen(false)}
+        pet={selectedPet}
+        latestDate={weightHistory.latest?.date || null}
+        onSaved={() => { refetch(); weightHistory.refetch() }}
       />
     </div>
   )
