@@ -9,7 +9,8 @@ import { useState, useEffect } from 'react'
 import Modal, { ModalFooter } from '../ui/Modal'
 import { Button } from '../ui/Button'
 import Input from '../ui/Input'
-import { EVENT_TYPE_OPTIONS, DEFAULT_EVENT_TYPE } from '../../constants/eventTypes'
+import { EVENT_TYPE_OPTIONS, DEFAULT_EVENT_TYPE, getEventTypeMeta } from '../../constants/eventTypes'
+import { Info } from 'lucide-react'
 import { createCalendarEvent } from '../../api/calendar'
 import { useToastStore } from '../../store/toastStore'
 
@@ -26,6 +27,21 @@ function toDateInput(v) {
   if (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v)) return v
   const d = v instanceof Date ? v : new Date(v)
   if (Number.isNaN(d.getTime())) return todayStr()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${d.getFullYear()}-${m}-${day}`
+}
+
+const QUICK_DATES = [
+  { label: 'Сегодня', days: 0 },
+  { label: 'Завтра', days: 1 },
+  { label: 'Через неделю', days: 7 },
+]
+
+/** today + n дней → 'YYYY-MM-DD'. */
+function addDaysStr(n) {
+  const d = new Date()
+  d.setDate(d.getDate() + n)
   const m = String(d.getMonth() + 1).padStart(2, '0')
   const day = String(d.getDate()).padStart(2, '0')
   return `${d.getFullYear()}-${m}-${day}`
@@ -95,6 +111,8 @@ export default function EventModal({
     }
   }
 
+  const meta = getEventTypeMeta(type)
+
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Добавить событие в дневник" size="lg">
       <form onSubmit={handleSubmit}>
@@ -121,6 +139,13 @@ export default function EventModal({
           })}
         </div>
 
+        {meta.hint && (
+          <div className="mb-4 flex items-start gap-2 rounded-2xl bg-primary-50/60 px-3 py-2.5">
+            <Info className="w-4 h-4 text-primary-500 flex-shrink-0 mt-0.5" />
+            <p className="text-xs text-primary-700 leading-snug">{meta.hint}</p>
+          </div>
+        )}
+
         <div className="grid sm:grid-cols-2 gap-4 mb-4">
           <Input
             label="Дата"
@@ -138,11 +163,28 @@ export default function EventModal({
           />
         </div>
 
+        <div className="flex flex-wrap gap-2 mb-4">
+          {QUICK_DATES.map((qd) => {
+            const v = addDaysStr(qd.days)
+            const active = date === v
+            return (
+              <button
+                key={qd.label}
+                type="button"
+                onClick={() => setDate(v)}
+                className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-colors ${active ? 'border-primary-400 bg-primary-50 text-primary-700' : 'border-gray-200 text-gray-600 hover:border-primary-300'}`}
+              >
+                {qd.label}
+              </button>
+            )
+          })}
+        </div>
+
         <Input
           label="Название"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          placeholder="Например: прививка от бешенства"
+          placeholder={meta.placeholder}
           required
           error={errors.title}
           className="mb-4"
