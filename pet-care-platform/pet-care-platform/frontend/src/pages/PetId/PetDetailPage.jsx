@@ -1,14 +1,24 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useLocation, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   ArrowLeft, Edit, Trash2, Share2, QrCode, AlertCircle,
   Scale, Activity, Utensils, Brain, Heart, Home, Scissors,
-  ChevronRight, Info, CheckCircle, AlertTriangle, XCircle, UtensilsCrossed
+  ChevronRight, Info, CheckCircle, AlertTriangle, XCircle, UtensilsCrossed,
+  Bell, Plus, ShoppingCart, BookOpen, GraduationCap, CalendarPlus,
+  Stethoscope, Cake, Weight, ShieldCheck, Sparkles, Bone, Pill, Syringe,
+  Bath, Footprints, ArrowRight, ClipboardList, PawPrint, Camera, Loader2
 } from 'lucide-react';
-import { getPet, deletePet, getPetBreedComparison, updatePet, updatePetPartial } from '../../api/pets';
+import { getPet, deletePet, getPetBreedComparison, updatePet, updatePetPartial, getPetAllergies, BEHAVIORAL_PROBLEMS_OPTIONS } from '../../api/pets';
+import { getReminders, createReminder } from '../../api/reminders';
+import { getPersonalizedCourses } from '../../api/courses';
 import { PageLoader } from '../../components/Loader';
+import Modal from '../../components/ui/Modal';
+import { Button } from '../../components/ui/Button';
+import { useToastStore } from '../../store/toastStore';
 import PetProfileEditor from './components/PetProfileEditor';
+import Lottie from 'lottie-react';
+import api from '../../api/client';
 
 // Цвета для статусов
 const STATUS_COLORS = {
@@ -172,66 +182,6 @@ function HealthRiskCard({ risk }) {
     </div>
   );
 }
-
-// Индикатор общего скора
-function ScoreIndicator({ score }) {
-  const getScoreColor = (s) => {
-    if (s >= 80) return 'from-green-400 to-emerald-500';
-    if (s >= 60) return 'from-yellow-400 to-accent-500';
-    if (s >= 40) return 'from-accent-400 to-red-500';
-    return 'from-red-500 to-red-600';
-  };
-
-  const getScoreLabel = (s) => {
-    if (s >= 80) return 'Отлично';
-    if (s >= 60) return 'Хорошо';
-    if (s >= 40) return 'Требует внимания';
-    return 'Требует улучшения';
-  };
-
-  return (
-    <div className="text-center">
-      <div className="relative w-32 h-32 mx-auto">
-        <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
-          <circle
-            cx="50"
-            cy="50"
-            r="45"
-            fill="none"
-            stroke="#e5e7eb"
-            strokeWidth="8"
-          />
-          <circle
-            cx="50"
-            cy="50"
-            r="45"
-            fill="none"
-            stroke="url(#scoreGradient)"
-            strokeWidth="8"
-            strokeLinecap="round"
-            strokeDasharray={`${score * 2.83} 283`}
-          />
-          <defs>
-            <linearGradient id="scoreGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-              <stop offset="0%" className={`stop-color-${score >= 60 ? 'green' : 'orange'}-400`} style={{stopColor: score >= 60 ? '#4ade80' : '#fbba2d'}} />
-              <stop offset="100%" className={`stop-color-${score >= 60 ? 'emerald' : 'red'}-500`} style={{stopColor: score >= 60 ? '#10b981' : '#ef4444'}} />
-            </linearGradient>
-          </defs>
-        </svg>
-        <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <span className={`text-3xl font-bold bg-gradient-to-r ${getScoreColor(score)} bg-clip-text text-transparent`}>
-            {score}
-          </span>
-          <span className="text-xs text-gray-500">из 100</span>
-        </div>
-      </div>
-      <div className={`mt-2 px-4 py-1 rounded-full text-sm font-medium bg-gradient-to-r ${getScoreColor(score)} text-white`}>
-        {getScoreLabel(score)}
-      </div>
-    </div>
-  );
-}
-
 export default function PetDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -246,9 +196,66 @@ export default function PetDetailPage() {
   const [error, setError] = useState(null);
   const [showWizard, setShowWizard] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
+  // Этап 2 — данные дашборда карточки (всё опционально, не должно ронять карточку).
+  const [reminders, setReminders] = useState([]);
+  const [remindersLoading, setRemindersLoading] = useState(true);
+  const [allergies, setAllergies] = useState([]);
+  const [behaviorCourses, setBehaviorCourses] = useState([]);
+  const [showReminderModal, setShowReminderModal] = useState(false);
+  // Смена фото питомца: триггерим скрытый input, грузим через существующий эндпоинт.
+  const [photoUploading, setPhotoUploading] = useState(false);
+  const fileInputRef = useRef(null);
+  const notifyOk = useToastStore((st) => st.success);
+  const notifyErr = useToastStore((st) => st.error);
+
+  const handlePhotoSelected = async (e) => {
+    const file = e.target.files && e.target.files[0];
+    e.target.value = '';
+    if (!file) return;
+    if (!file.type || !file.type.startsWith('image/')) {
+      if (notifyErr) notifyErr('Выберите файл изображения');
+      return;
+    }
+    setPhotoUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append('photo', file);
+      // PUT /pets/{id}/ принимает фото через multipart (бэкенд уже это умеет, не меняется).
+      await api.put(`/pets/${pet.id}/`, fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+      await loadPetData();
+      if (notifyOk) notifyOk('Фото обновлено');
+    } catch {
+      if (notifyErr) notifyErr('Не удалось загрузить фото');
+    } finally {
+      setPhotoUploading(false);
+    }
+  };
 
   useEffect(() => {
     loadPetData();
+  }, [id]);
+
+  // Этап 2 — подтягиваем напоминания, аллергии и курсы по поведению.
+  // Каждый запрос независим и не-фатален: блок просто показывает пустое состояние.
+  const loadReminders = () => {
+    setRemindersLoading(true);
+    getReminders({ pet_id: id, upcoming_only: true })
+      .then((res) => setReminders(flattenReminders(res)))
+      .catch(() => setReminders([]))
+      .finally(() => setRemindersLoading(false));
+  };
+
+  useEffect(() => {
+    let active = true;
+    loadReminders();
+    getPetAllergies(id)
+      .then((res) => { if (active) setAllergies(normalizeList(res)); })
+      .catch(() => { if (active) setAllergies([]); });
+    getPersonalizedCourses(id)
+      .then((res) => { if (active) setBehaviorCourses(normalizeCourses(res)); })
+      .catch(() => { if (active) setBehaviorCourses([]); });
+    return () => { active = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   const loadPetData = async () => {
@@ -344,93 +351,114 @@ export default function PetDetailPage() {
 
   return (
     <div className="page-container animate-fadeIn pb-8">
-      {/* Навигация */}
-      <div className="flex items-center gap-4 mb-6">
+      {/* Навигация назад */}
+      <div className="mb-5">
         <button
           onClick={() => navigate('/pet-id')}
-          className="p-2 hover:bg-gray-100 rounded-xl transition-colors"
+          className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-500 hover:text-primary-700 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-200 rounded-lg"
         >
-          <ArrowLeft className="w-5 h-5 text-gray-600" />
+          <ArrowLeft className="w-4 h-4" /> Все питомцы
         </button>
-        <div className="flex-1">
-          <h1 className="page-title mb-0">{pet.name}</h1>
-          <p className="text-sm text-gray-500">
-            {pet.breed_name || 'Порода не указана'} • {pet.species === 'dog' ? 'Собака' : 'Кошка'}
-          </p>
-        </div>
-        <div className="flex gap-2">
-          {/* Кнопка подбора корма - активна только если есть вес */}
-          {pet.weight && (
-            <button
-              onClick={() => navigate(`/food-recommendation?pet_id=${pet.id}`)}
-              className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-accent-500 to-secondary-500 text-white rounded-xl hover:shadow-lg transition-all"
-            >
-              <UtensilsCrossed className="w-4 h-4" />
-              Подбор корма
-            </button>
-          )}
-          <button
-            onClick={() => setShowWizard(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-primary-50 text-primary-600 rounded-xl hover:bg-primary-100 transition-all"
-          >
-            <Edit className="w-4 h-4" />
-            Изменить
-          </button>
-          <button
-            onClick={handleDelete}
-            className="p-2 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 transition-all"
-          >
-            <Trash2 className="w-4 h-4" />
-          </button>
-        </div>
       </div>
 
-      {/* Карточка питомца со скором */}
-      <div className="bg-white rounded-3xl shadow-sm p-6 mb-6">
-        <div className="flex flex-col md:flex-row gap-6">
-          {/* Фото и основная информация */}
-          <div className="flex gap-6">
-            <div className="w-32 h-32 rounded-2xl bg-gradient-to-br from-primary-100 to-accent-100 flex items-center justify-center text-6xl">
+      {/* Hero-карточка профиля питомца */}
+      <div className="relative overflow-hidden bg-white rounded-3xl border border-primary-100 shadow-[0_8px_30px_rgba(82,47,129,0.08)] p-6 sm:p-8 mb-6">
+        {/* мягкое фирменное свечение (декор) */}
+        <div aria-hidden="true" className="pointer-events-none absolute -top-24 -right-20 w-72 h-72 rounded-full bg-gradient-to-br from-primary-200/40 to-gold-200/40 blur-3xl" />
+
+        {/* Пуфыч выглядывает ИЗ-ЗА ЛЕВОГО КРАЯ карточки: он позади контента (z-0), а левый
+            край карточки (overflow-hidden) аккуратно срезает его тело — наружу смотрят
+            мордочка и машущая лапка. Мягкое свечение делает его частью карточки. Desktop only. */}
+        <div aria-hidden="true" className="hidden lg:block pointer-events-none absolute top-7 -left-[40px] z-0">
+          <div className="absolute inset-6 rounded-full bg-gradient-to-br from-gold-200/55 to-primary-200/45 blur-2xl" />
+          <div className="relative">
+            <PuffPeek size={166} />
+          </div>
+        </div>
+
+        {/* Верх hero: аватар + имя/метрики + одно основное действие */}
+        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center gap-6 lg:pl-32">
+          {/* Аватар с кнопкой смены фото */}
+          <div className="relative flex-shrink-0 mx-auto lg:mx-0">
+            <div className="relative w-28 h-28 sm:w-32 sm:h-32 rounded-[28px] bg-gradient-to-br from-primary-100 via-violet-100 to-gold-100 ring-4 ring-white shadow-md flex items-center justify-center overflow-hidden text-6xl">
               {pet.photo ? (
-                <img src={pet.photo} alt={pet.name} className="w-full h-full object-cover rounded-2xl" />
+                <img src={pet.photo} alt={pet.name} className="w-full h-full object-cover" />
               ) : (
-                pet.species === 'dog' ? '🐕' : '🐱'
+                <span>{pet.species === 'dog' ? '🐕' : '🐱'}</span>
+              )}
+              {photoUploading && (
+                <div className="absolute inset-0 bg-white/70 flex items-center justify-center">
+                  <Loader2 className="w-6 h-6 text-primary-600 animate-spin" />
+                </div>
               )}
             </div>
-            <div>
-              <div className="flex items-center gap-2 mb-2">
-                <h2 className="text-2xl font-bold text-gray-800">{pet.name}</h2>
-                <span className={`px-2 py-0.5 rounded-full text-xs ${pet.sex === 'male' ? 'bg-blue-100 text-blue-700' : 'bg-pink-100 text-pink-700'}`}>
-                  {pet.sex === 'male' ? '♂' : '♀'}
-                </span>
-              </div>
-              <p className="text-gray-600 mb-3">{pet.breed_name || 'Порода не указана'}</p>
-              <div className="flex flex-wrap gap-2">
-                {pet.weight_kg && (
-                  <span className="px-3 py-1 bg-gray-100 rounded-full text-sm text-gray-600">
-                    ⚖️ {pet.weight_kg} кг
-                  </span>
-                )}
-                {comparison?.pet?.age && (
-                  <span className="px-3 py-1 bg-gray-100 rounded-full text-sm text-gray-600">
-                    🎂 {comparison.pet.age} {comparison.pet.age === 1 ? 'год' : comparison.pet.age < 5 ? 'года' : 'лет'}
-                  </span>
-                )}
-                {pet.activity_level && (
-                  <span className="px-3 py-1 bg-gray-100 rounded-full text-sm text-gray-600">
-                    ⚡ {pet.activity_level === 'low' ? 'Низкая' : pet.activity_level === 'moderate' ? 'Средняя' : 'Высокая'} активность
-                  </span>
-                )}
-              </div>
-            </div>
+            <button
+              onClick={() => fileInputRef.current && fileInputRef.current.click()}
+              disabled={photoUploading}
+              aria-label="Изменить фото питомца"
+              title="Изменить фото питомца"
+              className="absolute -bottom-1.5 -right-1.5 w-9 h-9 rounded-full bg-gold-400 hover:bg-gold-500 text-primary-900 shadow-md ring-2 ring-white flex items-center justify-center transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-gold-300 disabled:opacity-60"
+            >
+              <Camera className="w-4 h-4" />
+            </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handlePhotoSelected}
+            />
           </div>
 
-          {/* Общий скор */}
-          {comparison?.overall_score !== undefined && comparison.breed_found && (
-            <div className="md:ml-auto">
-              <ScoreIndicator score={comparison.overall_score} />
+          {/* Имя + метрики + основное действие */}
+          <div className="flex-1 min-w-0 text-center lg:text-left">
+            <div className="flex items-center justify-center lg:justify-start gap-2.5 flex-wrap">
+              <h2 className="text-3xl sm:text-4xl font-extrabold text-primary-900 tracking-tight" style={{ fontFamily: 'Manrope, system-ui, sans-serif' }}>{pet.name}</h2>
+              <SexPill sex={pet.sex} />
             </div>
-          )}
+            <p className="text-gray-500 mt-1.5">{pet.breed_name || 'Порода не указана'}</p>
+            <div className="flex flex-wrap justify-center lg:justify-start gap-2 mt-4">
+              {pet.weight_kg && <MetricPill icon={Scale}>{pet.weight_kg} кг</MetricPill>}
+              {ageText(pet) && <MetricPill icon={Cake}>{ageText(pet)}</MetricPill>}
+              {activityLabel(pet.activity_level) && <MetricPill icon={Activity}>{activityLabel(pet.activity_level)}</MetricPill>}
+              {comparison?.overall_score !== undefined && comparison.breed_found && (
+                <MetricPill icon={Sparkles} highlight>Оценка {comparison.overall_score}/100</MetricPill>
+              )}
+            </div>
+            <div className="mt-5 flex justify-center lg:justify-start">
+              <button
+                onClick={() => setShowWizard(true)}
+                className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-full bg-gold-400 hover:bg-gold-500 text-primary-900 font-semibold shadow-sm hover:shadow-md transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-gold-300"
+              >
+                <Edit className="w-4 h-4" /> Редактировать профиль
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Информация о питомце — перенесена внутрь hero */}
+        <div className="relative z-10 mt-6 pt-6 border-t border-gray-100">
+          <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
+            <div className="flex items-center gap-2">
+              <ClipboardList className="w-5 h-5 text-primary-500" />
+              <h3 className="text-base font-bold text-primary-900" style={{ fontFamily: 'Manrope, system-ui, sans-serif' }}>Информация о питомце</h3>
+            </div>
+            <CompletenessBadge value={pet.profile_completeness} />
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            <InfoTile icon={PawPrint} tint="bg-primary-50 text-primary-600" label="Вид" value={pet.species === 'dog' ? 'Собака' : 'Кошка'} />
+            <InfoTile icon={BookOpen} tint="bg-violet-50 text-violet-600" label="Порода" value={pet.breed_name} placeholder="Указать породу" onAdd={() => setShowWizard(true)} />
+            <InfoTile iconText={pet.sex === 'female' ? '♀' : '♂'} tint={pet.sex === 'female' ? 'bg-pink-50 text-pink-600' : 'bg-sky-50 text-sky-600'} label="Пол" value={pet.sex ? (pet.sex === 'male' ? 'Мужской' : 'Женский') : null} placeholder="Указать пол" onAdd={() => setShowWizard(true)} />
+            <InfoTile icon={Scale} tint="bg-sky-50 text-sky-600" label="Вес" value={pet.weight_kg ? `${pet.weight_kg} кг` : null} placeholder="Записать вес" onAdd={() => setShowWizard(true)} />
+            <InfoTile icon={Activity} tint="bg-amber-50 text-amber-600" label="Активность">
+              <ActivityDots level={pet.activity_level} onAdd={() => setShowWizard(true)} />
+            </InfoTile>
+            <InfoTile icon={Scissors} tint="bg-emerald-50 text-emerald-600" label="Кастрация / стерилизация">
+              <NeuterBadge value={pet.is_neutered} />
+            </InfoTile>
+            <InfoTile icon={Utensils} tint="bg-rose-50 text-rose-600" label="Тип питания" value={dietLabel(pet.diet_type)} placeholder="Добавить" onAdd={() => setShowWizard(true)} />
+            <InfoTile icon={Home} tint="bg-indigo-50 text-indigo-600" label="Тип жилья" value={housingLabel(pet.housing_type)} placeholder="Добавить" onAdd={() => setShowWizard(true)} />
+          </div>
         </div>
 
         {/* Информация о породе */}
@@ -509,6 +537,31 @@ export default function PetDetailPage() {
             exit={{ opacity: 0, y: -20 }}
             className="space-y-6"
           >
+            {/* Этап 2 — быстрые действия (личный кабинет питомца) */}
+            <QuickActions
+              pet={pet}
+              navigate={navigate}
+              onAddEvent={() => setShowReminderModal(true)}
+              onRecordWeight={() => setShowWizard(true)}
+            />
+
+            {/* Этап 2 — рацион + здоровье */}
+            <div className="grid lg:grid-cols-2 gap-6">
+              <RationBlock pet={pet} navigate={navigate} />
+              <HealthBlock pet={pet} allergies={allergies} onRecordWeight={() => setShowWizard(true)} />
+            </div>
+
+            {/* Этап 2 — напоминания + поведение */}
+            <div className="grid lg:grid-cols-2 gap-6">
+              <RemindersBlock
+                reminders={reminders}
+                loading={remindersLoading}
+                petName={pet.name}
+                onAdd={() => setShowReminderModal(true)}
+              />
+              <BehaviorBlock pet={pet} courses={behaviorCourses} navigate={navigate} />
+            </div>
+
             {/* Быстрая статистика */}
             {comparison?.analysis && comparison.breed_found && (
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
@@ -541,63 +594,9 @@ export default function PetDetailPage() {
               </div>
             )}
 
-            {/* Основная информация о питомце */}
-            <div className="bg-white rounded-2xl p-6 shadow-sm">
-              <h3 className="font-semibold text-gray-800 mb-4">📋 Информация о питомце</h3>
-              <div className="grid md:grid-cols-2 gap-4">
-                <InfoRow label="Вид" value={pet.species === 'dog' ? 'Собака' : 'Кошка'} />
-                <InfoRow label="Порода" value={pet.breed_name || 'Не указана'} />
-                <InfoRow label="Пол" value={pet.sex === 'male' ? 'Мужской' : 'Женский'} />
-                <InfoRow label="Вес" value={pet.weight_kg ? `${pet.weight_kg} кг` : 'Не указан'} />
-                <InfoRow label="Активность" value={
-                  pet.activity_level === 'low' ? 'Низкая' :
-                  pet.activity_level === 'moderate' ? 'Средняя' : 'Высокая'
-                } />
-                <InfoRow label="Кастрация" value={pet.is_neutered ? 'Да' : 'Нет'} />
-                <InfoRow label="Тип питания" value={
-                  pet.diet_type === 'dry' ? 'Сухой корм' :
-                  pet.diet_type === 'wet' ? 'Влажный корм' :
-                  pet.diet_type === 'mixed' ? 'Смешанное' :
-                  pet.diet_type === 'raw' ? 'Натуральное' :
-                  pet.diet_type === 'homemade' ? 'Домашняя еда' : 'Не указан'
-                } />
-                <InfoRow label="Тип жилья" value={
-                  pet.housing_type === 'apartment' ? 'Квартира' :
-                  pet.housing_type === 'house' ? 'Частный дом' :
-                  pet.housing_type === 'farm' ? 'Ферма/сельская местность' :
-                  pet.housing_type === 'outdoor' ? 'Вольерное содержание' : 'Не указан'
-                } />
-              </div>
-            </div>
+            {/* «Информация о питомце» перенесена в hero-карточку выше. */}
 
-            {/* Сохранённый рацион из «Подбора корма» — показываем и для черновика */}
-            {pet.current_food && (pet.current_food.brand_name || pet.current_food.product_name) && (
-              <div className="bg-white rounded-2xl p-6 shadow-sm">
-                <div className="flex items-center gap-2 mb-4">
-                  <UtensilsCrossed className="w-5 h-5 text-accent-600" />
-                  <h3 className="font-semibold text-gray-800">Сохранённый рацион</h3>
-                </div>
-                <div className="grid md:grid-cols-2 gap-4">
-                  {pet.current_food.brand_name && (
-                    <InfoRow label="Бренд" value={pet.current_food.brand_name} />
-                  )}
-                  {pet.current_food.product_name && (
-                    <InfoRow label="Корм" value={pet.current_food.product_name} />
-                  )}
-                  {pet.current_food.daily_amount_grams && (
-                    <InfoRow label="Норма в день" value={`${pet.current_food.daily_amount_grams} г`} />
-                  )}
-                </div>
-                <p className="text-xs text-gray-400 mt-3">Сохранено из подбора корма</p>
-                <button
-                  onClick={() => navigate('/shop')}
-                  className="mt-4 flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-accent-500 to-secondary-500 text-white rounded-xl hover:shadow-lg transition-all"
-                >
-                  <UtensilsCrossed className="w-4 h-4" />
-                  Купить рацион
-                </button>
-              </div>
-            )}
+            {/* Сохранённый рацион теперь отображается блоком «Рацион» выше (RationBlock). */}
           </motion.div>
         )}
 
@@ -759,18 +758,634 @@ export default function PetDetailPage() {
           onSave={handleEditComplete}
         />
       )}
+
+      {showReminderModal && (
+        <CreateReminderModal
+          petId={pet.id}
+          petName={pet.name}
+          onClose={() => setShowReminderModal(false)}
+          onCreated={() => { setShowReminderModal(false); loadReminders(); }}
+        />
+      )}
     </div>
   );
 }
 
-// Вспомогательный компонент для отображения информации
-function InfoRow({ label, value }) {
+/* ============================================================
+   Этап 2 — Дашборд карточки питомца.
+   Только существующие API/данные. Бэкенд не меняется.
+   ============================================================ */
+
+const GOLD_CTA = 'inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-full bg-gold-400 hover:bg-gold-500 text-primary-900 font-semibold shadow-sm hover:shadow-md transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-gold-300 focus:ring-offset-1';
+const SOFT_CTA = 'inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-full bg-primary-50 hover:bg-primary-100 text-primary-700 font-medium transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary-200';
+const GHOST_CTA = 'inline-flex items-center gap-1 text-primary-600 hover:text-primary-800 font-medium transition-colors';
+
+const reminderCategoryMeta = {
+  feeding:     { icon: Bone,          label: 'Кормление',  tint: 'bg-amber-100 text-amber-700' },
+  medication:  { icon: Pill,          label: 'Лекарства',  tint: 'bg-rose-100 text-rose-700' },
+  vaccination: { icon: Syringe,       label: 'Вакцинация', tint: 'bg-emerald-100 text-emerald-700' },
+  vet_visit:   { icon: Stethoscope,   label: 'Ветеринар',  tint: 'bg-red-100 text-red-700' },
+  grooming:    { icon: Scissors,      label: 'Груминг',    tint: 'bg-violet-100 text-violet-700' },
+  walk:        { icon: Footprints,    label: 'Прогулка',   tint: 'bg-sky-100 text-sky-700' },
+  training:    { icon: GraduationCap, label: 'Тренировка', tint: 'bg-indigo-100 text-indigo-700' },
+  hygiene:     { icon: Bath,          label: 'Гигиена',    tint: 'bg-cyan-100 text-cyan-700' },
+  other:       { icon: Bell,          label: 'Другое',     tint: 'bg-gray-100 text-gray-600' },
+};
+
+const reminderCategoryOptions = ['vaccination', 'vet_visit', 'medication', 'feeding', 'grooming', 'walk', 'training', 'hygiene', 'other'];
+
+const behaviorDescriptions = {
+  aggression_dogs: 'Реакция на других собак — поможет курс по социализации и коррекции.',
+  aggression_people: 'Настороженность к людям — нужна мягкая поведенческая работа.',
+  aggression_cats: 'Конфликты с кошками — разбираем триггеры и дистанцию.',
+  separation_anxiety: 'Тревога при расставании — постепенное приучение к одиночеству.',
+  excessive_barking: 'Частый лай — учим спокойствию и альтернативному поведению.',
+  destructive_behavior: 'Порча вещей — даём питомцу занятость и правильные нагрузки.',
+  fear_phobias: 'Страхи и фобии — работа с уверенностью и снижение чувствительности.',
+  marking_territory: 'Метки в доме — разбираем причины и закрепляем привычки.',
+  excessive_licking: 'Навязчивое вылизывание — снижаем стресс и скуку.',
+  food_aggression: 'Охрана еды — безопасные протоколы кормления.',
+  leash_pulling: 'Тянет поводок — техника спокойной прогулки рядом.',
+  jumping_on_people: 'Прыгает на людей — учим вежливому приветствию.',
+};
+
+function behaviorLabel(code) {
+  const found = (BEHAVIORAL_PROBLEMS_OPTIONS || []).find((o) => o.value === code);
+  return found ? found.label : code;
+}
+
+function normalizeList(res) {
+  if (!res) return [];
+  if (Array.isArray(res)) return res;
+  if (Array.isArray(res.data)) return res.data;
+  if (Array.isArray(res.results)) return res.results;
+  if (Array.isArray(res.allergies)) return res.allergies;
+  return [];
+}
+
+function normalizeCourses(res) {
+  if (!res) return [];
+  if (Array.isArray(res)) return res;
+  if (Array.isArray(res.courses)) return res.courses;
+  if (Array.isArray(res.data)) return res.data;
+  if (Array.isArray(res.results)) return res.results;
+  return [];
+}
+
+function flattenReminders(res) {
+  if (!res) return [];
+  if (Array.isArray(res)) return res;
+  const merged = [];
+  ['overdue', 'upcoming', 'future'].forEach((g) => { if (Array.isArray(res[g])) merged.push(...res[g]); });
+  if (!merged.length && Array.isArray(res.reminders)) merged.push(...res.reminders);
+  return merged.sort((a, b) => String(a.reminder_date).localeCompare(String(b.reminder_date)));
+}
+
+function formatRuDate(value) {
+  if (!value) return '';
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return '';
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const tomorrow = new Date(today); tomorrow.setDate(tomorrow.getDate() + 1);
+  const dd = new Date(d); dd.setHours(0, 0, 0, 0);
+  if (dd.getTime() === today.getTime()) return 'Сегодня';
+  if (dd.getTime() === tomorrow.getTime()) return 'Завтра';
+  return d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
+}
+
+function pluralYears(y) {
+  const d10 = y % 10;
+  const d100 = y % 100;
+  if (d10 === 1 && d100 !== 11) return 'год';
+  if (d10 >= 2 && d10 <= 4 && (d100 < 10 || d100 >= 20)) return 'года';
+  return 'лет';
+}
+
+function ageText(pet) {
+  if (pet.age === null || pet.age === undefined) {
+    if (pet.age_months) return `${pet.age_months} мес.`;
+    return null;
+  }
+  return `${pet.age} ${pluralYears(pet.age)}`;
+}
+
+function coursePrice(c) {
+  if (c.is_free) return 'Бесплатно';
+  if (c.price) return `${c.price} ₽`;
+  return 'Курс';
+}
+
+const ageCategoryLabel = { puppy: 'малыш', kitten: 'малыш', adult: 'взрослый', senior: 'старший' };
+
+function SectionCard({ icon: Icon, title, action, children, className = '' }) {
   return (
-    <div className="flex justify-between items-center py-2 border-b border-gray-100 last:border-0">
-      <span className="text-gray-500 text-sm">{label}</span>
-      <span className="text-gray-800 font-medium">{value}</span>
+    <section className={`bg-white rounded-3xl border border-primary-100 p-5 sm:p-6 shadow-[0_4px_24px_rgba(82,47,129,0.06)] ${className}`}>
+      <div className="flex items-center justify-between gap-3 mb-4">
+        <div className="flex items-center gap-3 min-w-0">
+          {Icon && (
+            <span className="flex-shrink-0 w-10 h-10 rounded-2xl bg-primary-50 text-primary-600 flex items-center justify-center">
+              <Icon className="w-5 h-5" />
+            </span>
+          )}
+          <h3 className="text-lg font-bold text-primary-900 truncate" style={{ fontFamily: 'Manrope, system-ui, sans-serif' }}>{title}</h3>
+        </div>
+        {action}
+      </div>
+      {children}
+    </section>
+  );
+}
+
+function EmptyState({ icon: Icon, title, subtitle, children }) {
+  return (
+    <div className="flex flex-col items-center text-center py-6">
+      <span className="w-14 h-14 rounded-2xl bg-primary-50 text-primary-400 flex items-center justify-center mb-3">
+        <Icon className="w-7 h-7" />
+      </span>
+      <p className="font-semibold text-gray-700">{title}</p>
+      {subtitle && <p className="text-sm text-gray-500 mt-1 max-w-xs">{subtitle}</p>}
+      {children && <div className="mt-4">{children}</div>}
     </div>
   );
 }
 
+function QuickActions({ pet, navigate, onAddEvent, onRecordWeight }) {
+  const actions = [
+    { label: 'Купить корм', icon: ShoppingCart, tint: 'bg-gold-100 text-gold-600', onClick: () => navigate('/shop') },
+    { label: 'Записать вес', icon: Weight, tint: 'bg-emerald-100 text-emerald-600', onClick: onRecordWeight },
+    { label: 'Добавить событие', icon: CalendarPlus, tint: 'bg-sky-100 text-sky-600', onClick: onAddEvent },
+    { label: 'Открыть дневник', icon: BookOpen, tint: 'bg-violet-100 text-violet-600', onClick: () => navigate(`/health-diary?pet_id=${pet.id}`) },
+    { label: 'Подобрать рацион', icon: UtensilsCrossed, tint: 'bg-amber-100 text-amber-600', onClick: () => navigate(`/food-recommendation?pet_id=${pet.id}`) },
+    { label: 'Курсы', icon: GraduationCap, tint: 'bg-indigo-100 text-indigo-600', onClick: () => navigate('/courses') },
+  ];
+  return (
+    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+      {actions.map((a) => {
+        const Icon = a.icon;
+        return (
+          <button
+            key={a.label}
+            onClick={a.onClick}
+            className="group flex flex-col items-center justify-center gap-2 min-h-[96px] p-4 rounded-2xl bg-white border border-primary-100 hover:border-primary-300 hover:shadow-[0_6px_20px_rgba(82,47,129,0.10)] hover:-translate-y-0.5 transition-all duration-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary-200"
+          >
+            <span className={`w-11 h-11 rounded-2xl flex items-center justify-center ${a.tint} group-hover:scale-105 transition-transform duration-200`}>
+              <Icon className="w-5 h-5" />
+            </span>
+            <span className="text-sm font-medium text-gray-700 text-center leading-tight">{a.label}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function RationBlock({ pet, navigate }) {
+  const food = pet.current_food;
+  const hasFood = food && (food.brand_name || food.product_name);
+  return (
+    <SectionCard icon={UtensilsCrossed} title="Рацион питомца">
+      {hasFood ? (
+        <div>
+          <div className="rounded-2xl bg-gradient-to-br from-gold-50 to-primary-50 border border-gold-200/60 p-4 mb-4">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                {food.brand_name && <p className="text-xs uppercase tracking-wide text-primary-500 font-semibold truncate">{food.brand_name}</p>}
+                <p className="text-lg font-bold text-primary-900 leading-snug">{food.product_name || food.brand_name}</p>
+                {food.daily_amount_grams && <p className="text-sm text-gray-600 mt-1">Норма: {food.daily_amount_grams} г/день</p>}
+              </div>
+              <span className="flex-shrink-0 inline-flex items-center gap-1 px-3 py-1 rounded-full bg-emerald-100 text-emerald-700 text-xs font-semibold">
+                <CheckCircle className="w-3.5 h-3.5" /> Активен
+              </span>
+            </div>
+            {pet.updated_at && <p className="text-xs text-gray-400 mt-3">Обновлён {new Date(pet.updated_at).toLocaleDateString('ru-RU')}</p>}
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <button onClick={() => navigate('/shop')} className={GOLD_CTA}><ShoppingCart className="w-4 h-4" /> Купить рацион</button>
+            <button onClick={() => navigate(`/food-recommendation?pet_id=${pet.id}`)} className={SOFT_CTA}><Edit className="w-4 h-4" /> Изменить рацион</button>
+          </div>
+          <button onClick={() => navigate(`/food-recommendation?pet_id=${pet.id}`)} className={`${GHOST_CTA} mt-3`}>
+            Открыть подбор корма <ChevronRight className="w-4 h-4" />
+          </button>
+        </div>
+      ) : (
+        <EmptyState
+          icon={UtensilsCrossed}
+          title="Подберите первый рацион для вашего питомца"
+          subtitle="Учтём вес, возраст и особенности — и предложим подходящий корм."
+        >
+          <button onClick={() => navigate(`/food-recommendation?pet_id=${pet.id}`)} className={GOLD_CTA}>
+            <Sparkles className="w-4 h-4" /> Подобрать корм
+          </button>
+        </EmptyState>
+      )}
+    </SectionCard>
+  );
+}
+
+function HealthBlock({ pet, allergies, onRecordWeight }) {
+  const tiles = [
+    { label: 'Вес', icon: Scale, value: pet.weight_kg ? `${pet.weight_kg} кг` : null, hint: 'Записать вес', onHint: onRecordWeight },
+    { label: 'Возраст', icon: Cake, value: ageText(pet), sub: pet.age_category ? ageCategoryLabel[pet.age_category] : null, hint: 'Указать дату', onHint: onRecordWeight },
+    { label: 'Стерилизация', icon: ShieldCheck, value: pet.is_neutered ? 'Да' : 'Нет' },
+  ];
+  const allergyNames = (allergies || [])
+    .map((a) => (a.allergy_detail && a.allergy_detail.display_name) || a.display_name || a.name)
+    .filter(Boolean);
+  const hasChronic = pet.chronic_conditions_notes && String(pet.chronic_conditions_notes).trim();
+  return (
+    <SectionCard icon={Heart} title="Здоровье">
+      <div className="grid grid-cols-3 gap-3 mb-4">
+        {tiles.map((t) => {
+          const Icon = t.icon;
+          return (
+            <div key={t.label} className="rounded-2xl bg-gray-50 p-3 text-center">
+              <Icon className="w-5 h-5 text-primary-500 mx-auto mb-1.5" />
+              {t.value ? (
+                <>
+                  <div className="text-base font-bold text-gray-800 leading-tight">{t.value}</div>
+                  {t.sub && <div className="text-[11px] text-gray-400">{t.sub}</div>}
+                </>
+              ) : (
+                <button onClick={t.onHint} className="text-xs text-primary-600 hover:text-primary-800 font-medium">{t.hint}</button>
+              )}
+              <div className="text-[11px] text-gray-500 mt-0.5">{t.label}</div>
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="space-y-3">
+        <div>
+          <p className="text-sm font-semibold text-gray-700 mb-1.5">Аллергии</p>
+          {allergyNames.length ? (
+            <div className="flex flex-wrap gap-1.5">
+              {allergyNames.map((n, i) => (
+                <span key={i} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-rose-50 text-rose-700 text-xs font-medium">
+                  <AlertCircle className="w-3 h-3" /> {n}
+                </span>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-gray-400">Аллергии не указаны</p>
+          )}
+        </div>
+        <div>
+          <p className="text-sm font-semibold text-gray-700 mb-1.5">Особенности здоровья</p>
+          <div className="flex flex-wrap gap-1.5">
+            {pet.sensitive_digestion && <span className="px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 text-xs font-medium">Чувствительное пищеварение</span>}
+            {hasChronic && <span className="px-2.5 py-1 rounded-full bg-violet-50 text-violet-700 text-xs font-medium">{pet.chronic_conditions_notes}</span>}
+            {!pet.sensitive_digestion && !hasChronic && <p className="text-sm text-gray-400">Особенности не отмечены</p>}
+          </div>
+        </div>
+      </div>
+    </SectionCard>
+  );
+}
+
+function RemindersBlock({ reminders, loading, petName, onAdd }) {
+  const items = (reminders || []).slice(0, 4);
+  const hasItems = (reminders || []).length > 0;
+  return (
+    <SectionCard
+      icon={Bell}
+      title="Напоминания"
+      action={hasItems ? (
+        <button onClick={onAdd} className="inline-flex items-center gap-1 text-sm font-medium text-primary-600 hover:text-primary-800">
+          <Plus className="w-4 h-4" /> Добавить
+        </button>
+      ) : null}
+    >
+      {loading ? (
+        <div className="space-y-2">
+          {[0, 1, 2].map((i) => <div key={i} className="h-14 rounded-2xl bg-gray-100 animate-pulse" />)}
+        </div>
+      ) : hasItems ? (
+        <div className="space-y-2">
+          {items.map((r) => {
+            const meta = reminderCategoryMeta[r.category] || reminderCategoryMeta.other;
+            const Icon = meta.icon;
+            return (
+              <div key={r.id} className={`flex items-center gap-3 p-3 rounded-2xl transition-colors ${r.is_overdue ? 'bg-red-50' : 'bg-gray-50 hover:bg-gray-100'}`}>
+                <span className={`flex-shrink-0 w-9 h-9 rounded-xl flex items-center justify-center ${meta.tint}`}><Icon className="w-4 h-4" /></span>
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-gray-900 truncate">{r.title}</p>
+                  <p className="text-xs text-gray-500">{meta.label} · {formatRuDate(r.reminder_date)}{r.reminder_time ? ` · ${String(r.reminder_time).slice(0, 5)}` : ''}</p>
+                </div>
+                {r.is_overdue && <span className="flex-shrink-0 px-2 py-0.5 rounded-full bg-red-100 text-red-700 text-[11px] font-semibold">Просрочено</span>}
+                {!r.is_overdue && r.is_upcoming && <span className="flex-shrink-0 px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 text-[11px] font-semibold">Скоро</span>}
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <EmptyState
+          icon={CalendarPlus}
+          title="Пока нет напоминаний"
+          subtitle={`Добавьте первое событие для ${petName}: вакцинация, обработка, контроль веса.`}
+        >
+          <button onClick={onAdd} className={GOLD_CTA}><Plus className="w-4 h-4" /> Создать первое напоминание</button>
+        </EmptyState>
+      )}
+    </SectionCard>
+  );
+}
+
+function BehaviorBlock({ pet, courses, navigate }) {
+  const problems = (pet.behavioral_problems || []).filter((p) => p && p !== 'none');
+  const hasProblems = problems.length > 0;
+  const courseList = (courses || []).slice(0, 2);
+  return (
+    <SectionCard icon={Brain} title="Поведение">
+      {hasProblems ? (
+        <div className="space-y-3">
+          {problems.slice(0, 4).map((code) => (
+            <div key={code} className="rounded-2xl border border-orange-100 bg-orange-50/50 p-3">
+              <div className="flex items-center gap-2 mb-1">
+                <AlertTriangle className="w-4 h-4 text-orange-500 flex-shrink-0" />
+                <p className="font-semibold text-gray-800">{behaviorLabel(code)}</p>
+              </div>
+              {behaviorDescriptions[code] && <p className="text-sm text-gray-600 mb-2">{behaviorDescriptions[code]}</p>}
+              <button onClick={() => navigate('/courses')} className="inline-flex items-center gap-1 text-sm font-medium text-primary-600 hover:text-primary-800">
+                Перейти к курсам <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          ))}
+          {courseList.length > 0 && (
+            <div className="pt-1">
+              <p className="text-sm font-semibold text-gray-700 mb-2">Рекомендуемые курсы</p>
+              <div className="space-y-2">
+                {courseList.map((c) => (
+                  <button key={c.id} onClick={() => navigate(`/courses/${c.id}`)} className="w-full flex items-center gap-3 p-3 rounded-2xl border border-primary-100 hover:border-primary-300 hover:shadow-sm transition-all text-left">
+                    <span className="flex-shrink-0 w-9 h-9 rounded-xl bg-primary-50 text-primary-600 flex items-center justify-center"><GraduationCap className="w-4 h-4" /></span>
+                    <span className="flex-1 min-w-0">
+                      <span className="block font-medium text-gray-900 truncate">{c.title}</span>
+                      <span className="block text-xs text-gray-500">{coursePrice(c)}</span>
+                    </span>
+                    <ChevronRight className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      ) : (
+        <EmptyState
+          icon={CheckCircle}
+          title="Проблем поведения не зафиксировано"
+          subtitle="Отличная работа! Поддержать форму помогут обучающие курсы."
+        >
+          <button onClick={() => navigate('/courses')} className={SOFT_CTA}><GraduationCap className="w-4 h-4" /> Открыть курсы</button>
+        </EmptyState>
+      )}
+    </SectionCard>
+  );
+}
+
+function CreateReminderModal({ petId, petName, onClose, onCreated }) {
+  const showSuccess = useToastStore((s) => s.success);
+  const showError = useToastStore((s) => s.error);
+  const [title, setTitle] = useState('');
+  const [category, setCategory] = useState('vaccination');
+  const [date, setDate] = useState('');
+  const [time, setTime] = useState('');
+  const [frequency, setFrequency] = useState('once');
+  const [submitting, setSubmitting] = useState(false);
+  const [formError, setFormError] = useState('');
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!title.trim()) { setFormError('Введите название'); return; }
+    if (!date) { setFormError('Выберите дату'); return; }
+    setSubmitting(true); setFormError('');
+    try {
+      await createReminder({
+        pet_id: petId,
+        title: title.trim(),
+        category,
+        reminder_date: date,
+        reminder_time: time || undefined,
+        frequency,
+      });
+      if (showSuccess) showSuccess('Напоминание создано');
+      onCreated();
+    } catch (err) {
+      const msg = (err && err.response && err.response.data && err.response.data.message) || 'Не удалось создать напоминание';
+      setFormError(msg);
+      if (showError) showError(msg);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <Modal isOpen onClose={onClose} title="Новое напоминание" size="md">
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <p className="text-sm text-gray-500">Для питомца: <span className="font-medium text-gray-700">{petName}</span></p>
+        <div>
+          <label className="block text-sm font-medium text-primary-800 mb-1.5">Название</label>
+          <input className="input" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Например: Прививка от бешенства" autoFocus />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-primary-800 mb-1.5">Тип</label>
+          <select className="input" value={category} onChange={(e) => setCategory(e.target.value)}>
+            {reminderCategoryOptions.map((c) => (
+              <option key={c} value={c}>{reminderCategoryMeta[c].label}</option>
+            ))}
+          </select>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="block text-sm font-medium text-primary-800 mb-1.5">Дата</label>
+            <input type="date" className="input" value={date} onChange={(e) => setDate(e.target.value)} />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-primary-800 mb-1.5">Время</label>
+            <input type="time" className="input" value={time} onChange={(e) => setTime(e.target.value)} />
+          </div>
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-primary-800 mb-1.5">Повтор</label>
+          <select className="input" value={frequency} onChange={(e) => setFrequency(e.target.value)}>
+            <option value="once">Однократно</option>
+            <option value="daily">Ежедневно</option>
+            <option value="weekly">Еженедельно</option>
+            <option value="monthly">Ежемесячно</option>
+            <option value="quarterly">Раз в квартал</option>
+            <option value="yearly">Ежегодно</option>
+          </select>
+        </div>
+        {formError && <p className="text-sm text-red-600">{formError}</p>}
+        <div className="flex justify-end gap-2 pt-2">
+          <Button type="button" variant="secondary" onClick={onClose}>Отмена</Button>
+          <Button type="submit" variant="primary" isLoading={submitting}>Создать</Button>
+        </div>
+      </form>
+    </Modal>
+  );
+}
+
+
+/* ============================================================
+   Этап 2.1 — Hero питомца + карта профиля (вспомогательные компоненты).
+   Только фронт, существующие данные. Бэкенд/API не меняются.
+   ============================================================ */
+
+function activityLabel(v) {
+  return ({ very_low: 'Очень низкая', low: 'Низкая', moderate: 'Средняя', high: 'Высокая', very_high: 'Очень высокая' })[v] || null;
+}
+function activityDotCount(v) {
+  return ({ very_low: 1, low: 1, moderate: 2, high: 3, very_high: 3 })[v] || 0;
+}
+function dietLabel(v) {
+  return ({ dry: 'Сухой корм', wet: 'Влажный корм', mixed: 'Смешанное', raw: 'Натуральное', homemade: 'Домашняя еда' })[v] || null;
+}
+function housingLabel(v) {
+  return ({ apartment: 'Квартира', house: 'Частный дом', farm: 'Ферма / село', outdoor: 'Вольер' })[v] || null;
+}
+
+function SexPill({ sex }) {
+  if (!sex) return null;
+  const female = sex === 'female';
+  return (
+    <span
+      className={`inline-flex items-center justify-center w-8 h-8 rounded-full text-base font-bold ${female ? 'bg-pink-100 text-pink-600' : 'bg-sky-100 text-sky-600'}`}
+      title={female ? 'Самка' : 'Самец'}
+    >
+      {female ? '♀' : '♂'}
+    </span>
+  );
+}
+
+function MetricPill({ icon: Icon, children, highlight }) {
+  return (
+    <span className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-sm font-medium ${highlight ? 'bg-gold-100 text-gold-700' : 'bg-primary-50 text-primary-700'}`}>
+      {Icon && <Icon className="w-4 h-4" />}
+      {children}
+    </span>
+  );
+}
+function InfoTile({ icon: Icon, iconText, tint = 'bg-primary-50 text-primary-600', label, value, placeholder = 'Не указано', onAdd, children }) {
+  let content;
+  if (children) {
+    content = <div className="mt-0.5">{children}</div>;
+  } else if (value) {
+    content = <p className="font-semibold text-gray-800 truncate">{value}</p>;
+  } else {
+    content = (
+      <button onClick={onAdd} className="mt-0.5 inline-flex items-center gap-1 text-sm text-primary-500 hover:text-primary-700 font-medium transition-colors">
+        <Plus className="w-3.5 h-3.5" /> {placeholder}
+      </button>
+    );
+  }
+  return (
+    <div className="flex items-center gap-3 rounded-2xl bg-gray-50/80 p-3.5 transition-colors hover:bg-gray-50">
+      <span className={`flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center font-bold ${tint}`}>
+        {Icon ? <Icon className="w-5 h-5" /> : <span className="text-base leading-none">{iconText}</span>}
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="text-xs text-gray-400 font-medium">{label}</p>
+        {content}
+      </div>
+    </div>
+  );
+}
+
+function ActivityDots({ level, onAdd }) {
+  const n = activityDotCount(level);
+  const label = activityLabel(level);
+  if (!n || !label) {
+    return (
+      <button onClick={onAdd} className="inline-flex items-center gap-1 text-sm text-primary-500 hover:text-primary-700 font-medium transition-colors">
+        <Plus className="w-3.5 h-3.5" /> Добавить
+      </button>
+    );
+  }
+  return (
+    <div className="flex items-center gap-2">
+      <span className="flex gap-1">
+        {[1, 2, 3].map((i) => (
+          <span key={i} className={`w-2 h-2 rounded-full ${i <= n ? 'bg-amber-400' : 'bg-gray-200'}`} />
+        ))}
+      </span>
+      <span className="font-semibold text-gray-800 text-sm">{label}</span>
+    </div>
+  );
+}
+
+function NeuterBadge({ value }) {
+  if (value) {
+    return (
+      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-700 text-xs font-semibold">
+        <CheckCircle className="w-3.5 h-3.5" /> Да
+      </span>
+    );
+  }
+  return <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-gray-100 text-gray-500 text-xs font-medium">Нет</span>;
+}
+
+function CompletenessBadge({ value }) {
+  if (typeof value !== 'number') {
+    return <span className="hidden md:inline text-xs text-gray-400 max-w-[220px] text-right">Чем точнее профиль, тем полезнее рекомендации</span>;
+  }
+  const pct = Math.max(0, Math.min(100, value));
+  return (
+    <div className="flex items-center gap-2">
+      <div className="hidden sm:block w-20 h-1.5 rounded-full bg-gray-100 overflow-hidden">
+        <div className="h-full rounded-full bg-gradient-to-r from-primary-500 to-gold-400" style={{ width: `${pct}%` }} />
+      </div>
+      <span className="text-xs font-semibold text-primary-700 whitespace-nowrap">Профиль {pct}%</span>
+    </div>
+  );
+}
+
+
+/* PuffPeek — Пуфыч выглядывает и машет НЕ постоянно, а раз в ~10 секунд.
+   Грузим анимацию один раз, повтор запускаем по таймеру через ref (без перемонтирования/мерцания).
+   Уважает prefers-reduced-motion. Только визуал, существующий Lottie-файл. */
+function PuffPeek({ size = 166, everyMs = 10000 }) {
+  const [data, setData] = useState(null);
+  const [failed, setFailed] = useState(false);
+  const lottieRef = useRef(null);
+  const reduced = typeof window !== 'undefined'
+    && typeof window.matchMedia === 'function'
+    && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  useEffect(() => {
+    let alive = true;
+    fetch('/lottie/puff/puff_hello_corner.json')
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error('not found'))))
+      .then((j) => { if (alive) setData(j); })
+      .catch(() => { if (alive) setFailed(true); });
+    return () => { alive = false; };
+  }, []);
+
+  useEffect(() => {
+    if (reduced || !data) return undefined;
+    const tid = setInterval(() => {
+      const inst = lottieRef.current;
+      if (inst && typeof inst.goToAndPlay === 'function') inst.goToAndPlay(0, true);
+    }, everyMs);
+    return () => clearInterval(tid);
+  }, [reduced, data, everyMs]);
+
+  const box = { width: size, height: size };
+  if (reduced || failed) {
+    return (
+      <img src="/purple-monster.png" alt="" aria-hidden="true" style={box}
+        className="object-contain select-none pointer-events-none" draggable={false} />
+    );
+  }
+  if (!data) return <div aria-hidden="true" style={box} />;
+  return (
+    <Lottie
+      lottieRef={lottieRef}
+      animationData={data}
+      loop={false}
+      autoplay
+      style={box}
+      className="select-none pointer-events-none"
+      aria-hidden="true"
+    />
+  );
+}
 

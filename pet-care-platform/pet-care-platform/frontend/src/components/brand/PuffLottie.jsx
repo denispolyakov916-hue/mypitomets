@@ -2,7 +2,7 @@
  * PuffLottie — маскот Пуфыч на Lottie. Ленивая загрузка нужной анимации из
  * /lottie/puff/{name}.json. Уважает prefers-reduced-motion и имеет статичный fallback.
  *
- * Доступные name: hello_wave, think, talk_gesture, talk_gesture2, celebrate_jump2,
+ * Доступные name: hello_wave, hello_corner, think, talk_gesture, talk_gesture2, celebrate_jump2,
  * sit, sit_down, stand_up, stand_up2, stay, bored_yawn, teleport_in, teleport_out
  */
 import { useEffect, useState } from 'react'
