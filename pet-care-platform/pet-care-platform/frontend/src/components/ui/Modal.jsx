@@ -80,44 +80,41 @@ function Modal({
   /**
    * Управление фокусом и скроллом
    */
+  // Фокус и блокировка скролла — ТОЛЬКО при открытии (не зависит от handleEscape,
+  // иначе на каждый ре-рендер родителя фокус прыгал бы на крестик при вводе текста).
   useEffect(() => {
-    if (isOpen) {
-      // Сохраняем текущий активный элемент
-      previousActiveElement.current = document.activeElement
-      
-      // Блокируем скролл body
-      document.body.style.overflow = 'hidden'
-      
-      // Добавляем слушатель Escape
-      document.addEventListener('keydown', handleEscape)
-      
-      // Устанавливаем фокус на модальное окно или указанный элемент
-      setTimeout(() => {
-        if (initialFocus?.current) {
-          initialFocus.current.focus()
-        } else if (modalRef.current) {
-          const focusable = modalRef.current.querySelector(
-            'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-          )
-          if (focusable) {
-            focusable.focus()
-          } else {
-            modalRef.current.focus()
-          }
-        }
-      }, 10)
-      
-      return () => {
-        document.body.style.overflow = ''
-        document.removeEventListener('keydown', handleEscape)
-        
-        // Возвращаем фокус на предыдущий элемент
-        if (previousActiveElement.current) {
-          previousActiveElement.current.focus()
+    if (!isOpen) return undefined
+    previousActiveElement.current = document.activeElement
+    document.body.style.overflow = 'hidden'
+    const focusTimer = setTimeout(() => {
+      if (initialFocus?.current) {
+        initialFocus.current.focus()
+      } else if (modalRef.current) {
+        const focusable = modalRef.current.querySelector(
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+        )
+        if (focusable) {
+          focusable.focus()
+        } else {
+          modalRef.current.focus()
         }
       }
+    }, 10)
+    return () => {
+      clearTimeout(focusTimer)
+      document.body.style.overflow = ''
+      if (previousActiveElement.current) {
+        previousActiveElement.current.focus()
+      }
     }
-  }, [isOpen, handleEscape, initialFocus])
+  }, [isOpen, initialFocus])
+
+  // Слушатель Escape — отдельным эффектом (пере-навешивание безвредно, фокус не трогает).
+  useEffect(() => {
+    if (!isOpen) return undefined
+    document.addEventListener('keydown', handleEscape)
+    return () => document.removeEventListener('keydown', handleEscape)
+  }, [isOpen, handleEscape])
   
   /**
    * Ловушка фокуса

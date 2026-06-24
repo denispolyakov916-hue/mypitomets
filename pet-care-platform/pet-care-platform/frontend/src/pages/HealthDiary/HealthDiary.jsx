@@ -2,7 +2,7 @@
  * Дневник здоровья питомца с календарём и вкладками Обзор / Календарь / Список
  */
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuthStore } from '../../store/authStore'
 import { usePets } from '../../hooks/usePets'
@@ -13,7 +13,7 @@ import Modal, { ModalFooter, ConfirmModal } from '../../components/ui/Modal'
 import { Button } from '../../components/ui/Button'
 import Input from '../../components/ui/Input'
 import { usePetEvents } from '../../hooks/usePetEvents'
-import { updateCalendarEvent } from '../../api/calendar'
+import { updateCalendarEvent, deleteCalendarEvent, getPetCalendarEvents } from '../../api/calendar'
 import { migrateDiaryEventsToBackend } from '../../utils/migrateDiaryToBackend'
 
 /** Тень как у мобильной кнопки «Начать бесплатно» (MobileBottomNav) */
@@ -76,7 +76,6 @@ function HealthDiary() {
     refetch,
     createEvent,
     completeEvent,
-    deleteEvent,
   } = usePetEvents(selectedPetId)
 
   // Адаптер backend-события → форма, ожидаемая UI и SimpleCalendar (date = Date).
@@ -92,6 +91,9 @@ function HealthDiary() {
     })),
     [rawEvents]
   )
+
+  // Защита от двойного удаления (двойной клик по «Удалить» / повторный вызов).
+  const deletingRef = useRef(false)
   const [selectedDate, setSelectedDate] = useState(new Date())
   const [activeTab, setActiveTab] = useState('overview')
   const [deleteConfirmId, setDeleteConfirmId] = useState(null)
@@ -149,13 +151,27 @@ function HealthDiary() {
     return refetch()
   }
 
-  const performDelete = () => {
-    if (!deleteConfirmId) return
+  const performDelete = async () => {
+    if (!deleteConfirmId || deletingRef.current) return
+    deletingRef.current = true
     const id = deleteConfirmId
     setDeleteConfirmId(null)
-    deleteEvent(id)
-      .then(() => showInfo('Событие удалено'))
-      .catch(() => showInfo('Не удалось удалить событие'))
+    try {
+      // DELETE возвращает 204 (промис иногда реджектит из-за тела ответа), а повторный
+      // вызов даёт 404 — поэтому судим по факту: перечитываем список и проверяем наличие.
+      await deleteCalendarEvent(id).catch(() => {})
+      let stillThere = false
+      try {
+        const data = await getPetCalendarEvents(selectedPetId)
+        stillThere = !!(data && (data.events || []).some((e) => String(e.id) === String(id)))
+      } catch {
+        stillThere = false
+      }
+      await refetch()
+      showInfo(stillThere ? 'Не удалось удалить событие' : 'Событие удалено')
+    } finally {
+      deletingRef.current = false
+    }
   }
 
   const openAddModal = (date = selectedDate) => {
