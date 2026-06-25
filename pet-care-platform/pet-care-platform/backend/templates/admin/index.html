@@ -197,7 +197,11 @@
 
     <!-- Быстрые действия -->
     <div class="quick-actions">
-        <a href="{% url 'admin-dashboard' %}" class="action-card">
+        {% url 'admin-dashboard' as admin_dashboard_url %}
+        {% url 'admin-pet-analytics' as admin_pet_analytics_url %}
+        {% url 'admin-recommendations' as admin_recommendations_url %}
+        {% if admin_dashboard_url %}
+        <a href="{{ admin_dashboard_url }}" class="action-card">
             <div class="action-icon blue">📊</div>
             <div class="action-content">
                 <h3>Дашборд</h3>
@@ -208,8 +212,10 @@
                 </div>
             </div>
         </a>
+        {% endif %}
 
-        <a href="{% url 'admin-pet-analytics' %}" class="action-card">
+        {% if admin_pet_analytics_url %}
+        <a href="{{ admin_pet_analytics_url }}" class="action-card">
             <div class="action-icon green">🐾</div>
             <div class="action-content">
                 <h3>Аналитика PetID</h3>
@@ -220,8 +226,10 @@
                 </div>
             </div>
         </a>
+        {% endif %}
 
-        <a href="{% url 'admin-recommendations' %}" class="action-card">
+        {% if admin_recommendations_url %}
+        <a href="{{ admin_recommendations_url }}" class="action-card">
             <div class="action-icon purple">⚙️</div>
             <div class="action-content">
                 <h3>Рекомендации</h3>
@@ -232,6 +240,7 @@
                 </div>
             </div>
         </a>
+        {% endif %}
 
         <a href="{% url 'admin:shop_order_changelist' %}?status__exact=pending" class="action-card">
             <div class="action-icon orange">📦</div>

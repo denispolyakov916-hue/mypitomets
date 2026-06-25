@@ -144,11 +144,13 @@ class ProductAdmin(ExportCsvMixin, admin.ModelAdmin):
         if obj.compare_price and obj.compare_price > obj.price:
             discounted = obj.price
             percent = round((1 - float(obj.price) / float(obj.compare_price)) * 100)
+            compare_str = f'{obj.compare_price:.0f}'
+            discounted_str = f'{discounted:.0f}'
             return format_html(
-                '<span style="text-decoration: line-through; color: #999;">{:.0f}₽</span> '
-                '<span style="color: #e53e3e; font-weight: bold;">{:.0f}₽</span> '
+                '<span style="text-decoration: line-through; color: #999;">{}₽</span> '
+                '<span style="color: #e53e3e; font-weight: bold;">{}₽</span> '
                 '<span style="background: #e53e3e; color: white; padding: 2px 4px; border-radius: 3px; font-size: 10px;">-{}%</span>',
-                obj.compare_price, discounted, percent
+                compare_str, discounted_str, percent
             )
         return f"{obj.price:.0f}₽"
     price_display.short_description = 'Цена'
@@ -166,9 +168,10 @@ class ProductAdmin(ExportCsvMixin, admin.ModelAdmin):
             return "Нет отзывов"
 
         stars = "★" * int(rating) + "☆" * (5 - int(rating))
+        rating_str = f'{rating:.1f}'
         return format_html(
-            '<span style="color: #fbbf24;">{}</span> {:.1f} ({})',
-            stars, rating, obj.get_reviews_count()
+            '<span style="color: #fbbf24;">{}</span> {} ({})',
+            stars, rating_str, obj.get_reviews_count()
         )
     rating_display.short_description = 'Рейтинг'
 
