@@ -843,6 +843,16 @@ export const getFeedingPlan = async (petId, params = {}) => {
 }
 
 /**
+ * Сохранить выбранную комбинацию рациона (recipe-режим) в Pet.current_food.
+ * Сервер сам пересчитывает граммовку/дни/стоимость.
+ * @param {string} petId
+ * @param {{components: Array<{component_type:string, recipe_id:string, offer_id:string}>, period_days?:number}} payload
+ */
+export const saveRation = async (petId, payload) => {
+  return await api.post(`/pets/${petId}/save-ration/`, payload)
+}
+
+/**
  * Получение альтернативных продуктов для компонента рациона
  * 
  * @param {string} petId - UUID питомца

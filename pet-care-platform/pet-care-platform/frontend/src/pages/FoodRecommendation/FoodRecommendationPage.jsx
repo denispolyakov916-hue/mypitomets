@@ -20,12 +20,14 @@ import {
   getPet, 
   getFeedingPlan, 
   getFoodAlternatives,
+  saveRation,
   FEEDING_TYPE_OPTIONS,
   PLAN_VARIANT_OPTIONS,
   FEEDING_PERIOD_OPTIONS,
   getMultiRatioPresetOptions,
 } from '../../api/pets';
 import { addToCart, getCategories, getProductsV2 } from '../../api/shop';
+import { useToastStore } from '../../store/toastStore';
 import { Chart as ChartJS, ArcElement, Tooltip } from 'chart.js';
 import { Doughnut, Pie } from 'react-chartjs-2';
 
@@ -2172,14 +2174,15 @@ export default function FoodRecommendationPage() {
         // Добавляем основные компоненты (корма)
         (plan.components || []).forEach((comp) => {
           const type = comp.product_type;
+          // recipe-режим: альтернативы приходят встроенными в компонент
+          const embedded = Array.isArray(comp.alternatives) ? comp.alternatives : [];
           if (!states[type]) {
             states[type] = {
-              alternatives: [comp],
+              alternatives: [comp, ...embedded],
               currentIndex: 0,
             };
           } else {
-            // Добавляем как альтернативу если тип уже есть
-            states[type].alternatives.push(comp);
+            states[type].alternatives.push(comp, ...embedded);
           }
         });
         
@@ -2529,6 +2532,42 @@ export default function FoodRecommendationPage() {
     return sum + (price * packages);
   }, 0);
   
+  const showSuccess = useToastStore((st) => st.success);
+  const showError = useToastStore((st) => st.error);
+  const [savingRation, setSavingRation] = useState(false);
+  // recipe-режим: компоненты из нашей базы (нет product_id, есть recipe_id)
+  const isRecipeMode = (feedingPlan?.components || []).some((c) => c?.source === 'dinozavrik' || c?.recipe_id);
+
+  // Сохранить ВЫБРАННУЮ комбинацию рациона через backend (recipe-режим)
+  const handleSaveRation = async () => {
+    if (!selectedPet) return;
+    const typeMap = { dry_food: 'dry', wet_food: 'wet', treat: 'treat' };
+    const components = currentComponents
+      .filter((entry) => !entry.type.startsWith('supplement_'))
+      .map((entry) => entry.component)
+      .filter((c) => c && c.recipe_id && c.offer_id)
+      .map((c) => ({
+        component_type: typeMap[c.product_type] || (c.product_type || '').replace('_food', ''),
+        recipe_id: c.recipe_id,
+        offer_id: c.offer_id,
+      }));
+    if (components.length === 0) {
+      if (showError) showError('Нет позиций для сохранения');
+      return;
+    }
+    try {
+      setSavingRation(true);
+      await saveRation(selectedPet.id, { components, period_days: period });
+      if (showSuccess) showSuccess('Рацион сохранён в карточке питомца');
+      navigate(`/pet-id/${selectedPet.id}`);
+    } catch (err) {
+      console.error('Ошибка сохранения рациона:', err);
+      if (showError) showError('Не удалось сохранить рацион');
+    } finally {
+      setSavingRation(false);
+    }
+  };
+
   // Добавление в корзину
   const handleAddToCart = async () => {
     try {
@@ -2910,16 +2949,35 @@ export default function FoodRecommendationPage() {
                       </span>
                     )}
                   </p>
-                  <button 
-                    onClick={handleAddToCart}
-                    disabled={isPlanLoading || totalCost === 0}
-                    className="w-full py-3.5 bg-accent-500 hover:bg-accent-600 text-white 
-                               rounded-xl font-medium transition-all flex items-center 
-                               justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <ShoppingCart className="w-5 h-5" />
-                    Добавить в корзину
-                  </button>
+                  {isRecipeMode ? (
+                    <>
+                      <button
+                        onClick={handleSaveRation}
+                        disabled={savingRation}
+                        className="w-full py-3.5 bg-accent-500 hover:bg-accent-600 text-white rounded-xl font-medium transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <Check className="w-5 h-5" />
+                        {savingRation ? 'Сохранение…' : 'Сохранить рацион'}
+                      </button>
+                      <button
+                        type="button"
+                        disabled
+                        title="Эти корма появятся в продаже позже"
+                        className="w-full mt-3 py-2.5 rounded-xl border-2 border-gray-200 text-gray-400 font-medium flex items-center justify-center gap-2 cursor-not-allowed"
+                      >
+                        <ShoppingCart className="w-5 h-5" /> Купить — скоро в продаже
+                      </button>
+                    </>
+                  ) : (
+                    <button 
+                      onClick={handleAddToCart}
+                      disabled={isPlanLoading || totalCost === 0}
+                      className="w-full py-3.5 bg-accent-500 hover:bg-accent-600 text-white rounded-xl font-medium transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <ShoppingCart className="w-5 h-5" />
+                      Добавить в корзину
+                    </button>
+                  )}
                   <button
                     type="button"
                     onClick={() => navigate('/shop')}

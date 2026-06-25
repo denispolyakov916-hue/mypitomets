@@ -981,9 +981,45 @@ function QuickActions({ pet, navigate, onAddEvent, onRecordWeight }) {
 function RationBlock({ pet, navigate }) {
   const food = pet.current_food;
   const hasFood = food && (food.brand_name || food.product_name);
+  const ration = food && food.source === 'recipe_ration' && Array.isArray(food.components) && food.components.length > 0 ? food : null;
+  const compLabel = { dry: 'Сухой', wet: 'Влажный', treat: 'Лакомство' };
+  const fmtMoney = (v) => (v ? `${Math.round(v).toLocaleString('ru-RU')} ₽` : null);
   return (
     <SectionCard icon={UtensilsCrossed} title="Рацион питомца">
-      {hasFood ? (
+      {ration ? (
+        <div>
+          <div className="flex items-center justify-between gap-2 mb-3">
+            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-emerald-100 text-emerald-700 text-xs font-semibold">
+              <CheckCircle className="w-3.5 h-3.5" /> Сохранённый рацион
+            </span>
+            {ration.total_monthly_cost && <span className="text-sm font-bold text-primary-900">≈ {fmtMoney(ration.total_monthly_cost)}/мес</span>}
+          </div>
+          <div className="space-y-2">
+            {ration.components.map((c, i) => (
+              <div key={i} className="rounded-2xl bg-gray-50 p-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="text-[11px] uppercase tracking-wide text-primary-500 font-semibold truncate">
+                      {compLabel[c.component_type] || c.component_type}{c.brand ? ` · ${c.brand}` : ''}
+                    </p>
+                    <p className="font-semibold text-gray-800 leading-snug">{c.recipe_name}</p>
+                  </div>
+                  {c.estimated_monthly_cost && <span className="flex-shrink-0 text-sm text-gray-600 whitespace-nowrap">{fmtMoney(c.estimated_monthly_cost)}/мес</span>}
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  {c.daily_grams ? `${c.daily_grams} г/день` : ''}
+                  {c.days_supply ? ` · пачки хватит на ${c.days_supply} дн` : ''}
+                  {c.packages_needed ? ` · ${c.packages_needed} уп/${ration.period_days || 30} дн` : ''}
+                </p>
+              </div>
+            ))}
+          </div>
+          <p className="text-[11px] text-gray-400 mt-2">Источник: Dinozavrik · собственная база питания</p>
+          <div className="flex flex-wrap gap-2 mt-3">
+            <button onClick={() => navigate(`/food-recommendation?pet_id=${pet.id}`)} className={SOFT_CTA}><Edit className="w-4 h-4" /> Изменить рацион</button>
+          </div>
+        </div>
+      ) : hasFood ? (
         <div>
           <div className="rounded-2xl bg-gradient-to-br from-gold-50 to-primary-50 border border-gold-200/60 p-4 mb-4">
             <div className="flex items-start justify-between gap-3">
