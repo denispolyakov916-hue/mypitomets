@@ -79,11 +79,11 @@ class OrderItemInline(admin.TabularInline):
 @admin.register(Product)
 class ProductAdmin(ExportCsvMixin, admin.ModelAdmin):
     list_display = (
-        'name', 'price_display', 'animal_type', 'category_display', 'brand',
+        'name', 'price_display', 'animal_type', 'category_display', 'brand', 'supplier',
         'rating_display', 'order_count', 'is_available'
     )
     list_filter = (
-        'animal_type', 'product_group', 'new_category', 'brand', 'is_available',
+        'animal_type', 'product_group', 'new_category', 'brand', 'supplier', 'is_available',
         'is_grain_free', 'is_hypoallergenic', 'is_veterinary',
         'age_group', 'size_group', 'status',
         'created_at', 'updated_at'
@@ -97,7 +97,7 @@ class ProductAdmin(ExportCsvMixin, admin.ModelAdmin):
     list_editable = ('is_available',)
     list_per_page = 50
     date_hierarchy = 'created_at'
-    raw_id_fields = ('brand', 'new_category')
+    raw_id_fields = ('brand', 'new_category', 'supplier')
     autocomplete_fields = ['brand', 'new_category']
     actions = [
         'mark_as_in_stock', 'mark_as_out_of_stock',
@@ -112,7 +112,7 @@ class ProductAdmin(ExportCsvMixin, admin.ModelAdmin):
             'fields': ('price', 'compare_price')
         }),
         ('Новая классификация', {
-            'fields': ('animal_type', 'new_category', 'product_group', 'brand')
+            'fields': ('animal_type', 'new_category', 'product_group', 'brand', 'supplier')
         }),
         ('Фильтры', {
             'fields': ('age_group', 'size_group', 'is_grain_free', 'is_hypoallergenic', 'is_veterinary'),
@@ -603,11 +603,12 @@ class ProductSKUInline(admin.TabularInline):
     model = ProductSKU
     extra = 0
     fields = (
-        'sku', 'name', 'price', 'compare_price', 'available',
+        'sku', 'supplier_offer', 'name', 'price', 'compare_price', 'available',
         'weight_display', 'flavor_display', 'size_code', 'color_display',
         'is_default', 'sort_order'
     )
     readonly_fields = ()
+    raw_id_fields = ('supplier_offer',)
 
 
 @admin.register(Category)
@@ -686,12 +687,12 @@ class ProductSKUAdmin(admin.ModelAdmin):
     list_filter = ('available', 'is_default', 'status')
     search_fields = ('sku', 'name', 'product__name', 'kotmatros_variant_id')
     ordering = ('product', 'sort_order')
-    raw_id_fields = ('product',)
+    raw_id_fields = ('product', 'supplier_offer')
     list_per_page = 50
     
     fieldsets = (
         ('Товар', {
-            'fields': ('product', 'sku', 'name', 'kotmatros_variant_id')
+            'fields': ('product', 'supplier_offer', 'sku', 'name', 'kotmatros_variant_id')
         }),
         ('Цены', {
             'fields': ('price', 'compare_price')

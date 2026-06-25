@@ -582,6 +582,10 @@ class Product(models.Model):
         'pets.FoodRecipe', null=True, blank=True, on_delete=models.SET_NULL,
         related_name='products', verbose_name='Рецепт корма (база питания)',
     )
+    supplier = models.ForeignKey(
+        'pets.Supplier', null=True, blank=True, on_delete=models.SET_NULL,
+        related_name='products', verbose_name='Поставщик',
+    )
 
     objects = ProductManager()
     
@@ -954,6 +958,10 @@ class ProductSKU(models.Model):
         verbose_name='ID SKU в Kotmatros'
     )
     sku = models.CharField(max_length=100, blank=True, verbose_name='Артикул')
+    supplier_offer = models.ForeignKey(
+        'pets.SupplierOffer', null=True, blank=True, on_delete=models.SET_NULL,
+        related_name='shop_skus', verbose_name='Оффер поставщика',
+    )
     name = models.CharField(
         max_length=255, 
         blank=True,

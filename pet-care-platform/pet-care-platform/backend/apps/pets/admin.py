@@ -332,6 +332,17 @@ class SupplierOfferInline(admin.TabularInline):
     can_delete = False
 
 
+@admin.register(SupplierOffer)
+class SupplierOfferAdmin(admin.ModelAdmin):
+    """Standalone-реестр офферов: нужен, чтобы raw_id_fields на ProductSKU.supplier_offer давал рабочую лупу."""
+    list_display = ('article_number', 'package_name', 'supplier', 'food_recipe', 'price', 'agency_percent', 'in_stock')
+    list_filter = ('in_stock', 'supplier')
+    search_fields = ('article_number', 'package_name', 'barcode', 'food_recipe__name')
+    raw_id_fields = ('food_recipe', 'supplier')
+    ordering = ('article_number',)
+    list_per_page = 50
+
+
 @admin.register(FoodRecipe)
 class FoodRecipeAdmin(admin.ModelAdmin):
     list_display = (
