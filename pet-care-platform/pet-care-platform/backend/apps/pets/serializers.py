@@ -689,8 +689,13 @@ class PetUpdateSerializer(serializers.Serializer):
             raise serializers.ValidationError("current_food должен быть объектом")
 
         source = value.get('source')
+        if source == 'recipe_ration':
+            # Комбинация рациона (dry/wet) из нашей базы — пишется через POST /save-ration/.
+            if not isinstance(value.get('components'), list) or not value.get('components'):
+                raise serializers.ValidationError("current_food.components обязателен для source='recipe_ration'")
+            return value
         if source not in ['catalog', 'other']:
-            raise serializers.ValidationError("current_food.source должен быть 'catalog' или 'other'")
+            raise serializers.ValidationError("current_food.source должен быть 'catalog', 'other' или 'recipe_ration'")
 
         if source == 'catalog' and not value.get('food_id'):
             raise serializers.ValidationError("current_food.food_id обязателен для source='catalog'")

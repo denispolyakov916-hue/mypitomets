@@ -481,3 +481,114 @@ class FoodStatisticsView(APIView):
                 'avg': round(sum(prices) / len(prices), 2) if prices else 0
             }
         })
+
+
+class PetSaveRationView(APIView):
+    """POST /api/pets/{pet_id}/save-ration/ — сохранить ВЫБРАННУЮ комбинацию рациона в Pet.current_food.
+
+    Тело: { "components": [{"component_type":"dry","recipe_id":..,"offer_id":..},
+                           {"component_type":"wet","recipe_id":..,"offer_id":..}],
+            "period_days": 30 }
+    Клиент шлёт только выбранные recipe_id/offer_id (в т.ч. перелистнутые альтернативы).
+    Сервер сам пересчитывает граммовку/дни/стоимость и проверяет пригодность/аллергию
+    (медицинскую безопасность нельзя обойти даже при сохранении).
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, pet_id):
+        import math
+        from django.utils import timezone
+        from .models import FoodRecipe, SupplierOffer
+        from .food_recipe_candidate_provider import _pet_context
+
+        pet = get_object_or_404(Pet, id=pet_id, owner=request.user)
+
+        raw = request.data.get('components')
+        if not isinstance(raw, list) or not raw:
+            return Response({'error': 'components обязателен (список выбранных позиций)'},
+                            status=status.HTTP_400_BAD_REQUEST)
+        try:
+            period_days = int(request.data.get('period_days') or 30)
+        except (TypeError, ValueError):
+            period_days = 30
+
+        warnings = []
+        mer = None
+        if pet.weight:
+            try:
+                mer = float(calorie_calculator.calculate_daily_calories(pet).mer)
+            except Exception:  # noqa: BLE001
+                warnings.append('расчёт калорий недоступен')
+        else:
+            warnings.append('нет веса питомца — граммовка/стоимость не рассчитаны')
+
+        ctx = _pet_context(pet)
+        types = [c.get('component_type') for c in raw]
+        both = ('dry' in types and 'wet' in types)
+        share_map = {'dry': 0.7 if both else 1.0, 'wet': 0.3 if both else 1.0, 'treat': 0.0}
+
+        out_components = []
+        for item in raw:
+            ctype = item.get('component_type')
+            recipe = FoodRecipe.objects.filter(id=item.get('recipe_id'), is_recommendable=True).first()
+            if not recipe:
+                return Response({'error': 'рецепт не найден или не разрешён в подбор: %s' % item.get('recipe_id')},
+                                status=status.HTTP_400_BAD_REQUEST)
+            offer = SupplierOffer.objects.filter(
+                id=item.get('offer_id'), food_recipe=recipe,
+                in_stock=True, price__isnull=False, package_weight_kg__isnull=False,
+            ).first()
+            if not offer:
+                return Response({'error': 'оффер недоступен (нет в наличии/цены/веса): %s' % item.get('offer_id')},
+                                status=status.HTTP_400_BAD_REQUEST)
+            if recipe.species and pet.species and recipe.species != pet.species:
+                return Response({'error': '%s: не для вида %s' % (recipe.name, pet.species)},
+                                status=status.HTTP_400_BAD_REQUEST)
+            # Аллергия — медицинская безопасность, нельзя обойти.
+            text = ' '.join([recipe.main_protein or ''] + list(recipe.allergens or []) + list(recipe.ingredients or [])).lower()
+            conflict = next((a for a in ctx['allergens'] if a and a in text), None)
+            if conflict:
+                return Response({'error': '%s: конфликт с аллергией «%s»' % (recipe.name, conflict)},
+                                status=status.HTTP_400_BAD_REQUEST)
+
+            share = share_map.get(ctype, 1.0)
+            kcal100 = float(recipe.kcal_per_100g) if recipe.kcal_per_100g else None
+            pack_g = float(offer.package_weight_kg) * 1000
+            comp_kcal = (mer or 0) * share
+            dg = round(comp_kcal / kcal100 * 100, 1) if (mer and kcal100) else None
+            days = int(pack_g / dg) if (dg and pack_g) else None
+            packs = max(1, math.ceil(period_days * dg / pack_g)) if (dg and pack_g) else None
+            monthly = round(packs * float(offer.price), 2) if (packs and offer.price) else None
+
+            out_components.append({
+                'component_type': ctype,
+                'recipe_id': str(recipe.id),
+                'recipe_name': recipe.name,
+                'brand': recipe.brand,
+                'offer_id': str(offer.id),
+                'article_number': offer.article_number,
+                'source': recipe.source or 'dinozavrik',
+                'kcal_per_100g': kcal100,
+                'package_weight_kg': float(offer.package_weight_kg),
+                'price': float(offer.price),
+                'agency_percent': float(offer.agency_percent) if offer.agency_percent is not None else None,
+                'daily_grams': dg,
+                'days_supply': days,
+                'packages_needed': packs,
+                'estimated_monthly_cost': monthly,
+            })
+
+        total_monthly = sum(c['estimated_monthly_cost'] for c in out_components if c['estimated_monthly_cost'])
+        current_food = {
+            'source': 'recipe_ration',
+            'saved_at': timezone.now().isoformat(),
+            'period_days': period_days,
+            'daily_calories': round(mer, 0) if mer else None,
+            'total_monthly_cost': round(total_monthly, 2) if total_monthly else None,
+            'components': out_components,
+            'warnings': warnings,
+        }
+        pet.current_food = current_food
+        pet.save(update_fields=['current_food', 'updated_at'])
+        return Response({'current_food': current_food}, status=status.HTTP_200_OK)

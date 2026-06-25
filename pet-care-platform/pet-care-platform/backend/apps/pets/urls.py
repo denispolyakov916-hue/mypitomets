@@ -50,7 +50,8 @@ from .views_breeds import (
 )
 from .views_food import (
     PetDietCalculationView, PetFoodRecommendationsView, FoodStatisticsView,
-    PetFeedingPlanView, PetFoodAlternativesView, PetActiveDayCaloriesView
+    PetFeedingPlanView, PetFoodAlternativesView, PetActiveDayCaloriesView,
+    PetSaveRationView
 )
 from .reminder_views import (
     ReminderListView,
@@ -162,6 +163,7 @@ urlpatterns = [
     
     # Быстрый подбор корма (упрощённый)
     path('<uuid:pet_id>/recommend-food/', PetFoodRecommendationsView.as_view(), name='pet-recommend-food'),
+    path('<uuid:pet_id>/save-ration/', PetSaveRationView.as_view(), name='pet-save-ration'),
     path('<uuid:pet_id>/food-recommendations/', PetFoodRecommendationsView.as_view(), name='pet-food-recommendations'),
     
     # Полный план питания (GET - по умолчанию, POST - с параметрами)
