@@ -5,7 +5,7 @@
 from django.contrib import admin
 from django.utils.html import format_html
 from django.urls import reverse
-from .models import Pet, FoodRecipe, SupplierOffer, FoodBrandRule
+from .models import Pet, FoodRecipe, Supplier, SupplierOffer, FoodBrandRule
 
 
 @admin.register(Pet)
@@ -327,7 +327,7 @@ class HasBusinessPriorityFilter(admin.SimpleListFilter):
 class SupplierOfferInline(admin.TabularInline):
     model = SupplierOffer
     extra = 0
-    fields = ('package_name', 'price', 'agency_percent', 'in_stock', 'article_number', 'barcode')
+    fields = ('package_name', 'supplier', 'price', 'agency_percent', 'in_stock', 'article_number', 'barcode')
     readonly_fields = ('article_number', 'barcode')
     can_delete = False
 
@@ -394,3 +394,13 @@ class FoodBrandRuleAdmin(admin.ModelAdmin):
     list_filter = ('enabled',)
     search_fields = ('brand', 'comment')
     ordering = ('-priority', 'brand')
+
+
+@admin.register(Supplier)
+class SupplierAdmin(admin.ModelAdmin):
+    list_display = ('name', 'code', 'supplier_type', 'is_active', 'payment_model', 'settlement_model', 'updated_at')
+    list_editable = ('is_active',)
+    list_filter = ('is_active', 'supplier_type', 'payment_model', 'settlement_model')
+    search_fields = ('code', 'name', 'contact_name', 'contact_email')
+    ordering = ('name',)
+    readonly_fields = ('created_at', 'updated_at')

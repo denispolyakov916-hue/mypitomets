@@ -1101,7 +1101,7 @@ class PetAnalysisHistory(models.Model):
 from .reminder_models import Reminder, ReminderCategory, ReminderFrequency
 from .breed_models import Breed, BreedHealth, BreedNutrition, BreedCare
 from .nutrition_models import HealthCondition, Allergy, PetHealthCondition, PetAllergy, PetFoodExclusion
-from .food_recipe_models import FoodRecipe, SupplierOffer, SupplierRawItem, FoodBrandRule  # noqa: F401  (база питания)
+from .food_recipe_models import FoodRecipe, Supplier, SupplierOffer, SupplierRawItem, FoodBrandRule  # noqa: F401  (база питания)
 # ============================================================================
 # МОДЕЛИ КАЛЕНДАРЯ СОБЫТИЙ (перенесены из calendar app)
 # ============================================================================

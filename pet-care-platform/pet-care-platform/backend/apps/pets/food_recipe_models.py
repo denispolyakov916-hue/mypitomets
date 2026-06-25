@@ -133,6 +133,45 @@ class FoodRecipe(models.Model):
         return f'{self.name} [{self.species}/{self.food_form}]'
 
 
+class Supplier(models.Model):
+    """Поставщик товаров/кормов (Динозаврик и будущие). Заменяет строковый source оффера."""
+
+    SUPPLIER_TYPE = [('feed', 'Фид'), ('api', 'API'), ('manual', 'Вручную')]
+    PAYMENT_MODEL = [
+        ('partner_checkout', 'Оплата у партнёра'),
+        ('platform_checkout', 'Оплата на платформе'),
+        ('cash_on_pickup', 'Оплата при получении'),
+    ]
+    SETTLEMENT_MODEL = [
+        ('agent_commission', 'Агентская комиссия'),
+        ('resale_margin', 'Перепродажная маржа'),
+        ('manual_reconciliation', 'Ручная сверка'),
+    ]
+
+    id = models.UUIDField(primary_key=True, default=generate_uuid7, editable=False)
+    code = models.CharField('Код', max_length=50, unique=True, db_index=True)
+    name = models.CharField('Название', max_length=200)
+    supplier_type = models.CharField('Тип', max_length=20, choices=SUPPLIER_TYPE, default='feed')
+    is_active = models.BooleanField('Активен', default=True, db_index=True)
+    website_url = models.URLField('Сайт', blank=True)
+    contact_name = models.CharField('Контактное лицо', max_length=200, blank=True)
+    contact_email = models.EmailField('Email', blank=True)
+    payment_model = models.CharField('Модель оплаты', max_length=30, choices=PAYMENT_MODEL, default='partner_checkout')
+    settlement_model = models.CharField('Модель расчётов', max_length=30, choices=SETTLEMENT_MODEL, default='agent_commission')
+    comment = models.CharField('Комментарий', max_length=500, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'suppliers'
+        verbose_name = 'Поставщик'
+        verbose_name_plural = 'Поставщики'
+        ordering = ['name']
+
+    def __str__(self):
+        return f'{self.name} ({self.code})'
+
+
 class SupplierOffer(models.Model):
     """Фасовка/SKU поставщика: цена, остаток, агентский %%, артикул для sync."""
 
@@ -140,7 +179,11 @@ class SupplierOffer(models.Model):
     food_recipe = models.ForeignKey(
         FoodRecipe, null=True, blank=True, on_delete=models.CASCADE, related_name='offers',
     )
-    source = models.CharField('Источник', max_length=30, db_index=True)
+    source = models.CharField('Источник (legacy/backup)', max_length=30, db_index=True)
+    supplier = models.ForeignKey(
+        Supplier, null=True, blank=True, on_delete=models.SET_NULL, related_name='offers',
+        verbose_name='Поставщик',
+    )
     article_number = models.CharField('Артикул (CODE_1C, ключ sync)', max_length=120, db_index=True)
     package_name = models.CharField('Фасовка', max_length=120, blank=True)
     price = models.DecimalField('Цена', max_digits=10, decimal_places=2, null=True, blank=True)
