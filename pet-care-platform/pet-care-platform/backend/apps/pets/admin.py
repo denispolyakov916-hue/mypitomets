@@ -5,7 +5,7 @@
 from django.contrib import admin
 from django.utils.html import format_html
 from django.urls import reverse
-from .models import Pet, FoodRecipe, SupplierOffer
+from .models import Pet, FoodRecipe, SupplierOffer, FoodBrandRule
 
 
 @admin.register(Pet)
@@ -307,6 +307,23 @@ class MissingCompositionFilter(_MissingArrayFilter):
     field = 'ingredients'
 
 
+class HasBusinessPriorityFilter(admin.SimpleListFilter):
+    title = 'Бизнес-приоритет'
+    parameter_name = 'has_biz'
+
+    def lookups(self, request, model_admin):
+        return [('pos', 'Положительный'), ('neg', 'Отрицательный'), ('zero', 'Нулевой')]
+
+    def queryset(self, request, qs):
+        if self.value() == 'pos':
+            return qs.filter(business_priority__gt=0)
+        if self.value() == 'neg':
+            return qs.filter(business_priority__lt=0)
+        if self.value() == 'zero':
+            return qs.filter(business_priority=0)
+        return qs
+
+
 class SupplierOfferInline(admin.TabularInline):
     model = SupplierOffer
     extra = 0
@@ -320,12 +337,13 @@ class FoodRecipeAdmin(admin.ModelAdmin):
     list_display = (
         'name', 'species', 'food_form', 'is_recommendable', 'nutrition_complete',
         'review_status', 'kcal_per_100g', 'protein_percent', 'fat_percent',
-        'agency_percent', 'source',
+        'agency_percent', 'business_priority', 'is_promoted', 'source',
     )
-    list_editable = ('is_recommendable',)
+    list_editable = ('is_recommendable', 'business_priority', 'is_promoted')
     list_filter = (
-        'is_recommendable', 'nutrition_complete', 'review_status', 'parse_status',
-        'species', 'food_form', MissingKcalFilter, MissingMacrosFilter, MissingCompositionFilter,
+        'is_recommendable', 'nutrition_complete', 'is_promoted', 'review_status', 'parse_status',
+        'species', 'food_form', HasBusinessPriorityFilter,
+        MissingKcalFilter, MissingMacrosFilter, MissingCompositionFilter,
     )
     search_fields = ('name', 'brand', 'line', 'main_protein')
     ordering = ('-updated_at',)
@@ -346,6 +364,9 @@ class FoodRecipeAdmin(admin.ModelAdmin):
         ('Гейт подбора и статусы', {
             'fields': ('is_recommendable', 'nutrition_complete', 'review_status',
                        'parse_status', 'recommend_block_reasons', 'agency_percent', 'field_confidence')}),
+        ('Бизнес-приоритеты (влияют ТОЛЬКО среди подходящих кормов)', {
+            'fields': ('business_priority', 'is_promoted', 'transition_message',
+                       'transition_target_reason', 'customer_rating', 'reviews_count', 'expert_score')}),
         ('Служебное', {'fields': ('created_at', 'updated_at'), 'classes': ('collapse',)}),
     )
     actions = ('mark_verified', 'allow_recommend', 'block_recommend')
@@ -364,3 +385,12 @@ class FoodRecipeAdmin(admin.ModelAdmin):
     def block_recommend(self, request, queryset):
         n = queryset.update(is_recommendable=False)
         self.message_user(request, f'Убрано из подбора: {n}')
+
+
+@admin.register(FoodBrandRule)
+class FoodBrandRuleAdmin(admin.ModelAdmin):
+    list_display = ('brand', 'priority', 'enabled', 'comment', 'updated_at')
+    list_editable = ('priority', 'enabled')
+    list_filter = ('enabled',)
+    search_fields = ('brand', 'comment')
+    ordering = ('-priority', 'brand')

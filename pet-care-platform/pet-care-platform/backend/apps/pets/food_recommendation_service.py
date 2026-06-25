@@ -402,6 +402,9 @@ class FoodComponent:
     recipe_id: Optional[str] = None
     offer_id: Optional[str] = None
     article_number: Optional[str] = None
+    brand: Optional[str] = None
+    source: Optional[str] = None
+    recommendation_reason: Optional[str] = None
     
     # БЖУ и минералы (в % на 100г продукта)
     nutrition_protein: Optional[float] = None  # Белок %
@@ -818,40 +821,62 @@ class FoodRecommendationService:
         return self.calorie_calculator
     
     def _select_components_from_recipes(self, pet, filters, calorie_result):
-        # Источник 'recipe': кандидаты из нашей базы (FoodRecipe + SupplierOffer).
-        from .food_recipe_candidate_provider import get_food_recipe_candidates
-        form = filters.food_type if filters.food_type in ('dry', 'wet') else None
-        res = get_food_recipe_candidates(pet, food_form=form, limit=8)
+        # Источник 'recipe': единичный выбор рациона из нашей базы — 1 dry (+ опц. 1 wet).
+        from .food_recipe_candidate_provider import select_ration
         period = filters.period_days or 30
-        mer = calorie_result.mer if calorie_result else None
+        mer = float(calorie_result.mer) if calorie_result else None
+        ration = select_ration(pet, period_days=period)
+        dry, wet = ration.get('dry'), ration.get('wet')
+        if dry and wet:
+            slots = [(dry, 0.7), (wet, 0.3)]
+        elif dry:
+            slots = [(dry, 1.0)]
+        elif wet:
+            slots = [(wet, 1.0)]
+        else:
+            slots = []
         components = []
-        for cand in res['candidates']:
+        for cand, share in slots:
             off = cand['offer']
+            kcal100 = cand['kcal_per_100g']
             pack_g = (off['package_weight_kg'] or 0) * 1000
-            dg = cand['daily_grams']
-            packages = cand['packs_for_30_days'] or 1
-            if dg and pack_g:
-                packages = max(1, math.ceil(period * dg / pack_g))
+            comp_kcal = (mer or 0) * share
+            dg = round(comp_kcal / kcal100 * 100, 1) if (mer and kcal100) else None
+            days = round(pack_g / dg, 1) if (dg and pack_g) else None
+            packages = max(1, math.ceil(period * dg / pack_g)) if (dg and pack_g) else 1
             ptype = (cand['food_form'] + '_food') if cand['food_form'] in ('dry', 'wet') else 'treat'
+            reason = cand.get('recommendation_reason')
+            score_dbg = {
+                'suitability_score': cand.get('suitability_score'),
+                'business_score': cand.get('business_score'),
+                'business_score_raw': cand.get('business_score_raw'),
+                'final_score': cand.get('final_score'),
+                'business_reasons': cand.get('business_reasons') or [],
+            }
             components.append(FoodComponent(
                 product_id=None,
                 product_name=cand['recipe_name'],
                 product_type=ptype,
-                match_score=50,
+                match_score=int(cand.get('score') or 50),
                 daily_grams=dg,
-                daily_kcal=round(mer, 0) if mer else None,
+                daily_kcal=round(comp_kcal, 0) if comp_kcal else None,
                 price=Decimal(str(off['price'])) if off['price'] is not None else None,
                 weight_grams=int(pack_g) if pack_g else None,
-                days_supply=int(cand['days_per_pack']) if cand['days_per_pack'] else None,
+                days_supply=int(days) if days else None,
                 packages_needed=packages,
-                kcal_per_100g=cand['kcal_per_100g'],
+                kcal_per_100g=kcal100,
                 nutrition_protein=cand['protein_percent'],
                 nutrition_fat=cand['fat_percent'],
                 warnings=list(cand['warnings'] or []),
+                reasons=[reason] if reason else [],
                 badges=['Из базы Динозаврик'],
                 recipe_id=cand['recipe_id'],
                 offer_id=off['id'],
                 article_number=off['article_number'],
+                brand=cand.get('brand'),
+                source='dinozavrik',
+                recommendation_reason=reason,
+                score_breakdown=score_dbg,
             ))
         return components
 
@@ -3599,6 +3624,9 @@ class FoodRecommendationService:
                     'recipe_id': c.recipe_id,
                     'offer_id': c.offer_id,
                     'article_number': c.article_number,
+                    'brand': c.brand,
+                    'source': c.source,
+                    'recommendation_reason': c.recommendation_reason,
                     # БЖУ и минералы
                     'nutrition': {
                         'protein': c.nutrition_protein,
