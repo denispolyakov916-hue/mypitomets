@@ -33,6 +33,32 @@ RECIPE_FIELDS = {
 }
 
 
+ARRAY_FIELDS = {'diet_purpose', 'ingredients', 'allergens'}
+BOOL_FLAGS = {'is_sterilized', 'is_sensitive_digestion', 'is_urinary',
+              'is_weight_control', 'is_grain_free', 'is_hypoallergenic'}
+NUM_FIELDS = {'kcal_per_100g', 'protein_percent', 'fat_percent', 'fiber_percent',
+              'ash_percent', 'moisture_percent', 'calcium_percent', 'phosphorus_percent',
+              'agency_percent'}
+
+
+def _full_defaults(fields):
+    """Полный набор полей рецепта (пустые по умолчанию) — чтобы re-import затирал устаревшее."""
+    d = {}
+    for f in RECIPE_FIELDS:
+        if f in ARRAY_FIELDS:
+            d[f] = []
+        elif f in BOOL_FLAGS or f in NUM_FIELDS:
+            d[f] = None
+        elif f == 'field_confidence':
+            d[f] = {}
+        elif f == 'nutrition_complete':
+            d[f] = False
+        else:
+            d[f] = ''
+    d.update({k: v for k, v in fields.items() if k in RECIPE_FIELDS})
+    return d
+
+
 def _recipe_key(f):
     parts = [f.get('brand', ''), f.get('line', ''), f.get('main_protein', ''), f.get('food_form', '')]
     return re.sub(r'\s+', ' ', '|'.join(p.lower() for p in parts)).strip('|')[:255]
@@ -84,16 +110,6 @@ class Command(BaseCommand):
             for rs in r['reasons']:
                 block_reasons[rs] += 1
 
-            defaults = {k: v for k, v in r['fields'].items() if k in RECIPE_FIELDS}
-            defaults.update({
-                'source': SRC,
-                'recipe_key': _recipe_key(r['fields']),
-                'parse_status': r['parse_status'],
-                'review_status': 'auto_parsed',
-                'is_recommendable': is_reco,
-                'recommend_block_reasons': r['reasons'],
-            })
-
             if dry:
                 offers_total += len(r['offers'])
                 offers_agency += sum(1 for o in r['offers'] if o.get('agency_percent') is not None)
@@ -101,10 +117,23 @@ class Command(BaseCommand):
 
             with transaction.atomic():
                 raw_item, _ = SupplierRawItem.objects.get_or_create(source=SRC, external_id=ext_id)
-                recipe = raw_item.food_recipe or FoodRecipe()
-                for k, v in defaults.items():
-                    setattr(recipe, k, v)
-                recipe.save()
+                recipe = raw_item.food_recipe
+                if recipe and recipe.review_status == 'manual_verified':
+                    stat['skipped_verified'] += 1  # ручную модерацию не перезаписываем
+                else:
+                    recipe = recipe or FoodRecipe()
+                    defaults = _full_defaults(r['fields'])
+                    defaults.update({
+                        'source': SRC,
+                        'recipe_key': _recipe_key(r['fields']),
+                        'parse_status': r['parse_status'],
+                        'review_status': 'auto_parsed',
+                        'is_recommendable': is_reco,
+                        'recommend_block_reasons': r['reasons'],
+                    })
+                    for k, v in defaults.items():
+                        setattr(recipe, k, v)
+                    recipe.save()
                 raw_item.food_recipe = recipe
                 raw_item.article_number = r['article'] or ''
                 raw_item.raw_json = product
@@ -141,6 +170,7 @@ class Command(BaseCommand):
         w(f'>>> В ПОДБОР (is_recommendable): {stat["recommendable"]}')
         w(f'      из них полная норма (nutrition_complete): {stat["nutrition_complete"]}')
         w(f'      на ручную проверку (корм, но не в подборе): {stat["food"] - stat["recommendable"]}')
+        w(f'      пропущено проверенных вручную: {stat["skipped_verified"]}')
         w(f'Офферы(фасовки): {offers_total}, с агентским %: {offers_agency}')
         w(f'Назначения: {dict(purposes.most_common(12))}')
         w(f'Топ причин не-в-подбор: {dict(block_reasons.most_common(8))}')

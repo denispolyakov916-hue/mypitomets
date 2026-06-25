@@ -110,22 +110,39 @@ def _num(s):
         return None
 
 
+NUTRI_BOUNDS = {
+    'kcal_per_100g': (40, 700),
+    'protein_percent': (3, 60),
+    'fat_percent': (1, 50),
+    'fiber_percent': (0, 30),
+    'ash_percent': (0, 20),
+    'moisture_percent': (0, 92),
+    'calcium_percent': (0, 6),
+    'phosphorus_percent': (0, 6),
+}
+
+
 def _parse_nutrition(text):
-    """Извлечь ккал/БЖУ из свободного текста. ккал>1000 трактуем как на кг → /10."""
+    """Извлечь ккал/БЖУ из свободного текста с учётом единиц и санити-границ."""
     out, conf = {}, {}
-    m = re.search(r'(\d+[.,]?\d*)\s*ккал', text, re.I)
+    m = re.search(r'(\d+[.,]?\d*)\s*(?:ккал|kcal)\s*(?:[\\/]|на)?\s*(кг|kg|100\s*г|100г)?', text, re.I)
     if m:
         kcal = _num(m.group(1))
-        if kcal and kcal > 1000:
-            kcal = round(kcal / 10, 1)  # ккал/кг → ккал/100 г
-        if kcal:
-            out['kcal_per_100g'] = kcal
-            conf['kcal_per_100g'] = 'parsed'
+        unit = (m.group(2) or '').lower().replace(' ', '')
+        if kcal is not None:
+            if unit in ('кг', 'kg'):
+                kcal = round(kcal / 10, 1)
+            elif not unit and kcal > 1000:
+                kcal = round(kcal / 10, 1)
+            lo, hi = NUTRI_BOUNDS['kcal_per_100g']
+            if lo <= kcal <= hi:
+                out['kcal_per_100g'] = kcal
+                conf['kcal_per_100g'] = 'parsed'
     for field, pat in [
-        ('protein_percent', r'(?:белок|протеин)\D{0,12}(\d+[.,]?\d*)\s*%'),
-        ('fat_percent', r'жир\D{0,12}(\d+[.,]?\d*)\s*%'),
-        ('fiber_percent', r'клетчатк\D{0,12}(\d+[.,]?\d*)\s*%'),
-        ('ash_percent', r'зол\D{0,12}(\d+[.,]?\d*)\s*%'),
+        ('protein_percent', r'(?:сыр\w*\s+)?(?:белок|протеин)\D{0,12}(\d+[.,]?\d*)\s*%'),
+        ('fat_percent', r'(?:сыр\w*\s+)?жир\D{0,12}(\d+[.,]?\d*)\s*%'),
+        ('fiber_percent', r'(?:сыр\w*\s+)?клетчатк\D{0,12}(\d+[.,]?\d*)\s*%'),
+        ('ash_percent', r'(?:сыр\w*\s+)?зол\D{0,12}(\d+[.,]?\d*)\s*%'),
         ('moisture_percent', r'влаж\D{0,12}(\d+[.,]?\d*)\s*%'),
         ('calcium_percent', r'кальци\D{0,12}(\d+[.,]?\d*)\s*%'),
         ('phosphorus_percent', r'фосфор\D{0,12}(\d+[.,]?\d*)\s*%'),
@@ -134,8 +151,10 @@ def _parse_nutrition(text):
         if m:
             val = _num(m.group(1))
             if val is not None:
-                out[field] = val
-                conf[field] = 'parsed'
+                lo, hi = NUTRI_BOUNDS[field]
+                if lo <= val <= hi:
+                    out[field] = val
+                    conf[field] = 'parsed'
     return out, conf
 
 
@@ -200,13 +219,19 @@ def parse_recipe(product):
             if flag:
                 flags[flag] = True
 
-    # состав
+    # состав (отрезаем «гарантированный анализ / пищевая ценность», чистим мусор)
     ingredients_text = _text(p.get('INGREDIENTS'))
     ingredients = []
     if ingredients_text:
-        clean = re.sub(r'^\s*состав\s*:?\s*', '', ingredients_text, flags=re.I)
-        ingredients = [x.strip(' .') for x in re.split(r'[,;]', clean) if x.strip(' .')][:40]
-        conf['ingredients'] = 'supplier'
+        cut = re.split(
+            r'(?:гарантирован\w*\s*анализ|\bанализ\b|пищевая\s+ценность|питательн\w*\s+ценность|энергетическая\s+ценность|содержание\s+питательных)',
+            ingredients_text, maxsplit=1, flags=re.I,
+        )[0]
+        clean = re.sub(r'^\s*состав\s*:?\s*', '', cut, flags=re.I).replace('\r', ' ').replace('\n', ' ')
+        parts = [re.sub(r'\s+', ' ', x).strip(' .:;') for x in re.split(r'[,;]', clean)]
+        ingredients = [x for x in parts if x and len(x) > 1 and not re.fullmatch(r'[\d.,%\s-]+', x)][:40]
+        if ingredients:
+            conf['ingredients'] = 'supplier'
 
     # основной белок + аллергены
     main_protein = ''
