@@ -577,6 +577,12 @@ class Product(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     
     # Используем кастомный менеджер с оптимизированными запросами
+    # Связь с нашей независимой базой питания (рецепт). Много товаров → один рецепт.
+    food_recipe = models.ForeignKey(
+        'pets.FoodRecipe', null=True, blank=True, on_delete=models.SET_NULL,
+        related_name='products', verbose_name='Рецепт корма (база питания)',
+    )
+
     objects = ProductManager()
     
     class Meta:

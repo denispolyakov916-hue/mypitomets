@@ -5,7 +5,7 @@
 from django.contrib import admin
 from django.utils.html import format_html
 from django.urls import reverse
-from .models import Pet
+from .models import Pet, FoodRecipe, SupplierOffer
 
 
 @admin.register(Pet)
@@ -256,3 +256,111 @@ class ReminderAdmin(admin.ModelAdmin):
         updated = queryset.update(is_active=False)
         self.message_user(request, f'Деактивировано: {updated}')
     deactivate.short_description = 'Деактивировать %(verbose_name_plural)s'
+
+
+# ============================================================
+# База питания (рецепты кормов) — модерация
+# ============================================================
+
+class _MissingArrayFilter(admin.SimpleListFilter):
+    field = None
+    def lookups(self, request, model_admin):
+        return [('empty', 'Нет данных'), ('present', 'Есть')]
+    def queryset(self, request, qs):
+        if self.value() == 'empty':
+            return qs.filter(**{self.field: []})
+        if self.value() == 'present':
+            return qs.exclude(**{self.field: []})
+        return qs
+
+
+class MissingKcalFilter(admin.SimpleListFilter):
+    title = 'Ккал'
+    parameter_name = 'has_kcal'
+    def lookups(self, request, model_admin):
+        return [('no', 'Нет ккал'), ('yes', 'Есть ккал')]
+    def queryset(self, request, qs):
+        if self.value() == 'no':
+            return qs.filter(kcal_per_100g__isnull=True)
+        if self.value() == 'yes':
+            return qs.filter(kcal_per_100g__isnull=False)
+        return qs
+
+
+class MissingMacrosFilter(admin.SimpleListFilter):
+    title = 'БЖУ (белок/жир)'
+    parameter_name = 'has_macros'
+    def lookups(self, request, model_admin):
+        return [('no', 'Нет БЖУ'), ('yes', 'Есть БЖУ')]
+    def queryset(self, request, qs):
+        from django.db.models import Q
+        if self.value() == 'no':
+            return qs.filter(protein_percent__isnull=True, fat_percent__isnull=True)
+        if self.value() == 'yes':
+            return qs.filter(Q(protein_percent__isnull=False) | Q(fat_percent__isnull=False))
+        return qs
+
+
+class MissingCompositionFilter(_MissingArrayFilter):
+    title = 'Состав'
+    parameter_name = 'has_composition'
+    field = 'ingredients'
+
+
+class SupplierOfferInline(admin.TabularInline):
+    model = SupplierOffer
+    extra = 0
+    fields = ('package_name', 'price', 'agency_percent', 'in_stock', 'article_number', 'barcode')
+    readonly_fields = ('article_number', 'barcode')
+    can_delete = False
+
+
+@admin.register(FoodRecipe)
+class FoodRecipeAdmin(admin.ModelAdmin):
+    list_display = (
+        'name', 'species', 'food_form', 'is_recommendable', 'nutrition_complete',
+        'review_status', 'kcal_per_100g', 'protein_percent', 'fat_percent',
+        'agency_percent', 'source',
+    )
+    list_editable = ('is_recommendable',)
+    list_filter = (
+        'is_recommendable', 'nutrition_complete', 'review_status', 'parse_status',
+        'species', 'food_form', MissingKcalFilter, MissingMacrosFilter, MissingCompositionFilter,
+    )
+    search_fields = ('name', 'brand', 'line', 'main_protein')
+    ordering = ('-updated_at',)
+    list_per_page = 50
+    inlines = [SupplierOfferInline]
+    readonly_fields = ('recipe_key', 'source', 'parse_status', 'field_confidence',
+                       'recommend_block_reasons', 'agency_percent', 'created_at', 'updated_at')
+    fieldsets = (
+        ('Идентичность', {'fields': ('name', 'brand', 'line', 'recipe_key', 'source')}),
+        ('Классификация', {'fields': ('species', 'food_form', 'life_stage', 'size_group',
+                                      'diet_purpose', 'main_protein')}),
+        ('Признаки', {'fields': ('is_sterilized', 'is_sensitive_digestion', 'is_urinary',
+                                 'is_weight_control', 'is_grain_free', 'is_hypoallergenic')}),
+        ('Нутриенты (на 100 г) — можно дозаполнять вручную', {
+            'fields': ('kcal_per_100g', 'protein_percent', 'fat_percent', 'fiber_percent',
+                       'ash_percent', 'moisture_percent', 'calcium_percent', 'phosphorus_percent')}),
+        ('Состав', {'fields': ('ingredients', 'allergens')}),
+        ('Гейт подбора и статусы', {
+            'fields': ('is_recommendable', 'nutrition_complete', 'review_status',
+                       'parse_status', 'recommend_block_reasons', 'agency_percent', 'field_confidence')}),
+        ('Служебное', {'fields': ('created_at', 'updated_at'), 'classes': ('collapse',)}),
+    )
+    actions = ('mark_verified', 'allow_recommend', 'block_recommend')
+
+    @admin.action(description='Отметить «проверено вручную»')
+    def mark_verified(self, request, queryset):
+        n = queryset.update(review_status='manual_verified')
+        self.message_user(request, f'Проверено вручную: {n}')
+
+    @admin.action(description='Разрешить в подбор')
+    def allow_recommend(self, request, queryset):
+        n = queryset.update(is_recommendable=True)
+        self.message_user(request, f'Разрешено в подбор: {n}')
+
+    @admin.action(description='Убрать из подбора')
+    def block_recommend(self, request, queryset):
+        n = queryset.update(is_recommendable=False)
+        self.message_user(request, f'Убрано из подбора: {n}')
