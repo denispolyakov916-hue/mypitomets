@@ -405,6 +405,7 @@ class FoodComponent:
     brand: Optional[str] = None
     source: Optional[str] = None
     recommendation_reason: Optional[str] = None
+    alternatives: Optional[List[Dict[str, Any]]] = None  # альтернативы той же роли (dry/wet)
     
     # БЖУ и минералы (в % на 100г продукта)
     nutrition_protein: Optional[float] = None  # Белок %
@@ -825,18 +826,21 @@ class FoodRecommendationService:
         from .food_recipe_candidate_provider import select_ration
         period = filters.period_days or 30
         mer = float(calorie_result.mer) if calorie_result else None
+        from .food_recipe_candidate_provider import candidate_to_dto
         ration = select_ration(pet, period_days=period)
         dry, wet = ration.get('dry'), ration.get('wet')
+        dry_alts = ration.get('dry_alternatives') or []
+        wet_alts = ration.get('wet_alternatives') or []
         if dry and wet:
-            slots = [(dry, 0.7), (wet, 0.3)]
+            slots = [(dry, 0.7, dry_alts), (wet, 0.3, wet_alts)]
         elif dry:
-            slots = [(dry, 1.0)]
+            slots = [(dry, 1.0, dry_alts)]
         elif wet:
-            slots = [(wet, 1.0)]
+            slots = [(wet, 1.0, wet_alts)]
         else:
             slots = []
         components = []
-        for cand, share in slots:
+        for cand, share, alts in slots:
             off = cand['offer']
             kcal100 = cand['kcal_per_100g']
             pack_g = (off['package_weight_kg'] or 0) * 1000
@@ -877,6 +881,7 @@ class FoodRecommendationService:
                 source='dinozavrik',
                 recommendation_reason=reason,
                 score_breakdown=score_dbg,
+                alternatives=[candidate_to_dto(a, share, mer, period) for a in alts],
             ))
         return components
 
@@ -3627,6 +3632,7 @@ class FoodRecommendationService:
                     'brand': c.brand,
                     'source': c.source,
                     'recommendation_reason': c.recommendation_reason,
+                    'alternatives': c.alternatives or [],
                     # БЖУ и минералы
                     'nutrition': {
                         'protein': c.nutrition_protein,

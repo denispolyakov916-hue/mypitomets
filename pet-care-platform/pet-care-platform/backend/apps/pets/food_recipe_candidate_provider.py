@@ -78,6 +78,7 @@ def _build_candidate(recipe, offer, daily_kcal, pet_warning):
         'customer_rating': float(recipe.customer_rating) if recipe.customer_rating is not None else None,
         'reviews_count': recipe.reviews_count,
         'expert_score': recipe.expert_score,
+        'transition_message': recipe.transition_message or '',
         'offer': {
             'id': str(offer.id),
             'article_number': offer.article_number,
@@ -287,8 +288,9 @@ def business_score(cand, brand_rules):
 BUSINESS_CAP_RATIO = 0.30
 
 
-def _pick_best(candidates, ctx, brand_rules):
-    """Suitability (медицина) → conflict-исключение → business (с cap) → final. (best, usable_count)."""
+def _rank_candidates(candidates, ctx, brand_rules):
+    """Suitability (медицина) → conflict-исключение → business (с cap) → final.
+    Возвращает ВЕСЬ отсортированный список (лучший первым). Бизнес НЕ перебивает пригодность."""
     scored = []
     for c in candidates:
         suit, reasons, conflict = suitability_score(c, ctx)
@@ -299,7 +301,7 @@ def _pick_best(candidates, ctx, brand_rules):
         c['_reasons'] = reasons
         scored.append(c)
     if not scored:
-        return None, 0
+        return []
     costs = sorted([c['estimated_monthly_cost'] for c in scored if c['estimated_monthly_cost'] is not None])
     median = costs[len(costs) // 2] if costs else None
     for c in scored:
@@ -318,7 +320,7 @@ def _pick_best(candidates, ctx, brand_rules):
         c['recommendation_reason'] = '; '.join(c['_reasons']) if c['_reasons'] else 'базовое соответствие'
         c['business_reasons'] = biz_reasons
     scored.sort(key=lambda c: (-c['final_score'], c['estimated_monthly_cost'] if c['estimated_monthly_cost'] is not None else float('inf')))
-    return scored[0], len(scored)
+    return scored
 
 
 def _load_brand_rules():
@@ -332,18 +334,57 @@ def _load_brand_rules():
     return rules
 
 
-def select_ration(pet, period_days=30):
-    """Единичный выбор: 1 dry (+ 1 wet). Сначала пригодность, потом бизнес-вес с cap."""
+def candidate_to_dto(cand, share, mer, period_days):
+    """Кандидат → полный DTO (для альтернатив): расчёт порции/дней/упаковок/стоимости по доле калорий."""
+    off = cand['offer']
+    kcal100 = cand['kcal_per_100g']
+    pack_g = (off['package_weight_kg'] or 0) * 1000
+    comp_kcal = (mer or 0) * share
+    dg = round(comp_kcal / kcal100 * 100, 1) if (mer and kcal100) else None
+    days = round(pack_g / dg, 1) if (dg and pack_g) else None
+    packages = max(1, math.ceil(period_days * dg / pack_g)) if (dg and pack_g) else 1
+    monthly = round(packages * off['price'], 2) if off.get('price') else None
+    return {
+        'recipe_id': cand['recipe_id'],
+        'offer_id': off['id'],
+        'article_number': off['article_number'],
+        'brand': cand.get('brand'),
+        'product_name': cand['recipe_name'],
+        'source': 'dinozavrik',
+        'food_form': cand['food_form'],
+        'kcal_per_100g': kcal100,
+        'protein_percent': cand.get('protein_percent'),
+        'fat_percent': cand.get('fat_percent'),
+        'daily_grams': dg,
+        'days_supply': int(days) if days else None,
+        'packages_needed': packages,
+        'estimated_monthly_cost': monthly,
+        'agency_percent': off.get('agency_percent'),
+        'recommendation_reason': cand.get('recommendation_reason'),
+        'transition_message': cand.get('transition_message') or None,
+        'is_promoted': bool(cand.get('is_promoted')),
+        'score_breakdown': {
+            'suitability_score': cand.get('suitability_score'),
+            'business_score': cand.get('business_score'),
+            'final_score': cand.get('final_score'),
+        },
+    }
+
+
+def select_ration(pet, period_days=30, max_alternatives=5):
+    """Выбор рациона: лучший dry (+ wet) + до N альтернатив того же food_form из ТОГО ЖЕ скоринга."""
     ctx = _pet_context(pet)
     brand_rules = _load_brand_rules()
     dry_res = get_food_recipe_candidates(pet, food_form='dry', limit=500)
     wet_res = get_food_recipe_candidates(pet, food_form='wet', limit=500)
-    best_dry, dry_n = _pick_best(dry_res['candidates'], ctx, brand_rules)
-    best_wet, wet_n = _pick_best(wet_res['candidates'], ctx, brand_rules)
+    dry_ranked = _rank_candidates(dry_res['candidates'], ctx, brand_rules)
+    wet_ranked = _rank_candidates(wet_res['candidates'], ctx, brand_rules)
     return {
-        'dry': best_dry,
-        'wet': best_wet,
-        'dry_count': dry_n,
-        'wet_count': wet_n,
+        'dry': dry_ranked[0] if dry_ranked else None,
+        'dry_alternatives': dry_ranked[1:1 + max_alternatives],
+        'wet': wet_ranked[0] if wet_ranked else None,
+        'wet_alternatives': wet_ranked[1:1 + max_alternatives],
+        'dry_count': len(dry_ranked),
+        'wet_count': len(wet_ranked),
         'daily_kcal': dry_res['daily_kcal'] or wet_res['daily_kcal'],
     }
