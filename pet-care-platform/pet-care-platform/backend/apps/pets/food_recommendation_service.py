@@ -17,6 +17,7 @@ from dataclasses import dataclass, field
 from typing import List, Optional, Dict, Any, Tuple, Iterable
 from decimal import Decimal
 from django.db.models import Q
+from django.conf import settings
 
 logger = logging.getLogger('apps.pets.food_recommendation')
 
@@ -397,6 +398,10 @@ class FoodComponent:
     image_url: Optional[str] = None
     shop_url: Optional[str] = None
     kcal_per_100g: Optional[float] = None  # Калорийность для отображения
+    # Связь с нашей базой питания (режим 'recipe'); в legacy остаются None
+    recipe_id: Optional[str] = None
+    offer_id: Optional[str] = None
+    article_number: Optional[str] = None
     
     # БЖУ и минералы (в % на 100г продукта)
     nutrition_protein: Optional[float] = None  # Белок %
@@ -812,6 +817,44 @@ class FoodRecommendationService:
             self.calorie_calculator = calorie_calculator
         return self.calorie_calculator
     
+    def _select_components_from_recipes(self, pet, filters, calorie_result):
+        # Источник 'recipe': кандидаты из нашей базы (FoodRecipe + SupplierOffer).
+        from .food_recipe_candidate_provider import get_food_recipe_candidates
+        form = filters.food_type if filters.food_type in ('dry', 'wet') else None
+        res = get_food_recipe_candidates(pet, food_form=form, limit=8)
+        period = filters.period_days or 30
+        mer = calorie_result.mer if calorie_result else None
+        components = []
+        for cand in res['candidates']:
+            off = cand['offer']
+            pack_g = (off['package_weight_kg'] or 0) * 1000
+            dg = cand['daily_grams']
+            packages = cand['packs_for_30_days'] or 1
+            if dg and pack_g:
+                packages = max(1, math.ceil(period * dg / pack_g))
+            ptype = (cand['food_form'] + '_food') if cand['food_form'] in ('dry', 'wet') else 'treat'
+            components.append(FoodComponent(
+                product_id=None,
+                product_name=cand['recipe_name'],
+                product_type=ptype,
+                match_score=50,
+                daily_grams=dg,
+                daily_kcal=round(mer, 0) if mer else None,
+                price=Decimal(str(off['price'])) if off['price'] is not None else None,
+                weight_grams=int(pack_g) if pack_g else None,
+                days_supply=int(cand['days_per_pack']) if cand['days_per_pack'] else None,
+                packages_needed=packages,
+                kcal_per_100g=cand['kcal_per_100g'],
+                nutrition_protein=cand['protein_percent'],
+                nutrition_fat=cand['fat_percent'],
+                warnings=list(cand['warnings'] or []),
+                badges=['Из базы Динозаврик'],
+                recipe_id=cand['recipe_id'],
+                offer_id=off['id'],
+                article_number=off['article_number'],
+            ))
+        return components
+
     def get_recommendations_for_pet(self, pet, filters: Optional[FoodSearchFilters] = None) -> FeedingPlan:
         """
         Получить рекомендации кормов для питомца.
@@ -878,7 +921,9 @@ class FoodRecommendationService:
         )
         
         # Подбираем компоненты
-        if filters.food_type == 'dry':
+        if getattr(settings, 'FOOD_RECOMMENDATION_SOURCE', 'legacy') == 'recipe':
+            plan.components = self._select_components_from_recipes(pet, filters, calorie_result)
+        elif filters.food_type == 'dry':
             plan.components = self._select_dry_food(filters)
         elif filters.food_type == 'wet':
             plan.components = self._select_wet_food(filters)
@@ -886,12 +931,12 @@ class FoodRecommendationService:
             plan.components = self._select_multi_food(filters)
         
         # Добавляем лакомства
-        treats = self._select_treats(filters)
+        treats = self._select_treats(filters) if getattr(settings, 'FOOD_RECOMMENDATION_SOURCE', 'legacy') == 'legacy' else []
         if treats:
             plan.components.extend(treats)
         
         # Добавляем добавки для продвинутого набора
-        if filters.variant == 'advanced':
+        if filters.variant == 'advanced' and getattr(settings, 'FOOD_RECOMMENDATION_SOURCE', 'legacy') == 'legacy':
             plan.supplements = self._select_supplements(pet, filters)
         
         # Рассчитываем стоимость
@@ -960,6 +1005,8 @@ class FoodRecommendationService:
         if plan.components and calorie_result.macro_targets:
             for comp in plan.components:
                 if comp.product_type in ['dry_food', 'wet_food']:
+                    if comp.product_id is None:
+                        continue  # режим 'recipe': нет shop.Product — БЖУ-валидация по нему неприменима
                     try:
                         from apps.shop.models import Product
                         product = Product.objects.select_related('food_details').get(id=comp.product_id)
@@ -3549,6 +3596,9 @@ class FoodRecommendationService:
                     'image_url': str(c.image_url) if c.image_url else None,
                     'shop_url': c.shop_url,
                     'kcal_per_100g': c.kcal_per_100g,
+                    'recipe_id': c.recipe_id,
+                    'offer_id': c.offer_id,
+                    'article_number': c.article_number,
                     # БЖУ и минералы
                     'nutrition': {
                         'protein': c.nutrition_protein,
