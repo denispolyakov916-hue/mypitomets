@@ -211,7 +211,11 @@ class SupplierRawItem(models.Model):
     """Сырьё от поставщика как есть (raw_payload) + связь с созданным рецептом."""
 
     id = models.UUIDField(primary_key=True, default=generate_uuid7, editable=False)
-    source = models.CharField('Источник', max_length=30, db_index=True)
+    source = models.CharField('Источник (legacy/backup)', max_length=30, db_index=True)
+    supplier = models.ForeignKey(
+        Supplier, null=True, blank=True, on_delete=models.SET_NULL, related_name='raw_items',
+        verbose_name='Поставщик',
+    )
     external_id = models.CharField('Внешний ID (xmlId)', max_length=120, db_index=True)
     article_number = models.CharField('Артикул (CODE_1C/CML2_ARTICLE)', max_length=120, blank=True, db_index=True)
     raw_json = models.JSONField('Сырые данные', default=dict)
@@ -224,7 +228,9 @@ class SupplierRawItem(models.Model):
         db_table = 'supplier_raw_items'
         verbose_name = 'Сырьё поставщика'
         verbose_name_plural = 'Сырьё поставщиков'
-        unique_together = [('source', 'external_id')]
+        constraints = [
+            models.UniqueConstraint(fields=['supplier', 'external_id'], name='uniq_raw_supplier_external'),
+        ]
         ordering = ['-imported_at']
 
     def __str__(self):

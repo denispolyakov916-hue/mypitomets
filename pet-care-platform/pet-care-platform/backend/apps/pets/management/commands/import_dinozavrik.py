@@ -97,8 +97,8 @@ class Command(BaseCommand):
                 stat['non_food'] += 1
                 if not dry:
                     SupplierRawItem.objects.update_or_create(
-                        source=SRC, external_id=ext_id,
-                        defaults={'article_number': r['article'] or '', 'raw_json': product},
+                        supplier=supplier, external_id=ext_id,
+                        defaults={'source': SRC, 'article_number': r['article'] or '', 'raw_json': product},
                     )
                 continue
 
@@ -121,7 +121,7 @@ class Command(BaseCommand):
                 continue
 
             with transaction.atomic():
-                raw_item, _ = SupplierRawItem.objects.get_or_create(source=SRC, external_id=ext_id)
+                raw_item, _ = SupplierRawItem.objects.get_or_create(supplier=supplier, external_id=ext_id, defaults={'source': SRC})
                 recipe = raw_item.food_recipe
                 if recipe and recipe.review_status == 'manual_verified':
                     stat['skipped_verified'] += 1  # ручную модерацию не перезаписываем
@@ -140,6 +140,7 @@ class Command(BaseCommand):
                         setattr(recipe, k, v)
                     recipe.save()
                 raw_item.food_recipe = recipe
+                raw_item.source = SRC
                 raw_item.article_number = r['article'] or ''
                 raw_item.raw_json = product
                 raw_item.save()
