@@ -121,6 +121,7 @@ class SupplierOffer(models.Model):
     article_number = models.CharField('Артикул (CODE_1C, ключ sync)', max_length=120, db_index=True)
     package_name = models.CharField('Фасовка', max_length=120, blank=True)
     price = models.DecimalField('Цена', max_digits=10, decimal_places=2, null=True, blank=True)
+    package_weight_kg = models.DecimalField('Вес фасовки, кг', max_digits=7, decimal_places=3, null=True, blank=True)
     agency_percent = models.DecimalField('Агентский %%', max_digits=5, decimal_places=2, null=True, blank=True)
     barcode = models.CharField('Штрихкод', max_length=60, blank=True)
     in_stock = models.BooleanField('В наличии', default=False)

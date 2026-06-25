@@ -102,6 +102,43 @@ def _percent(s):
     return float(m.group(1).replace(',', '.')) if m else None
 
 
+def _one_pack_kg(s):
+    """Вес одной части (без '+'): мультипак или одиночная фасовка → кг или None."""
+    m = re.search(r'(\d+(?:\.\d+)?)\s*(кг|kg|г|гр|g)\s*[xх*]\s*(\d+)', s)  # вес × кол-во
+    if m:
+        w = float(m.group(1))
+        kg = w if m.group(2) in ('кг', 'kg') else w / 1000
+        return kg * int(m.group(3))
+    m = re.search(r'(\d+)\s*(?:шт)?\s*[xх*]\s*(\d+(?:\.\d+)?)\s*(кг|kg|г|гр|g)', s)  # кол-во × вес
+    if m:
+        w = float(m.group(2))
+        kg = w if m.group(3) in ('кг', 'kg') else w / 1000
+        return kg * int(m.group(1))
+    m = re.search(r'(\d+(?:\.\d+)?)\s*(кг|kg)\b', s)  # одиночная: кг
+    if m:
+        return float(m.group(1))
+    m = re.search(r'(\d+(?:\.\d+)?)\s*(г|гр|g)\b', s)  # одиночная: граммы
+    if m:
+        return float(m.group(1)) / 1000
+    return None
+
+
+def parse_package_weight_kg(name):
+    """Вес фасовки → кг. Поддержка: кг/г/гр/g/kg, мультипаки '85г х 24шт', '6х85 г',
+    '12 шт x 85 г', комбо через '+' ('0.5кг+2х85г'), десятичные и запятая. Не распознано → None."""
+    if not name:
+        return None
+    s = str(name).lower().replace(',', '.')
+    total = 0.0
+    found = False
+    for part in s.split('+'):
+        v = _one_pack_kg(part)
+        if v is not None:
+            total += v
+            found = True
+    return round(total, 3) if found else None
+
+
 def _num(s):
     s = s.replace(',', '.')
     try:
@@ -290,6 +327,7 @@ def parse_recipe(product):
             'article_number': str(op.get('CODE_1C') or '').strip(),
             'barcode': str(op.get('CML2_BAR_CODE') or '').strip(),
             'agency_percent': ap,
+            'package_weight_kg': parse_package_weight_kg(o.get('name')) or parse_package_weight_kg(op.get('NAME_YANDEX_MARKET')),
             'hide_for_feed': str(op.get('HIDE_FOR_FEED') or '').upper() == 'Y',
         })
     # представительный агентский %% на рецепт (макс по фасовкам) — для отчётов/CRM

@@ -147,6 +147,7 @@ class Command(BaseCommand):
                             'food_recipe': recipe,
                             'package_name': o.get('name', '')[:120],
                             'price': o.get('price') or None,
+                            'package_weight_kg': o.get('package_weight_kg'),
                             'agency_percent': o.get('agency_percent'),
                             'barcode': (o.get('barcode') or '')[:60],
                             'in_stock': not o.get('hide_for_feed', False),
