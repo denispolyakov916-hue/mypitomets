@@ -198,7 +198,9 @@ class SupplierOffer(models.Model):
         db_table = 'supplier_offers'
         verbose_name = 'Оффер поставщика (фасовка)'
         verbose_name_plural = 'Офферы поставщиков'
-        unique_together = [('source', 'article_number')]
+        constraints = [
+            models.UniqueConstraint(fields=['supplier', 'article_number'], name='uniq_offer_supplier_article'),
+        ]
         ordering = ['package_name']
 
     def __str__(self):

@@ -17,7 +17,7 @@ from django.core.management.base import BaseCommand
 from django.db import transaction
 
 from apps.pets.food_parser import parse_recipe
-from apps.pets.models import FoodRecipe, SupplierOffer, SupplierRawItem
+from apps.pets.models import FoodRecipe, Supplier, SupplierOffer, SupplierRawItem
 
 SRC = 'dinozavrik'
 
@@ -77,6 +77,11 @@ class Command(BaseCommand):
         if opts['limit']:
             data = data[:opts['limit']]
         dry = opts['dry_run']
+        supplier = None
+        if not dry:
+            supplier, _ = Supplier.objects.get_or_create(
+                code=SRC, defaults={'name': 'Динозаврик', 'supplier_type': 'feed'},
+            )
 
         stat = Counter()
         offers_total = offers_agency = 0
@@ -142,9 +147,10 @@ class Command(BaseCommand):
                 for o in r['offers']:
                     art = o.get('article_number') or f'{ext_id}:{o.get("name", "")}'
                     SupplierOffer.objects.update_or_create(
-                        source=SRC, article_number=art,
+                        supplier=supplier, article_number=art,
                         defaults={
                             'food_recipe': recipe,
+                            'source': SRC,
                             'package_name': o.get('name', '')[:120],
                             'price': o.get('price') or None,
                             'package_weight_kg': o.get('package_weight_kg'),
