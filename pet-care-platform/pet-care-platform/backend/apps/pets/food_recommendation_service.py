@@ -873,7 +873,7 @@ class FoodRecommendationService:
                 'final_score': cand.get('final_score'),
                 'business_reasons': cand.get('business_reasons') or [],
             }
-            prod_id, sku_id = shop_ids_for(cand['recipe_id'], off['id'])
+            prod_id, sku_id, image_url = shop_ids_for(cand['recipe_id'], off['id'])
             comp_warnings = list(cand['warnings'] or [])
             if not (prod_id and sku_id):
                 comp_warnings.append('Товар пока не доступен к покупке (нет в витрине)')
@@ -881,6 +881,7 @@ class FoodRecommendationService:
                 product_id=prod_id,
                 sku_id=sku_id,
                 product_name=cand['recipe_name'],
+                image_url=image_url,
                 product_type=ptype,
                 match_score=int(cand.get('score') or 50),
                 daily_grams=dg,

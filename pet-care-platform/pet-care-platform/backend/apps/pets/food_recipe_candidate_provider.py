@@ -337,18 +337,21 @@ def _load_brand_rules():
 def shop_ids_for(recipe_id, offer_id):
     """Доджойнить покупаемые shop.Product/ProductSKU к рецепту/офферу.
 
-    Возвращает (product_id, sku_id); любой None, если товар ещё не заведён в витрину.
+    Возвращает (product_id, sku_id, image_url); id/url = None, если товар ещё не заведён в витрину.
     """
     from apps.shop.models import Product, ProductSKU
     product_id = None
     sku_id = None
+    image_url = None
     if recipe_id:
-        product_id = (Product.objects.filter(food_recipe_id=recipe_id)
-                      .values_list('id', flat=True).first())
+        row = (Product.objects.filter(food_recipe_id=recipe_id)
+               .values_list('id', 'image_url').first())
+        if row:
+            product_id, image_url = row[0], (row[1] or None)
     if offer_id:
         sku_id = (ProductSKU.objects.filter(supplier_offer_id=offer_id)
                   .values_list('id', flat=True).first())
-    return product_id, sku_id
+    return product_id, sku_id, image_url
 
 
 def candidate_to_dto(cand, share, mer, period_days):
@@ -361,7 +364,7 @@ def candidate_to_dto(cand, share, mer, period_days):
     days = round(pack_g / dg, 1) if (dg and pack_g) else None
     packages = max(1, math.ceil(period_days * dg / pack_g)) if (dg and pack_g) else 1
     monthly = round(packages * off['price'], 2) if off.get('price') else None
-    product_id, sku_id = shop_ids_for(cand['recipe_id'], off['id'])
+    product_id, sku_id, image_url = shop_ids_for(cand['recipe_id'], off['id'])
     return {
         'recipe_id': cand['recipe_id'],
         'offer_id': off['id'],
@@ -370,6 +373,7 @@ def candidate_to_dto(cand, share, mer, period_days):
         'article_number': off['article_number'],
         'brand': cand.get('brand'),
         'product_name': cand['recipe_name'],
+        'image_url': image_url,
         'source': 'dinozavrik',
         'food_form': cand['food_form'],
         'kcal_per_100g': kcal100,
