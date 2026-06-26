@@ -401,6 +401,7 @@ class FoodComponent:
     # Связь с нашей базой питания (режим 'recipe'); в legacy остаются None
     recipe_id: Optional[str] = None
     offer_id: Optional[str] = None
+    sku_id: Optional[str] = None
     article_number: Optional[str] = None
     brand: Optional[str] = None
     source: Optional[str] = None
@@ -826,7 +827,7 @@ class FoodRecommendationService:
         from .food_recipe_candidate_provider import select_ration
         period = filters.period_days or 30
         mer = float(calorie_result.mer) if calorie_result else None
-        from .food_recipe_candidate_provider import candidate_to_dto
+        from .food_recipe_candidate_provider import candidate_to_dto, shop_ids_for
         ration = select_ration(pet, period_days=period)
         dry, wet = ration.get('dry'), ration.get('wet')
         dry_alts = ration.get('dry_alternatives') or []
@@ -857,8 +858,13 @@ class FoodRecommendationService:
                 'final_score': cand.get('final_score'),
                 'business_reasons': cand.get('business_reasons') or [],
             }
+            prod_id, sku_id = shop_ids_for(cand['recipe_id'], off['id'])
+            comp_warnings = list(cand['warnings'] or [])
+            if not (prod_id and sku_id):
+                comp_warnings.append('Товар пока не доступен к покупке (нет в витрине)')
             components.append(FoodComponent(
-                product_id=None,
+                product_id=prod_id,
+                sku_id=sku_id,
                 product_name=cand['recipe_name'],
                 product_type=ptype,
                 match_score=int(cand.get('score') or 50),
@@ -871,7 +877,7 @@ class FoodRecommendationService:
                 kcal_per_100g=kcal100,
                 nutrition_protein=cand['protein_percent'],
                 nutrition_fat=cand['fat_percent'],
-                warnings=list(cand['warnings'] or []),
+                warnings=comp_warnings,
                 reasons=[reason] if reason else [],
                 badges=['Из базы Динозаврик'],
                 recipe_id=cand['recipe_id'],
@@ -3628,6 +3634,7 @@ class FoodRecommendationService:
                     'kcal_per_100g': c.kcal_per_100g,
                     'recipe_id': c.recipe_id,
                     'offer_id': c.offer_id,
+                    'sku_id': c.sku_id,
                     'article_number': c.article_number,
                     'brand': c.brand,
                     'source': c.source,

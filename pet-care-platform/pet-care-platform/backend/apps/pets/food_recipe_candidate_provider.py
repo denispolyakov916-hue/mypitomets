@@ -334,6 +334,23 @@ def _load_brand_rules():
     return rules
 
 
+def shop_ids_for(recipe_id, offer_id):
+    """Доджойнить покупаемые shop.Product/ProductSKU к рецепту/офферу.
+
+    Возвращает (product_id, sku_id); любой None, если товар ещё не заведён в витрину.
+    """
+    from apps.shop.models import Product, ProductSKU
+    product_id = None
+    sku_id = None
+    if recipe_id:
+        product_id = (Product.objects.filter(food_recipe_id=recipe_id)
+                      .values_list('id', flat=True).first())
+    if offer_id:
+        sku_id = (ProductSKU.objects.filter(supplier_offer_id=offer_id)
+                  .values_list('id', flat=True).first())
+    return product_id, sku_id
+
+
 def candidate_to_dto(cand, share, mer, period_days):
     """Кандидат → полный DTO (для альтернатив): расчёт порции/дней/упаковок/стоимости по доле калорий."""
     off = cand['offer']
@@ -344,9 +361,12 @@ def candidate_to_dto(cand, share, mer, period_days):
     days = round(pack_g / dg, 1) if (dg and pack_g) else None
     packages = max(1, math.ceil(period_days * dg / pack_g)) if (dg and pack_g) else 1
     monthly = round(packages * off['price'], 2) if off.get('price') else None
+    product_id, sku_id = shop_ids_for(cand['recipe_id'], off['id'])
     return {
         'recipe_id': cand['recipe_id'],
         'offer_id': off['id'],
+        'product_id': product_id,
+        'sku_id': sku_id,
         'article_number': off['article_number'],
         'brand': cand.get('brand'),
         'product_name': cand['recipe_name'],
