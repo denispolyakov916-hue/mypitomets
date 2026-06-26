@@ -963,6 +963,11 @@ const RationComponentCard = ({
     'supplement': '💊',
   };
   
+  const isRecipe = !!(component?.recipe_id || component?.source === 'dinozavrik');
+  let recipeTypeLabel = typeLabels[baseType] || baseType;
+  if (isRecipe && baseType.includes('dry')) recipeTypeLabel = dryPct != null ? `Основа рациона · ${dryPct}%` : 'Основа рациона';
+  else if (isRecipe && baseType.includes('wet')) recipeTypeLabel = wetPct != null ? `Дополнение · ${wetPct}%` : 'Дополнение';
+
   const totalItems = alternatives?.length || 0;
   const canNavigate = totalItems > 1;
   
@@ -995,6 +1000,29 @@ const RationComponentCard = ({
   const priceTotal = component.price
     ? parseFloat(component.price) * (component.packages_needed || 1)
     : null;
+  let priceDisplay = '—';
+  if (priceTotal != null) priceDisplay = `${priceTotal.toLocaleString('ru-RU')} ₽`;
+  else if (component.estimated_monthly_cost) priceDisplay = `≈ ${Math.round(component.estimated_monthly_cost).toLocaleString('ru-RU')} ₽/мес`;
+
+  const altMonthly = (a) => (a && a.price ? parseFloat(a.price) * (a.packages_needed || 1) : null);
+  const mainAlt = alternatives && alternatives.length ? alternatives[0] : null;
+  let priceDeltaLabel = null;
+  if (isRecipe && currentIndex > 0 && priceTotal != null && mainAlt) {
+    const m = altMonthly(mainAlt);
+    if (m != null) {
+      const d = Math.round(priceTotal - m);
+      if (d < 0) priceDeltaLabel = `дешевле на ${Math.abs(d).toLocaleString('ru-RU')} ₽`;
+      else if (d > 0) priceDeltaLabel = `дороже на ${d.toLocaleString('ru-RU')} ₽`;
+    }
+  }
+  const whyChips = isRecipe ? [
+    component.source === 'dinozavrik' ? 'Из базы питания' : null,
+    (component.product_id && component.sku_id) ? 'В наличии' : 'Скоро в продаже',
+    component.is_promoted ? 'Рекомендуем' : null,
+  ].filter(Boolean) : [];
+  const recipeWarnings = isRecipe && Array.isArray(component.warnings)
+    ? component.warnings.filter((w) => w && !/не доступен к покупке/i.test(w)).slice(0, 2)
+    : [];
 
   const cardBg = 'bg-white border-gray-200';
   return (
@@ -1008,7 +1036,7 @@ const RationComponentCard = ({
         <div className="flex items-center gap-2 min-w-0">
           <span className="opacity-90 shrink-0" aria-hidden>{typeEmoji[baseType] || '📦'}</span>
           <span className="text-sm font-bold text-[#3d2f25] truncate lg:text-xs lg:font-medium lg:text-gray-900">
-            {typeLabels[baseType] || baseType}
+            {recipeTypeLabel}
           </span>
         </div>
         <div className="flex items-center gap-2 shrink-0">
@@ -1098,7 +1126,7 @@ const RationComponentCard = ({
               <p className="mt-2 text-xs text-gray-400 text-center">{specLineMobile}</p>
             ) : null}
             <p className="mt-3 text-xl font-bold text-gray-900 tabular-nums">
-              {priceTotal != null ? `${priceTotal.toLocaleString('ru-RU')} ₽` : '—'}
+              {priceDisplay}
             </p>
           </button>
           <button
@@ -1175,10 +1203,7 @@ const RationComponentCard = ({
           
           <div className="flex flex-col items-end justify-center text-right flex-shrink-0 px-2 py-1 min-w-0">
             <span className="font-bold text-gray-900">
-              {component.price 
-                ? `${(parseFloat(component.price) * (component.packages_needed || 1)).toLocaleString('ru-RU')} Р`
-                : '—'
-              }
+              {priceDisplay}
             </span>
           </div>
         </div>
@@ -1197,6 +1222,47 @@ const RationComponentCard = ({
           <ChevronRight className="w-5 h-5" />
         </button>
       </div>
+
+      {isRecipe && (
+        <div className="px-3 pb-3 pt-0.5 max-lg:px-0 space-y-2.5">
+          {totalItems > 1 && (
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
+              <span className="font-semibold text-primary-700">Вариант {currentIndex + 1} из {totalItems}</span>
+              <span className={`inline-flex items-center rounded-full px-2 py-0.5 font-medium ${currentIndex === 0 ? 'bg-primary-100 text-primary-700' : 'bg-accent-100 text-accent-700'}`}>
+                {currentIndex === 0 ? 'Выбран сейчас' : 'Тоже подходит'}
+              </span>
+              {priceDeltaLabel && (
+                <span className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 font-medium text-emerald-700">{priceDeltaLabel}</span>
+              )}
+              {component.days_supply > 0 && (
+                <span className="text-gray-500">хватит на ~{component.days_supply} дн.</span>
+              )}
+            </div>
+          )}
+          {(component.recommendation_reason || whyChips.length > 0) && (
+            <div>
+              <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-primary-400">Почему подходит</p>
+              {component.recommendation_reason && (
+                <p className="mb-1.5 text-xs leading-snug text-gray-600">{component.recommendation_reason}</p>
+              )}
+              {whyChips.length > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {whyChips.map((chip, i) => (
+                    <span key={i} className="inline-flex items-center rounded-full border border-primary-100 bg-primary-50/70 px-2.5 py-1 text-xs text-primary-700">{chip}</span>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+          {recipeWarnings.length > 0 && (
+            <div className="flex flex-wrap gap-1.5">
+              {recipeWarnings.map((w, i) => (
+                <span key={i} className="inline-flex items-center rounded-full bg-amber-50 px-2.5 py-1 text-xs text-amber-700">{w}</span>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
     </motion.div>
   );
@@ -2782,7 +2848,7 @@ export default function FoodRecommendationPage() {
 
       {/* Основной контент: на мобильных сначала блок «Расчёт рациона», затем подбор и конструктор */}
       <div className="grid lg:grid-cols-3 gap-4 sm:gap-6 w-full min-w-0 max-w-full">
-        <div className={`${isRecipeMode ? 'lg:col-span-3' : 'lg:col-span-2'} space-y-6 order-2 lg:order-1 min-w-0 max-w-full`}>
+        <div className={`${isRecipeMode ? 'lg:col-span-3 max-lg:pr-12' : 'lg:col-span-2'} space-y-6 order-2 lg:order-1 min-w-0 max-w-full`}>
           {/* Подбор корма — тот же каркас, что у конструктора рациона */}
           <div className="rounded-2xl border border-amber-200/80 overflow-hidden bg-amber-50/30 max-w-full min-w-0 max-lg:mx-auto max-lg:w-full max-lg:max-w-[min(100%,28rem)] max-lg:border-0 max-lg:rounded-none max-lg:bg-transparent max-lg:overflow-visible">
             <div className="rounded-t-2xl px-4 sm:px-6 py-3 sm:py-4 bg-gradient-to-r from-[#F6B537] via-[#FDE28F] to-[#FEE9AE] border-b border-amber-200/60 max-lg:rounded-xl lg:rounded-t-2xl">
@@ -2901,6 +2967,11 @@ export default function FoodRecommendationPage() {
                       });
                     return (
                       <>
+                        {isRecipeMode && foodComponents.length > 0 && (
+                          <p className="mb-1 text-sm leading-snug text-primary-500 max-lg:px-0.5">
+                            Рацион из двух частей: <span className="font-semibold text-primary-700">основа</span> (сухой) и <span className="font-semibold text-primary-700">дополнение</span> (влажный). Любую часть можно заменить на альтернативу.
+                          </p>
+                        )}
                         {foodComponents.map(({ type, component, alternatives, currentIndex, displayIndexMap }) => (
                           <div key={type} className="space-y-1.5">
                           <RationComponentCard
@@ -2924,7 +2995,7 @@ export default function FoodRecommendationPage() {
                               onClick={() => handleBuyComponent(component)}
                               disabled={!component?.product_id || !component?.sku_id || cartBusy}
                               title={(component?.product_id && component?.sku_id) ? 'Добавить в корзину' : 'Эти корма появятся в продаже позже'}
-                              className={`w-full py-2 rounded-xl text-sm font-medium flex items-center justify-center gap-2 transition-all ${(component?.product_id && component?.sku_id) ? 'bg-primary-600 hover:bg-primary-700 text-white' : 'border-2 border-gray-200 text-gray-400 cursor-not-allowed'} disabled:opacity-60 disabled:cursor-not-allowed`}
+                              className={`w-full min-h-[44px] py-2.5 rounded-xl text-sm font-medium flex items-center justify-center gap-2 transition-all ${(component?.product_id && component?.sku_id) ? 'bg-primary-600 hover:bg-primary-700 text-white' : 'border-2 border-gray-200 text-gray-400 cursor-not-allowed'} disabled:opacity-60 disabled:cursor-not-allowed`}
                             >
                               <ShoppingCart className="w-4 h-4" />
                               {(component?.product_id && component?.sku_id) ? 'В корзину' : 'Скоро в продаже'}
