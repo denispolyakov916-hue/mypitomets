@@ -832,8 +832,18 @@ class FoodRecommendationService:
         dry, wet = ration.get('dry'), ration.get('wet')
         dry_alts = ration.get('dry_alternatives') or []
         wet_alts = ration.get('wet_alternatives') or []
+        # Уважаем выбранный тип питания: dry → только сухой, wet → только влажный, multi → обе части.
+        food_type = (filters.food_type or 'multi').strip().lower()
+        if food_type == 'dry':
+            wet, wet_alts = None, []
+        elif food_type == 'wet':
+            dry, dry_alts = None, []
         if dry and wet:
-            slots = [(dry, 0.7, dry_alts), (wet, 0.3, wet_alts)]
+            # Доли калорий из выбранного соотношения (multi_ratio_preset), а не жёсткие 70/30.
+            dist = self._get_calorie_distribution(pet, filters)
+            dry_share = dist.get('dry_food') or 0.6
+            wet_share = dist.get('wet_food') or 0.4
+            slots = [(dry, dry_share, dry_alts), (wet, wet_share, wet_alts)]
         elif dry:
             slots = [(dry, 1.0, dry_alts)]
         elif wet:
