@@ -397,14 +397,19 @@ def select_ration(pet, period_days=30, max_alternatives=5):
     brand_rules = _load_brand_rules()
     dry_res = get_food_recipe_candidates(pet, food_form='dry', limit=500)
     wet_res = get_food_recipe_candidates(pet, food_form='wet', limit=500)
+    treat_res = get_food_recipe_candidates(pet, food_form='treat', limit=500)
     dry_ranked = _rank_candidates(dry_res['candidates'], ctx, brand_rules)
     wet_ranked = _rank_candidates(wet_res['candidates'], ctx, brand_rules)
+    treat_ranked = _rank_candidates(treat_res['candidates'], ctx, brand_rules)
     return {
         'dry': dry_ranked[0] if dry_ranked else None,
         'dry_alternatives': dry_ranked[1:1 + max_alternatives],
         'wet': wet_ranked[0] if wet_ranked else None,
         'wet_alternatives': wet_ranked[1:1 + max_alternatives],
+        'treat': treat_ranked[0] if treat_ranked else None,
+        'treat_alternatives': treat_ranked[1:1 + max_alternatives],
         'dry_count': len(dry_ranked),
         'wet_count': len(wet_ranked),
+        'treat_count': len(treat_ranked),
         'daily_kcal': dry_res['daily_kcal'] or wet_res['daily_kcal'],
     }
