@@ -23,6 +23,7 @@ from decimal import Decimal
 
 from django.core.management.base import BaseCommand
 from django.db import transaction
+from django.db.models import Count
 from django.utils.text import slugify
 
 from apps.shop.models import Product, ProductSKU, Brand, Category
@@ -35,8 +36,35 @@ BIG = Decimal('99999999')
 
 # species рецепта -> animal_type товара
 SPECIES_TO_ANIMAL = {'cat': 'cat', 'dog': 'dog'}
-# форма корма -> code категории магазина (точное соответствие)
-FORM_TO_CODE = {'dry': 'food.dry', 'wet': 'food.wet', 'treat': 'food.treats'}
+
+# code категории по (animal, food_form). Category.code уникален, поэтому у собак
+# отдельные коды food.dog.* (cat монополизировал food.dry/food.wet/food.treats).
+FORM_CODE = {
+    'cat': {'dry': 'food.dry', 'wet': 'food.wet', 'treat': 'food.treats'},
+    'dog': {'dry': 'food.dog.dry', 'wet': 'food.dog.wet', 'treat': 'food.dog.treats'},
+}
+GENERIC_CODE = {'cat': 'food', 'dog': 'food.dog'}
+# недостающие dog-категории, которые команда создаёт сама (стиль таксономии: parent=food.dog, slug *-dog)
+DOG_CATEGORIES = [
+    ('food.dog.dry', 'Сухой', 'сухой-dog'),
+    ('food.dog.wet', 'Влажный', 'влажный-dog'),
+    ('food.dog.treats', 'Лакомства', 'лакомства-dog'),
+]
+
+# Красивые названия для slug-кодов, которые humanize не восстановит
+# (кириллические оригиналы + нестандартная капитализация/символы).
+KNOWN_BRANDS = {
+    'derevenskie-lakomstva': 'Деревенские Лакомства',
+    'frikote': 'Фрикотэ',
+    'miratorg': 'Мираторг',
+    'odno-myaso': 'Одно Мясо',
+    'oriko': 'Орико',
+    'schastlivyy-kot': 'Счастливый Кот',
+    'schastlivyy-pes': 'Счастливый Пёс',
+    'chat-chat': 'Chat&Chat',
+    'biomenu': 'BioMenu',
+    '8in1': '8in1',
+}
 
 
 class Command(BaseCommand):
@@ -50,57 +78,88 @@ class Command(BaseCommand):
     def _animal_for(self, species):
         return SPECIES_TO_ANIMAL.get(species, 'all')
 
-    def _brand_for(self, name):
-        """Переиспользовать существующий бренд по имени, иначе создать (slug гарантированно уникален)."""
-        name = (name or '').strip()
-        if not name:
+    @staticmethod
+    def _humanize_brand(code):
+        """slug-код бренда -> читаемое имя ('best-dinner'->'Best Dinner', '8in1'->'8in1')."""
+        code = (code or '').strip()
+        if not code:
+            return ''
+        if code in KNOWN_BRANDS:
+            return KNOWN_BRANDS[code]
+        parts = code.replace('_', '-').split('-')
+        out = [p if any(ch.isdigit() for ch in p) else p[:1].upper() + p[1:]
+               for p in parts if p]
+        return ' '.join(out) or code
+
+    def _brand_for(self, code):
+        """Бренд по slug-коду FoodRecipe.brand с красивым shop.Brand.name. Идемпотентно.
+
+        1) переиспользовать существующий бренд с красивым именем (в т.ч. курируемый КМ-бренд);
+        2) иначе переименовать slug-бренд прошлого импорта (name==code) в красивое;
+        3) иначе создать. Связь с FoodRecipe.brand (код) не рвём.
+        """
+        code = (code or '').strip()
+        if not code:
             return None
-        key = name.lower()
-        if key in self._brand_cache:
-            return self._brand_cache[key]
-        brand = Brand.objects.filter(name__iexact=name).first()
+        if code in self._brand_cache:
+            return self._brand_cache[code]
+        pretty = self._humanize_brand(code)
+        brand = Brand.objects.filter(name__iexact=pretty).first()
         if brand is None:
-            base = slugify(name) or slugify(name, allow_unicode=True) or 'brand'
+            brand = Brand.objects.filter(name__iexact=code).first()
+            if brand is not None and brand.name != pretty:
+                brand.name = pretty
+                brand.save(update_fields=['name'])
+                self.stat['brands_renamed'] += 1
+        if brand is None:
+            base = slugify(code) or slugify(code, allow_unicode=True) or 'brand'
             slug, i = base, 2
             while Brand.objects.filter(slug=slug).exists():
                 slug, i = f'{base}-{i}', i + 1
-            brand = Brand.objects.create(name=name, slug=slug)
+            brand = Brand.objects.create(name=pretty, slug=slug)
             self.stat['brands_created'] += 1
-        self._brand_cache[key] = brand
+        self._brand_cache[code] = brand
         return brand
 
-    def _cat(self, animal, code):
-        ck = (animal, code)
-        if ck not in self._cat_cache:
-            self._cat_cache[ck] = Category.objects.filter(
-                product_group='food', animal_type=animal, code=code
-            ).first()
-        return self._cat_cache[ck]
+    def _ensure_categories(self):
+        """Создать недостающие dog food-категории (идемпотентно). Кошачьи/КМ не трогаем."""
+        parent = Category.objects.filter(code=GENERIC_CODE['dog']).first()  # food.dog
+        if parent and parent.product_group != 'food':
+            parent.product_group = 'food'
+            parent.save(update_fields=['product_group'])
+        for code, name, slug in DOG_CATEGORIES:
+            _, created = Category.objects.get_or_create(
+                code=code,
+                defaults=dict(name=name, slug=slug, animal_type='dog',
+                              product_group='food', parent=parent,
+                              is_active=True, show_in_menu=True),
+            )
+            if created:
+                self.stat['cats_created'] += 1
+
+    def _cat(self, code):
+        if code not in self._cat_cache:
+            self._cat_cache[code] = Category.objects.filter(product_group='food', code=code).first()
+        return self._cat_cache[code]
 
     def _category_for(self, species, food_form):
         """Подобрать food-категорию по species+food_form. Возвращает (category|None, warning|None)."""
         animal = self._animal_for(species)
         form_label = food_form or '—'
-        code = FORM_TO_CODE.get(food_form)
-        # 1) точное: тот же зверь + конкретная форма (для кошек есть food.dry/wet/treats)
-        if code:
-            c = self._cat(animal, code)
+        if animal in ('cat', 'dog'):
+            code = FORM_CODE[animal].get(food_form)
+            if code:
+                c = self._cat(code)
+                if c:
+                    return c, None
+            c = self._cat(GENERIC_CODE[animal])  # generic того же зверя (food / food.dog)
             if c:
-                return c, None
-        # 2) generic 'food' того же зверя
-        c = self._cat(animal, 'food')
+                return c, f"{animal}/{form_label}: нет точной формы -> generic '{GENERIC_CODE[animal]}'"
+        # species пустой/other -> глобальная 'food'
+        c = self._cat('food')
         if c:
-            return c, f"{species or '—'}/{form_label}: точной нет -> generic 'food' ({animal})"
-        # 3) ближайшая food-категория: глобальная 'food' (Корм), даже если зверь отличается
-        if 'global' not in self._cat_cache:
-            self._cat_cache['global'] = Category.objects.filter(
-                product_group='food', code='food'
-            ).order_by('animal_type').first()
-        c = self._cat_cache['global']
-        if c:
-            return c, f"{species or '—'}/{form_label}: нет food-категории для '{animal}' -> ближайшая 'food' ({c.animal_type})"
-        # 4) нет ни одной
-        return None, f"{species or '—'}/{form_label}: food-категория не найдена -> без категории"
+            return c, f"{species or '—'}/{form_label}: нет видовой категории -> 'food'"
+        return None, f"{species or '—'}/{form_label}: food-категория не найдена"
 
     def _raw_item(self, recipe, offers):
         ri = recipe.raw_items.filter(supplier=self.dino).first()
@@ -283,6 +342,7 @@ class Command(BaseCommand):
             # рецепта не должен оставлять в кэше ссылку на откатанный бренд
             for bname in sorted(brand_names):
                 self._brand_for(bname)
+            self._ensure_categories()
             recipes = FoodRecipe.objects.filter(id__in=sel_ids).order_by('id')
             for i, recipe in enumerate(recipes.iterator(), 1):
                 try:
@@ -293,6 +353,11 @@ class Command(BaseCommand):
                     self.stderr.write(self.style.WARNING(f'  recipe {recipe.id}: {e}'))
                 if i % 250 == 0:
                     w(f'  ...{i}/{total}')
+            # уборка осиротевших slug-брендов прошлого импорта (0 товаров после консолидации)
+            orphans = (Brand.objects.filter(name__in=brand_names)
+                       .annotate(_n=Count('products')).filter(_n=0))
+            self.stat['brands_orphans_deleted'] = orphans.count()
+            orphans.delete()
             if dry:
                 transaction.set_rollback(True)
 
@@ -304,6 +369,11 @@ class Command(BaseCommand):
         skus_linked = ProductSKU.objects.filter(
             supplier_offer__isnull=False, supplier_offer__supplier=self.dino
         ).count()
+        generic_codes = ['food', 'food.dog']
+        in_generic = dino_products.filter(new_category__code__in=generic_codes).count()
+        dog_proper = dino_products.filter(
+            new_category__code__in=['food.dog.dry', 'food.dog.wet', 'food.dog.treats']
+        ).count()
 
         w('')
         w('===== ИМПОРТ ДИНОЗАВРИКА В ВИТРИНУ%s =====' % (' (DRY-RUN, откат)' if dry else ''))
@@ -313,11 +383,16 @@ class Command(BaseCommand):
         w(f'SKU создано:                    {self.stat["sku_created"]}')
         w(f'SKU обновлено:                  {self.stat["sku_updated"]}')
         w(f'Брендов создано:                {self.stat["brands_created"]}')
+        w(f'Брендов переименовано (slug->красиво): {self.stat["brands_renamed"]}')
+        w(f'Брендов-дублей удалено (0 товаров):     {self.stat["brands_orphans_deleted"]}')
+        w(f'Dog-категорий создано:          {self.stat["cats_created"]}')
         w('--- состояние витрины (Динозаврик) ---')
         w(f'Товаров доступно (is_available):{available}')
         w(f'Товаров НЕ в подборе (recipe.is_recommendable=False): {not_recommendable}')
         w(f'SKU связано с supplier_offer:   {skus_linked}')
         w(f'Товаров с изображением:         {with_images}')
+        w(f'Товаров в generic-категории (food/food.dog): {in_generic}')
+        w(f'  собачьих в правильных dog-категориях:      {dog_proper}')
         if self.warnings:
             w('--- топ warning-ов ---')
             for msg, cnt in self.warnings.most_common(10):
