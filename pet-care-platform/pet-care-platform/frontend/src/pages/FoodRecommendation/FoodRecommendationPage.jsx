@@ -28,6 +28,7 @@ import {
 } from '../../api/pets';
 import { addToCart, getCategories, getProductsV2 } from '../../api/shop';
 import { useToastStore } from '../../store/toastStore';
+import { useCartStore } from '../../store/cartStore';
 import { Chart as ChartJS, ArcElement, Tooltip } from 'chart.js';
 import { Doughnut, Pie } from 'react-chartjs-2';
 
@@ -2531,10 +2532,16 @@ export default function FoodRecommendationPage() {
     const packages = current.packages_needed || 1;
     return sum + (price * packages);
   }, 0);
+
+  // Сколько позиций реально можно купить (есть и product_id, и sku_id из витрины)
+  const buyableCount = currentComponents.filter(
+    (e) => e.component?.product_id && e.component?.sku_id
+  ).length;
   
   const showSuccess = useToastStore((st) => st.success);
   const showError = useToastStore((st) => st.error);
   const [savingRation, setSavingRation] = useState(false);
+  const [cartBusy, setCartBusy] = useState(false);
   // recipe-режим: компоненты из нашей базы (нет product_id, есть recipe_id)
   const isRecipeMode = (feedingPlan?.components || []).some((c) => c?.source === 'dinozavrik' || c?.recipe_id);
 
@@ -2581,6 +2588,52 @@ export default function FoodRecommendationPage() {
     } catch (err) {
       console.error('Ошибка добавления в корзину:', err);
       setError('Не удалось добавить товары в корзину');
+    }
+  };
+
+  // recipe-режим: купить ОДИН компонент (именно выбранный вариант/альтернативу)
+  const handleBuyComponent = async (component) => {
+    if (!component?.product_id || !component?.sku_id || cartBusy) return;
+    try {
+      setCartBusy(true);
+      await addToCart(component.product_id, component.packages_needed || 1, component.sku_id);
+      try { await useCartStore.getState().refreshCount?.(); } catch (_) {}
+      if (showSuccess) showSuccess(`«${component.product_name}» — в корзине`);
+    } catch (err) {
+      console.error('Ошибка добавления в корзину:', err);
+      if (showError) showError('Не удалось добавить в корзину');
+    } finally {
+      setCartBusy(false);
+    }
+  };
+
+  // recipe-режим: купить весь рацион (все доступные компоненты с их packages_needed)
+  const handleBuyRation = async () => {
+    const selected = currentComponents.map((e) => e.component).filter(Boolean);
+    const buyable = selected.filter((c) => c.product_id && c.sku_id);
+    if (buyable.length === 0) {
+      if (showError) showError('Пока нет позиций, доступных к покупке');
+      return;
+    }
+    try {
+      setCartBusy(true);
+      for (const c of buyable) {
+        await addToCart(c.product_id, c.packages_needed || 1, c.sku_id);
+      }
+      const skipped = selected.length - buyable.length;
+      if (showSuccess) {
+        showSuccess(
+          skipped > 0
+            ? `В корзину добавлено ${buyable.length} поз.; ${skipped} пока недоступны`
+            : 'Рацион добавлен в корзину'
+        );
+      }
+      navigate('/cart');
+    } catch (err) {
+      console.error('Ошибка добавления рациона:', err);
+      if (showError) showError('Не удалось добавить рацион в корзину');
+    } finally {
+      setCartBusy(false);
     }
   };
 
@@ -2826,8 +2879,8 @@ export default function FoodRecommendationPage() {
                     return (
                       <>
                         {foodComponents.map(({ type, component, alternatives, currentIndex, displayIndexMap }) => (
+                          <div key={type} className="space-y-1.5">
                           <RationComponentCard
-                            key={type}
                             component={component}
                             alternatives={alternatives}
                             currentIndex={currentIndex}
@@ -2842,6 +2895,19 @@ export default function FoodRecommendationPage() {
                             dailyCalories={feedingPlan?.daily_calories}
                             accentVariant={planVariant === 'advanced' ? 'purple' : 'amber'}
                           />
+                          {isRecipeMode && (
+                            <button
+                              type="button"
+                              onClick={() => handleBuyComponent(component)}
+                              disabled={!component?.product_id || !component?.sku_id || cartBusy}
+                              title={(component?.product_id && component?.sku_id) ? 'Добавить в корзину' : 'Эти корма появятся в продаже позже'}
+                              className={`w-full py-2 rounded-xl text-sm font-medium flex items-center justify-center gap-2 transition-all ${(component?.product_id && component?.sku_id) ? 'bg-primary-600 hover:bg-primary-700 text-white' : 'border-2 border-gray-200 text-gray-400 cursor-not-allowed'} disabled:opacity-60 disabled:cursor-not-allowed`}
+                            >
+                              <ShoppingCart className="w-4 h-4" />
+                              {(component?.product_id && component?.sku_id) ? 'В корзину' : 'Скоро в продаже'}
+                            </button>
+                          )}
+                          </div>
                         ))}
 
                         {!foodComponents.some(({ type }) => type === 'treat') && (
@@ -2961,11 +3027,13 @@ export default function FoodRecommendationPage() {
                       </button>
                       <button
                         type="button"
-                        disabled
-                        title="Эти корма появятся в продаже позже"
-                        className="w-full mt-3 py-2.5 rounded-xl border-2 border-gray-200 text-gray-400 font-medium flex items-center justify-center gap-2 cursor-not-allowed"
+                        onClick={handleBuyRation}
+                        disabled={cartBusy || buyableCount === 0}
+                        title={buyableCount > 0 ? 'Добавить весь рацион в корзину' : 'Эти корма появятся в продаже позже'}
+                        className={`w-full mt-3 py-3 rounded-xl font-medium flex items-center justify-center gap-2 transition-all ${buyableCount > 0 ? 'bg-primary-600 hover:bg-primary-700 text-white' : 'border-2 border-gray-200 text-gray-400 cursor-not-allowed'} disabled:opacity-60 disabled:cursor-not-allowed`}
                       >
-                        <ShoppingCart className="w-5 h-5" /> Купить — скоро в продаже
+                        <ShoppingCart className="w-5 h-5" />
+                        {cartBusy ? 'Добавляем…' : (buyableCount > 0 ? 'Купить рацион' : 'Скоро в продаже')}
                       </button>
                     </>
                   ) : (
