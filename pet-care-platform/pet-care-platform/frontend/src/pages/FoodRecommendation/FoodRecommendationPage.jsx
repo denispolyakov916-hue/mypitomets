@@ -28,6 +28,8 @@ import {
 } from '../../api/pets';
 import { addToCart, getCategories, getProductsV2 } from '../../api/shop';
 import { useToastStore } from '../../store/toastStore';
+import RationResultHero from './components/RationResultHero';
+import { PuffLottie } from '../../components/brand';
 import { useCartStore } from '../../store/cartStore';
 import { Chart as ChartJS, ArcElement, Tooltip } from 'chart.js';
 import { Doughnut, Pie } from 'react-chartjs-2';
@@ -2757,9 +2759,30 @@ export default function FoodRecommendationPage() {
         </motion.div>
       )}
       
+      {isRecipeMode && selectedPet && <RationResultHero pet={selectedPet} />}
+
+      {isRecipeMode && selectedPet && (
+        <div className="mb-6 hidden lg:flex items-center justify-between gap-4 rounded-2xl border border-primary-100 bg-white px-5 py-4 shadow-sm">
+          <div className="flex items-center gap-3 min-w-0">
+            <PuffLottie name="talk_gesture" size={56} alt="Пуфыч объяснит расчёт" />
+            <div className="min-w-0">
+              <p className="font-heading font-bold text-primary-800">Сколько и когда кормить?</p>
+              <p className="text-sm text-primary-500">Калории, БЖУ и расписание — Пуфыч всё посчитал.</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setMobileRationCalcOpen(true)}
+            className="shrink-0 inline-flex items-center gap-2 rounded-full bg-accent-500 px-5 py-2.5 font-semibold text-white shadow-sm transition hover:bg-accent-600"
+          >
+            <Calculator className="h-5 w-5" aria-hidden /> Открыть расчёт
+          </button>
+        </div>
+      )}
+
       {/* Основной контент: на мобильных сначала блок «Расчёт рациона», затем подбор и конструктор */}
       <div className="grid lg:grid-cols-3 gap-4 sm:gap-6 w-full min-w-0 max-w-full">
-        <div className="lg:col-span-2 space-y-6 order-2 lg:order-1 min-w-0 max-w-full">
+        <div className={`${isRecipeMode ? 'lg:col-span-3' : 'lg:col-span-2'} space-y-6 order-2 lg:order-1 min-w-0 max-w-full`}>
           {/* Подбор корма — тот же каркас, что у конструктора рациона */}
           <div className="rounded-2xl border border-amber-200/80 overflow-hidden bg-amber-50/30 max-w-full min-w-0 max-lg:mx-auto max-lg:w-full max-lg:max-w-[min(100%,28rem)] max-lg:border-0 max-lg:rounded-none max-lg:bg-transparent max-lg:overflow-visible">
             <div className="rounded-t-2xl px-4 sm:px-6 py-3 sm:py-4 bg-gradient-to-r from-[#F6B537] via-[#FDE28F] to-[#FEE9AE] border-b border-amber-200/60 max-lg:rounded-xl lg:rounded-t-2xl">
@@ -3064,7 +3087,7 @@ export default function FoodRecommendationPage() {
           </div>
         </div>
         
-        <div className="hidden lg:block lg:col-span-1 lg:order-2 min-w-0 max-w-full scroll-mt-24" id="mobile-feeding-plan">
+        <div className={`${isRecipeMode ? 'hidden' : 'hidden lg:block'} lg:col-span-1 lg:order-2 min-w-0 max-w-full scroll-mt-24`} id="mobile-feeding-plan">
           <div className="rounded-2xl border border-amber-200/80 overflow-hidden bg-amber-50/30 max-w-full min-w-0 max-lg:border-0 max-lg:rounded-none max-lg:bg-transparent max-lg:overflow-visible">
             <div className="rounded-t-2xl px-4 sm:px-6 py-3 sm:py-4 bg-gradient-to-r from-[#F6B537] via-[#FDE28F] to-[#FEE9AE] border-b border-amber-200/60 max-lg:rounded-xl lg:rounded-t-2xl">
               <div className="flex items-center justify-between gap-2 min-w-0">
@@ -3161,7 +3184,7 @@ export default function FoodRecommendationPage() {
             <motion.div
               key="ration-calc-backdrop"
               role="presentation"
-              className="fixed inset-0 z-[50190] bg-black/45 lg:hidden"
+              className="fixed inset-0 z-[50190] bg-black/45"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
@@ -3173,7 +3196,7 @@ export default function FoodRecommendationPage() {
               role="dialog"
               aria-modal="true"
               aria-labelledby="mobile-ration-calc-title"
-              className="fixed inset-y-0 right-0 z-[50200] flex h-full w-full max-w-[min(100%,28rem)] flex-col bg-white font-sans text-base antialiased shadow-[-12px_0_40px_rgba(0,0,0,0.12)] lg:hidden"
+              className="fixed inset-y-0 right-0 z-[50200] flex h-full w-full max-w-[min(100%,28rem)] flex-col bg-white font-sans text-base antialiased shadow-[-12px_0_40px_rgba(0,0,0,0.12)]"
               initial={{ x: '100%' }}
               animate={{ x: 0 }}
               exit={{ x: '100%' }}
@@ -3200,6 +3223,11 @@ export default function FoodRecommendationPage() {
                 </div>
               </div>
               <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-4 pb-[max(1.5rem,env(safe-area-inset-bottom))]">
+                {selectedPet && feedingPlan && (
+                  <div className="mb-3">
+                    <PdfDownloadButton plan={feedingPlan} pet={selectedPet} selectedComponents={currentComponents.map((x) => x.component).filter(Boolean)} treatFrequencyDays={treatFrequencyDays} variant="secondary" />
+                  </div>
+                )}
                 <div className="min-w-0 max-w-full overflow-x-hidden">
                   {selectedPet ? (
                     <FeedingPlanBlock
