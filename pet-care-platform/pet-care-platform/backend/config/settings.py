@@ -565,4 +565,4 @@ if not DEBUG:
         CSRF_TRUSTED_ORIGINS.append(client_url)
 
 # Источник подбора корма: 'legacy' (shop.Product/FoodDetails) | 'recipe' (FoodRecipe/SupplierOffer)
-FOOD_RECOMMENDATION_SOURCE = 'legacy'
+FOOD_RECOMMENDATION_SOURCE = os.getenv('FOOD_RECOMMENDATION_SOURCE', 'legacy')

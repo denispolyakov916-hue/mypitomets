@@ -2597,7 +2597,7 @@ export default function FoodRecommendationPage() {
     try {
       setCartBusy(true);
       await addToCart(component.product_id, component.packages_needed || 1, component.sku_id);
-      try { await useCartStore.getState().refreshCount?.(); } catch (_) {}
+      try { await useCartStore.getState().refreshCount?.(); } catch { /* обновление счётчика корзины не критично */ }
       if (showSuccess) showSuccess(`«${component.product_name}» — в корзине`);
     } catch (err) {
       console.error('Ошибка добавления в корзину:', err);
