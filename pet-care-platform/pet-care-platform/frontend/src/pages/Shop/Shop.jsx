@@ -356,6 +356,7 @@ function Shop() {
                 products={products}
                 onAddToCart={handleAddToCart}
                 isLoading={isLoading && products.length === 0}
+                selectedPet={selectedPet}
               />
               
               <Pagination

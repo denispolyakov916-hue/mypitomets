@@ -273,7 +273,7 @@ const CartButton = memo(function CartButton({
 /**
  * Компонент ProductCard (информативный стиль)
  */
-const ProductCard = memo(function ProductCard({ product, onAddToCart, isLoading = false }) {
+const ProductCard = memo(function ProductCard({ product, onAddToCart, isLoading = false, pet = null }) {
   const [isAdding, setIsAdding] = useState(false)
   const { getItemInCart, updateQuantity, addItem } = useCartStore()
 
@@ -297,6 +297,13 @@ const ProductCard = memo(function ProductCard({ product, onAddToCart, isLoading 
   
   // Наличие
   const isAvailable = product.is_available
+
+  // В сохранённом рационе выбранного питомца?
+  const inRation = !!(
+    product.food_recipe_id &&
+    Array.isArray(pet?.ration_recipe_ids) &&
+    pet.ration_recipe_ids.map(String).includes(String(product.food_recipe_id))
+  )
   
   const handleAddToCart = useCallback(async () => {
     if (isAdding || isLoading) return
@@ -333,11 +340,20 @@ const ProductCard = memo(function ProductCard({ product, onAddToCart, isLoading 
         >
         <ProductImage src={mainImage} alt={product.name || 'Изображение товара'} animal={animalType} />
         
-        {/* Бейдж скидки по референсу — жёлтый, скруглённый */}
-        {discountPercent > 0 && (
-          <span className="absolute top-2 left-2 px-2.5 py-1 bg-accent-400 text-primary-800 text-xs font-bold rounded-full shadow-sm">
-            -{discountPercent}%
-          </span>
+        {/* Бейджи слева сверху: «В рационе» питомца + скидка */}
+        {(inRation || discountPercent > 0) && (
+          <div className="absolute top-2 left-2 flex flex-col items-start gap-1">
+            {inRation && (
+              <span className="px-2.5 py-1 bg-primary-600 text-white text-xs font-bold rounded-full shadow-sm">
+                В рационе{pet?.name ? ` ${pet.name}` : ''}
+              </span>
+            )}
+            {discountPercent > 0 && (
+              <span className="px-2.5 py-1 bg-accent-400 text-primary-800 text-xs font-bold rounded-full shadow-sm">
+                -{discountPercent}%
+              </span>
+            )}
+          </div>
         )}
         
         {/* Кнопки вишлиста и избранного */}

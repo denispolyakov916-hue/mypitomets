@@ -72,7 +72,7 @@ const Pagination = memo(function Pagination({ pagination, onPageChange, isLoadin
 /**
  * Оптимизированная сетка товаров
  */
-const ProductGrid = memo(function ProductGrid({ products, onAddToCart, isLoading }) {
+const ProductGrid = memo(function ProductGrid({ products, onAddToCart, isLoading, selectedPet }) {
   if (isLoading && products.length === 0) {
     return <ProductGridSkeleton count={20} />
   }
@@ -88,6 +88,7 @@ const ProductGrid = memo(function ProductGrid({ products, onAddToCart, isLoading
           <ProductCard
             product={product}
             onAddToCart={onAddToCart}
+            pet={selectedPet}
           />
         </div>
       ))}
