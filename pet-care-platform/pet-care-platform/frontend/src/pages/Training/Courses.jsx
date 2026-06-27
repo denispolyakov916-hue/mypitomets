@@ -20,6 +20,8 @@ import {
   MobileCourseFilterBottomSheet,
   CourseGrid,
   CourseHeader,
+  CourseHero,
+  CourseExperts,
   FreeEnrollModal,
 } from './components'
 
@@ -210,6 +212,8 @@ function Courses() {
 
   return (
     <div className="animate-fadeIn page-container-with-sidebar courses-catalog-shell flex flex-col min-h-[calc(100vh-4rem)]">
+      <CourseHero courseCount={courseCount} onSearch={(q) => handleFilterChange('search', q)} />
+      <CourseExperts />
       <CourseHeader
         onOpenMobileFilters={() => setIsMobileFiltersOpen(true)}
         onCategoryChange={handleFilterChange}

@@ -3,3 +3,5 @@ export { default as MobileCourseFilterBottomSheet } from './MobileCourseFilterBo
 export { CourseGrid, Pagination } from './CourseGrid'
 export { CourseHeader } from './CourseHeader'
 export { FreeEnrollModal } from './FreeEnrollModal'
+export { default as CourseHero } from './CourseHero'
+export { default as CourseExperts } from './CourseExperts'
