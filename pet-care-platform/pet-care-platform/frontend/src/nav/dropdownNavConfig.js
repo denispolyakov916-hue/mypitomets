@@ -31,9 +31,6 @@ export const navNutrition = {
   sectionTitle: 'СЕРВИСЫ',
   items: [
     { label: 'Подбор питания', to: '/food-recommendation', description: 'рекомендации по питанию', icon: UtensilsCrossed },
-    { label: 'Подбор питомца для вас', to: '/coming-soon?name=Подбор+питомца+для+вас', description: 'поможем выбрать питомца', icon: PawPrint },
-    { label: 'Подбор курсов', to: '/coming-soon?name=Подбор+курсов', description: 'курсы и обучение', icon: GraduationCap },
-    { label: 'Список продуктов', to: '/coming-soon?name=Список+продуктов', description: 'каталог товаров', icon: List },
   ],
 }
 
@@ -43,8 +40,6 @@ export const navHealth = {
   sectionTitle: 'КОНТРОЛЬ',
   items: [
     { label: 'Дневник здоровья', to: '/health-diary', description: 'симптомы, самочувствие', icon: Stethoscope },
-    { label: 'Медкарта', to: '/coming-soon?name=Медкарта', description: 'паспорта и здоровье питомцев', icon: FileHeart },
-    { label: 'Активность', to: '/coming-soon?name=Активность', description: 'уровень активности', icon: Activity },
   ],
 }
 

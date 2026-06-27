@@ -381,7 +381,7 @@ export default function PetDetailPage() {
         {/* Пуфыч выглядывает ИЗ-ЗА ЛЕВОГО КРАЯ карточки: он позади контента (z-0), а левый
             край карточки (overflow-hidden) аккуратно срезает его тело — наружу смотрят
             мордочка и машущая лапка. Мягкое свечение делает его частью карточки. Desktop only. */}
-        <div aria-hidden="true" className="hidden lg:block pointer-events-none absolute top-7 -left-[40px] z-0">
+        <div aria-hidden="true" className="hidden lg:block pointer-events-none absolute top-7 -right-[40px] z-0">
           <div className="absolute inset-6 rounded-full bg-gradient-to-br from-gold-200/55 to-primary-200/45 blur-2xl" />
           <div className="relative">
             <PuffPeek size={166} />
@@ -389,7 +389,7 @@ export default function PetDetailPage() {
         </div>
 
         {/* Верх hero: аватар + имя/метрики + одно основное действие */}
-        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center gap-6 lg:pl-32">
+        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center gap-6 lg:pr-32">
           {/* Аватар с кнопкой смены фото */}
           <div className="relative flex-shrink-0 mx-auto lg:mx-0">
             <div className="relative w-28 h-28 sm:w-32 sm:h-32 rounded-[28px] bg-gradient-to-br from-primary-100 via-violet-100 to-gold-100 ring-4 ring-white shadow-md flex items-center justify-center overflow-hidden text-6xl">
@@ -1439,7 +1439,7 @@ function PuffPeek({ size = 166, everyMs = 10000 }) {
 
   useEffect(() => {
     let alive = true;
-    fetch('/lottie/puff/puff_hello_corner.json')
+    fetch('/lottie/puff/puff_hello_corner2.json')
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error('not found'))))
       .then((j) => { if (alive) setData(j); })
       .catch(() => { if (alive) setFailed(true); });

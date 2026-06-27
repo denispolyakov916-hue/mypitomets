@@ -6,6 +6,7 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { X, Send } from 'lucide-react'
+import { PuffLottie } from './brand'
 
 // Видео маскота с лендинга (то же, что в виджете на главной)
 const PUFF_VIDEO_SRC = '/landing/puf-krug-obrez-new.MP4'
@@ -187,27 +188,10 @@ export default function PuffSupportWidget({ stackGuestStrip = false }) {
               />
             )}
           </span>
-        ) : useVideo ? (
-          <video
-            ref={videoRef}
-            src={PUFF_VIDEO_SRC}
-            muted
-            loop
-            playsInline
-            preload="auto"
-            className="h-full w-full object-contain object-center"
-            style={{ transform: 'scale(0.85)' }}
-            aria-hidden
-            onError={() => setUseVideo(false)}
-          />
         ) : (
-          <img
-            src={PUFF_IMAGE_FALLBACK}
-            alt=""
-            className="h-full w-full object-cover object-center"
-            style={{ transform: 'scale(0.85)' }}
-            aria-hidden
-          />
+          <span className="flex h-full w-full items-center justify-center">
+            <PuffLottie name="bored_yawn" loop size={60} alt="Пуфыч спит" />
+          </span>
         )}
       </button>
     </div>
