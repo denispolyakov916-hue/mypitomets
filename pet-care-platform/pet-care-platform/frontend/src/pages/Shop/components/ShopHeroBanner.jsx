@@ -42,10 +42,10 @@ const SLIDES = [
 ]
 
 const CATEGORIES = [
-  { label: 'Премиальное питание', Icon: UtensilsCrossed, gradient: 'from-accent-400 to-amber-500' },
-  { label: 'Игрушки и досуг', Icon: Dog, gradient: 'from-violet-400 to-violet-600' },
-  { label: 'Здоровье и витамины', Icon: HeartPulse, gradient: 'from-emerald-400 to-emerald-600' },
-  { label: 'Выгодные предложения', Icon: Tag, gradient: 'from-rose-400 to-rose-600' },
+  { label: 'Премиальное питание', Icon: UtensilsCrossed, img: '/banners/cat-treat.jpg', pos: 'object-[center_30%]' },
+  { label: 'Игрушки и досуг', Icon: Dog, img: '/banners/dog-jack.jpg' },
+  { label: 'Здоровье и витамины', Icon: HeartPulse, img: '/banners/dog-pointer.jpg' },
+  { label: 'Выгодные предложения', Icon: Tag, img: '/banners/cats-cozy.jpg' },
 ]
 
 const scrollToCatalog = () => {
@@ -141,18 +141,20 @@ export default function ShopHeroBanner() {
 
       {/* Боковые категории */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-1 lg:grid-rows-4">
-        {CATEGORIES.map(({ label, Icon, gradient }) => (
+        {CATEGORIES.map(({ label, Icon, img, pos }) => (
           <button
             key={label}
             type="button"
             onClick={scrollToCatalog}
-            className={`group relative flex items-center gap-3 overflow-hidden rounded-2xl bg-gradient-to-br ${gradient} p-3 text-left text-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md lg:p-4`}
+            className="group relative flex min-h-[64px] items-center gap-3 overflow-hidden rounded-2xl p-3 text-left text-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md lg:p-4"
           >
-            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white/20">
+            <img src={img} alt="" className={`absolute inset-0 h-full w-full object-cover transition duration-500 group-hover:scale-105 ${pos || ''}`} />
+            <div className="absolute inset-0 bg-gradient-to-r from-black/75 via-black/45 to-black/20" />
+            <span className="relative grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white/25 backdrop-blur-sm">
               <Icon className="h-5 w-5" aria-hidden />
             </span>
-            <span className="min-w-0 flex-1 text-sm font-bold leading-tight">{label}</span>
-            <ChevronRight className="h-4 w-4 shrink-0 opacity-80 transition group-hover:translate-x-0.5" aria-hidden />
+            <span className="relative min-w-0 flex-1 text-sm font-bold leading-tight drop-shadow">{label}</span>
+            <ChevronRight className="relative h-4 w-4 shrink-0 opacity-90 transition group-hover:translate-x-0.5" aria-hidden />
           </button>
         ))}
       </div>
