@@ -198,7 +198,7 @@ class ProductCatalogSerializer(serializers.ModelSerializer):
             'is_available', 'sku_count',
             'animal_type', 'product_group',
             'is_grain_free', 'is_hypoallergenic', 'is_veterinary',
-            'brand_name', 'category_name'
+            'brand_name', 'category_name', 'food_recipe_id'
         ]
     
     def get_discount_percent(self, obj):

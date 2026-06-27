@@ -903,13 +903,18 @@ class ProductListView(APIView):
         """Получение питомцев пользователя для персональных подборок."""
         from apps.pets.models import Pet
         try:
-            pets = Pet.objects.filter(owner=user).only('id', 'name', 'species')
+            pets = Pet.objects.filter(owner=user).only('id', 'name', 'species', 'current_food')
             return [
                 {
                     'id': str(pet.id),
                     'name': pet.name,
                     'species': pet.species,
                     'species_label': pet.get_species_display(),
+                    'ration_recipe_ids': [
+                        str(c.get('recipe_id'))
+                        for c in ((pet.current_food or {}).get('components') or [])
+                        if c.get('recipe_id')
+                    ],
                 }
                 for pet in pets
             ]

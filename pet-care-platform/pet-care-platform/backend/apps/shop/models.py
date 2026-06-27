@@ -703,6 +703,7 @@ class Product(models.Model):
             'main_image': fixed_image_url,
             'animal_type': self.animal_type,
             'product_group': self.product_group,
+            'food_recipe_id': str(self.food_recipe_id) if self.food_recipe_id else None,
             'brand_id': self.brand_id,
             'brand_name': self.brand.name if self.brand else None,
             'brand_class': self.brand.brand_class if self.brand else None,
