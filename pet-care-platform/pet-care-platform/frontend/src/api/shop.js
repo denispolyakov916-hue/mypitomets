@@ -270,8 +270,9 @@ export const getHealthFilters = async () => {
  * @returns {Promise<Object>} { id, name, share_token, share_url, items, ... }
  */
 export const getMyWishlist = async () => {
-  const { data } = await api.get('/shop/wishlist/')
-  return data
+  // axios-обёртка уже разворачивает .data (см. client.js interceptor), а GET
+  // возвращает сам объект вишлиста — деструктуризация { data } давала undefined.
+  return await api.get('/shop/wishlist/')
 }
 
 /**
@@ -300,8 +301,7 @@ export const removeFromWishlist = async (productId) => {
  * @returns {Promise<Object>} { id, name, owner_name, items }
  */
 export const getSharedWishlist = async (token) => {
-  const { data } = await api.get(`/shop/wishlist/shared/${token}/`)
-  return data
+  return await api.get(`/shop/wishlist/shared/${token}/`)
 }
 
 // =============================================================================
