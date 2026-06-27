@@ -20,6 +20,7 @@ import ProductCard from '../components/ProductCard'
 import CourseCard from '../components/CourseCard'
 import { PageLoader } from '../components/Loader'
 import { EmptyState } from '../components/ui/EmptyState'
+import { PuffLottie } from '../components/brand'
 import { Alert } from '../components/ui/Alert'
 /**
  * Компонент боковой панели фильтров для избранного
@@ -640,6 +641,8 @@ function Favorites() {
   }
 
   const hasFavorites = favoriteProducts.length > 0 || favoriteCourses.length > 0
+  const favCount = favoriteProducts.length + favoriteCourses.length
+  const wishCount = wishlistItems.length
 
   return (
     <div className="animate-fadeIn page-container-with-sidebar flex flex-col min-h-[calc(100vh-4rem)]">
@@ -695,40 +698,29 @@ function Favorites() {
         <main className="flex-1 min-w-0 animate-fadeIn">
           {/* Хедер с табами Избранное | Вишлист — в стиле разделов магазина питания (btn-slide) */}
           {isAuthenticated && (
-            <nav className="favorites-header-nav flex flex-col gap-3 py-2 w-full overflow-hidden mb-6" aria-label="Раздел">
-              <div className="flex flex-nowrap items-center gap-2 w-full min-w-0">
-                <button
-                  type="button"
-                  onClick={() => setView('favorites')}
-                  className={`btn-slide flex-1 min-w-0 ${view === 'favorites' ? 'btn-slide-active' : ''}`}
-                  aria-current={view === 'favorites' ? 'page' : undefined}
-                >
-                  <span className="circle">
-                    <Heart size={19} strokeWidth={2} />
-                  </span>
-                  <span className="title">
-                    <span className="btn-slide-text">Избранное</span>
-                  </span>
-                  <span className="title title-hover">
-                    <span className="btn-slide-text">Избранное</span>
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setView('wishlist')}
-                  className={`btn-slide btn-slide-mirror flex-1 min-w-0 ${view === 'wishlist' ? 'btn-slide-active' : ''}`}
-                  aria-current={view === 'wishlist' ? 'page' : undefined}
-                >
-                  <span className="circle">
-                    <Gift size={19} strokeWidth={2} />
-                  </span>
-                  <span className="title">
-                    <span className="btn-slide-text">Вишлист</span>
-                  </span>
-                  <span className="title title-hover">
-                    <span className="btn-slide-text">Вишлист</span>
-                  </span>
-                </button>
+            <nav className="mb-6" aria-label="Раздел">
+              <div className="inline-flex w-full max-w-md rounded-2xl border border-primary-100 bg-white p-1 shadow-sm">
+                {[
+                  { key: 'favorites', label: 'Избранное', Icon: Heart, count: favCount },
+                  { key: 'wishlist', label: 'Вишлист', Icon: Gift, count: wishCount },
+                ].map(({ key, label, Icon, count }) => {
+                  const active = view === key
+                  return (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() => setView(key)}
+                      aria-current={active ? 'page' : undefined}
+                      className={`flex flex-1 items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition ${active ? 'bg-primary-600 text-white shadow-sm' : 'text-primary-600 hover:bg-primary-50'}`}
+                    >
+                      <Icon size={16} strokeWidth={2.4} aria-hidden />
+                      {label}
+                      {count > 0 && (
+                        <span className={`ml-0.5 rounded-full px-1.5 py-0.5 text-[11px] font-bold leading-none ${active ? 'bg-white/25 text-white' : 'bg-primary-100 text-primary-700'}`}>{count}</span>
+                      )}
+                    </button>
+                  )
+                })}
               </div>
             </nav>
           )}
@@ -743,20 +735,11 @@ function Favorites() {
               )}
               {wishlistLoading && !wishlist && <PageLoader />}
               {!wishlistLoading && wishlist && !hasWishlistItems && (
-                <div className="card py-8">
-                  <EmptyState
-                    icon="🎁"
-                    title="Вишлист пуст"
-                    description="Добавляйте товары из магазина в вишлист (кнопка «Подарок» на карточке)."
-                    action={
-                      <Link
-                        to="/shop"
-                        className="inline-flex items-center justify-center px-4 py-2 rounded-xl bg-primary-600 text-white font-medium hover:bg-primary-700 transition-colors"
-                      >
-                        В магазин
-                      </Link>
-                    }
-                  />
+                <div className="flex flex-col items-center justify-center rounded-3xl border border-primary-100 bg-white px-6 py-12 text-center">
+                  <PuffLottie name="hello_wave" size={120} alt="Пуфыч" />
+                  <h3 className="mt-3 font-heading text-xl font-bold text-primary-800">Вишлист пуст</h3>
+                  <p className="mt-1 max-w-sm text-sm text-primary-500">Добавляйте товары кнопкой «Подарок» на карточке — и делитесь списком с близкими.</p>
+                  <Link to="/shop" className="mt-5 inline-flex items-center gap-2 rounded-full bg-primary-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-primary-700">В магазин</Link>
                 </div>
               )}
               {!wishlistLoading && wishlist && hasWishlistItems && (
@@ -789,22 +772,14 @@ function Favorites() {
           {view === 'favorites' && (
             <>
           {!hasFavorites ? (
-            <div className="card py-8">
-              <EmptyState
-                icon="💖"
-                title="Избранное пустое"
-                description="Добавьте товары или курсы в избранное, чтобы они появились здесь"
-                action={
-                  <Link to="/shop" className="btn-primary">
-                    Перейти в магазин
-                  </Link>
-                }
-                secondaryAction={
-                  <Link to="/courses" className="btn-secondary">
-                    Посмотреть курсы
-                  </Link>
-                }
-              />
+            <div className="flex flex-col items-center justify-center rounded-3xl border border-primary-100 bg-white px-6 py-12 text-center">
+              <PuffLottie name="bored_yawn" size={120} alt="Пуфыч скучает" />
+              <h3 className="mt-3 font-heading text-xl font-bold text-primary-800">Тут пока пусто</h3>
+              <p className="mt-1 max-w-sm text-sm text-primary-500">Отмечайте товары и курсы сердечком — и они соберутся здесь, чтобы не потерялись.</p>
+              <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
+                <Link to="/shop" className="inline-flex items-center gap-2 rounded-full bg-primary-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-primary-700">Перейти в магазин</Link>
+                <Link to="/courses" className="inline-flex items-center gap-2 rounded-full border border-primary-200 px-5 py-2.5 text-sm font-semibold text-primary-700 transition hover:bg-primary-50">Посмотреть курсы</Link>
+              </div>
             </div>
           ) : (
             <>
