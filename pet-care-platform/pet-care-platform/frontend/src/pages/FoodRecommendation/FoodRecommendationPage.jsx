@@ -1,5 +1,5 @@
 /**
- * FoodRecommendationPage - Страница подбора корма
+ * FoodRecommendationPage - Страница подбора питания
  * 
  * Интеллектуальный конструктор рациона питания для питомца.
  * Подбирает корм на основе данных из PetID.
@@ -435,6 +435,7 @@ const PeriodInput = ({ value, onChange, disabled }) => {
   const [activeIndex, setActiveIndex] = useState(-1);
   const [menuPosition, setMenuPosition] = useState(null);
   const inputRef = useRef(null);
+  const onChangeDebounceRef = useRef(null);
   const dropdownRef = useRef(null);
   const triggerRef = useRef(null);
   const listboxIdRef = useRef(`period-listbox-${Math.random().toString(36).slice(2)}`);
@@ -495,13 +496,13 @@ const PeriodInput = ({ value, onChange, disabled }) => {
     setInputValue(val);
     setShowWarning(false);
     setIsOpen(true);
-    
+
     const num = parseInt(val, 10);
-    if (!isNaN(num) && num >= 1 && num <= 60) {
-      onChange(num);
-    } else if (num > 60) {
-      setShowWarning(true);
-    }
+    if (num > 60) setShowWarning(true);
+    if (onChangeDebounceRef.current) clearTimeout(onChangeDebounceRef.current);
+    onChangeDebounceRef.current = setTimeout(() => {
+      if (!isNaN(num) && num >= 1 && num <= 60) onChange(num);
+    }, 650);
   };
   
   const handleSelect = (days) => {
@@ -678,6 +679,17 @@ const RatioSlider = ({ options, value, onChange, disabled }) => {
   const dryPct = match ? parseInt(match[1], 10) : 50;
   const wetPct = match ? parseInt(match[2], 10) : 50;
   const position = options.length > 1 ? (currentIndex / (options.length - 1)) * 100 : 50;
+  const barRef = useRef(null);
+  const [dragPct, setDragPct] = useState(null);
+  const applyFromClientX = (clientX) => {
+    const el = barRef.current;
+    if (!el || options.length < 2) return;
+    const rect = el.getBoundingClientRect();
+    const x = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width));
+    setDragPct(x * 100);
+    const i = Math.min(options.length - 1, Math.max(0, Math.round(x * (options.length - 1))));
+    if (options[i] && options[i].value !== value) onChange(options[i].value);
+  };
 
   return (
     <div className="space-y-2 font-sans text-base">
@@ -688,7 +700,7 @@ const RatioSlider = ({ options, value, onChange, disabled }) => {
         <span className="flex shrink-0 items-center gap-1 font-sans text-sm font-semibold text-gray-800">
           <span aria-hidden>🥫</span> {dryPct}%
         </span>
-        <div className="relative flex h-3.5 flex-1 items-center">
+        <div ref={barRef} className="relative flex h-3.5 flex-1 items-center">
           <div
             className="absolute inset-0 rounded-full bg-gradient-to-r from-accent-400 via-accent-300 to-primary-500 overflow-hidden"
             aria-hidden
@@ -701,18 +713,15 @@ const RatioSlider = ({ options, value, onChange, disabled }) => {
             aria-valuemax={options.length - 1}
             aria-label={`Соотношение: ${current.label}`}
             disabled={disabled}
-            onClick={(e) => {
-              if (disabled) return;
-              const rect = e.currentTarget.getBoundingClientRect();
-              const x = (e.clientX - rect.left) / rect.width;
-              const i = Math.min(options.length - 1, Math.max(0, Math.round(x * (options.length - 1))));
-              onChange(options[i].value);
-            }}
-            className="absolute inset-0 w-full cursor-pointer disabled:cursor-not-allowed rounded-full"
+            onPointerDown={(e) => { if (disabled) return; try { e.currentTarget.setPointerCapture(e.pointerId); } catch (_) {} applyFromClientX(e.clientX); }}
+            onPointerMove={(e) => { if (disabled || !e.currentTarget.hasPointerCapture?.(e.pointerId)) return; applyFromClientX(e.clientX); }}
+            onPointerUp={(e) => { try { e.currentTarget.releasePointerCapture(e.pointerId); } catch (_) {} setDragPct(null); }}
+            onPointerCancel={() => setDragPct(null)}
+            className="absolute inset-0 w-full cursor-pointer disabled:cursor-not-allowed rounded-full touch-none"
           />
           <span
             className="pointer-events-none absolute h-4 w-4 rounded-full border-2 border-white bg-violet-600 shadow transition-all duration-200"
-            style={{ left: `calc(${position}% - 8px)`, top: '50%', transform: 'translateY(-50%)' }}
+            style={{ left: `calc(${dragPct != null ? dragPct : position}% - 8px)`, top: '50%', transform: 'translateY(-50%)' }}
             aria-hidden
           />
         </div>
@@ -928,10 +937,8 @@ const RationComponentCard = ({
   removeButtonRight = false,
   calorieDistribution,
   dailyCalories,
-  accentVariant = 'amber', // 'amber' | 'purple' — в продвинутом режиме фиолетовый градиент
 }) => {
   const navigate = useNavigate();
-  const isPurple = accentVariant === 'purple';
   
   // Если нет компонента - не рендерим
   if (!component) return null;
@@ -1004,35 +1011,15 @@ const RationComponentCard = ({
   if (priceTotal != null) priceDisplay = `${priceTotal.toLocaleString('ru-RU')} ₽`;
   else if (component.estimated_monthly_cost) priceDisplay = `≈ ${Math.round(component.estimated_monthly_cost).toLocaleString('ru-RU')} ₽/мес`;
 
-  const altMonthly = (a) => (a && a.price ? parseFloat(a.price) * (a.packages_needed || 1) : null);
-  const mainAlt = alternatives && alternatives.length ? alternatives[0] : null;
-  let priceDeltaLabel = null;
-  if (isRecipe && currentIndex > 0 && priceTotal != null && mainAlt) {
-    const m = altMonthly(mainAlt);
-    if (m != null) {
-      const d = Math.round(priceTotal - m);
-      if (d < 0) priceDeltaLabel = `дешевле на ${Math.abs(d).toLocaleString('ru-RU')} ₽`;
-      else if (d > 0) priceDeltaLabel = `дороже на ${d.toLocaleString('ru-RU')} ₽`;
-    }
-  }
-  const whyChips = isRecipe ? [
-    component.source === 'dinozavrik' ? 'Из базы питания' : null,
-    (component.product_id && component.sku_id) ? 'В наличии' : 'Скоро в продаже',
-    component.is_promoted ? 'Рекомендуем' : null,
-  ].filter(Boolean) : [];
-  const recipeWarnings = isRecipe && Array.isArray(component.warnings)
-    ? component.warnings.filter((w) => w && !/не доступен к покупке/i.test(w)).slice(0, 2)
-    : [];
-
-  const cardBg = 'bg-white border-gray-200';
+  const cardBg = 'bg-white';
   return (
     <motion.div 
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className={`max-w-full min-w-0 overflow-hidden max-lg:rounded-none max-lg:border-0 max-lg:bg-transparent max-lg:shadow-none max-lg:overflow-visible rounded-2xl border shadow-[0_4px_24px_rgba(0,0,0,0.07)] lg:rounded-xl lg:shadow-none ${cardBg}`}
+      className={`max-w-full min-w-0 overflow-hidden max-lg:rounded-none max-lg:border-0 max-lg:bg-transparent max-lg:shadow-none max-lg:overflow-visible rounded-2xl shadow-[0_4px_24px_rgba(0,0,0,0.07)] lg:rounded-xl lg:shadow-none ${cardBg}`}
     >
       {/* Заголовок типа с иконкой и галочкой — без цвета */}
-      <div className="flex items-center justify-between px-3 py-2.5 border-b border-gray-100 bg-white max-lg:border-0 max-lg:bg-transparent max-lg:px-0 max-lg:py-3 lg:border-gray-200/80 lg:bg-gray-50 lg:py-2">
+      <div className="flex items-center justify-between px-3 py-2.5 bg-white max-lg:border-0 max-lg:bg-transparent max-lg:px-0 max-lg:py-3 lg:py-2">
         <div className="flex items-center gap-2 min-w-0">
           <span className="opacity-90 shrink-0" aria-hidden>{typeEmoji[baseType] || '📦'}</span>
           <span className="text-sm font-bold text-[#3d2f25] truncate lg:text-xs lg:font-medium lg:text-gray-900">
@@ -1148,27 +1135,22 @@ const RationComponentCard = ({
         <button 
           onClick={() => canNavigate && onChangeIndex(currentIndex - 1)}
           disabled={!canNavigate || isLoading}
-          className={`min-w-[44px] px-3 flex items-center justify-center rounded-l-xl border-r transition-all duration-200
-            ${canNavigate && !isLoading
-              ? isPurple
-                ? 'border-primary-200/60 bg-gradient-to-b from-primary-100 via-primary-50 to-primary-100 text-primary-800 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.8),0_2px_4px_rgba(82,47,129,0.2)] hover:from-primary-200 hover:via-primary-100 hover:to-primary-200 hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.9),0_4px_8px_rgba(82,47,129,0.25)] hover:scale-[1.02] active:scale-[0.98] active:shadow-[inset_0_2px_4px_rgba(0,0,0,0.08)]'
-                : 'border-amber-200/60 bg-gradient-to-b from-amber-100 via-amber-50 to-amber-100/80 text-amber-800 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.8),0_2px_4px_rgba(251,191,36,0.2)] hover:from-amber-200 hover:via-amber-100 hover:to-amber-200/90 hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.9),0_4px_8px_rgba(251,191,36,0.25)] hover:scale-[1.02] active:scale-[0.98] active:shadow-[inset_0_2px_4px_rgba(0,0,0,0.06)]'
-              : 'border-gray-200/60 bg-gradient-to-b from-gray-100 to-gray-50 text-gray-300 cursor-not-allowed shadow-[inset_0_1px_0_0_rgba(255,255,255,0.5)]'}`}
+          className={`min-w-[44px] px-3 flex items-center justify-center transition-transform duration-200 ${canNavigate && !isLoading ? 'hover:scale-110 active:scale-95 cursor-pointer' : 'cursor-not-allowed'}`}
           aria-label="Предыдущий вариант"
         >
-          <ChevronLeft className="w-5 h-5" />
+          <MobileRationPawIcon mirrored inactive={!canNavigate || isLoading} />
         </button>
         
         <div 
           className="flex-1 p-3 flex gap-3 cursor-pointer hover:bg-gray-50 transition-colors rounded-r-xl"
           onClick={handleProductClick}
         >
-          <div className="w-14 h-14 flex-shrink-0 bg-white rounded-lg overflow-hidden border border-gray-200/80 shadow-sm">
+          <div className="w-24 h-24 flex-shrink-0 bg-white rounded-lg overflow-hidden border border-gray-200/80 shadow-sm">
             {component.image_url ? (
               <img 
                 src={component.image_url} 
                 alt=""
-                className="w-full h-full object-cover"
+                className="w-full h-full object-contain p-1"
                 onError={(e) => { e.currentTarget.style.display = 'none'; }}
               />
             ) : (
@@ -1211,56 +1193,16 @@ const RationComponentCard = ({
         <button 
           onClick={() => canNavigate && onChangeIndex(currentIndex + 1)}
           disabled={!canNavigate || isLoading}
-          className={`min-w-[44px] px-3 flex items-center justify-center rounded-r-xl border-l transition-all duration-200
-            ${canNavigate && !isLoading
-              ? isPurple
-                ? 'border-primary-200/60 bg-gradient-to-b from-primary-100 via-primary-50 to-primary-100 text-primary-800 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.8),0_2px_4px_rgba(82,47,129,0.2)] hover:from-primary-200 hover:via-primary-100 hover:to-primary-200 hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.9),0_4px_8px_rgba(82,47,129,0.25)] hover:scale-[1.02] active:scale-[0.98] active:shadow-[inset_0_2px_4px_rgba(0,0,0,0.08)]'
-                : 'border-amber-200/60 bg-gradient-to-b from-amber-100 via-amber-50 to-amber-100/80 text-amber-800 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.8),0_2px_4px_rgba(251,191,36,0.2)] hover:from-amber-200 hover:via-amber-100 hover:to-amber-200/90 hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.9),0_4px_8px_rgba(251,191,36,0.25)] hover:scale-[1.02] active:scale-[0.98] active:shadow-[inset_0_2px_4px_rgba(0,0,0,0.06)]'
-              : 'border-gray-200/60 bg-gradient-to-b from-gray-100 to-gray-50 text-gray-300 cursor-not-allowed shadow-[inset_0_1px_0_0_rgba(255,255,255,0.5)]'}`}
+          className={`min-w-[44px] px-3 flex items-center justify-center transition-transform duration-200 ${canNavigate && !isLoading ? 'hover:scale-110 active:scale-95 cursor-pointer' : 'cursor-not-allowed'}`}
           aria-label="Следующий вариант"
         >
-          <ChevronRight className="w-5 h-5" />
+          <MobileRationPawIcon mirrored={false} inactive={!canNavigate || isLoading} />
         </button>
       </div>
 
-      {isRecipe && (
-        <div className="px-3 pb-3 pt-0.5 max-lg:px-0 space-y-2.5">
-          {totalItems > 1 && (
-            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
-              <span className="font-semibold text-primary-700">Вариант {currentIndex + 1} из {totalItems}</span>
-              <span className={`inline-flex items-center rounded-full px-2 py-0.5 font-medium ${currentIndex === 0 ? 'bg-primary-100 text-primary-700' : 'bg-accent-100 text-accent-700'}`}>
-                {currentIndex === 0 ? 'Выбран сейчас' : 'Тоже подходит'}
-              </span>
-              {priceDeltaLabel && (
-                <span className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 font-medium text-emerald-700">{priceDeltaLabel}</span>
-              )}
-              {component.days_supply > 0 && (
-                <span className="text-gray-500">хватит на ~{component.days_supply} дн.</span>
-              )}
-            </div>
-          )}
-          {(component.recommendation_reason || whyChips.length > 0) && (
-            <div>
-              <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-primary-400">Почему подходит</p>
-              {component.recommendation_reason && (
-                <p className="mb-1.5 text-xs leading-snug text-gray-600">{component.recommendation_reason}</p>
-              )}
-              {whyChips.length > 0 && (
-                <div className="flex flex-wrap gap-1.5">
-                  {whyChips.map((chip, i) => (
-                    <span key={i} className="inline-flex items-center rounded-full border border-primary-100 bg-primary-50/70 px-2.5 py-1 text-xs text-primary-700">{chip}</span>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-          {recipeWarnings.length > 0 && (
-            <div className="flex flex-wrap gap-1.5">
-              {recipeWarnings.map((w, i) => (
-                <span key={i} className="inline-flex items-center rounded-full bg-amber-50 px-2.5 py-1 text-xs text-amber-700">{w}</span>
-              ))}
-            </div>
-          )}
+      {isRecipe && component.days_supply > 0 && (
+        <div className="px-3 pb-3 pt-0.5 max-lg:px-0">
+          <span className="text-xs text-gray-500">хватит на ~{component.days_supply} дн.</span>
         </div>
       )}
 
@@ -1736,7 +1678,7 @@ const FeedingPlanBlock = ({ plan, isLoading, selectedComponents, treatFrequencyD
         </div>
       )}
       <div className={isSidebar ? 'p-0 max-w-full min-w-0 overflow-x-hidden bg-white font-sans text-base' : 'p-5 bg-white/70'}>
-      {/* Дневная норма и БЖУ — в сайдбаре тот же плоский стиль, что у блока «Подбор корма» */}
+      {/* Дневная норма и БЖУ — в сайдбаре тот же плоский стиль, что у блока «Подбор питания» */}
       <div className={isSidebar ? `${sidebarSectionCard} mb-4` : defaultNormCard}>
         <p className="text-xs font-semibold bg-gradient-to-r from-accent-400 to-accent-600 bg-clip-text text-transparent inline-block mb-1">Дневная норма</p>
         <p className="text-2xl font-bold text-gray-900">
@@ -1853,7 +1795,7 @@ const FeedingPlanBlock = ({ plan, isLoading, selectedComponents, treatFrequencyD
                   </div>
                 </div>
               )}
-              {/* Окошки БЖУ — в сайдбаре белый фон и обводка как у полей «Подбор корма» */}
+              {/* Окошки БЖУ — в сайдбаре белый фон и обводка как у полей «Подбор питания» */}
               <div className="grid min-w-0 grid-cols-3 gap-1.5 sm:gap-2 text-xs">
                 <div className={`rounded-xl p-1.5 text-center min-w-0 border-2 border-[#2563eb] sm:p-2.5 ${isSidebar ? 'bg-white' : 'bg-blue-100/90 shadow-sm'}`}>
                   <p className={macroGramClass}>{proteinG != null ? `${proteinG}г` : '—'}</p>
@@ -2610,6 +2552,21 @@ export default function FoodRecommendationPage() {
   const showError = useToastStore((st) => st.error);
   const [savingRation, setSavingRation] = useState(false);
   const [cartBusy, setCartBusy] = useState(false);
+  const [calcTeleporting, setCalcTeleporting] = useState(false);
+  const [calcClosing, setCalcClosing] = useState(false);
+  const [triggerReturning, setTriggerReturning] = useState(false);
+  let triggerPuffName = 'think';
+  if (calcTeleporting) triggerPuffName = 'teleport_out';
+  else if (triggerReturning) triggerPuffName = 'teleport_in';
+  const handleCalcClose = () => {
+    setCalcClosing(true);
+    setTimeout(() => {
+      setMobileRationCalcOpen(false);
+      setCalcClosing(false);
+      setTriggerReturning(true);
+      setTimeout(() => setTriggerReturning(false), 2150);
+    }, 1350);
+  };
   // recipe-режим: компоненты из нашей базы (нет product_id, есть recipe_id)
   const isRecipeMode = (feedingPlan?.components || []).some((c) => c?.source === 'dinozavrik' || c?.recipe_id);
 
@@ -2765,23 +2722,80 @@ export default function FoodRecommendationPage() {
         <div className="flex flex-col items-center justify-center min-h-[400px] text-center">
           <div className="text-6xl mb-4">🐾</div>
           <h2 className="section-title text-gray-800 mb-2">
-            Для подбора корма нужен профиль питомца
+            Сначала заведём питомца
           </h2>
           <p className="text-gray-500 mb-6 max-w-md">
-            Создайте профиль питомца с указанием веса для персонализированного подбора рациона.
+            Расскажите Пуфычу про питомца — и он подберёт рацион специально под него.
           </p>
           <button
-            onClick={() => navigate('/pet-id')}
+            onClick={() => navigate('/start')}
             className="px-6 py-3 bg-gradient-to-r from-primary-600 to-accent-500 text-white rounded-xl 
                        font-medium hover:shadow-lg transition-all"
           >
-            Создать PetID
+            Подобрать корм
           </button>
         </div>
       </div>
     );
   }
-  
+
+  // Несколько питомцев и ни один не выбран → отдельный экран выбора (без pet_id в URL)
+  if (!selectedPet && pets.length > 1 && !searchParams.get('pet_id')) {
+    return (
+      <div className="page-container animate-fadeIn pb-12">
+        <div className="mx-auto max-w-2xl text-center">
+          <PuffLottie name="talk_gesture" size={140} className="mx-auto" alt="Пуфыч помогает выбрать" />
+          <h1 className="mt-2 font-heading text-3xl font-bold text-primary-800 md:text-4xl">Для кого подбираем рацион?</h1>
+          <p className="mt-3 text-primary-600">Выберите питомца — Пуфыч соберёт рацион специально под него.</p>
+        </div>
+        <div className="mx-auto mt-8 grid max-w-2xl gap-4 sm:grid-cols-2">
+          {pets.map((pet) => (
+            <button
+              key={pet.id}
+              type="button"
+              onClick={() => setSelectedPet(pet)}
+              className="group flex items-center gap-4 rounded-2xl border border-primary-100 bg-white p-5 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-primary-300 hover:shadow-lg"
+            >
+              <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-primary-50 text-3xl">
+                {pet.species === 'dog' ? '🐕' : '🐱'}
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate font-heading text-lg font-bold text-primary-800">{pet.name}</span>
+                <span className="block truncate text-sm text-primary-500">
+                  {pet.breed_name || (pet.species === 'dog' ? 'Собака' : 'Кошка')}
+                  {(pet.weight_kg || pet.weight) ? ` • ${pet.weight_kg || pet.weight} кг` : ''}
+                </span>
+              </span>
+              <ChevronRight className="h-5 w-5 shrink-0 text-primary-300 transition group-hover:text-primary-600" />
+            </button>
+          ))}
+        </div>
+        <div className="mx-auto mt-6 max-w-2xl text-center">
+          <button
+            type="button"
+            onClick={() => navigate('/start')}
+            className="text-sm font-semibold text-primary-500 transition hover:text-primary-700"
+          >
+            + Завести нового питомца
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Питомец выбран, но рацион ещё считается → показываем загрузку, а не старую вёрстку (recipe-режим определяется по плану)
+  if (selectedPet && !feedingPlan && !error) {
+    return (
+      <div className="page-container animate-fadeIn">
+        <div className="flex min-h-[60vh] flex-col items-center justify-center text-center">
+          <PuffLottie name="think" size={130} alt="Пуфыч считает рацион" />
+          <p className="mt-4 font-heading text-lg font-semibold text-primary-700">Собираем рацион для {selectedPet.name}…</p>
+          <p className="mt-1 text-sm text-primary-400">Пуфыч учитывает вид, возраст и вес питомца.</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="page-container animate-fadeIn pb-8 w-full min-w-0 max-w-full overflow-x-hidden bg-white">
       {/* Ошибка */}
@@ -2830,7 +2844,9 @@ export default function FoodRecommendationPage() {
       {isRecipeMode && selectedPet && (
         <div className="mb-6 hidden lg:flex items-center justify-between gap-4 rounded-2xl border border-primary-100 bg-white px-5 py-4 shadow-sm">
           <div className="flex items-center gap-3 min-w-0">
-            <PuffLottie name="talk_gesture" size={56} alt="Пуфыч объяснит расчёт" />
+            {!mobileRationCalcOpen && (
+              <PuffLottie name={triggerPuffName} loop={triggerPuffName === 'think'} size={56} alt="Пуфыч объяснит расчёт" />
+            )}
             <div className="min-w-0">
               <p className="font-heading font-bold text-primary-800">Сколько и когда кормить?</p>
               <p className="text-sm text-primary-500">Калории, БЖУ и расписание — Пуфыч всё посчитал.</p>
@@ -2838,7 +2854,7 @@ export default function FoodRecommendationPage() {
           </div>
           <button
             type="button"
-            onClick={() => setMobileRationCalcOpen(true)}
+            onClick={() => { setCalcTeleporting(true); setTimeout(() => { setMobileRationCalcOpen(true); setCalcTeleporting(false); }, 1350); }}
             className="shrink-0 inline-flex items-center gap-2 rounded-full bg-accent-500 px-5 py-2.5 font-semibold text-white shadow-sm transition hover:bg-accent-600"
           >
             <Calculator className="h-5 w-5" aria-hidden /> Открыть расчёт
@@ -2848,14 +2864,13 @@ export default function FoodRecommendationPage() {
 
       {/* Основной контент: на мобильных сначала блок «Расчёт рациона», затем подбор и конструктор */}
       <div className="grid lg:grid-cols-3 gap-4 sm:gap-6 w-full min-w-0 max-w-full">
-        <div className={`${isRecipeMode ? 'lg:col-span-3 max-lg:pr-12' : 'lg:col-span-2'} space-y-6 order-2 lg:order-1 min-w-0 max-w-full`}>
-          {/* Подбор корма — тот же каркас, что у конструктора рациона */}
+        <div className={`${isRecipeMode ? 'lg:col-span-3 max-lg:pr-12 lg:grid lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:gap-6 lg:items-start lg:space-y-0' : 'lg:col-span-2'} space-y-6 order-2 lg:order-1 min-w-0 max-w-full`}>
           <div className="rounded-2xl border border-amber-200/80 overflow-hidden bg-amber-50/30 max-w-full min-w-0 max-lg:mx-auto max-lg:w-full max-lg:max-w-[min(100%,28rem)] max-lg:border-0 max-lg:rounded-none max-lg:bg-transparent max-lg:overflow-visible">
             <div className="rounded-t-2xl px-4 sm:px-6 py-3 sm:py-4 bg-gradient-to-r from-[#F6B537] via-[#FDE28F] to-[#FEE9AE] border-b border-amber-200/60 max-lg:rounded-xl lg:rounded-t-2xl">
               <div className="flex items-center justify-between gap-2 min-w-0">
                 <h1 className="text-base sm:text-lg font-bold text-[#4a3728] flex items-center gap-2 min-w-0 flex-1 lg:font-semibold lg:text-amber-900">
                   <Sparkles className="w-5 h-5 flex-shrink-0 text-amber-900/85 lg:text-amber-800" aria-hidden />
-                  <span className="truncate">Подбор корма</span>
+                  <span className="truncate">Подбор питания</span>
                 </h1>
                 <button
                   type="button"
@@ -2967,11 +2982,6 @@ export default function FoodRecommendationPage() {
                       });
                     return (
                       <>
-                        {isRecipeMode && foodComponents.length > 0 && (
-                          <p className="mb-1 text-sm leading-snug text-primary-500 max-lg:px-0.5">
-                            Рацион из двух частей: <span className="font-semibold text-primary-700">основа</span> (сухой) и <span className="font-semibold text-primary-700">дополнение</span> (влажный). Любую часть можно заменить на альтернативу.
-                          </p>
-                        )}
                         {foodComponents.map(({ type, component, alternatives, currentIndex, displayIndexMap }) => (
                           <div key={type} className="space-y-1.5">
                           <RationComponentCard
@@ -2987,7 +2997,6 @@ export default function FoodRecommendationPage() {
                             removeButtonRight={type === 'treat'}
                             calorieDistribution={feedingPlan?.calorie_distribution}
                             dailyCalories={feedingPlan?.daily_calories}
-                            accentVariant={planVariant === 'advanced' ? 'purple' : 'amber'}
                           />
                           {isRecipeMode && (
                             <button
@@ -3047,7 +3056,6 @@ export default function FoodRecommendationPage() {
                                   onRemove={() => handleRemoveSupplement(type)}
                                   calorieDistribution={feedingPlan?.calorie_distribution}
                                   dailyCalories={feedingPlan?.daily_calories}
-                                  accentVariant="purple"
                                 />
                               ))}
                             </div>
@@ -3260,7 +3268,7 @@ export default function FoodRecommendationPage() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.22 }}
-              onClick={() => setMobileRationCalcOpen(false)}
+              onClick={handleCalcClose}
             />
             <motion.div
               key="ration-calc-sheet"
@@ -3284,21 +3292,19 @@ export default function FoodRecommendationPage() {
                   </h2>
                   <button
                     type="button"
-                    onClick={() => setMobileRationCalcOpen(false)}
+                    onClick={handleCalcClose}
                     className="inline-flex min-h-10 shrink-0 items-center gap-1 rounded-full border-2 border-[#fbba2d] bg-gradient-to-r from-[#8B5CF0] to-[#6D28D9] px-2.5 py-1.5 text-xs font-bold text-white shadow-md shadow-purple-900/30 transition-transform active:scale-[0.98] sm:gap-1.5 sm:px-3 sm:py-2 sm:text-sm"
-                    aria-label="Вернуться к подбору корма"
+                    aria-label="Вернуться к подбору питания"
                   >
                     <ChevronLeft className="h-4 w-4 shrink-0 -mr-0.5" strokeWidth={2.5} aria-hidden />
-                    Подбор корма
+                    Подбор питания
                   </button>
                 </div>
               </div>
               <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-4 pb-[max(1.5rem,env(safe-area-inset-bottom))]">
-                {selectedPet && feedingPlan && (
-                  <div className="mb-3">
-                    <PdfDownloadButton plan={feedingPlan} pet={selectedPet} selectedComponents={currentComponents.map((x) => x.component).filter(Boolean)} treatFrequencyDays={treatFrequencyDays} variant="secondary" />
-                  </div>
-                )}
+                <div className="mb-1 flex justify-center">
+                  <PuffLottie name={calcClosing ? 'teleport_out' : 'teleport_in'} loop={false} size={84} alt="Пуфыч" />
+                </div>
                 <div className="min-w-0 max-w-full overflow-x-hidden">
                   {selectedPet ? (
                     <FeedingPlanBlock
@@ -3372,6 +3378,11 @@ export default function FoodRecommendationPage() {
                     </div>
                   )}
                 </div>
+                {selectedPet && feedingPlan && (
+                  <div className="mt-4">
+                    <PdfDownloadButton plan={feedingPlan} pet={selectedPet} selectedComponents={currentComponents.map((x) => x.component).filter(Boolean)} treatFrequencyDays={treatFrequencyDays} variant="secondary" />
+                  </div>
+                )}
               </div>
             </motion.div>
           </>
