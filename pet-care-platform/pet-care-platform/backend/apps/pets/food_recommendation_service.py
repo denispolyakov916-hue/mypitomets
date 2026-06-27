@@ -850,10 +850,10 @@ class FoodRecommendationService:
             slots = [(wet, 1.0, wet_alts)]
         else:
             slots = []
-        # Лакомства из базы Динозаврика: ~10% дневных калорий, отдельной позицией
-        # (оба набора — «Базовый» и «Продвинутый» включают лакомства).
+        # Лакомства из базы Динозаврика: ~10% дневных калорий, отдельной позицией.
+        # Только в «Продвинутом» наборе; в «Базовом» лакомство можно добавить вручную.
         treat = ration.get('treat')
-        if treat:
+        if treat and filters.variant == 'advanced':
             slots.append((treat, 0.1, ration.get('treat_alternatives') or []))
         components = []
         for cand, share, alts in slots:
