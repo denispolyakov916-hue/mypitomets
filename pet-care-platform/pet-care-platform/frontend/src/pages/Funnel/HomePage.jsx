@@ -218,7 +218,7 @@ export default function HomePage() {
       {/* 1. HERO */}
       <BrandSection bg="white" className="!pt-6">
         <div className="grid items-center gap-8 md:grid-cols-2">
-          <div>
+          <div className="order-2 md:order-1">
             <BrandBadge variant="soft"><Sparkles className="mr-1 h-3.5 w-3.5" /> Спокойная забота о питомце</BrandBadge>
             <h1 className="mt-4 font-heading text-3xl font-bold leading-tight text-primary-800 md:text-5xl">
               Пуфыч подберёт питание и поможет заботиться о вашем питомце
@@ -239,7 +239,7 @@ export default function HomePage() {
               </div>
             </div>
           </div>
-          <div className="relative flex flex-col items-center gap-1">
+          <div className="order-1 md:order-2 relative flex flex-col items-center gap-1">
             <div className="pointer-events-none absolute left-1/2 top-1/2 -z-10 h-72 w-72 -translate-x-1/2 -translate-y-1/2 rounded-full bg-violet-200/40 blur-3xl" aria-hidden="true" />
             <Bubble className="z-10" text="Привет! Начнём с питомца — я подскажу, чем кормить, что не забыть по здоровью и как разобраться с поведением." />
             <PuffLottie name="hello_wave" size={300} className="relative z-10" alt="Пуфыч приветствует" />

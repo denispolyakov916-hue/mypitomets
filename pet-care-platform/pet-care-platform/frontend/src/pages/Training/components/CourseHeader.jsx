@@ -163,18 +163,16 @@ const CourseHeader = memo(function CourseHeader({
       <button
         key={itemId}
         type="button"
-        className={`btn-slide flex-1 min-w-0 ${isActive ? 'btn-slide-active' : ''}`}
         onClick={handleClick}
+        aria-current={isActive ? 'true' : undefined}
+        className={`inline-flex items-center gap-2 whitespace-nowrap rounded-full px-4 py-2 text-sm font-medium transition-all min-h-[42px] ${
+          isActive
+            ? 'bg-primary-700 text-white shadow-card'
+            : 'bg-white text-primary-700 border border-primary-100 hover:bg-primary-50'
+        }`}
       >
-        <span className="circle">
-          <GraduationCap size={19} strokeWidth={2} />
-        </span>
-        <span className="title">
-          <span className="btn-slide-text">{item.name}</span>
-        </span>
-        <span className="title title-hover">
-          <span className="btn-slide-text">{item.name}</span>
-        </span>
+        <GraduationCap size={18} strokeWidth={2} className={isActive ? 'text-white' : 'text-primary-400'} aria-hidden />
+        {item.name}
       </button>
     )
   }
@@ -259,15 +257,10 @@ const CourseHeader = memo(function CourseHeader({
       </div>
 
       {allTabs.length > 0 && (
-        <nav className="hidden lg:flex course-header-nav flex-col gap-3 py-2 w-full overflow-hidden">
-          <div className="flex flex-nowrap items-center gap-2 w-full min-w-0">
-            {row1.map(renderSlideButton)}
+        <nav className="hidden lg:block py-1" aria-label="Категории курсов">
+          <div className="flex flex-nowrap items-center gap-2 overflow-x-auto pb-1 [scrollbar-width:thin]">
+            {allTabs.map(renderSlideButton)}
           </div>
-          {row2.length > 0 && (
-            <div className="flex flex-nowrap items-center gap-2 w-full min-w-0">
-              {row2.map(renderSlideButton)}
-            </div>
-          )}
         </nav>
       )}
 
