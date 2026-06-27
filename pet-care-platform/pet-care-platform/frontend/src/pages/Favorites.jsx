@@ -21,6 +21,7 @@ import CourseCard from '../components/CourseCard'
 import { PageLoader } from '../components/Loader'
 import { EmptyState } from '../components/ui/EmptyState'
 import { PuffLottie } from '../components/brand'
+import { motion } from 'framer-motion'
 import { Alert } from '../components/ui/Alert'
 /**
  * Компонент боковой панели фильтров для избранного
@@ -699,26 +700,40 @@ function Favorites() {
           {/* Хедер с табами Избранное | Вишлист — в стиле разделов магазина питания (btn-slide) */}
           {isAuthenticated && (
             <nav className="mb-6" aria-label="Раздел">
-              <div className="inline-flex w-full max-w-md rounded-2xl border border-primary-100 bg-white p-1 shadow-sm">
+              <div className="relative inline-flex w-full max-w-md rounded-2xl border border-primary-100 bg-white p-1.5 shadow-[0_4px_20px_rgba(82,47,129,0.08)]">
                 {[
                   { key: 'favorites', label: 'Избранное', Icon: Heart, count: favCount },
                   { key: 'wishlist', label: 'Вишлист', Icon: Gift, count: wishCount },
                 ].map(({ key, label, Icon, count }) => {
                   const active = view === key
                   return (
-                    <button
+                    <motion.button
                       key={key}
                       type="button"
                       onClick={() => setView(key)}
                       aria-current={active ? 'page' : undefined}
-                      className={`flex flex-1 items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition ${active ? 'bg-primary-600 text-white shadow-sm' : 'text-primary-600 hover:bg-primary-50'}`}
+                      whileTap={{ scale: 0.96 }}
+                      className={`relative z-10 flex flex-1 items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold transition-colors ${active ? 'text-white' : 'text-primary-500 hover:text-primary-700'}`}
                     >
-                      <Icon size={16} strokeWidth={2.4} aria-hidden />
+                      {active && (
+                        <motion.span
+                          layoutId="favTabIndicator"
+                          className="absolute inset-0 -z-10 rounded-xl bg-gradient-to-r from-primary-600 via-primary-500 to-accent-500 shadow-[0_6px_18px_rgba(82,47,129,0.35)]"
+                          transition={{ type: 'spring', stiffness: 420, damping: 34 }}
+                        />
+                      )}
+                      <motion.span
+                        animate={active ? { scale: 1.12, rotate: [0, -10, 8, 0] } : { scale: 1, rotate: 0 }}
+                        transition={{ duration: 0.45 }}
+                        className="flex"
+                      >
+                        <Icon size={17} strokeWidth={2.4} aria-hidden />
+                      </motion.span>
                       {label}
                       {count > 0 && (
                         <span className={`ml-0.5 rounded-full px-1.5 py-0.5 text-[11px] font-bold leading-none ${active ? 'bg-white/25 text-white' : 'bg-primary-100 text-primary-700'}`}>{count}</span>
                       )}
-                    </button>
+                    </motion.button>
                   )
                 })}
               </div>

@@ -13,7 +13,7 @@
 import { useState, useCallback, memo, useRef, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import PropTypes from 'prop-types'
-import { ShoppingCart, Check } from 'lucide-react'
+import { ShoppingCart, Check, Gift } from 'lucide-react'
 import { Card, CardMedia } from './ui/Card'
 import { ButtonLoader } from './Loader'
 import { useCartStore } from '../store/cartStore'
@@ -158,7 +158,7 @@ const WishlistGiftBtn = memo(function WishlistGiftBtn({ productId }) {
   return (
     <button
       onClick={handleClick}
-      className={`w-11 h-11 rounded-full flex items-center justify-center transition-all duration-200 text-lg ${
+      className={`w-11 h-11 rounded-full flex items-center justify-center transition-all duration-200 ${
         isInWishlist
           ? 'bg-amber-50 text-amber-600 hover:bg-amber-100'
           : 'bg-white/90 text-gray-400 hover:text-amber-600 hover:bg-white'
@@ -166,7 +166,7 @@ const WishlistGiftBtn = memo(function WishlistGiftBtn({ productId }) {
       aria-label={isInWishlist ? 'Удалить из вишлиста' : 'Добавить в вишлист (подарок)'}
       title={isInWishlist ? 'Удалить из вишлиста' : 'Добавить в вишлист — поделиться списком'}
     >
-      🎁
+      <Gift className="w-5 h-5" strokeWidth={isInWishlist ? 0 : 2} fill={isInWishlist ? 'currentColor' : 'none'} aria-hidden />
     </button>
   )
 })
@@ -358,6 +358,7 @@ const ProductCard = memo(function ProductCard({ product, onAddToCart, isLoading 
         
         {/* Кнопки вишлиста и избранного */}
         <div className="absolute top-2 right-2 flex items-center gap-1">
+          <WishlistGiftBtn productId={product.id} />
           <FavoriteBtn productId={product.id} />
         </div>
         
