@@ -174,7 +174,7 @@ export default function PetEditPage() {
     navigate('/pet-id');
   }, [navigate]);
   
-  // Переход к подбору корма
+  // Переход к подбору питания
   const handleFoodRecommendation = useCallback(() => {
     navigate(`/food-recommendation?pet_id=${petId}`);
   }, [navigate, petId]);
@@ -241,7 +241,7 @@ export default function PetEditPage() {
                        hover:bg-accent-100 transition-colors font-medium"
           >
             <UtensilsCrossed className="w-4 h-4" />
-            Подбор корма
+            Подбор питания
           </button>
           <button
             onClick={handleGoHome}

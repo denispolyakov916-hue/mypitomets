@@ -30,7 +30,7 @@ export const navNutrition = {
   label: 'Сервисы',
   sectionTitle: 'СЕРВИСЫ',
   items: [
-    { label: 'Подбор корма', to: '/food-recommendation', description: 'рекомендации по корму', icon: UtensilsCrossed },
+    { label: 'Подбор питания', to: '/food-recommendation', description: 'рекомендации по корму', icon: UtensilsCrossed },
     { label: 'Подбор питомца для вас', to: '/coming-soon?name=Подбор+питомца+для+вас', description: 'поможем выбрать питомца', icon: PawPrint },
     { label: 'Подбор курсов', to: '/coming-soon?name=Подбор+курсов', description: 'курсы и обучение', icon: GraduationCap },
     { label: 'Список продуктов', to: '/coming-soon?name=Список+продуктов', description: 'каталог товаров', icon: List },

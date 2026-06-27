@@ -26,7 +26,7 @@ const PAGE_GROUPS = [
       { title: 'Pet ID (список/создание)', to: '/pages/pet-id' },
       { title: 'Питомец (пример id=1)', to: '/pages/pet-id/1' },
       { title: 'Редактирование питомца (пример petId=1)', to: '/pages/pets/1/edit' },
-      { title: 'Подбор корма', to: '/pages/food-recommendation' },
+      { title: 'Подбор питания', to: '/pages/food-recommendation' },
       { title: 'Корзина', to: '/pages/cart' },
       { title: 'Избранное', to: '/pages/favorites' },
       { title: 'Оформление заказа', to: '/pages/checkout' },

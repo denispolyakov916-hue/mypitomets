@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { getFeedingPlan, getFoodRecommendations } from '../../api/pets'
 
 /**
- * Ненавязчивый мини-блок рекомендаций из подбора корма
+ * Ненавязчивый мини-блок рекомендаций из подбора питания
  * Берет данные из /pets/:id/feeding-plan/
  */
 const FeedingPlanPreview = ({ petId, petName, limit = 4, withCard = true, className = '' }) => {
@@ -51,8 +51,8 @@ const FeedingPlanPreview = ({ petId, petName, limit = 4, withCard = true, classN
   }, [petId, limit])
 
   const title = useMemo(() => {
-    if (petName) return `Подбор корма для ${petName}`
-    return 'Подбор корма'
+    if (petName) return `Подбор питания для ${petName}`
+    return 'Подбор питания'
   }, [petName])
 
   if (!petId) return null

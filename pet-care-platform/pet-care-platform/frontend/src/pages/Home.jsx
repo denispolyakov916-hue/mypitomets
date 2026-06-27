@@ -134,7 +134,7 @@ const platformFeatures = [
   },
   {
     icon: '🍽️',
-    title: 'Умный подбор корма',
+    title: 'Умный подбор питания',
     description: 'Персональные рекомендации на основе породы, возраста, веса и особенностей здоровья вашего питомца.',
     link: '/food-recommendation',
     color: 'emerald'

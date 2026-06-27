@@ -244,7 +244,7 @@ function App() {
                   }
                 />
                 
-                {/* Подбор корма */}
+                {/* Подбор питания */}
                 <Route
                   path="/food-recommendation"
                   element={

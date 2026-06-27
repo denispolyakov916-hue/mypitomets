@@ -785,7 +785,7 @@ export default function PetIdPage() {
     navigate(`/pets/${pet.id}/analysis`);
   }, [navigate]);
   
-  // Переход к подбору корма
+  // Переход к подбору питания
   const handleFoodRecommendation = useCallback((pet) => {
     navigate(`/food-recommendation?pet_id=${pet.id}`);
   }, [navigate]);
