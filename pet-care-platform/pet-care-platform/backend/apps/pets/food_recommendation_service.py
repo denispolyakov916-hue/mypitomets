@@ -838,23 +838,25 @@ class FoodRecommendationService:
             wet, wet_alts = None, []
         elif food_type == 'wet':
             dry, dry_alts = None, []
+        # Лакомства (только «Продвинутый») = 10% дневных калорий; корм ужимаем до 90%,
+        # чтобы суммарно вышло ровно 100% нормы, а не 110%. В «Базовом» лакомство добавляется вручную.
+        treat = ration.get('treat') if filters.variant == 'advanced' else None
+        treat_share = 0.1 if treat else 0.0
+        main_scale = 1.0 - treat_share
         if dry and wet:
             # Доли калорий из выбранного соотношения (multi_ratio_preset), а не жёсткие 70/30.
             dist = self._get_calorie_distribution(pet, filters)
-            dry_share = dist.get('dry_food') or 0.6
-            wet_share = dist.get('wet_food') or 0.4
+            dry_share = (dist.get('dry_food') or 0.6) * main_scale
+            wet_share = (dist.get('wet_food') or 0.4) * main_scale
             slots = [(dry, dry_share, dry_alts), (wet, wet_share, wet_alts)]
         elif dry:
-            slots = [(dry, 1.0, dry_alts)]
+            slots = [(dry, main_scale, dry_alts)]
         elif wet:
-            slots = [(wet, 1.0, wet_alts)]
+            slots = [(wet, main_scale, wet_alts)]
         else:
             slots = []
-        # Лакомства из базы Динозаврика: ~10% дневных калорий, отдельной позицией.
-        # Только в «Продвинутом» наборе; в «Базовом» лакомство можно добавить вручную.
-        treat = ration.get('treat')
-        if treat and filters.variant == 'advanced':
-            slots.append((treat, 0.1, ration.get('treat_alternatives') or []))
+        if treat:
+            slots.append((treat, treat_share, ration.get('treat_alternatives') or []))
         components = []
         for cand, share, alts in slots:
             off = cand['offer']
