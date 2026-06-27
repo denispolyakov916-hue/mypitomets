@@ -57,13 +57,13 @@ const getProgressColor = (percent) => {
 };
 
 const SPECIES_ACCENT = {
-  dog: { border: 'border-l-amber-400', tint: 'from-amber-50/70 to-white' },
-  cat: { border: 'border-l-violet-400', tint: 'from-violet-50/70 to-white' },
-  bird: { border: 'border-l-sky-400', tint: 'from-sky-50/70 to-white' },
-  fish: { border: 'border-l-cyan-400', tint: 'from-cyan-50/70 to-white' },
-  rodent: { border: 'border-l-orange-400', tint: 'from-orange-50/70 to-white' },
-  reptile: { border: 'border-l-emerald-400', tint: 'from-emerald-50/70 to-white' },
-  other: { border: 'border-l-gray-300', tint: 'from-gray-50/60 to-white' },
+  dog: { border: 'border-l-amber-400', tint: 'from-amber-50/70 to-white', hero: 'from-amber-200 via-amber-100 to-orange-100', ring: 'ring-amber-200/70' },
+  cat: { border: 'border-l-violet-400', tint: 'from-violet-50/70 to-white', hero: 'from-violet-200 via-violet-100 to-fuchsia-100', ring: 'ring-violet-200/70' },
+  bird: { border: 'border-l-sky-400', tint: 'from-sky-50/70 to-white', hero: 'from-sky-200 via-sky-100 to-cyan-100', ring: 'ring-sky-200/70' },
+  fish: { border: 'border-l-cyan-400', tint: 'from-cyan-50/70 to-white', hero: 'from-cyan-200 via-cyan-100 to-sky-100', ring: 'ring-cyan-200/70' },
+  rodent: { border: 'border-l-orange-400', tint: 'from-orange-50/70 to-white', hero: 'from-orange-200 via-orange-100 to-amber-100', ring: 'ring-orange-200/70' },
+  reptile: { border: 'border-l-emerald-400', tint: 'from-emerald-50/70 to-white', hero: 'from-emerald-200 via-emerald-100 to-teal-100', ring: 'ring-emerald-200/70' },
+  other: { border: 'border-l-gray-300', tint: 'from-gray-50/60 to-white', hero: 'from-primary-200 via-primary-100 to-violet-100', ring: 'ring-primary-200/70' },
 };
 
 function getSpeciesAccent(species) {
@@ -121,8 +121,9 @@ function petHasDiaryEntries(petId) {
 // КОМПОНЕНТ КАРТОЧКИ ПИТОМЦА
 // ============================================
 
-const PetCard = React.memo(({ pet, index, isFeatured, onEdit, onDelete, onViewAnalysis, onNavigate, onFoodRecommendation }) => {
+const PetCard = React.memo(({ pet, index, onEdit, onDelete, onViewAnalysis, onNavigate, onFoodRecommendation }) => {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [photoError, setPhotoError] = useState(false);
   const menuRef = useRef(null);
   const accent = getSpeciesAccent(pet.species);
   const nextStep = getNextProfileStep(pet);
@@ -142,7 +143,7 @@ const PetCard = React.memo(({ pet, index, isFeatured, onEdit, onDelete, onViewAn
     return () => document.removeEventListener('mousedown', close);
   }, [menuOpen]);
 
-  const imgHeight = isFeatured ? 'min-h-[14rem] sm:min-h-[16rem]' : 'min-h-[12rem]';
+  const imgHeight = 'min-h-[12rem]';
 
   return (
     <motion.div
@@ -150,28 +151,23 @@ const PetCard = React.memo(({ pet, index, isFeatured, onEdit, onDelete, onViewAn
       initial={{ opacity: 0, y: 24 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.06, duration: 0.35, type: 'spring', stiffness: 380, damping: 28 }}
-      className={`rounded-2xl shadow-sm overflow-hidden border border-gray-100/80 bg-gradient-to-br ${accent.tint} border-l-4 ${accent.border} transition-shadow hover:shadow-md ${
-        isFeatured ? 'ring-2 ring-primary-300/70 shadow-md md:scale-[1.02] md:z-[1]' : ''
-      }`}
+      className="rounded-3xl shadow-[0_8px_30px_rgba(82,47,129,0.07)] overflow-hidden border border-primary-100/60 bg-white transition-shadow hover:shadow-[0_14px_44px_rgba(82,47,129,0.12)]"
     >
-      {isFeatured && (
-        <div className="px-3 py-1.5 bg-gradient-to-r from-primary-600/90 to-accent-500/90 text-white text-xs font-semibold flex items-center gap-1.5">
-          <Sparkles className="w-3.5 h-3.5 shrink-0" />
-          Питомец дня
-        </div>
-      )}
-
-      <div className={`relative ${imgHeight} bg-gradient-to-br from-primary-100 to-accent-100`}>
+      <div className={`relative ${imgHeight} bg-gradient-to-br ${pet.photo && !photoError ? 'from-gray-100 to-gray-50' : accent.hero}`}>
         <button
           type="button"
           className="absolute inset-0 w-full text-left cursor-pointer group/img"
           onClick={() => onNavigate(pet.id)}
         >
-          {pet.photo ? (
-            <img src={pet.photo} alt={pet.name} className="w-full h-full object-cover min-h-[inherit]" />
+          {pet.photo && !photoError ? (
+            <img src={pet.photo} alt={pet.name} onError={() => setPhotoError(true)} className="w-full h-full object-cover min-h-[inherit]" />
           ) : (
-            <div className="w-full h-full min-h-[inherit] flex items-center justify-center text-7xl">
-              {getSpeciesEmoji(pet.species)}
+            <div className="relative flex h-full w-full min-h-[inherit] items-center justify-center overflow-hidden">
+              <div className="absolute -left-6 -top-6 h-28 w-28 rounded-full bg-white/30 blur-2xl" />
+              <div className="absolute bottom-6 right-8 h-20 w-20 rounded-full bg-white/25 blur-xl" />
+              <span className={`relative grid h-24 w-24 place-items-center rounded-full bg-white/90 text-5xl shadow-lg ring-4 ${accent.ring}`}>
+                {getSpeciesEmoji(pet.species)}
+              </span>
             </div>
           )}
         </button>
