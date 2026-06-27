@@ -2589,8 +2589,15 @@ export default function FoodRecommendationPage() {
     }
     try {
       setSavingRation(true);
-      await saveRation(selectedPet.id, { components, period_days: period });
-      if (showSuccess) showSuccess('Рацион сохранён в карточке питомца');
+      const saveRes = await saveRation(selectedPet.id, { components, period_days: period });
+      const savedReminder = saveRes?.data?.reminder || saveRes?.reminder;
+      if (showSuccess) {
+        showSuccess(
+          savedReminder?.reminder_date
+            ? `Рацион сохранён. Напомним докупить корм ${new Date(savedReminder.reminder_date).toLocaleDateString('ru-RU')}`
+            : 'Рацион сохранён в карточке питомца'
+        );
+      }
       navigate(`/pet-id/${selectedPet.id}`);
     } catch (err) {
       console.error('Ошибка сохранения рациона:', err);

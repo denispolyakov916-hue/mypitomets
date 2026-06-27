@@ -591,4 +591,46 @@ class PetSaveRationView(APIView):
         }
         pet.current_food = current_food
         pet.save(update_fields=['current_food', 'updated_at'])
-        return Response({'current_food': current_food}, status=status.HTTP_200_OK)
+
+        # Напоминание о докупке: к дате, когда заканчивается первая позиция (минус буфер на заказ).
+        reminder_info = None
+        try:
+            from datetime import timedelta
+            from .reminder_models import Reminder
+            supply_days = [c['days_supply'] for c in out_components if c.get('days_supply')]
+            if supply_days:
+                run_out = min(supply_days)
+                remind_in = max(1, run_out - 3)
+                reorder_date = (timezone.now() + timedelta(days=remind_in)).date()
+                food_names = ', '.join(
+                    c['recipe_name'] for c in out_components if c.get('component_type') in ('dry', 'wet')
+                )
+                title = 'Докупить корм для %s' % (pet.name or 'питомца')
+                fields = {
+                    'user': request.user,
+                    'title': title,
+                    'description': ('Заканчивается: %s' % food_names) if food_names else 'Пора пополнить рацион',
+                    'category': 'feeding',
+                    'frequency': 'once',
+                    'reminder_date': reorder_date,
+                    'notify_push': True,
+                    'notify_email': False,
+                    'is_active': True,
+                    'is_completed': False,
+                }
+                existing = Reminder.objects.filter(
+                    pet=pet, category='feeding', is_completed=False,
+                    title__startswith='Докупить корм',
+                ).first()
+                if existing:
+                    for k, v in fields.items():
+                        setattr(existing, k, v)
+                    existing.save()
+                    reminder = existing
+                else:
+                    reminder = Reminder.objects.create(pet=pet, **fields)
+                reminder_info = {'id': str(reminder.id), 'reminder_date': reorder_date.isoformat(), 'title': title}
+        except Exception:  # noqa: BLE001
+            warnings.append('напоминание о докупке не создано')
+
+        return Response({'current_food': current_food, 'reminder': reminder_info}, status=status.HTTP_200_OK)
