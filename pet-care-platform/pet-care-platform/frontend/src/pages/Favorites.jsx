@@ -643,6 +643,13 @@ function Favorites() {
 
   return (
     <div className="animate-fadeIn page-container-with-sidebar flex flex-col min-h-[calc(100vh-4rem)]">
+      <section className="mb-5 overflow-hidden rounded-3xl border border-primary-100 bg-gradient-to-br from-primary-50 via-milk to-violet-50 px-5 py-5 md:px-7 md:py-6">
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-white/70 px-3 py-1 text-xs font-medium text-primary-600">
+          <Heart className="h-3.5 w-3.5" aria-hidden /> Избранное и вишлист
+        </span>
+        <h1 className="mt-2 font-heading text-2xl font-bold text-primary-800 md:text-3xl">Сохранённое для ваших питомцев</h1>
+        <p className="mt-1 text-sm text-primary-600">Товары и курсы, которые вы отметили, и вишлист, которым можно поделиться с близкими.</p>
+      </section>
       <div className="flex gap-6 flex-1 min-h-0">
         {/* Боковая панель: фильтры для избранного, блок вишлиста (ссылка) для вишлиста — остаётся при переключении */}
         {((view === 'favorites' && hasFavorites) || view === 'wishlist') && (
