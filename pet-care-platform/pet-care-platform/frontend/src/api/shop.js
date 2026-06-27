@@ -266,13 +266,34 @@ export const getHealthFilters = async () => {
 // =============================================================================
 
 /**
+ * Бэкенд-сериализатор вишлиста отдаёт числовые поля товара (цена, рейтинг)
+ * строками — DecimalField. ProductCard ждёт number, поэтому приводим их к
+ * Number, чтобы карточка не спотыкалась на строках и не сыпала warning'ами.
+ */
+const WISHLIST_NUMERIC_FIELDS = ['price', 'compare_price', 'old_price', 'discount_price', 'rating', 'rating_count', 'reviews_count', 'stock_count']
+const normalizeWishlist = (wishlist) => {
+  if (!wishlist || !Array.isArray(wishlist.items)) return wishlist
+  return {
+    ...wishlist,
+    items: wishlist.items.map((item) => {
+      if (!item || !item.product) return item
+      const product = { ...item.product }
+      for (const f of WISHLIST_NUMERIC_FIELDS) {
+        if (product[f] != null && product[f] !== '') product[f] = Number(product[f])
+      }
+      return { ...item, product }
+    }),
+  }
+}
+
+/**
  * Получить свой вишлист (создаётся при первом запросе).
  * @returns {Promise<Object>} { id, name, share_token, share_url, items, ... }
  */
 export const getMyWishlist = async () => {
   // axios-обёртка уже разворачивает .data (см. client.js interceptor), а GET
   // возвращает сам объект вишлиста — деструктуризация { data } давала undefined.
-  return await api.get('/shop/wishlist/')
+  return normalizeWishlist(await api.get('/shop/wishlist/'))
 }
 
 /**
@@ -282,7 +303,7 @@ export const getMyWishlist = async () => {
  */
 export const addToWishlist = async (productId) => {
   const { data } = await api.post('/shop/wishlist/', { product_id: productId })
-  return data
+  return normalizeWishlist(data)
 }
 
 /**
@@ -292,7 +313,7 @@ export const addToWishlist = async (productId) => {
  */
 export const removeFromWishlist = async (productId) => {
   const { data } = await api.delete(`/shop/wishlist/?product_id=${productId}`)
-  return data
+  return normalizeWishlist(data)
 }
 
 /**
@@ -301,7 +322,7 @@ export const removeFromWishlist = async (productId) => {
  * @returns {Promise<Object>} { id, name, owner_name, items }
  */
 export const getSharedWishlist = async (token) => {
-  return await api.get(`/shop/wishlist/shared/${token}/`)
+  return normalizeWishlist(await api.get(`/shop/wishlist/shared/${token}/`))
 }
 
 // =============================================================================
