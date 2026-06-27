@@ -14,7 +14,7 @@ import { useToastStore } from '../../store/toastStore'
 import { useProducts } from '../../hooks/useProducts'
 import { usePets } from '../../hooks/usePets'
 import ShopFilters from '../../components/Shop/ShopFilters'
-import { ShopHeader, MobileFiltersModal, ProductGrid, Pagination } from './components'
+import { ShopHeader, MobileFiltersModal, ProductGrid, Pagination, ShopHeroBanner } from './components'
 import { BrandButton, BrandCard, BrandEmptyState } from '../../components/brand'
 import { SearchX, AlertTriangle, Sparkles } from 'lucide-react'
 
@@ -245,25 +245,29 @@ function Shop() {
   
   return (
     <div className="animate-fadeIn page-container-with-sidebar flex flex-col min-h-[calc(100vh-4rem)] bg-milk">
-      {/* Брендовый герой магазина */}
-      <section className="mb-8 overflow-hidden rounded-3xl border border-primary-100 bg-gradient-to-br from-primary-50 via-milk to-violet-50 px-6 py-8 md:px-10 md:py-10">
-        <div className="max-w-2xl">
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-white/70 px-3 py-1 text-xs font-medium text-primary-600">
-            <Sparkles className="h-3.5 w-3.5" aria-hidden /> Магазин заботы
-          </span>
-          <h1 className="mt-3 font-heading font-bold text-3xl md:text-4xl leading-tight text-primary-800">
-            Товары для заботы о питомце
-          </h1>
-          <p className="mt-3 text-base md:text-lg text-primary-600">
-            Подберём питание и уход под вашего питомца — без лишних трат и лишнего шума.
-          </p>
-          <div className="mt-6">
+      {/* Брендовый герой магазина — компактный */}
+      <section className="mb-5 overflow-hidden rounded-2xl border border-primary-100 bg-gradient-to-br from-primary-50 via-milk to-violet-50 px-4 py-4 md:px-6 md:py-4">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div className="min-w-0">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-white/70 px-2.5 py-0.5 text-xs font-medium text-primary-600">
+              <Sparkles className="h-3.5 w-3.5" aria-hidden /> Магазин заботы
+            </span>
+            <h1 className="mt-1.5 font-heading font-bold text-xl md:text-2xl leading-tight text-primary-800">
+              Товары для заботы о питомце
+            </h1>
+            <p className="mt-1 text-sm text-primary-600">
+              Питание и уход под вашего питомца — без лишних трат.
+            </p>
+          </div>
+          <div className="shrink-0">
             <BrandButton as={Link} to="/food-recommendation" variant="primary" leftIcon={<Sparkles className="h-5 w-5" />}>
-              Подобрать корм по питомцу
+              Подобрать питание
             </BrandButton>
           </div>
         </div>
       </section>
+
+      <ShopHeroBanner />
 
       {showRefetchIndicator && (
         <div className="fixed top-4 right-4 z-50 px-3 py-1.5 bg-primary-100 text-primary-700 rounded-full text-sm flex items-center gap-2 shadow-lg">
@@ -303,7 +307,7 @@ function Shop() {
         </aside>
         
         {/* Основной контент */}
-        <main className="flex-1 min-w-0 animate-fadeIn">
+        <main id="shop-catalog" className="flex-1 min-w-0 animate-fadeIn">
           <MobileFiltersModal
             isOpen={isMobileFiltersOpen}
             onClose={() => setIsMobileFiltersOpen(false)}
