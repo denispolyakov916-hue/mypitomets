@@ -2848,6 +2848,18 @@ export default function FoodRecommendationPage() {
       
       {isRecipeMode && selectedPet && <RationResultHero pet={selectedPet} />}
 
+      {isRecipeMode && selectedPet && pets.length > 1 && (
+        <div className="mb-4 -mt-2 text-center">
+          <button
+            type="button"
+            onClick={() => { setSelectedPet(null); navigate('/food-recommendation'); }}
+            className="inline-flex items-center gap-1 text-sm font-medium text-primary-500 transition hover:text-primary-700"
+          >
+            <ChevronLeft className="h-4 w-4" aria-hidden /> Выбрать другого питомца
+          </button>
+        </div>
+      )}
+
       {isRecipeMode && selectedPet && (
         <div className="mb-6 hidden lg:flex items-center justify-between gap-4 rounded-2xl border border-primary-100 bg-white px-5 py-4 shadow-sm">
           <div className="flex items-center gap-3 min-w-0">
