@@ -69,7 +69,35 @@ export const login = async (email, password) => {
     localStorage.setItem('access_token', response.accessToken)
     localStorage.setItem('refresh_token', response.refreshToken)
   }
-  
+
+  return response
+}
+
+/**
+ * Запросить SMS-код для входа/регистрации по номеру телефона.
+ *
+ * @param {string} phone - Номер телефона
+ * @returns {Promise<Object>} { message, phone }
+ */
+export const requestPhoneCode = async (phone) => {
+  return await api.post('/auth/phone/request-code/', { phone })
+}
+
+/**
+ * Подтвердить SMS-код: регистрация/вход по телефону.
+ * Сохраняет access токен; refresh приходит в httpOnly-cookie.
+ *
+ * @param {string} phone - Номер телефона
+ * @param {string} code - Код из SMS
+ * @returns {Promise<Object>} { accessToken, user, created }
+ */
+export const verifyPhoneCode = async (phone, code) => {
+  const response = await api.post('/auth/phone/verify-code/', { phone, code }, {
+    withCredentials: true,
+  })
+  if (response.accessToken) {
+    localStorage.setItem('access_token', response.accessToken)
+  }
   return response
 }
 

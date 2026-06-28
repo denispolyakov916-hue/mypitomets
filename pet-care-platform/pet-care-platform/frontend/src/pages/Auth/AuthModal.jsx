@@ -8,6 +8,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useLocation, Link } from 'react-router-dom'
 import { useAuthStore } from '../../store/authStore'
+import PhoneAuthForm from './PhoneAuthForm'
 import { resolvePostAuthRedirect } from '../../utils/postAuthRedirect'
 import { ButtonLoader } from '../../components/Loader'
 import '../../styles/auth.css'
@@ -24,6 +25,7 @@ function AuthModal() {
   const isLoading = useAuthStore(s => s.isLoading)
   const error = useAuthStore(s => s.error)
   const { login, register, activateByCode, clearError } = useAuthStore()
+  const [authMethod, setAuthMethod] = useState('email') // 'email' | 'phone'
 
   // Определяем начальный режим по URL
   const isRegisterPath = location.pathname === '/register'
@@ -211,14 +213,47 @@ const toggleMode = () => {
     }
   }
 
+  const methodTabs = (
+    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', margin: '6px 0 2px' }}>
+      {['email', 'phone'].map((m) => (
+        <button
+          key={m}
+          type="button"
+          onClick={() => { setAuthMethod(m); clearError() }}
+          style={{
+            padding: '9px 0',
+            borderRadius: '12px',
+            border: 'none',
+            cursor: 'pointer',
+            fontWeight: 600,
+            fontSize: '14px',
+            background: authMethod === m ? '#fbba2d' : 'rgba(82,47,129,0.08)',
+            color: authMethod === m ? '#3e2362' : '#7c6f93',
+            transition: 'all .2s',
+          }}
+        >
+          {m === 'email' ? 'Email' : 'Телефон'}
+        </button>
+      ))}
+    </div>
+  )
+
   return (
     <div className="min-h-screen flex items-center justify-center py-8 px-4">
       <div className={`auth-container ${isActive ? 'auth-active' : ''}`}>
         {/* Форма входа */}
         <div className={`auth-form-box ${isRegisterMode ? 'auth-register' : 'auth-login'}`}>
           {!registrationSuccess ? (
+            isRegisterMode && authMethod === 'phone' ? (
+              <div className="auth-form">
+                <h1>Регистрация</h1>
+                {methodTabs}
+                <PhoneAuthForm />
+              </div>
+            ) : (
             <form onSubmit={isRegisterMode ? handleRegisterSubmit : handleLoginSubmit} className="auth-form">
               <h1>{isRegisterMode ? 'Регистрация' : 'Вход'}</h1>
+              {isRegisterMode && methodTabs}
 
               {/* Серверная ошибка */}
               {error && (
@@ -347,6 +382,7 @@ const toggleMode = () => {
                 </a>
               </div>
             </form>
+            )
           ) : (
             /* Форма активации */
             <form onSubmit={handleActivation} className="auth-form">

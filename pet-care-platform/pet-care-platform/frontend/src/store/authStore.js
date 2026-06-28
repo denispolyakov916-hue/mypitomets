@@ -106,7 +106,46 @@ export const useAuthStore = create((set, get) => ({
       return false
     }
   },
-  
+
+  /**
+   * Запросить SMS-код для входа/регистрации по номеру телефона.
+   */
+  requestPhoneCode: async (phone) => {
+    set({ error: null })
+    try {
+      return await authApi.requestPhoneCode(phone)
+    } catch (error) {
+      const msg = error.message || 'Не удалось отправить код'
+      set({ error: msg })
+      throw error
+    }
+  },
+
+  /**
+   * Вход/регистрация по телефону: подтверждение SMS-кода.
+   * При успехе создаётся (или находится) пользователь и выполняется вход.
+   */
+  loginWithPhone: async (phone, code) => {
+    set({ isLoading: true, error: null })
+    try {
+      const response = await authApi.verifyPhoneCode(phone, code)
+      set({
+        user: response.user,
+        isAuthenticated: true,
+        isLoading: false,
+        error: null,
+      })
+      get().startTokenValidation()
+      return true
+    } catch (error) {
+      set({
+        isLoading: false,
+        error: error.message || 'Неверный код',
+      })
+      return false
+    }
+  },
+
   /**
    * Регистрация нового аккаунта
    * 
