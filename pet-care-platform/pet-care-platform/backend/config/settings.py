@@ -111,6 +111,18 @@ else:
     EMAIL_USE_SSL = False
 
 # =============================================================================
+# SMS / OTP (регистрация и вход по телефону)
+# =============================================================================
+# SMS_BACKEND: 'smsc' — реальная отправка через SMSC.ru; 'console' — печать кода в лог.
+SMS_BACKEND = os.getenv('SMS_BACKEND', 'console')
+SMSC_LOGIN = os.getenv('SMSC_LOGIN', '')
+SMSC_PASSWORD = os.getenv('SMSC_PASSWORD', '')
+SMSC_SENDER = os.getenv('SMSC_SENDER', '')
+
+if DEBUG:
+    print(f"[SMS CONFIG] Backend: {SMS_BACKEND}")
+
+# =============================================================================
 # ПРИЛОЖЕНИЯ
 # =============================================================================
 

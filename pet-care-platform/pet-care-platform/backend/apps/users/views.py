@@ -27,6 +27,7 @@ from .serializers import (
     PasswordResetConfirmSerializer,
 )
 from .services import UserService
+from .services.phone_auth_service import PhoneAuthService
 from core.exceptions import ApiError
 from core.validators import set_refresh_token_cookie
 
@@ -568,6 +569,66 @@ class PasswordResetConfirmView(APIView):
             return Response({'error': e.detail}, status=e.status_code)
         except Exception as e:
             logger.error(f"Ошибка при подтверждении восстановления пароля: {str(e)}")
+            return Response(
+                {'error': 'Внутренняя ошибка сервера'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
+class RequestPhoneCodeView(APIView):
+    """
+    Запрос SMS-кода для регистрации/входа по телефону.
+
+    POST /api/auth/phone/request-code/
+    Тело: {"phone": "+7..."}
+    """
+
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        try:
+            result = PhoneAuthService.request_code(request.data.get('phone'))
+            return Response(result, status=status.HTTP_200_OK)
+        except ApiError as e:
+            return Response({'error': e.detail}, status=e.status_code)
+        except Exception as e:
+            logger.error(f"Ошибка при запросе SMS-кода: {str(e)}", exc_info=True)
+            return Response(
+                {'error': 'Внутренняя ошибка сервера'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
+class VerifyPhoneCodeView(APIView):
+    """
+    Подтверждение SMS-кода: регистрация/вход по телефону.
+
+    POST /api/auth/phone/verify-code/
+    Тело: {"phone": "+7...", "code": "123456"}
+    Возвращает access токен, ставит refresh токен в cookie.
+    """
+
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        try:
+            result = PhoneAuthService.verify_code(
+                request.data.get('phone'), request.data.get('code')
+            )
+            response = Response(
+                {
+                    'accessToken': result['accessToken'],
+                    'user': result['user'],
+                    'created': result['created'],
+                },
+                status=status.HTTP_200_OK,
+            )
+            set_refresh_token_cookie(response, result['refreshToken'])
+            return response
+        except ApiError as e:
+            return Response({'error': e.detail}, status=e.status_code)
+        except Exception as e:
+            logger.error(f"Ошибка при подтверждении SMS-кода: {str(e)}", exc_info=True)
             return Response(
                 {'error': 'Внутренняя ошибка сервера'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR

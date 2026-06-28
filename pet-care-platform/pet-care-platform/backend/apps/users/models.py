@@ -192,3 +192,22 @@ class Token(models.Model):
     
     def __str__(self):
         return f"Token for {self.user.email}"
+
+
+class PhoneOtp(models.Model):
+    """Одноразовый код (OTP) для регистрации/входа по номеру телефона."""
+
+    phone = models.CharField(max_length=20, db_index=True, verbose_name='Телефон')
+    code = models.CharField(max_length=6, verbose_name='Код')
+    attempts = models.PositiveSmallIntegerField(default=0, verbose_name='Попытки ввода')
+    is_used = models.BooleanField(default=False, verbose_name='Использован')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='Создан')
+
+    class Meta:
+        verbose_name = 'OTP по телефону'
+        verbose_name_plural = 'OTP по телефону'
+        db_table = 'phone_otp'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"OTP {self.phone}"

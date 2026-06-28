@@ -27,9 +27,17 @@ from .views import (
     ResendActivationCodeView,
     PasswordResetRequestView,
     PasswordResetConfirmView,
+    RequestPhoneCodeView,
+    VerifyPhoneCodeView,
 )
 
 urlpatterns = [
+    # Регистрация/вход по телефону через SMS-код
+    # POST /api/auth/phone/request-code/  — запросить код
+    path('phone/request-code/', RequestPhoneCodeView.as_view(), name='auth-phone-request-code'),
+    # POST /api/auth/phone/verify-code/   — подтвердить код, получить токены
+    path('phone/verify-code/', VerifyPhoneCodeView.as_view(), name='auth-phone-verify-code'),
+
     # Регистрация пользователя (старый URL для обратной совместимости)
     # POST /api/auth/register/
     path('register/', RegisterView.as_view(), name='auth-register'),
