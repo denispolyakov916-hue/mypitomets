@@ -138,7 +138,7 @@ export default function PuffSupportWidget({ stackGuestStrip = false }) {
         aria-label="Открыть чат с Пуфом"
       >
         <span className="flex h-full w-full items-center justify-center">
-          <PuffLottie name="hello_wave" loop size={60} alt="Пуфыч" />
+          <PuffLottie name="bored_yawn" loop size={60} alt="Пуфыч спит" />
         </span>
       </button>
     </div>
