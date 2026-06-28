@@ -6,10 +6,7 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { X, Send } from 'lucide-react'
-
-// Видео маскота с лендинга (то же, что в виджете на главной)
-const PUFF_VIDEO_SRC = '/landing/puf-krug-obrez-new.MP4'
-const PUFF_IMAGE_FALLBACK = '/purple-monster.png'
+import { PuffLottie } from './brand'
 
 const GREETING = 'Привет! Я Пуф, твой помощник. Чем могу помочь?'
 const REPLY_PLACEHOLDER = 'Получил! Постараюсь ответить скоро. Если срочно — напишите в поддержку на сайте.'
@@ -22,8 +19,6 @@ export default function PuffSupportWidget({ stackGuestStrip = false }) {
   const [messages, setMessages] = useState([{ text: GREETING, isUser: false }])
   const [inputValue, setInputValue] = useState('')
   const messagesEndRef = useRef(null)
-  const videoRef = useRef(null)
-  const [useVideo, setUseVideo] = useState(true)
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -32,20 +27,6 @@ export default function PuffSupportWidget({ stackGuestStrip = false }) {
   useEffect(() => {
     scrollToBottom()
   }, [messages])
-
-  useEffect(() => {
-    const video = videoRef.current
-    if (!video) return
-    if (isOpen) {
-      video.play().catch(() => {})
-    }
-  }, [isOpen])
-
-  useEffect(() => {
-    const video = videoRef.current
-    if (!video || !stackGuestStrip) return
-    video.play().catch(() => {})
-  }, [stackGuestStrip])
 
   const sendMessage = () => {
     const text = inputValue.trim()
@@ -148,64 +129,17 @@ export default function PuffSupportWidget({ stackGuestStrip = false }) {
       <button
         type="button"
         onClick={() => setIsOpen((v) => !v)}
-        className={`shrink-0 rounded-full border-0 p-0 transition-transform hover:scale-105 active:scale-95 ${
-          stackGuestStrip
-            ? 'guest-puff-active'
-            : 'puff-support-trigger relative h-[72px] w-[72px] overflow-hidden sm:h-[88px] sm:w-[88px] shadow-lg'
-        }`}
-        style={
-          stackGuestStrip
-            ? undefined
-            : {
-                background: '#f3e9c6',
-                boxShadow: '0 6px 24px rgba(82, 47, 129, 0.35)',
-              }
-        }
+        className="puff-support-trigger relative h-[72px] w-[72px] shrink-0 overflow-hidden rounded-full border-0 p-0 shadow-lg transition-transform hover:scale-105 active:scale-95 sm:h-[88px] sm:w-[88px]"
+        style={{
+          background: '#f3e9c6',
+          boxShadow: '0 6px 24px rgba(82, 47, 129, 0.35)',
+        }}
         title="Чат с Пуфом"
         aria-label="Открыть чат с Пуфом"
       >
-        {stackGuestStrip ? (
-          <span className="guest-puff-active__inner">
-            {useVideo ? (
-              <video
-                ref={videoRef}
-                src={PUFF_VIDEO_SRC}
-                muted
-                loop
-                playsInline
-                preload="auto"
-                className="guest-puff-active__video"
-                aria-hidden
-                onError={() => setUseVideo(false)}
-              />
-            ) : (
-              <img
-                src={PUFF_IMAGE_FALLBACK}
-                alt=""
-                className="guest-puff-active__video object-cover"
-                aria-hidden
-              />
-            )}
-          </span>
-        ) : (
-          <span className="absolute inset-0 overflow-hidden rounded-full">
-            {useVideo ? (
-              <video
-                src={PUFF_VIDEO_SRC}
-                muted
-                loop
-                autoPlay
-                playsInline
-                preload="auto"
-                className="h-full w-full scale-[0.85] object-contain"
-                aria-hidden
-                onError={() => setUseVideo(false)}
-              />
-            ) : (
-              <img src={PUFF_IMAGE_FALLBACK} alt="" className="h-full w-full scale-[0.85] object-contain" aria-hidden />
-            )}
-          </span>
-        )}
+        <span className="flex h-full w-full items-center justify-center">
+          <PuffLottie name="hello_wave" loop size={60} alt="Пуфыч" />
+        </span>
       </button>
     </div>
   )
