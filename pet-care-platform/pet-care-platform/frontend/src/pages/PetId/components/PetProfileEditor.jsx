@@ -606,19 +606,29 @@ const BreedAutocomplete = ({ species, value, onChange }) => {
     setActiveIndex(selectedIndex >= 0 ? selectedIndex : 0);
   }, [isOpen, breeds, value]);
 
+  // «Беспородный» вариант — это не порода из БД, а отдельный выбор (как в форме
+  // создания питомца). Всегда доступен в конце списка, даже если поиск по «метис»
+  // не вернул ни одной породы.
+  const mixedBreed = species === 'cat'
+    ? { id: 'mixed', name: 'Беспородная / Метис', isMixed: true }
+    : { id: 'mixed', name: 'Дворняга / Метис', isMixed: true };
+  const options = [...breeds, mixedBreed];
+
   const handleSelect = (breed) => {
+    const isMixed = breed.isMixed || breed.id === 'mixed';
     setSearch(breed.name);
-    onChange({ id: breed.id, name: breed.name });
+    // Для беспородного шлём id:null (нет FK), но сохраняем читаемое имя.
+    onChange(isMixed ? { id: null, name: breed.name, isMixed: true } : { id: breed.id, name: breed.name });
     setIsOpen(false);
   };
 
   const moveActiveIndex = (delta) => {
-    if (breeds.length === 0) return;
+    if (options.length === 0) return;
     setActiveIndex((prev) => {
       const base = prev < 0 ? 0 : prev;
       const next = base + delta;
-      if (next < 0) return breeds.length - 1;
-      if (next >= breeds.length) return 0;
+      if (next < 0) return options.length - 1;
+      if (next >= options.length) return 0;
       return next;
     });
   };
@@ -655,17 +665,17 @@ const BreedAutocomplete = ({ species, value, onChange }) => {
             }
             if (e.key === 'Home') {
               e.preventDefault();
-              if (breeds.length > 0) setActiveIndex(0);
+              if (options.length > 0) setActiveIndex(0);
               return;
             }
             if (e.key === 'End') {
               e.preventDefault();
-              if (breeds.length > 0) setActiveIndex(breeds.length - 1);
+              if (options.length > 0) setActiveIndex(options.length - 1);
               return;
             }
             if (e.key === 'Enter' && isOpen && activeIndex >= 0) {
               e.preventDefault();
-              handleSelect(breeds[activeIndex]);
+              handleSelect(options[activeIndex]);
               return;
             }
             if (e.key === 'Escape' && isOpen) {
@@ -683,7 +693,7 @@ const BreedAutocomplete = ({ species, value, onChange }) => {
       </div>
       
       <AnimatePresence>
-        {isOpen && breeds.length > 0 && (
+        {isOpen && options.length > 0 && (
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -699,7 +709,7 @@ const BreedAutocomplete = ({ species, value, onChange }) => {
               }
             }}
           >
-            {breeds.map((breed, index) => (
+            {options.map((breed, index) => (
               <button
                 key={breed.id}
                 type="button"

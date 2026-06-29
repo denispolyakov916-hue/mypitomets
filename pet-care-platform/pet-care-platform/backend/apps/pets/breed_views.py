@@ -147,17 +147,11 @@ class PetBreedComparisonView(APIView):
                 'pet': self._get_pet_summary(pet)
             })
         
-        # Поиск породы в базе знаний
-        breed = Breed.objects.filter(name__icontains=pet.breed).first()
-        if not breed:
-            # Попробуем по slug
-            slug = pet.breed.lower().replace(' ', '-').replace('ё', 'е')
-            breed = Breed.objects.filter(slug__icontains=slug).first()
-        
-        if not breed:
-            # Попробуем по английскому названию
-            breed = Breed.objects.filter(name_en__icontains=pet.breed).first()
-        
+        # pet.breed — это FK на Breed (объект из «базы знаний»), берём напрямую.
+        # Раньше тут шёл поиск по строке str(pet.breed) = "Имя (Вид)", который никогда
+        # не матчился по name/slug/name_en → анализ всегда был «недоступен».
+        breed = pet.breed
+
         if not breed:
             return Response({
                 'error': 'Порода не найдена в базе знаний',
@@ -248,6 +242,30 @@ class PetBreedComparisonView(APIView):
             'breed_found': True,
         })
     
+    @staticmethod
+    def _pet_allergy_names(pet):
+        """Список названий аллергий питомца (из M2M PetAllergy → Allergy.display_name)."""
+        try:
+            return [
+                pa.allergy.display_name
+                for pa in pet.pet_allergies.filter(is_active=True).select_related('allergy')
+                if getattr(pa, 'allergy', None) and pa.allergy.display_name
+            ]
+        except Exception:  # noqa: BLE001
+            return []
+
+    @staticmethod
+    def _pet_health_condition_names(pet):
+        """Список названий заболеваний питомца (из M2M PetHealthCondition → HealthCondition.name_ru)."""
+        try:
+            return [
+                phc.condition.name_ru
+                for phc in pet.pet_health_conditions.filter(is_active=True).select_related('condition')
+                if getattr(phc, 'condition', None) and phc.condition.name_ru
+            ]
+        except Exception:  # noqa: BLE001
+            return []
+
     def _get_pet_summary(self, pet):
         """Краткая информация о питомце."""
         from datetime import date
@@ -263,8 +281,8 @@ class PetBreedComparisonView(APIView):
             'id': str(pet.id),
             'name': pet.name,
             'species': pet.species,
-            'breed': pet.breed,
-            'gender': pet.gender,
+            'breed': pet.breed.name if pet.breed else None,
+            'gender': getattr(pet, 'sex', None),
             'age': age,
             'weight': float(pet.weight) if pet.weight else None,
             'activity_level': pet.activity_level,
@@ -272,14 +290,14 @@ class PetBreedComparisonView(APIView):
             'feeding_frequency': pet.feeding_frequency,
             'behavior_type': pet.behavior_type,
             'social_level': pet.social_level,
-            'training_experience': pet.training_experience,
+            'training_experience': getattr(pet, 'training_experience', None),
             'housing_type': pet.housing_type,
             'has_yard': pet.has_yard,
             'has_children': pet.has_children,
-            'health_issues': pet.health_issues or [],
-            'allergies': pet.allergies or [],
-            'chronic_conditions': pet.chronic_conditions,
-            'dental_health': pet.dental_health,
+            'health_issues': self._pet_health_condition_names(pet),
+            'allergies': self._pet_allergy_names(pet),
+            'chronic_conditions': pet.chronic_conditions_notes,
+            'dental_health': getattr(pet, 'dental_health', None),
             'is_neutered': pet.is_neutered,
         }
     
@@ -294,6 +312,14 @@ class PetBreedComparisonView(APIView):
             }
         
         weight = float(pet.weight)
+        if not breed.weight_min or not breed.weight_max:
+            return {
+                'status': 'unknown',
+                'status_label': 'Нет данных породы',
+                'current_weight': weight,
+                'message': 'Для породы не указан эталонный вес',
+                'score': 50
+            }
         min_w = float(breed.weight_min)
         max_w = float(breed.weight_max)
         ideal = (min_w + max_w) / 2
@@ -421,7 +447,7 @@ class PetBreedComparisonView(APIView):
             score -= 5
         
         # Проверка аллергий
-        allergies = pet.allergies or []
+        allergies = self._pet_allergy_names(pet)
         if allergies:
             issues.append(f'Учитывайте аллергии: {", ".join(allergies[:3])}')
             score -= 5
@@ -481,18 +507,19 @@ class PetBreedComparisonView(APIView):
         }
         
         # Проверка типа поведения
+        breed_friendliness_strangers = getattr(breed, 'friendliness_to_strangers', None)
         if pet.behavior_type:
-            if pet.behavior_type == 'aggressive' and breed.friendliness_to_strangers in ['high', 'very_high']:
+            if pet.behavior_type == 'aggressive' and breed_friendliness_strangers in ['high', 'very_high']:
                 issues.append('Агрессивное поведение нетипично для породы')
                 score -= 20
-            elif pet.behavior_type == 'shy' and breed.friendliness_to_strangers in ['high', 'very_high']:
+            elif pet.behavior_type == 'shy' and breed_friendliness_strangers in ['high', 'very_high']:
                 issues.append('Застенчивость нетипична для породы')
                 score -= 10
-        
+
         # Проверка опыта дрессировки
         training_map = {'none': 0, 'basic': 1, 'intermediate': 2, 'advanced': 3, 'professional': 4}
         breed_trainability = trainability_map.get(breed.trainability, 3)
-        pet_training = training_map.get(pet.training_experience, 0)
+        pet_training = training_map.get(getattr(pet, 'training_experience', None), 0)
         
         if breed_trainability >= 4 and pet_training < 2:
             issues.append(f'Порода {breed.name} хорошо поддаётся дрессировке - используйте этот потенциал')
@@ -530,7 +557,7 @@ class PetBreedComparisonView(APIView):
             'status_label': status_labels.get(status, status),
             'behavior_type': pet.behavior_type,
             'social_level': pet.social_level,
-            'training_experience': pet.training_experience,
+            'training_experience': getattr(pet, 'training_experience', None),
             'behavioral_problems': behavioral_problems,
             'breed_trainability': breed.trainability,
             'issues': issues,
@@ -544,22 +571,24 @@ class PetBreedComparisonView(APIView):
         warnings = []
         score = 100
         
-        # Проверка указанных проблем здоровья
-        health_issues = pet.health_issues or []
+        # Проверка указанных проблем здоровья (заболевания из M2M PetHealthCondition)
+        health_issues = self._pet_health_condition_names(pet)
         if health_issues:
             issues.extend(health_issues[:5])
             score -= len(health_issues) * 10
-        
-        # Проверка хронических заболеваний
-        if pet.chronic_conditions:
-            issues.append(f'Хронические заболевания: {pet.chronic_conditions}')
+
+        # Проверка хронических заболеваний (свободные заметки)
+        chronic_notes = (pet.chronic_conditions_notes or '').strip()
+        if chronic_notes:
+            issues.append(f'Хронические заболевания: {chronic_notes}')
             score -= 15
-        
+
         # Проверка состояния зубов
-        if pet.dental_health == 'needs_attention':
+        dental_health = getattr(pet, 'dental_health', None)
+        if dental_health == 'needs_attention':
             issues.append('Состояние зубов требует внимания')
             score -= 10
-        elif pet.dental_health == 'fair':
+        elif dental_health == 'fair':
             warnings.append('Следите за состоянием зубов')
             score -= 5
         

@@ -222,13 +222,6 @@ const PetCard = React.memo(({ pet, index, onEdit, onDelete, onViewAnalysis, onNa
                     className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
                     onClick={() => setMenuOpen(false)}
                   >
-                    <QrCode className="w-4 h-4" /> QR-код
-                  </button>
-                  <button
-                    type="button"
-                    className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
-                    onClick={() => setMenuOpen(false)}
-                  >
                     <Share2 className="w-4 h-4" /> Поделиться
                   </button>
                   <button

@@ -516,12 +516,19 @@ class PetUpdateSerializer(serializers.Serializer):
     )
     
     behavioral_problems = serializers.ListField(
-        child=serializers.ChoiceField(choices=BEHAVIORAL_PROBLEM_CHOICES),
+        child=serializers.CharField(),
         required=False,
         default=list,
         help_text="Поведенческие проблемы (массив кодов)"
     )
-    
+
+    def validate_behavioral_problems(self, value):
+        # Терпимо: молча отбрасываем неизвестные коды (например, из старого мастера
+        # или расширённого словаря), вместо того чтобы заваливать весь PUT ошибкой 400
+        # и терять ВСЕ правки профиля. Сохраняем валидное подмножество.
+        allowed = {c[0] for c in BEHAVIORAL_PROBLEM_CHOICES}
+        return [v for v in (value or []) if v in allowed]
+
     # === ЗДОРОВЬЕ ===
     
     chronic_conditions_notes = serializers.CharField(

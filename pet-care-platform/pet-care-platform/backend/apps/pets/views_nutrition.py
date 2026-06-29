@@ -84,7 +84,7 @@ class AllergyViewSet(viewsets.ReadOnlyModelViewSet):
         # Фильтры
         animal_type = self.request.query_params.get('animal_type')
         if animal_type:
-            queryset = queryset.filter(animal_type__in=[animal_type, 'Both'])
+            queryset = queryset.filter(animal_type__in=[animal_type, 'both'])
         
         allergen_type = self.request.query_params.get('allergen_type')
         if allergen_type:
