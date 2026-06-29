@@ -104,6 +104,7 @@ class Pet(models.Model):
         help_text='Пол питомца: male / female'
     )
     is_neutered = models.BooleanField(default=False, verbose_name='Кастрирован/Стерилизован')
+    is_mixed_breed = models.BooleanField(default=False, verbose_name='Метис / беспородный')
     photo = models.ImageField(
         upload_to='pets/photos/',
         blank=True,
@@ -599,6 +600,15 @@ class Pet(models.Model):
         return self.size_category
     
     @property
+    def breed_display_name(self):
+        """Отображаемое название породы с учётом метисов/беспородных."""
+        if self.breed:
+            return self.breed.name
+        if self.is_mixed_breed:
+            return 'Дворняга / Метис' if self.species == 'dog' else 'Беспородная / Метис'
+        return None
+
+    @property
     def profile_completeness(self):
         """
         Процент заполненности профиля (0-100).
@@ -609,7 +619,8 @@ class Pet(models.Model):
             self.name,
             self.species,
             self.date_of_birth,
-            self.breed_id is not None,  # Связь с породой
+            # Требование породы выполнено, если выбрана порода ИЛИ отмечен метис/беспородный
+            (self.breed_id is not None) or self.is_mixed_breed,
             self.weight,
             self.sex,  # Обязательное поле
             self.is_neutered is not None,

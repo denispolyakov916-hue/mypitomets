@@ -26,7 +26,7 @@ VIEWS ДЛЯ МОДУЛЯ ПИТОМЦЕВ (PetID)
 
 import logging
 from datetime import datetime, date, timedelta
-from rest_framework import status
+from rest_framework import status, serializers
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
@@ -105,16 +105,18 @@ class PetListCreateView(BaseListCreateView):
         Возвращает созданного питомца с id для фронтенда.
         """
         try:
-            logger.info(f"POST /api/pets/ - request.data: {dict(request.data)}")
-            logger.info(f"POST /api/pets/ - Content-Type: {request.content_type}")
-            logger.info(f"User: {request.user}, authenticated: {request.user.is_authenticated}")
-            
             serializer = self.get_serializer(data=request.data)
             if not serializer.is_valid():
-                logger.error(f"Validation errors: {serializer.errors}")
+                logger.debug(f"Ошибки валидации при создании питомца: {serializer.errors}")
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-            
-            logger.info(f"Validated data: {serializer.validated_data}")
+
+            # Валидация фото до создания (если загружено)
+            if 'photo' in request.FILES:
+                from .serializers import validate_pet_photo
+                try:
+                    validate_pet_photo(request.FILES['photo'])
+                except serializers.ValidationError as exc:
+                    raise serializers.ValidationError({'photo': exc.detail})
 
             # Конвертация даты из строки
             data = serializer.validated_data.copy()
@@ -137,17 +139,13 @@ class PetListCreateView(BaseListCreateView):
             # Автозаполнение выполняется автоматически через SQL триггер pet_autofill_trigger
             pet = pet_service.create_pet(data, request.user)
 
-            # Обработка фото если загружено
+            # Обработка фото если загружено (валидация выполнена выше)
             if 'photo' in request.FILES:
                 pet.photo = request.FILES['photo']
                 pet.save(update_fields=['photo'])
 
-            # Логируем все сохранённые поля для отладки
-            logger.info(f"Питомец создан: id={pet.id}, name={pet.name}, species={pet.species}, "
-                       f"breed_id={pet.breed_id}, sex={pet.sex}, weight={pet.weight}, "
-                       f"date_of_birth={pet.date_of_birth}, is_neutered={pet.is_neutered}, "
-                       f"owner={request.user.email}")
-            
+            logger.info(f"Питомец создан: {pet.id}")
+
             # Формируем URL фото если оно есть
             photo_url = None
             if pet.photo:
@@ -227,7 +225,8 @@ class PetDetailView(BaseDetailView):
         all_fields = [
             # Базовые данные (Этап 1)
             'name', 'species', 'breed', 'date_of_birth', 'weight', 'sex', 'is_neutered',
-            
+            'is_mixed_breed',
+
             # Автозаполняемые поля (могут быть переопределены)
             'size_category', 'coat_type', 'ideal_weight_kg', 'activity_level',
             
@@ -268,17 +267,30 @@ class PetDetailView(BaseDetailView):
         # Запоминаем старые значения для проверки изменений
         old_breed_id = pet.breed_id
         old_weight = float(pet.weight) if pet.weight else None
-        
+
+        # Поля, которые нельзя обнулять (не nullable в модели)
+        non_nullable_fields = {'name', 'species', 'sex', 'is_neutered', 'is_mixed_breed'}
+
         for field in all_fields:
+            # Применяем поле, только если оно присутствует в payload
+            if field not in serializer.validated_data:
+                continue
             value = serializer.validated_data.get(field)
-            if value is not None:
-                if field == 'date_of_birth' and isinstance(value, str):
-                    value = datetime.strptime(value, '%Y-%m-%d').date()
-                setattr(pet, field, value)
-                update_fields.append(field)
+            # Явное обнуление (None) разрешено только для nullable-полей
+            if value is None and field in non_nullable_fields:
+                continue
+            if field == 'date_of_birth' and isinstance(value, str):
+                value = datetime.strptime(value, '%Y-%m-%d').date()
+            setattr(pet, field, value)
+            update_fields.append(field)
 
         # Обработка фото если загружено
         if 'photo' in self.request.FILES:
+            from .serializers import validate_pet_photo
+            try:
+                validate_pet_photo(self.request.FILES['photo'])
+            except serializers.ValidationError as exc:
+                raise serializers.ValidationError({'photo': exc.detail})
             pet.photo = self.request.FILES['photo']
             update_fields.append('photo')
 
@@ -422,7 +434,7 @@ class BreedSuggestionsView(APIView):
             'breed_name': breed.name,
             'species': breed.species,
             'suggestions': suggestions,
-            'description': breed.description or '',
+            'description': breed.short_description or '',
             'health_warnings': health_risks,
         })
 

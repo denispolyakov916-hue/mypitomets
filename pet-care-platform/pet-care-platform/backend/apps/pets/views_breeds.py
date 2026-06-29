@@ -179,22 +179,26 @@ class BreedDetailView(generics.RetrieveAPIView):
     """
     
     queryset = Breed.objects.select_related('nutrition').prefetch_related(
-        'health_risks', 'care_procedures'
+        'care_procedures', 'breed_health_records'
     )
     serializer_class = BreedDetailSerializer
     permission_classes = [AllowAny]
     lookup_field = 'id'
-    
+
     def get_object(self):
         """Поддержка поиска по ID или slug"""
-        lookup_value = self.kwargs.get('id') or self.kwargs.get('slug')
-        
+        lookup_value = (
+            self.kwargs.get('id')
+            or self.kwargs.get('breed_id')
+            or self.kwargs.get('slug')
+        )
+
         # Пробуем найти по ID
         try:
             return self.queryset.get(id=int(lookup_value))
-        except (ValueError, Breed.DoesNotExist):
+        except (ValueError, TypeError, Breed.DoesNotExist):
             pass
-        
+
         # Пробуем найти по slug
         return get_object_or_404(self.queryset, slug=lookup_value)
 

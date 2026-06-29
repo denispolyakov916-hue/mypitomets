@@ -75,10 +75,10 @@ urlpatterns = [
     path('breeds/by-slug/<slug:slug>/', BreedDetailView.as_view(), name='breed-by-slug'),
     
     # Детали породы
-    path('breeds/<uuid:breed_id>/', BreedDetailView.as_view(), name='breed-detail'),
-    
+    path('breeds/<int:breed_id>/', BreedDetailView.as_view(), name='breed-detail'),
+
     # Подсказки для автозаполнения PetID
-    path('breeds/<uuid:breed_id>/suggestions/', BreedSuggestionsView.as_view(), name='breed-suggestions'),
+    path('breeds/<int:breed_id>/suggestions/', BreedSuggestionsView.as_view(), name='breed-suggestions'),
     
     # Риски здоровья породы
     path('breeds/<int:breed_id>/health-risks/', BreedHealthRisksView.as_view(), name='breed-health-risks'),

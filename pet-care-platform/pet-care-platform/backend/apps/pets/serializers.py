@@ -114,6 +114,28 @@ BEHAVIORAL_PROBLEM_CHOICES = [
 ]
 
 
+# === ВАЛИДАЦИЯ ФОТО ===
+
+ALLOWED_PHOTO_CONTENT_TYPES = ('image/jpeg', 'image/png', 'image/webp')
+MAX_PHOTO_SIZE_BYTES = 5 * 1024 * 1024  # 5 МБ
+
+
+def validate_pet_photo(file):
+    """
+    Проверка загружаемого фото питомца.
+
+    Допустимые форматы: JPEG / PNG / WEBP. Максимальный размер: 5 МБ.
+    Бросает serializers.ValidationError при нарушении.
+    """
+    content_type = getattr(file, 'content_type', None)
+    size = getattr(file, 'size', None)
+    if content_type not in ALLOWED_PHOTO_CONTENT_TYPES or (size is not None and size > MAX_PHOTO_SIZE_BYTES):
+        raise serializers.ValidationError(
+            'Фото должно быть JPEG/PNG/WEBP и не больше 5 МБ'
+        )
+    return file
+
+
 # =============================================================================
 # СЕРИАЛИЗАТОРЫ ПИТОМЦЕВ
 # =============================================================================
@@ -192,9 +214,15 @@ class PetCreateSerializer(serializers.Serializer):
         allow_null=True,
         help_text="Алиас для breed (ТЗ: breed_id)"
     )
-    
+
+    is_mixed_breed = serializers.BooleanField(
+        required=False,
+        default=False,
+        help_text="Метис / беспородный (без породы из справочника)"
+    )
+
     # === ПОЛЯ ДЛЯ ЧЕРНОВИКОВ ===
-    
+
     is_draft = serializers.BooleanField(
         required=False,
         default=False,
@@ -297,6 +325,20 @@ class PetCreateSerializer(serializers.Serializer):
             attrs['breed'] = breed_id
         attrs.pop('breed_id', None)
 
+        # Метис/беспородный: породы из справочника нет
+        if attrs.get('is_mixed_breed'):
+            attrs['breed'] = None
+
+        # Проверка соответствия породы виду питомца (breed здесь — int id)
+        breed_value = attrs.get('breed')
+        if breed_value is not None:
+            effective_species = attrs.get('species')
+            breed_obj = Breed.objects.filter(id=breed_value).first()
+            if breed_obj and effective_species and breed_obj.species != effective_species:
+                raise serializers.ValidationError(
+                    {'breed': 'Порода не соответствует виду питомца'}
+                )
+
         return attrs
 
 
@@ -335,7 +377,13 @@ class PetUpdateSerializer(serializers.Serializer):
         allow_null=True,
         help_text="Алиас для breed (ТЗ: breed_id)"
     )
-    
+
+    is_mixed_breed = serializers.BooleanField(
+        required=False,
+        default=False,
+        help_text="Метис / беспородный (без породы из справочника)"
+    )
+
     date_of_birth = serializers.CharField(
         required=False,
         allow_blank=True,
@@ -726,9 +774,15 @@ class PetUpdateSerializer(serializers.Serializer):
 
     def validate(self, attrs):
         """Поддержка алиасов weight_kg и breed_id."""
+        # Алиас weight_kg → weight. Учитываем явное обнуление (weight_kg: null),
+        # чтобы можно было очистить вес через алиас.
+        raw = getattr(self, 'initial_data', {}) or {}
         weight = attrs.get('weight')
         weight_kg = attrs.get('weight_kg')
-        if weight is None and weight_kg is not None:
+        if 'weight' not in attrs and 'weight_kg' in raw:
+            # weight не передан, но weight_kg присутствует (в т.ч. явный null)
+            attrs['weight'] = weight_kg
+        elif weight is None and weight_kg is not None:
             attrs['weight'] = weight_kg
         attrs.pop('weight_kg', None)
 
@@ -761,6 +815,23 @@ class PetUpdateSerializer(serializers.Serializer):
                 raise serializers.ValidationError({'breed_id': f'Порода с ID {breed_id} не найдена'})
         attrs.pop('breed_id', None)
 
+        # Метис/беспородный: породы из справочника нет
+        if attrs.get('is_mixed_breed'):
+            attrs['breed'] = None
+
+        # Проверка соответствия породы виду питомца.
+        # Эффективная порода: новая из payload, иначе текущая у питомца
+        # (если она не обнуляется явно).
+        effective_species = attrs.get('species') or (self.instance.species if self.instance else None)
+        if 'breed' in attrs:
+            breed_obj = attrs.get('breed')
+        else:
+            breed_obj = self.instance.breed if self.instance else None
+        if breed_obj is not None and effective_species and breed_obj.species != effective_species:
+            raise serializers.ValidationError(
+                {'breed': 'Порода не соответствует виду питомца'}
+            )
+
         return attrs
 
 
@@ -777,6 +848,8 @@ class PetSerializer(serializers.Serializer):
     species = serializers.CharField(read_only=True)
     breed_id = serializers.IntegerField(read_only=True, allow_null=True)
     breed_name = serializers.SerializerMethodField()
+    breed_display_name = serializers.CharField(read_only=True, allow_null=True)
+    is_mixed_breed = serializers.BooleanField(read_only=True)
     photo = serializers.SerializerMethodField()
     
     # === БАЗОВЫЕ ДАННЫЕ ===

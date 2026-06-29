@@ -163,12 +163,24 @@ class BaseCRUDMixin:
         return Response(body, status=status_code)
 
     def handle_exception(self, exc):
-        """Обработать исключение и вернуть ответ."""
+        """Обработать исключение и вернуть ответ.
+
+        ApiError обрабатывается напрямую, остальные исключения делегируются
+        глобальному обработчику custom_exception_handler, который корректно
+        маппит NotAuthenticated→401, ValidationError→400, PermissionDenied→403,
+        Http404/NotFound→404 и т.д. Только по-настоящему необработанные
+        исключения (response is None) превращаются в 500.
+        """
         if isinstance(exc, ApiError):
             return Response(
                 exc.get_full_details(),
                 status=exc.status_code
             )
+
+        from core.exception_handler import custom_exception_handler
+        response = custom_exception_handler(exc, self.get_exception_handler_context())
+        if response is not None:
+            return response
 
         logger.error(f"Необработанная ошибка в {self.__class__.__name__}: {str(exc)}")
         return Response(
