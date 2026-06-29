@@ -23,6 +23,7 @@ import { Card } from '../../components/ui/Card'
 import { Button } from '../../components/ui/Button'
 import { Badge } from '../../components/ui/Badge'
 import RemindersWidget from '../../components/RemindersWidget'
+import ProfileVerification from '../../components/ProfileVerification'
 
 /**
  * Форматирование даты в русскую локаль
@@ -475,6 +476,7 @@ function Profile() {
         <div className="flex-1 min-w-0 min-h-[400px] w-full overflow-visible">
           {activeTab === 'profile' && (
             <div className="grid grid-cols-1 gap-6 lg:gap-8 overflow-visible items-stretch">
+            <ProfileVerification user={user} onUpdated={fetchProfile} />
             <div className="bg-white rounded-2xl shadow-sm border border-gray-200/80 p-5 relative min-h-0 flex flex-col" ref={detailsMenuRef}>
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold text-gray-900">Последние заказы</h3>

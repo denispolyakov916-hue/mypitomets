@@ -28,6 +28,7 @@ from .serializers import (
 )
 from .services import UserService
 from .services.phone_auth_service import PhoneAuthService
+from .services.profile_verification_service import ProfileVerificationService
 from core.exceptions import ApiError
 from core.validators import set_refresh_token_cookie
 
@@ -636,3 +637,71 @@ class VerifyPhoneCodeView(APIView):
                 {'error': 'Внутренняя ошибка сервера'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+
+# ---------------------------------------------------------------------------
+# Подтверждение контактов в профиле (email / телефон) — для залогиненного юзера
+# ---------------------------------------------------------------------------
+
+def _verification_response(handler):
+    """Общий обработчик: ApiError → 400, прочее → 500."""
+    try:
+        return Response(handler(), status=status.HTTP_200_OK)
+    except ApiError as e:
+        return Response({'error': e.detail}, status=e.status_code)
+    except Exception as e:  # noqa: BLE001
+        logger.error(f"Ошибка подтверждения контакта: {str(e)}", exc_info=True)
+        return Response(
+            {'error': 'Внутренняя ошибка сервера'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
+
+
+class VerifyEmailRequestView(APIView):
+    """POST /api/users/verify/email/request/ — отправить код подтверждения на email."""
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        return _verification_response(
+            lambda: ProfileVerificationService.request_email_code(request.user)
+        )
+
+
+class VerifyEmailConfirmView(APIView):
+    """POST /api/users/verify/email/confirm/ — подтвердить email кодом. Тело: {"code": "123456"}."""
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        return _verification_response(
+            lambda: ProfileVerificationService.confirm_email(
+                request.user, request.data.get('code')
+            )
+        )
+
+
+class VerifyPhoneRequestView(APIView):
+    """POST /api/users/verify/phone/request/ — отправить SMS-код. Тело: {"phone": "+7..."}."""
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        return _verification_response(
+            lambda: ProfileVerificationService.request_phone_code(
+                request.user, request.data.get('phone')
+            )
+        )
+
+
+class VerifyPhoneConfirmView(APIView):
+    """POST /api/users/verify/phone/confirm/ — подтвердить телефон. Тело: {"phone","code"}."""
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        return _verification_response(
+            lambda: ProfileVerificationService.confirm_phone(
+                request.user, request.data.get('phone'), request.data.get('code')
+            )
+        )

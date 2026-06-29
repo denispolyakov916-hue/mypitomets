@@ -71,7 +71,18 @@ class User(AbstractBaseUser, PermissionsMixin):
         default=False,
         help_text="Активирован ли аккаунт через email"
     )
-    
+
+    # Подтверждение контактов в профиле (регистрация — свободная, без блокировки)
+    email_verified = models.BooleanField(
+        default=False,
+        help_text="Email подтверждён кодом в профиле"
+    )
+
+    phone_verified = models.BooleanField(
+        default=False,
+        help_text="Телефон подтверждён кодом из SMS в профиле"
+    )
+
     activation_link = models.CharField(
         max_length=255,
         blank=True,

@@ -245,12 +245,37 @@ export const resendActivationCode = async (email) => {
   return await api.post('/auth/resend-activation/', { email })
 }
 
+/* ---------------------------------------------------------------------------
+ * Подтверждение контактов в профиле (по коду). Регистрация — свободная;
+ * почту и телефон пользователь подтверждает уже в личном кабинете.
+ * ------------------------------------------------------------------------- */
+
+/** Запросить код подтверждения email (на текущую почту пользователя). */
+export const requestEmailVerifyCode = async () => {
+  return await api.post('/users/verify/email/request/', {})
+}
+
+/** Подтвердить email 6-значным кодом из письма. */
+export const confirmEmailVerify = async (code) => {
+  return await api.post('/users/verify/email/confirm/', { code })
+}
+
+/** Запросить SMS-код для подтверждения телефона. */
+export const requestPhoneVerifyCode = async (phone) => {
+  return await api.post('/users/verify/phone/request/', { phone })
+}
+
+/** Подтвердить телефон 6-значным кодом из SMS. */
+export const confirmPhoneVerify = async (phone, code) => {
+  return await api.post('/users/verify/phone/confirm/', { phone, code })
+}
+
 /**
  * Запрос на восстановление пароля
- * 
+ *
  * @param {string} email - Email пользователя
  * @returns {Promise<Object>} Результат операции
- * 
+ *
  * @example
  *   await requestPasswordReset('user@example.com')
  */
