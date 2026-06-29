@@ -255,16 +255,16 @@ const toggleMode = () => {
         {/* Форма входа */}
         <div className={`auth-form-box ${isRegisterMode ? 'auth-register' : 'auth-login'}`}>
           {!registrationSuccess ? (
-            isRegisterMode && authMethod === 'phone' ? (
+            authMethod === 'phone' ? (
               <div className="auth-form">
-                <h1>Регистрация</h1>
+                <h1>{isRegisterMode ? 'Регистрация' : 'Вход'}</h1>
                 {methodTabs}
-                <PhoneAuthForm />
+                <PhoneAuthForm redirectPath={resolvePostAuthRedirect({ location })} />
               </div>
             ) : (
             <form onSubmit={isRegisterMode ? handleRegisterSubmit : handleLoginSubmit} className="auth-form">
               <h1>{isRegisterMode ? 'Регистрация' : 'Вход'}</h1>
-              {isRegisterMode && methodTabs}
+              {methodTabs}
 
               {/* Серверная ошибка */}
               {error && (
