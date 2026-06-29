@@ -37,8 +37,10 @@ export const register = async (email, password, passwordConfirm, firstName = '',
     last_name: lastName
   })
   
-  // Токены больше НЕ возвращаются при регистрации
-  // Пользователь должен сначала активировать аккаунт
+  // Бета: регистрация сразу логинит — сохраняем access токен (refresh приходит в cookie)
+  if (response.accessToken) {
+    localStorage.setItem('access_token', response.accessToken)
+  }
   return response
 }
 

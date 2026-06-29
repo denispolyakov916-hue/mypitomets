@@ -189,13 +189,18 @@ const toggleMode = () => {
     if (!validateRegisterForm()) return
 
     try {
-      await register(
+      const res = await register(
         registerData.email,
         registerData.password,
         registerData.passwordConfirm
       )
 
-      setRegistrationSuccess(true)
+      // Бета: регистрация сразу логинит — если пришёл токен, уходим в сервис
+      if (res && res.accessToken) {
+        navigate(resolvePostAuthRedirect({ location }), { replace: true })
+      } else {
+        setRegistrationSuccess(true)
+      }
     } catch (error) {
       // Ошибка уже обработана в store
     }

@@ -62,6 +62,9 @@ class RegisterView(APIView):
 
             user_data = UserService.registration(email, password, first_name, last_name)
             response = Response(user_data, status=status.HTTP_201_CREATED)
+            # Бета: регистрация сразу логинит — ставим refresh-cookie, как при входе
+            if user_data.get('refreshToken'):
+                set_refresh_token_cookie(response, user_data['refreshToken'])
 
             logger.info(f"Пользователь зарегистрирован: {email}")
             return response

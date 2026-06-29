@@ -102,7 +102,7 @@ class UserService:
             activation_link=activation_link,
             activation_code=activation_code,
             code_created_at=timezone.now(),  # Сохраняем время создания кода
-            is_activated=False  # По умолчанию не активирован
+            is_activated=True  # Бета: авто-активация — аккаунт сразу рабочий, без блокирующего письма
         )
         
         # Формирование полной ссылки активации
@@ -120,11 +120,14 @@ class UserService:
             # Продолжаем регистрацию даже если email не отправился
             # В production можно использовать очередь задач (Celery)
         
-        # Не возвращаем токены при регистрации - пользователь должен сначала активировать аккаунт
-        # Токены будут выданы только после активации через login
+        # Бета: аккаунт уже активирован — выдаём токены и логиним пользователя сразу.
+        tokens = TokenService.generate_tokens(user)
+        TokenService.save_token(user.id, tokens['refreshToken'])
         return {
-            'message': 'Регистрация успешна. Проверьте email для активации аккаунта.',
-            'email': email
+            **tokens,
+            'user': _serialize_user(user),
+            'message': 'Регистрация успешна',
+            'email': email,
         }
     
     @staticmethod

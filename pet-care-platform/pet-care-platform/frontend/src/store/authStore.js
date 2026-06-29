@@ -162,14 +162,16 @@ export const useAuthStore = create((set, get) => ({
 
     try {
       const response = await authApi.register(email, password, passwordConfirm, firstName, lastName)
-      
-      // НЕ устанавливаем isAuthenticated - токены не выдаются
-      set({
-        isLoading: false,
-        error: null
-      })
-      
-      return response // Возвращаем ответ с сообщением
+
+      // Бета: регистрация сразу логинит, если пришли токены
+      if (response.accessToken && response.user) {
+        set({ user: response.user, isAuthenticated: true, isLoading: false, error: null })
+        get().startTokenValidation()
+      } else {
+        set({ isLoading: false, error: null })
+      }
+
+      return response // Возвращаем ответ (с токенами/юзером)
     } catch (error) {
       set({
         isLoading: false,
