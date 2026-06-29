@@ -111,3 +111,10 @@ volumes:
   backend_media:
   backend_logs:
   # redis_data:
+
+networks:
+  default:
+    enable_ipv6: true
+    ipam:
+      config:
+        - subnet: fd00:dead:beef::/64
