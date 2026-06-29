@@ -74,7 +74,7 @@ function getSpeciesAccent(species) {
 function getNextProfileStep(pet) {
   const pct = pet.profile_completeness ?? 0;
   if (pct >= 100) return null;
-  if (!pet.breed && !pet.breed_name && !pet.breed_id) return 'Укажите породу';
+  if (!pet.is_mixed_breed && !pet.breed && !pet.breed_name && !pet.breed_id) return 'Укажите породу';
   if (!(pet.weight_kg || pet.weight)) return 'Добавьте вес';
   if (!pet.date_of_birth) return 'Укажите дату рождения';
   if (!pet.activity_level) return 'Укажите уровень активности';
@@ -246,7 +246,9 @@ const PetCard = React.memo(({ pet, index, onEdit, onDelete, onViewAnalysis, onNa
           <div className="min-w-0">
             <h3 className="text-lg sm:text-xl font-bold text-gray-800 truncate">{pet.name}</h3>
             <p className="text-gray-500 text-sm mt-0.5 line-clamp-2">
-              {pet.breed_name || pet.breed || 'Порода не указана'} • {getSpeciesName(pet.species)}
+              {pet.breed_display_name
+                || (pet.is_mixed_breed ? (pet.species === 'cat' ? 'Беспородная / Метис' : 'Дворняга / Метис') : null)
+                || pet.breed_name || pet.breed || 'Порода не указана'} • {getSpeciesName(pet.species)}
             </p>
           </div>
           {(pet.age_years ?? pet.age) != null && (pet.age_years ?? pet.age) !== undefined && (
@@ -587,6 +589,8 @@ export default function PetIdPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingPet, setEditingPet] = useState(null);
+  const [editPetError, setEditPetError] = useState(null);
+  const [editPetFieldErrors, setEditPetFieldErrors] = useState(null);
   const [editingDraft, setEditingDraft] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState(null);
@@ -707,6 +711,8 @@ export default function PetIdPage() {
     if (!editingPet) return;
 
     setIsSubmitting(true);
+    setEditPetError(null);
+    setEditPetFieldErrors(null);
     try {
       const payload = {
         ...formData,
@@ -723,8 +729,12 @@ export default function PetIdPage() {
       }
       await fetchPets();
     } catch (err) {
+      // После интерцептора ошибка — { status, message, errors }.
+      // Прокидываем сообщение и карту полей в редактор, чтобы он показал их инлайн.
       console.error('Ошибка обновления питомца:', err);
-      alert('Не удалось сохранить изменения. Попробуйте ещё раз.');
+      setEditPetError(err?.message || 'Не удалось сохранить изменения. Попробуйте ещё раз.');
+      setEditPetFieldErrors(err?.errors || null);
+      throw err; // прерываем дальнейшую синхронизацию здоровья в редакторе
     } finally {
       setIsSubmitting(false);
     }
@@ -1060,9 +1070,15 @@ export default function PetIdPage() {
         {editingPet && (
           <PetProfileEditor
             pet={editingPet}
-            onClose={() => setEditingPet(null)}
+            onClose={() => {
+              setEditingPet(null);
+              setEditPetError(null);
+              setEditPetFieldErrors(null);
+            }}
             onSave={handleUpdate}
             isLoading={isSubmitting}
+            serverError={editPetError}
+            serverFieldErrors={editPetFieldErrors}
           />
         )}
       </AnimatePresence>

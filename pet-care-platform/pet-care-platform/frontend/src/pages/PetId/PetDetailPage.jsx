@@ -428,7 +428,7 @@ export default function PetDetailPage() {
               <h2 className="text-3xl sm:text-4xl font-extrabold text-primary-900 tracking-tight" style={{ fontFamily: 'Manrope, system-ui, sans-serif' }}>{pet.name}</h2>
               <SexPill sex={pet.sex} />
             </div>
-            <p className="text-gray-500 mt-1.5">{pet.breed_name || 'Порода не указана'}</p>
+            <p className="text-gray-500 mt-1.5">{breedDisplay(pet, 'Порода не указана')}</p>
             <div className="flex flex-wrap justify-center lg:justify-start gap-2 mt-4">
               {pet.weight_kg && <MetricPill icon={Scale}>{pet.weight_kg} кг</MetricPill>}
               {ageText(pet) && <MetricPill icon={Cake}>{ageText(pet)}</MetricPill>}
@@ -459,7 +459,7 @@ export default function PetDetailPage() {
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             <InfoTile icon={PawPrint} tint="bg-primary-50 text-primary-600" label="Вид" value={pet.species === 'dog' ? 'Собака' : 'Кошка'} />
-            <InfoTile icon={BookOpen} tint="bg-violet-50 text-violet-600" label="Порода" value={pet.breed_name} placeholder="Указать породу" onAdd={() => setShowWizard(true)} />
+            <InfoTile icon={BookOpen} tint="bg-violet-50 text-violet-600" label="Порода" value={breedDisplay(pet)} placeholder="Указать породу" onAdd={() => setShowWizard(true)} />
             <InfoTile iconText={pet.sex === 'female' ? '♀' : '♂'} tint={pet.sex === 'female' ? 'bg-pink-50 text-pink-600' : 'bg-sky-50 text-sky-600'} label="Пол" value={pet.sex ? (pet.sex === 'male' ? 'Мужской' : 'Женский') : null} placeholder="Указать пол" onAdd={() => setShowWizard(true)} />
             <InfoTile icon={Scale} tint="bg-sky-50 text-sky-600" label="Вес" value={pet.weight_kg ? `${pet.weight_kg} кг` : null} placeholder="Записать вес" onAdd={() => setShowWeightModal(true)} />
             <InfoTile icon={Activity} tint="bg-amber-50 text-amber-600" label="Активность">
@@ -903,6 +903,14 @@ function ageText(pet) {
     return null;
   }
   return `${pet.age} ${pluralYears(pet.age)}`;
+}
+
+/** Отображаемое название породы: метис/беспородный показываем явно, чтобы выбор
+ * сохранялся после перезагрузки вместо «Указать породу». */
+function breedDisplay(pet, fallback = null) {
+  if (pet.breed_display_name) return pet.breed_display_name;
+  if (pet.is_mixed_breed) return pet.species === 'cat' ? 'Беспородная / Метис' : 'Дворняга / Метис';
+  return pet.breed_name || fallback;
 }
 
 function coursePrice(c) {

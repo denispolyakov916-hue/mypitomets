@@ -25,6 +25,8 @@ import {
 import {
   WALK_FREQUENCY_OPTIONS, WALK_DURATION_OPTIONS
 } from '../../../data/petHealthData';
+import { validateWeightInput } from '../../../constants/weight';
+import { toLocalISODate } from '../../../utils/date';
 
 // ===== СЕКЦИИ РЕДАКТИРОВАНИЯ =====
 const SECTIONS = [
@@ -759,7 +761,8 @@ const VaccinationsField = ({ vaccinations = [], vaccineOptions = [], onAdd, onRe
     if (Number.isNaN(baseDate.getTime())) return '';
     const nextDate = new Date(baseDate);
     nextDate.setMonth(nextDate.getMonth() + Number(vaccine.booster_interval_months));
-    return nextDate.toISOString().slice(0, 10);
+    // Локальная дата без сдвига в UTC (иначе срок уезжает на день у +03).
+    return toLocalISODate(nextDate) || '';
   };
 
   const addVaccination = async () => {
@@ -1077,10 +1080,11 @@ const calculateBcs = (weightValue, idealWeightValue) => {
 };
 
 // ===== ОСНОВНОЙ КОМПОНЕНТ =====
-export default function PetProfileEditor({ pet, onClose, onSave, isLoading }) {
+export default function PetProfileEditor({ pet, onClose, onSave, isLoading, serverError = null, serverFieldErrors = null }) {
   const modalRef = useRef(null);
   const exitConfirmRef = useRef(null);
   const previousActiveElement = useRef(null);
+  const photoInputRef = useRef(null);
   const [formData, setFormData] = useState({});
   const [activeSection, setActiveSection] = useState('basic');
   const [hasChanges, setHasChanges] = useState(false);
@@ -1138,9 +1142,24 @@ export default function PetProfileEditor({ pet, onClose, onSave, isLoading }) {
   useEffect(() => {
     if (pet) {
       setFormData({
+        photo: null, // новый файл фото (File), если пользователь выбрал замену
+        photoPreview: pet.photo || null, // текущее фото для предпросмотра
         name: pet.name || '',
         species: pet.species || '',
-        breed: pet.breed_id ? { id: pet.breed_id, name: pet.breed_name || '' } : null,
+        // Беспородный/метис должен оставаться выбранным после перезагрузки:
+        // если бэкенд отдал is_mixed_breed (или нет breed_id, но есть пометка),
+        // показываем breed_display_name, иначе обычную породу из breed_id.
+        breed: pet.breed_id
+          ? { id: pet.breed_id, name: pet.breed_display_name || pet.breed_name || '' }
+          : (pet.is_mixed_breed
+              ? {
+                  id: null,
+                  isMixed: true,
+                  name:
+                    pet.breed_display_name ||
+                    (pet.species === 'cat' ? 'Беспородная / Метис' : 'Дворняга / Метис'),
+                }
+              : null),
         date_of_birth: pet.date_of_birth || '',
         gender: pet.sex || '',
         is_neutered: pet.is_neutered || false,
@@ -1175,6 +1194,48 @@ export default function PetProfileEditor({ pet, onClose, onSave, isLoading }) {
       });
     }
   }, [pet]);
+
+  // Ошибки с сервера (после интерцептора: { status, message, errors }).
+  // serverFieldErrors — карта { поле: [сообщения] }. Раскладываем по полям формы,
+  // serverError — общее сообщение для баннера.
+  useEffect(() => {
+    const next = {};
+    if (serverFieldErrors && typeof serverFieldErrors === 'object') {
+      const keyMap = {
+        name: 'name',
+        weight_kg: 'weight',
+        breed: 'breed',
+        breed_id: 'breed',
+        photo: 'submit',
+        date_of_birth: 'date_of_birth',
+      };
+      Object.entries(serverFieldErrors).forEach(([backendKey, messages]) => {
+        const formKey = keyMap[backendKey] || 'submit';
+        const msg = Array.isArray(messages) ? messages[0] : String(messages);
+        if (msg) next[formKey] = msg;
+      });
+    }
+    if (serverError) next.submit = next.submit || serverError;
+    if (Object.keys(next).length > 0) {
+      setErrors(prev => ({ ...prev, ...next }));
+    }
+  }, [serverError, serverFieldErrors]);
+
+  const handlePhotoChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      setErrors(prev => ({ ...prev, photo: 'Файл слишком большой. Максимум 5 МБ.' }));
+      return;
+    }
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setFormData(prev => ({ ...prev, photo: file, photoPreview: reader.result }));
+      setHasChanges(true);
+      setErrors(prev => ({ ...prev, photo: null }));
+    };
+    reader.readAsDataURL(file);
+  };
 
   const handleKeyDown = (event) => {
     if (event.defaultPrevented) return;
@@ -1324,7 +1385,7 @@ export default function PetProfileEditor({ pet, onClose, onSave, isLoading }) {
     if (field === 'weight') {
       setFormData(prev => {
         const nextState = { ...prev, weight: value };
-        const weightValue = parseFloat(value);
+        const weightValue = parseFloat(String(value).replace(',', '.'));
         const idealWeightValue = parseFloat(prev.ideal_weight_kg);
         if (!Number.isNaN(weightValue) && !Number.isNaN(idealWeightValue)) {
           const bcs = calculateBcs(weightValue, idealWeightValue);
@@ -1359,15 +1420,10 @@ export default function PetProfileEditor({ pet, onClose, onSave, isLoading }) {
       newErrors.name = 'Кличка не должна превышать 50 символов';
     }
     if (formData.weight !== '' && formData.weight !== null && formData.weight !== undefined) {
-      const weightValue = parseFloat(formData.weight);
-      if (Number.isNaN(weightValue) || weightValue <= 0) {
-        newErrors.weight = 'Введите корректное значение веса в килограммах (например: 5.5)';
-      } else if (weightValue < 0.3) {
-        newErrors.weight = 'Вес не может быть меньше 0.3 кг. Проверьте правильность ввода';
-      } else if (formData.species === 'cat' && weightValue > 20) {
-        newErrors.weight = 'Вес кошки не может превышать 20 кг. Проверьте правильность ввода';
-      } else if (formData.species === 'dog' && weightValue > 100) {
-        newErrors.weight = 'Вес собаки не может превышать 100 кг. Проверьте правильность ввода';
+      // Общий валидатор: принимает точку и запятую, проверяет диапазон по виду.
+      const weightCheck = validateWeightInput(formData.weight, formData.species);
+      if (!weightCheck.ok) {
+        newErrors.weight = weightCheck.error;
       }
     }
     setErrors(newErrors);
@@ -1388,13 +1444,24 @@ export default function PetProfileEditor({ pet, onClose, onSave, isLoading }) {
           }
         : null;
 
+    // Вес: нормализуем запятую→точку до отправки (поле принимает «5,5»).
+    const rawWeight = formData.weight;
+    let weightKg = null;
+    if (rawWeight !== '' && rawWeight !== null && rawWeight !== undefined) {
+      const parsed = parseFloat(String(rawWeight).replace(',', '.'));
+      weightKg = Number.isNaN(parsed) ? null : parsed;
+    }
+
     return {
       name: formData.name,
       species: formData.species,
       breed_id: formData.breed?.id || null,
+      // Беспородный/метис: сохраняем флаг, чтобы выбор не сбрасывался после перезагрузки.
+      is_mixed_breed: !!formData.breed?.isMixed,
       date_of_birth: formData.date_of_birth || null,
       sex: formData.gender && formData.gender !== 'unknown' ? formData.gender : null,
-      weight_kg: formData.weight ? parseFloat(formData.weight) : null,
+      weight_kg: weightKg,
+      ...(formData.photo instanceof File ? { photo: formData.photo } : {}),
       is_neutered: formData.is_neutered,
       size_category: formData.size || null,
       coat_type: formData.coat_type || null,
@@ -1435,8 +1502,11 @@ export default function PetProfileEditor({ pet, onClose, onSave, isLoading }) {
     e.preventDefault();
     if (!validateForm()) return;
 
+    // Сбрасываем баннер ошибки перед новой попыткой.
+    setErrors(prev => ({ ...prev, submit: null }));
+
     const dataToSave = buildPayload({ isDraft: false });
-    
+
     try {
       await onSave(dataToSave, { isDraft: false });
 
@@ -1550,6 +1620,34 @@ export default function PetProfileEditor({ pet, onClose, onSave, isLoading }) {
       case 'basic':
         return (
           <div className="space-y-4">
+            {/* Фото питомца — можно заменить после создания */}
+            <div className="flex items-center gap-4">
+              <div className="relative w-20 h-20 rounded-full bg-gradient-to-br from-primary-100 to-accent-100 flex items-center justify-center overflow-hidden border-2 border-white shadow flex-shrink-0">
+                {formData.photoPreview ? (
+                  <img src={formData.photoPreview} alt="Фото питомца" className="w-full h-full object-cover" />
+                ) : (
+                  <span className="text-3xl">{pet?.species === 'cat' ? '🐱' : pet?.species === 'dog' ? '🐕' : '🐾'}</span>
+                )}
+              </div>
+              <div>
+                <button
+                  type="button"
+                  onClick={() => photoInputRef.current?.click()}
+                  className="px-4 py-2 rounded-xl border-2 border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-all"
+                >
+                  {formData.photoPreview ? 'Изменить фото' : 'Добавить фото'}
+                </button>
+                <input
+                  ref={photoInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  onChange={handlePhotoChange}
+                  className="hidden"
+                />
+                {errors.photo && <p className="mt-1 text-xs text-red-600" role="alert">{errors.photo}</p>}
+              </div>
+            </div>
+
             <div>
               <label htmlFor="pet-name-input" className="block text-sm font-medium text-gray-700 mb-1.5">
                 Кличка <span className="text-red-500">*</span>
@@ -1892,12 +1990,16 @@ export default function PetProfileEditor({ pet, onClose, onSave, isLoading }) {
                 <label htmlFor="vet-weight-input" className="block text-sm font-medium text-gray-700 mb-1.5">Вес (кг)</label>
                 <input
                   id="vet-weight-input"
-                  type="number"
-                  step="0.1"
-                  min="0.3"
-                  max={formData.species === 'cat' ? 20 : 100}
+                  type="text"
+                  inputMode="decimal"
                   value={formData.weight || ''}
-                  onChange={(e) => handleChange('weight', e.target.value)}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    // Разрешаем пустую строку и черновой числовой ввод с точкой/запятой.
+                    if (val === '' || /^\d{0,3}([.,]\d{0,2})?$/.test(val)) {
+                      handleChange('weight', val);
+                    }
+                  }}
                   placeholder="Вес при осмотре"
                   aria-invalid={errors.weight ? 'true' : 'false'}
                   aria-describedby={errors.weight ? 'vet-weight-error' : undefined}
@@ -2046,6 +2148,12 @@ export default function PetProfileEditor({ pet, onClose, onSave, isLoading }) {
 
             {/* Footer */}
             <div className="p-4 border-t border-gray-100 bg-gray-50">
+              {errors.submit && (
+                <div className="mb-4 p-3 bg-red-50 text-red-700 rounded-xl flex items-center gap-2" role="alert">
+                  <AlertTriangle className="w-5 h-5 flex-shrink-0" />
+                  <span className="text-sm">{errors.submit}</span>
+                </div>
+              )}
               <div className="mb-4 px-2">
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">

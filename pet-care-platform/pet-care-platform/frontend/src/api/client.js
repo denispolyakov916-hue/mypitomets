@@ -48,18 +48,6 @@ const api = axios.create({
  */
 api.interceptors.request.use(
   (config) => {
-    // Логирование запросов для отладки
-    if (config.url && config.url.includes('/auth/login')) {
-      console.log('[API Request] Login request:', {
-        url: config.url,
-        method: config.method,
-        data: config.data,
-        headers: config.headers,
-        baseURL: config.baseURL,
-        fullURL: `${config.baseURL}${config.url}`
-      })
-    }
-    
     // Проверяем, что мы в браузере
     if (typeof window !== 'undefined') {
       try {
@@ -90,14 +78,6 @@ api.interceptors.request.use(
  */
 api.interceptors.response.use(
   (response) => {
-    // Логирование ответов для отладки
-    if (response.config.url && response.config.url.includes('/auth/login')) {
-      console.log('[API Response] Login response:', {
-        status: response.status,
-        data: response.data,
-        headers: response.headers
-      })
-    }
     // Возвращаем данные напрямую для удобства
     return response.data
   },
@@ -112,17 +92,7 @@ api.interceptors.response.use(
     }
     
     const { status, data } = error.response
-    
-    // Логирование ошибок для отладки
-    if (error.config.url && error.config.url.includes('/auth/login')) {
-      console.error('[API Error] Login error:', {
-        status: status,
-        data: data,
-        config: error.config,
-        message: error.message
-      })
-    }
-    
+
     // Обработка 401 Unauthorized - токен истёк или невалиден
     if (status === 401) {
       // Анонимный пользователь (токенов нет) на публичной странице дёрнул защищённый

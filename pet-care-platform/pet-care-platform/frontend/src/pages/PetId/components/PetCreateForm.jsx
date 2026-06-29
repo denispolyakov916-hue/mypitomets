@@ -24,6 +24,8 @@ import {
   UtensilsCrossed, GraduationCap, ShoppingBag, FileCheck
 } from 'lucide-react';
 import { createPet, updatePet, getBreeds } from '../../../api/pets';
+import { validateWeightInput } from '../../../constants/weight';
+import { toLocalISODate } from '../../../utils/date';
 
 // ============================================
 // КОНСТАНТЫ
@@ -93,13 +95,22 @@ function draftToFormState(draft) {
   let dateOfBirth = null;
   if (rawDob) dateOfBirth = rawDob instanceof Date ? rawDob : new Date(rawDob);
 
+  const breedId = draft.breed_id ?? draft.breedId ?? null;
+  const isMixed = !!(draft.is_mixed_breed ?? draft.isMixed);
+  // Имя породы для отображения: метис → читаемое имя, иначе обычное breed/breed_name.
+  let breedLabel = draft.breed_display_name || draft.breed_name || draft.breed || '';
+  if (isMixed && !breedLabel) {
+    breedLabel = draft.species === 'cat' ? 'Беспородная / Метис' : 'Дворняга / Метис';
+  }
+
   return {
     ...initialFormState,
     name: draft.name || '',
     species: draft.species || '',
     sex: draft.sex || '',
-    breed: draft.breed || '',
-    breedId: draft.breed_id ?? draft.breedId ?? null,
+    breed: breedLabel,
+    breedId: isMixed ? null : breedId,
+    isMixed,
     weightKg,
     isNeutered,
     dateOfBirth,
@@ -659,12 +670,12 @@ const AgeSelect = ({ ageType, dateOfBirth, ageYears, ageMonths, onChange, error,
 const WeightInput = ({ value, onChange, error, required, selectedBreed, ageMonths, species }) => {
   // Рассчитываем подсказку веса с учётом возраста
   const getWeightHint = () => {
-    if (!selectedBreed || !selectedBreed.min_weight || !selectedBreed.max_weight) {
+    if (!selectedBreed || !selectedBreed.weight_min || !selectedBreed.weight_max) {
       return null;
     }
-    
-    const minAdult = parseFloat(selectedBreed.min_weight);
-    const maxAdult = parseFloat(selectedBreed.max_weight);
+
+    const minAdult = parseFloat(selectedBreed.weight_min);
+    const maxAdult = parseFloat(selectedBreed.weight_max);
     const age = parseInt(ageMonths) || 24; // По умолчанию взрослый
     
     // Для щенков/котят корректируем ожидаемый вес
@@ -696,21 +707,18 @@ const WeightInput = ({ value, onChange, error, required, selectedBreed, ageMonth
       </label>
       <div className="relative">
         <input
-          type="number"
-          step="0.1"
-          min="0.1"
-          max={species === 'cat' ? 20 : 100}
+          type="text"
+          inputMode="decimal"
           value={value}
           onChange={(e) => {
             const val = e.target.value;
-            if (
-              val === '' ||
-              (parseFloat(val) >= 0 && parseFloat(val) <= (species === 'cat' ? 20 : 100))
-            ) {
+            // Разрешаем пустую строку и черновой числовой ввод с точкой/запятой.
+            // Строгая валидация диапазона — в validateForm через общий валидатор.
+            if (val === '' || /^\d{0,3}([.,]\d{0,2})?$/.test(val)) {
               onChange(val);
             }
           }}
-          placeholder={species === 'cat' ? 'От 0.1 до 20 кг' : 'От 0.1 до 100 кг'}
+          placeholder={species === 'cat' ? 'От 0.3 до 20 кг' : 'От 0.3 до 100 кг'}
           className={`w-full px-4 py-3 pr-12 rounded-xl border-2 transition-all
             ${error 
               ? 'border-red-300 focus:border-red-500' 
@@ -1020,16 +1028,13 @@ const PetCreateForm = ({ onClose, editingDraft = null }) => {
       }
     }
     
-    if (!formData.weightKg || parseFloat(formData.weightKg) <= 0) {
+    if (!String(formData.weightKg ?? '').trim()) {
       newErrors.weight = 'Введите вес питомца в килограммах (например: 5.5)';
     } else {
-      const weight = parseFloat(formData.weightKg);
-      if (weight < 0.3) {
-        newErrors.weight = 'Вес не может быть меньше 0.3 кг. Проверьте правильность ввода';
-      } else if (formData.species === 'cat' && weight > 20) {
-        newErrors.weight = 'Вес кошки не может превышать 20 кг. Проверьте правильность ввода';
-      } else if (formData.species === 'dog' && weight > 100) {
-        newErrors.weight = 'Вес собаки не может превышать 100 кг. Проверьте правильность ввода';
+      // Общий валидатор: принимает точку и запятую, проверяет диапазон по виду.
+      const weightCheck = validateWeightInput(formData.weightKg, formData.species);
+      if (!weightCheck.ok) {
+        newErrors.weight = weightCheck.error;
       }
     }
     
@@ -1073,14 +1078,23 @@ const PetCreateForm = ({ onClose, editingDraft = null }) => {
     try {
       const dateOfBirth = calculateDateOfBirth();
       
+      // Вес: нормализуем запятую→точку, до 2 знаков (валидатор уже подтвердил формат).
+      const weightCheck = validateWeightInput(formData.weightKg, formData.species);
+      const weightKg = weightCheck.ok
+        ? weightCheck.value
+        : parseFloat(String(formData.weightKg).replace(',', '.'));
+
       const payload = {
         name: formData.name.trim(),
         species: formData.species,
         sex: formData.sex,
         breed_id: formData.breedId,
-        date_of_birth: dateOfBirth?.toISOString().split('T')[0],
-        weight_kg: parseFloat(formData.weightKg),
+        // Локальная дата без сдвига в UTC (иначе DOB сохраняется на день раньше у +03).
+        date_of_birth: toLocalISODate(dateOfBirth),
+        weight_kg: weightKg,
         is_neutered: formData.isNeutered,
+        // Беспородный/метис: фиксируем флаг, чтобы выбор сохранялся после перезагрузки.
+        is_mixed_breed: !!formData.isMixed,
       };
       
       // Продолжаем существующий черновик — обновляем его, а не создаём дубль.
@@ -1112,7 +1126,28 @@ const PetCreateForm = ({ onClose, editingDraft = null }) => {
       
     } catch (error) {
       console.error('Ошибка сохранения питомца:', error);
-      setErrors({ submit: error.response?.data?.message || 'Не удалось сохранить питомца' });
+      // После интерцептора error имеет вид { status, message, errors }.
+      // errors — карта { поле: [сообщения] } из backend. Раскладываем по полям формы.
+      const fieldErrors = {};
+      const backendErrors = error?.errors;
+      if (backendErrors && typeof backendErrors === 'object') {
+        // Сопоставление ключей backend → ключи ошибок формы.
+        const keyMap = {
+          name: 'name',
+          weight_kg: 'weight',
+          breed: 'breed',
+          breed_id: 'breed',
+          photo: 'submit',
+          date_of_birth: 'age',
+        };
+        Object.entries(backendErrors).forEach(([backendKey, messages]) => {
+          const formKey = keyMap[backendKey] || 'submit';
+          const msg = Array.isArray(messages) ? messages[0] : String(messages);
+          if (msg) fieldErrors[formKey] = msg;
+        });
+      }
+      fieldErrors.submit = fieldErrors.submit || error?.message || 'Не удалось сохранить питомца';
+      setErrors(fieldErrors);
     } finally {
       setIsSubmitting(false);
     }

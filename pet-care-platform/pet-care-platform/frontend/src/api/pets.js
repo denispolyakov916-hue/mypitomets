@@ -156,7 +156,35 @@ export const createPet = async (petData) => {
  *   const { data } = await updatePet(1, { weight: 5.5 })
  */
 export const updatePet = async (petId, petData) => {
-  const updated = await petsApi.update(petId, petData)
+  // Если в данных есть новый файл фото — JSON-PUT не может его нести.
+  // Шлём multipart через PATCH (частичное обновление), как делает createPet.
+  const hasFile = petData?.photo instanceof File
+
+  if (hasFile) {
+    // Поля обновляем обычным JSON-путём — массивы/объекты (behavioral_problems,
+    // current_food и т.п.) остаются нативными и корректно валидируются на бэке.
+    // Новое фото шлём ОТДЕЛЬНЫМ multipart-PATCH (только файл): иначе в multipart
+    // массивы ушли бы JSON-строками, а ListField их не принимает.
+    const { photo, ...fields } = petData
+    const updated = await petsApi.update(petId, fields)
+
+    const formData = new FormData()
+    formData.append('photo', photo)
+    await api.patch(`/pets/${petId}/`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+    notifyPetsChanged()
+    return updated
+  }
+
+  // Без файла — обычный JSON-путь (лучше типизация, как раньше).
+  // Не передаём пустое поле photo в payload.
+  let payload = petData
+  if (petData && 'photo' in petData) {
+    const { photo, ...rest } = petData
+    payload = rest
+  }
+  const updated = await petsApi.update(petId, payload)
   notifyPetsChanged()
   return updated
 }
