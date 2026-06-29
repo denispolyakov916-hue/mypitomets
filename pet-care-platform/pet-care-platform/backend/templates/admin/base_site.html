@@ -1,0 +1,251 @@
+{% extends "admin/base.html" %}
+{% load i18n static %}
+
+{% block title %}{{ title }} | Питомец+ Админ{% endblock %}
+
+{% block extrastyle %}{{ block.super }}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  /* ===================================================================
+     «Питомец Плюс» — фирменная тема админки
+     Глубокий фиолетовый #522f81 + тёплое золото #fbba2d, Manrope,
+     мягкие скругления и фиолетовые тени. Спокойно, премиально, заботливо.
+     =================================================================== */
+  :root {
+    --pp-purple: #522f81;
+    --pp-purple-700: #45286c;
+    --pp-purple-300: #8b6bb1;
+    --pp-purple-tint: #f3eefb;
+    --pp-purple-tint-2: #e9e0f6;
+    --pp-gold: #fbba2d;
+    --pp-gold-600: #e0a312;
+    --pp-ink: #2a2235;
+    --pp-muted: #6b6478;
+    --pp-line: #ece8f1;
+    --pp-bg: #f5f3f8;
+    --pp-white: #ffffff;
+    --pp-radius: 16px;
+    --pp-radius-sm: 10px;
+    --pp-shadow: 0 4px 20px rgba(82, 47, 129, .07);
+    --pp-shadow-hover: 0 10px 30px rgba(82, 47, 129, .14);
+
+    /* Переопределяем переменные Django-админки (новые версии их читают) */
+    --primary: #522f81;
+    --secondary: #45286c;
+    --accent: #fbba2d;
+    --link-fg: #522f81;
+    --link-hover-color: #45286c;
+    --header-bg: #522f81;
+    --header-link-color: #ffffff;
+    --button-bg: #522f81;
+    --button-hover-bg: #45286c;
+    --default-button-bg: #fbba2d;
+    --default-button-hover-bg: #e0a312;
+    --object-tools-bg: #45286c;
+    --object-tools-hover-bg: #522f81;
+    --selected-bg: var(--pp-purple-tint);
+    --selected-row: #fbf7ec;
+    --body-bg: #f5f3f8;
+  }
+
+  html, body, .dashboard, #content { background: var(--pp-bg); }
+  body, td, th, input, select, textarea, .module, button {
+    font-family: 'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    color: var(--pp-ink);
+  }
+  a:link, a:visited { color: var(--pp-purple); }
+  a:hover, a:focus { color: var(--pp-purple-700); }
+
+  /* ---------- Шапка ---------- */
+  #header {
+    background: linear-gradient(100deg, #522f81 0%, #45286c 55%, #3a2059 100%);
+    color: #fff;
+    padding: 14px 40px;
+    box-shadow: 0 2px 18px rgba(82, 47, 129, .25);
+    line-height: 1.3;
+  }
+  #branding #site-name { margin: 0; font-weight: 800; }
+  #branding #site-name a { display: inline-flex; align-items: center; gap: 12px; color: #fff; }
+  #branding #site-name a:hover { opacity: .95; }
+  .brand-logo {
+    width: 40px; height: 40px; border-radius: 12px;
+    background: linear-gradient(135deg, #fbba2d, #f59e0b);
+    color: #45286c; font-weight: 800; font-size: 18px;
+    display: inline-flex; align-items: center; justify-content: center;
+    box-shadow: 0 4px 14px rgba(251, 186, 45, .4);
+  }
+  .brand-name { font-size: 20px; font-weight: 800; letter-spacing: -.3px; }
+  .brand-name .brand-plus { color: var(--pp-gold); }
+  .brand-sub {
+    font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px;
+    color: rgba(255, 255, 255, .55); margin-left: 6px; align-self: center;
+  }
+  #user-tools { font-size: 13px; color: rgba(255, 255, 255, .8); font-weight: 500; }
+  #user-tools a { color: #fff; border-bottom-color: rgba(255,255,255,.4); }
+  #user-tools a:hover { color: var(--pp-gold); border-bottom-color: var(--pp-gold); }
+
+  /* ---------- Хлебные крошки ---------- */
+  div.breadcrumbs {
+    background: var(--pp-purple-tint);
+    color: var(--pp-muted); padding: 12px 40px; border: none;
+    font-size: 13px; font-weight: 500;
+  }
+  div.breadcrumbs a { color: var(--pp-purple); }
+  div.breadcrumbs a:hover { color: var(--pp-gold-600); }
+
+  /* ---------- Контент / модули ---------- */
+  #content { padding: 28px 40px; }
+  .module {
+    background: var(--pp-white);
+    border: 1px solid var(--pp-line);
+    border-radius: var(--pp-radius);
+    box-shadow: var(--pp-shadow);
+    overflow: hidden;
+    margin-bottom: 22px;
+  }
+  .module > h2, .module caption, .inline-group h2 {
+    background: linear-gradient(100deg, #522f81, #45286c);
+    color: #fff; font-weight: 700; font-size: 13px;
+    text-transform: uppercase; letter-spacing: .6px;
+    padding: 13px 18px;
+  }
+  .module h3 { color: var(--pp-purple); font-weight: 700; }
+  .module table { border: none; }
+  caption a, caption a:link { color: #fff; }
+
+  /* ---------- Боковая навигация ---------- */
+  #nav-sidebar { background: var(--pp-white); border-right: 1px solid var(--pp-line); }
+  #nav-sidebar .module { box-shadow: none; border: none; border-radius: 0; margin: 0; }
+  .toggle-nav-sidebar { background: var(--pp-purple-tint); border-right: 1px solid var(--pp-line); color: var(--pp-purple); }
+  #nav-sidebar a:link, #nav-sidebar a:visited { color: var(--pp-ink); font-weight: 500; border-radius: 8px; }
+  #nav-sidebar tr:hover > th a, #nav-sidebar tr:hover > td a,
+  #nav-sidebar li:hover a { background: var(--pp-purple-tint); color: var(--pp-purple); }
+  #nav-sidebar .current-model { background: var(--pp-purple); }
+  #nav-sidebar .current-model a:link, #nav-sidebar .current-model a:visited { color: #fff; }
+  #nav-sidebar caption, #nav-sidebar .section a { color: var(--pp-purple) !important; background: transparent; }
+
+  /* ---------- Кнопки ---------- */
+  .button, input[type=submit], input[type=button], .submit-row input, a.button {
+    background: var(--pp-purple); color: #fff; border: none;
+    border-radius: 999px; padding: 9px 20px; font-weight: 700; font-size: 13px;
+    box-shadow: 0 3px 10px rgba(82, 47, 129, .18); transition: all .15s ease; cursor: pointer;
+  }
+  .button:hover, input[type=submit]:hover, .submit-row input:hover, a.button:hover {
+    background: var(--pp-purple-700); transform: translateY(-1px); box-shadow: var(--pp-shadow-hover); color: #fff;
+  }
+  .button.default, input[type=submit].default, .submit-row input.default {
+    background: var(--pp-gold); color: #45286c;
+    box-shadow: 0 4px 14px rgba(251, 186, 45, .4);
+  }
+  .button.default:hover, input[type=submit].default:hover, .submit-row input.default:hover {
+    background: var(--pp-gold-600); color: #45286c;
+  }
+  .object-tools a:link, .object-tools a:visited, .object-tools a.addlink {
+    background: var(--pp-gold); color: #45286c; border-radius: 999px;
+    font-weight: 700; box-shadow: 0 3px 12px rgba(251, 186, 45, .35); text-transform: none;
+  }
+  .object-tools a:hover { background: var(--pp-gold-600); color: #45286c; }
+  .submit-row { background: var(--pp-purple-tint); border-radius: var(--pp-radius-sm); border: none; padding: 14px 18px; }
+  .deletelink, a.deletelink { background: #ef4444 !important; color: #fff !important; }
+
+  /* ---------- Списки / таблицы ---------- */
+  #changelist { background: transparent; }
+  #changelist .results {
+    background: var(--pp-white); border: 1px solid var(--pp-line);
+    border-radius: var(--pp-radius); box-shadow: var(--pp-shadow); overflow: hidden;
+  }
+  #changelist table thead th {
+    background: var(--pp-purple-tint); color: var(--pp-purple);
+    font-weight: 700; font-size: 12px; text-transform: uppercase; letter-spacing: .4px;
+    border-bottom: 1px solid var(--pp-purple-tint-2); padding: 12px 10px;
+  }
+  #changelist table thead th a { color: var(--pp-purple); }
+  #changelist tbody tr td, #changelist tbody tr th { border-bottom: 1px solid var(--pp-line); padding: 11px 10px; }
+  #changelist tbody tr:hover { background: var(--pp-purple-tint); }
+  #changelist tbody tr.selected { background: var(--selected-row); }
+
+  /* Тулбар поиска / действий */
+  #toolbar {
+    background: var(--pp-white); border: 1px solid var(--pp-line);
+    border-radius: var(--pp-radius-sm); padding: 12px 14px; box-shadow: var(--pp-shadow); margin-bottom: 14px;
+  }
+  #toolbar input[type=text] { border-radius: 999px; }
+  #changelist-search input[type=submit] { border-radius: 999px; }
+  .actions { background: var(--pp-purple-tint); border-radius: var(--pp-radius-sm); border: none; color: var(--pp-ink); }
+
+  /* Фильтры */
+  #changelist-filter {
+    background: var(--pp-white); border: 1px solid var(--pp-line);
+    border-radius: var(--pp-radius); box-shadow: var(--pp-shadow);
+  }
+  #changelist-filter h2 {
+    background: linear-gradient(100deg, #522f81, #45286c); color: #fff;
+    border-radius: var(--pp-radius) var(--pp-radius) 0 0;
+    text-transform: uppercase; letter-spacing: .5px; font-size: 12px; padding: 12px 16px;
+  }
+  #changelist-filter li.selected a { color: var(--pp-purple); font-weight: 700; }
+  #changelist-filter a:hover { color: var(--pp-gold-600); }
+  .paginator { background: var(--pp-white); border: 1px solid var(--pp-line); border-radius: var(--pp-radius-sm); padding: 10px 14px; }
+  .paginator .this-page { background: var(--pp-purple); color: #fff; border-radius: 8px; padding: 2px 9px; }
+
+  /* ---------- Формы ---------- */
+  .form-row { border-bottom: 1px solid var(--pp-line); }
+  fieldset.module { box-shadow: var(--pp-shadow); }
+  input[type=text], input[type=password], input[type=email], input[type=url],
+  input[type=number], input[type=tel], textarea, select, .vTextField {
+    border: 1.5px solid var(--pp-line); border-radius: var(--pp-radius-sm);
+    padding: 8px 12px; background: #fff; transition: all .15s ease;
+  }
+  input:focus, textarea:focus, select:focus, .vTextField:focus {
+    border-color: var(--pp-purple); outline: none;
+    box-shadow: 0 0 0 3px rgba(82, 47, 129, .12);
+  }
+  .aligned label { color: var(--pp-muted); font-weight: 600; }
+  .help, .helptext, p.help { color: var(--pp-muted); }
+  .selector-chosen h2, .selector-available h2 { background: var(--pp-purple); border-radius: 8px 8px 0 0; }
+
+  /* ---------- Сообщения ---------- */
+  ul.messagelist li { border-radius: var(--pp-radius-sm); border: none; font-weight: 600; box-shadow: var(--pp-shadow); }
+  ul.messagelist li.success { background: #e7f7ee; color: #0f7a44; }
+  ul.messagelist li.warning { background: #fdf3e0; color: #9a6a12; }
+  ul.messagelist li.error { background: #fdeaea; color: #c0322b; }
+  .errornote { background: #fdeaea; color: #c0322b; border: none; border-radius: var(--pp-radius-sm); font-weight: 600; }
+
+  /* ---------- Страница входа ---------- */
+  body.login {
+    background: linear-gradient(135deg, #522f81 0%, #3a2059 100%);
+    min-height: 100vh; min-height: 100dvh; margin: 0; padding-top: 6vh;
+  }
+  body.login #container {
+    box-shadow: 0 24px 60px rgba(0, 0, 0, .3); border-radius: 22px; overflow: hidden;
+    border: none; margin-top: 7%;
+  }
+  body.login #header {
+    background: transparent; box-shadow: none; flex-direction: column; padding: 30px 30px 6px; text-align: center;
+  }
+  body.login #branding #site-name a { justify-content: center; }
+  body.login .brand-sub { color: rgba(69, 40, 108, .6); }
+  body.login #header .brand-name { color: var(--pp-ink); }
+  body.login #content { padding: 18px 34px 30px; }
+  body.login .form-row { border: none; }
+  body.login .submit-row { background: transparent; padding: 8px 0 0; }
+  body.login .submit-row input { width: 100%; padding: 12px; font-size: 14px; }
+
+  /* Скрываем «Django administration» дефолтный заголовок, если просочится */
+  #site-name a .brand-name { white-space: nowrap; }
+</style>
+{% endblock %}
+
+{% block branding %}
+<div id="site-name">
+  <a href="{% url 'admin:index' %}">
+    <span class="brand-logo">П+</span>
+    <span class="brand-name">Питомец<span class="brand-plus">плюс</span></span>
+    <span class="brand-sub">Админ-панель</span>
+  </a>
+</div>
+{% endblock %}
+
+{% block nav-global %}{% endblock %}

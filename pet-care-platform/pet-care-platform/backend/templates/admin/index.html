@@ -1,14 +1,15 @@
 {% extends "admin/index.html" %}
-{% load i18n static %}
+{% load i18n static pp_admin_stats %}
 
 {% block content %}
 <style>
     :root {
-        --primary: #3b82f6;
+        --primary: #522f81;
         --success: #10b981;
         --warning: #f59e0b;
         --danger: #ef4444;
-        --purple: #8b5cf6;
+        --purple: #6b4596;
+        --gold: #fbba2d;
         --gray-50: #f9fafb;
         --gray-100: #f3f4f6;
         --gray-200: #e5e7eb;
@@ -38,9 +39,10 @@
     }
 
     .welcome-title {
-        font-size: 36px;
-        font-weight: 700;
-        color: var(--gray-900);
+        font-size: 34px;
+        font-weight: 800;
+        color: var(--primary);
+        letter-spacing: -.5px;
         margin-bottom: 8px;
     }
 
@@ -248,7 +250,7 @@
                 <h3>Заказы</h3>
                 <p>Управление заказами и обработка</p>
                 <div class="action-stats">
-                    <span class="stat-item warning">⏳ Ожидают: 12</span>
+                    <span class="stat-item warning">⏳ Ожидают: {% pp_pending_orders %}</span>
                     <span class="stat-item">🚚 Отправка</span>
                 </div>
             </div>
@@ -286,7 +288,7 @@
                 <span style="font-size: 24px;">📦</span>
                 <div>
                     <div style="font-size: 14px; color: var(--gray-500);">Заказов сегодня</div>
-                    <div style="font-size: 24px; font-weight: 700; color: var(--gray-900);">12</div>
+                    <div style="font-size: 24px; font-weight: 700; color: var(--gray-900);">{% pp_orders_today %}</div>
                 </div>
             </div>
         </div>
@@ -296,7 +298,7 @@
                 <span style="font-size: 24px;">💳</span>
                 <div>
                     <div style="font-size: 14px; color: var(--gray-500);">Выручка сегодня</div>
-                    <div style="font-size: 24px; font-weight: 700; color: var(--gray-900);">24.5k ₽</div>
+                    <div style="font-size: 24px; font-weight: 700; color: var(--gray-900);">{% pp_revenue_today %} ₽</div>
                 </div>
             </div>
         </div>
@@ -306,7 +308,7 @@
                 <span style="font-size: 24px;">👥</span>
                 <div>
                     <div style="font-size: 14px; color: var(--gray-500);">Новых пользователей</div>
-                    <div style="font-size: 24px; font-weight: 700; color: var(--gray-900);">8</div>
+                    <div style="font-size: 24px; font-weight: 700; color: var(--gray-900);">{% pp_new_users_today %}</div>
                 </div>
             </div>
         </div>
@@ -316,7 +318,7 @@
                 <span style="font-size: 24px;">⚠️</span>
                 <div>
                     <div style="font-size: 14px; color: var(--gray-500);">Требует внимания</div>
-                    <div style="font-size: 24px; font-weight: 700; color: var(--gray-900);">5</div>
+                    <div style="font-size: 24px; font-weight: 700; color: var(--gray-900);">{% pp_attention_count %}</div>
                 </div>
             </div>
         </div>
