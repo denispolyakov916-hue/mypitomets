@@ -112,13 +112,18 @@ class UserService:
         logger.info(f"Пользователь создан: ID={user.id}, Email={email}")
         logger.debug(f"Код активации: {activation_code}, Ссылка: {activation_url}")
 
-        try:
-            MailService.send_activation_mail(email, activation_url, activation_code)
-            logger.info(f"Письмо активации отправлено на {email}")
-        except Exception as e:
-            logger.error(f"Не удалось отправить письмо активации на {email}: {str(e)}")
-            # Продолжаем регистрацию даже если email не отправился
-            # В production можно использовать очередь задач (Celery)
+        # Письмо-подтверждение шлём в ФОНЕ — иначе регистрация ждёт ~30с на SMTP.
+        # Аккаунт уже активирован, письмо не блокирует вход.
+        import threading
+
+        def _send_confirmation():
+            try:
+                MailService.send_activation_mail(email, activation_url, activation_code)
+                logger.info(f"Письмо-подтверждение отправлено на {email}")
+            except Exception as e:
+                logger.error(f"Не удалось отправить письмо на {email}: {str(e)}")
+
+        threading.Thread(target=_send_confirmation, daemon=True).start()
         
         # Бета: аккаунт уже активирован — выдаём токены и логиним пользователя сразу.
         tokens = TokenService.generate_tokens(user)
