@@ -27,18 +27,18 @@ const FOOTER_CATALOG = [
 // Компания — разделы о проекте (якоря на главной при переходе на /)
 const FOOTER_COMPANY = [
   { to: '/#hero', label: 'О нас' },
-  { to: '/', label: 'Блог' },
-  { to: '/', label: 'Контакты' },
-  { to: '/', label: 'Вакансии' },
+  { to: '/coming-soon?name=Блог', label: 'Блог' },
+  { to: '/coming-soon?name=Контакты', label: 'Контакты' },
+  { to: '/coming-soon?name=Вакансии', label: 'Вакансии' },
 ];
 
 // Документы
 const FOOTER_DOCS = [
-  { to: '/', label: 'Политика конфиденциальности' },
-  { to: '/', label: 'Пользовательское соглашение' },
-  { to: '/', label: 'Согласие на получение рекламы' },
-  { to: '/', label: 'Согласие на обработку персональных данных' },
-  { to: '/', label: 'Партнёрская оферта' },
+  { to: '/coming-soon?name=Политика+конфиденциальности', label: 'Политика конфиденциальности' },
+  { to: '/coming-soon?name=Пользовательское+соглашение', label: 'Пользовательское соглашение' },
+  { to: '/coming-soon?name=Согласие+на+получение+рекламы', label: 'Согласие на получение рекламы' },
+  { to: '/coming-soon?name=Согласие+на+обработку+персональных+данных', label: 'Согласие на обработку персональных данных' },
+  { to: '/coming-soon?name=Партнёрская+оферта', label: 'Партнёрская оферта' },
 ];
 
 const SOCIAL_LINKS = [
@@ -145,7 +145,7 @@ export function Footer() {
                 </p>
                 <p className="text-xs text-white/75">
                   Подписываясь, вы соглашаетесь с нашей{' '}
-                  <Link to="/" className="text-white/90 underline hover:text-white">
+                  <Link to="/coming-soon?name=Политика+конфиденциальности" className="text-white/90 underline hover:text-white">
                     Политикой конфиденциальности
                   </Link>
                 </p>

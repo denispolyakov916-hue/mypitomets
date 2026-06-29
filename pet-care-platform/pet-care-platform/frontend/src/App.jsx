@@ -199,6 +199,20 @@ function App() {
               {/* Оплата - Требует аутентификации */}
               <Route path="/payment" element={<Payment />} />
 
+              {/* Подбор питания — публичный: гость идёт в воронку /start, авторизованный — на страницу рекомендаций */}
+              <Route
+                path="/food-recommendation"
+                element={
+                  isAuthenticated ? (
+                    <Suspense fallback={<Loader />}>
+                      <FoodRecommendationPage />
+                    </Suspense>
+                  ) : (
+                    <Navigate to="/start" replace />
+                  )
+                }
+              />
+
               {/* Защищённые маршруты - Требуют аутентификации */}
               <Route element={<PrivateRoute />}>
                 {/* Питомцы - редиректы на Pet ID (для старых URL) */}
@@ -240,16 +254,6 @@ function App() {
                   element={
                     <Suspense fallback={<Loader />}>
                       <PetDetailPage />
-                    </Suspense>
-                  }
-                />
-                
-                {/* Подбор питания */}
-                <Route
-                  path="/food-recommendation"
-                  element={
-                    <Suspense fallback={<Loader />}>
-                      <FoodRecommendationPage />
                     </Suspense>
                   }
                 />

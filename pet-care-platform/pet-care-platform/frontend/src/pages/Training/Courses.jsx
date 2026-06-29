@@ -261,7 +261,7 @@ function Courses() {
             </div>
           )}
 
-          {(courses.length > 0 || isLoading) && !error && (
+          {!error && (
             <>
               {selectedPet && (
                 <div className="mb-4 p-3 rounded-xl border border-stone-200 bg-stone-50 shadow-sm shadow-stone-200/40">

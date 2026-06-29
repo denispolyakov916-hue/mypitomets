@@ -119,8 +119,14 @@ const toggleMode = () => {
 
     if (!registerData.password) {
       errors.password = 'Введите пароль для защиты вашего аккаунта'
-    } else if (registerData.password.length < 6) {
-      errors.password = 'Пароль должен содержать минимум 6 символов. Используйте буквы, цифры и специальные символы для безопасности'
+    } else if (registerData.password.length < 8) {
+      errors.password = 'Пароль должен содержать минимум 8 символов'
+    } else if (!/[a-zA-Zа-яА-ЯёЁ]/.test(registerData.password)) {
+      errors.password = 'Добавьте в пароль хотя бы одну букву'
+    } else if (!/\d/.test(registerData.password)) {
+      errors.password = 'Добавьте в пароль хотя бы одну цифру'
+    } else if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?`~]/.test(registerData.password)) {
+      errors.password = 'Добавьте хотя бы один спецсимвол (!@#$%^&*…)'
     } else if (registerData.password.length > 128) {
       errors.password = 'Пароль не должен превышать 128 символов'
     }

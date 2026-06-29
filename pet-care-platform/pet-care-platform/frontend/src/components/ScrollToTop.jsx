@@ -1,69 +1,36 @@
 /**
  * Компонент ScrollToTop
  *
- * Автоматически прокручивает страницу наверх при изменении маршрута.
- * Решает проблему сохранения позиции прокрутки в React Router.
+ * Прокручивает страницу наверх при СМЕНЕ СТРАНИЦЫ (pathname).
+ * Важно: НЕ реагирует на смену query-параметров (фильтры магазина, табы),
+ * иначе страница прыгает наверх при каждом клике по фильтру.
  */
 import { useEffect } from 'react'
 import { useLocation } from 'react-router-dom'
 
 function ScrollToTop() {
-  const { pathname, search } = useLocation()
+  const { pathname } = useLocation()
 
   useEffect(() => {
-    console.log('🔄 ScrollToTop: Route changed to', pathname + search)
-    console.log('📍 Current scroll position:', window.scrollY)
-
     // Мгновенная прокрутка наверх (игнорирует scroll-behavior: smooth из CSS)
     window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
 
-    // Множественные проверки и попытки сброса прокрутки
-    const checkScroll = () => {
+    // Пара подстраховочных проверок на случай асинхронного рендера контента
+    const reset = () => {
       if (window.scrollY > 0) {
-        console.warn('⚠️ ScrollToTop: Scroll position was not reset, trying again!')
-        window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
-        // Принудительная установка через DOM
-        document.documentElement.scrollTop = 0
-        document.body.scrollTop = 0
-      } else {
-        console.log('✅ ScrollToTop: Scroll position reset successfully')
-      }
-    }
-
-    // Проверки с разными задержками
-    setTimeout(checkScroll, 10)
-    setTimeout(checkScroll, 50)
-    setTimeout(checkScroll, 100)
-    setTimeout(checkScroll, 200)
-
-    // Специальная обработка для payment страниц
-    if (pathname === '/payment') {
-      console.log('🎯 Special handling for payment page')
-      const paymentScrollFix = () => {
         window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
         document.documentElement.scrollTop = 0
         document.body.scrollTop = 0
-        document.documentElement.scrollLeft = 0
-        document.body.scrollLeft = 0
-        console.log('💳 Payment page scroll fix applied')
       }
-
-      setTimeout(paymentScrollFix, 150)
-      setTimeout(paymentScrollFix, 300)
-      setTimeout(paymentScrollFix, 500)
     }
-
-    // Дополнительная проверка после загрузки страницы
-    const handleLoad = () => {
-      setTimeout(checkScroll, 300)
-    }
-
-    window.addEventListener('load', handleLoad)
+    const t1 = setTimeout(reset, 50)
+    const t2 = setTimeout(reset, 150)
 
     return () => {
-      window.removeEventListener('load', handleLoad)
+      clearTimeout(t1)
+      clearTimeout(t2)
     }
-  }, [pathname, search]) // Добавили search в зависимости
+  }, [pathname]) // только смена страницы, не фильтров
 
   return null
 }
