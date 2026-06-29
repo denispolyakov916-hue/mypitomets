@@ -1132,13 +1132,14 @@ const RationComponentCard = ({
 
       {/* Контент: десктоп / планшет (как раньше) */}
       <div className="hidden lg:flex items-stretch bg-white min-w-0 max-w-full">
-        <button 
+        <button
           onClick={() => canNavigate && onChangeIndex(currentIndex - 1)}
           disabled={!canNavigate || isLoading}
-          className={`min-w-[44px] px-3 flex items-center justify-center transition-transform duration-200 ${canNavigate && !isLoading ? 'hover:scale-110 active:scale-95 cursor-pointer' : 'cursor-not-allowed'}`}
+          className={`min-w-[44px] px-3 flex flex-col items-center justify-center gap-1 transition-transform duration-200 ${canNavigate && !isLoading ? 'hover:scale-110 active:scale-95 cursor-pointer' : 'cursor-not-allowed'}`}
           aria-label="Предыдущий вариант"
         >
           <MobileRationPawIcon mirrored inactive={!canNavigate || isLoading} />
+          <span className="text-[10px] font-bold text-[#E8952A] leading-none tracking-tight">ЖМИ</span>
         </button>
         
         <div 
@@ -1190,13 +1191,14 @@ const RationComponentCard = ({
           </div>
         </div>
         
-        <button 
+        <button
           onClick={() => canNavigate && onChangeIndex(currentIndex + 1)}
           disabled={!canNavigate || isLoading}
-          className={`min-w-[44px] px-3 flex items-center justify-center transition-transform duration-200 ${canNavigate && !isLoading ? 'hover:scale-110 active:scale-95 cursor-pointer' : 'cursor-not-allowed'}`}
+          className={`min-w-[44px] px-3 flex flex-col items-center justify-center gap-1 transition-transform duration-200 ${canNavigate && !isLoading ? 'hover:scale-110 active:scale-95 cursor-pointer' : 'cursor-not-allowed'}`}
           aria-label="Следующий вариант"
         >
           <MobileRationPawIcon mirrored={false} inactive={!canNavigate || isLoading} />
+          <span className="text-[10px] font-bold text-[#E8952A] leading-none tracking-tight">ЖМИ</span>
         </button>
       </div>
 
@@ -3128,7 +3130,7 @@ export default function FoodRecommendationPage() {
               {/* Итого и кнопки — в пастельной палитре */}
               {!isPlanLoading && currentComponents.length > 0 && (
                 <div className="mt-6 pt-4 border-t border-gray-200">
-                  <p className="text-gray-900 mb-4 px-3 py-2 rounded-xl bg-[#F8F8F8] border border-gray-100">
+                  <p className="text-center lg:text-left text-gray-900 mb-4 px-3 py-2 rounded-xl bg-[#F8F8F8] border border-gray-100">
                     Итого на {period} дней:
                     {totalCost > 0 && (
                       <span className="font-bold text-gray-900 ml-2">

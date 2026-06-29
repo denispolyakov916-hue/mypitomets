@@ -2000,9 +2000,9 @@ export default function PetProfileEditor({ pet, onClose, onSave, isLoading }) {
         </div>
 
         {/* Content */}
-        <div className="flex flex-1 overflow-hidden">
-          {/* Sidebar */}
-          <div className="w-64 border-r border-gray-100 p-4 space-y-2 flex-shrink-0 overflow-y-auto">
+        <div className="flex flex-col lg:flex-row flex-1 overflow-hidden">
+          {/* Sidebar: вертикальный на десктопе, горизонтальная лента вкладок на мобиле */}
+          <div className="flex w-full flex-shrink-0 gap-2 overflow-x-auto border-b border-gray-100 p-3 lg:block lg:w-64 lg:gap-0 lg:space-y-2 lg:overflow-x-visible lg:overflow-y-auto lg:border-b-0 lg:border-r lg:p-4">
             {SECTIONS.map(section => {
               const Icon = section.icon;
               const isActive = activeSection === section.id;
@@ -2013,14 +2013,14 @@ export default function PetProfileEditor({ pet, onClose, onSave, isLoading }) {
                   key={section.id}
                   type="button"
                   onClick={() => setActiveSection(section.id)}
-                  className={`w-full text-left rounded-xl transition-all ${isActive ? 'bg-primary-50' : 'hover:bg-gray-50'}`}
+                  className={`flex-shrink-0 text-left rounded-xl transition-all lg:w-full ${isActive ? 'bg-primary-50' : 'hover:bg-gray-50'}`}
                 >
-                  <div className={`flex items-center gap-3 px-4 py-3 ${isActive ? 'text-primary-600' : 'text-gray-600'}`}>
-                    <Icon className="w-5 h-5" />
-                    <span className="font-medium text-sm flex-1">{section.label}</span>
-                    {isActive && <ChevronRight className="w-4 h-4" />}
+                  <div className={`flex items-center gap-2 px-3 py-2.5 lg:gap-3 lg:px-4 lg:py-3 ${isActive ? 'text-primary-600' : 'text-gray-600'}`}>
+                    <Icon className="w-5 h-5 flex-shrink-0" />
+                    <span className="font-medium text-sm whitespace-nowrap lg:flex-1">{section.label}</span>
+                    {isActive && <ChevronRight className="hidden w-4 h-4 lg:block" />}
                   </div>
-                  <div className="px-4 pb-3">
+                  <div className="hidden px-4 pb-3 lg:block">
                     <SectionProgressBar percent={progress} label={section.label} />
                   </div>
                 </button>

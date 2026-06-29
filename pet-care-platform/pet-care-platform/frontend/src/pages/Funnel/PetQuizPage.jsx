@@ -2,14 +2,62 @@
  * PetQuizPage — /pet-quiz: лёгкая пошаговая анкета (skeleton, локальное состояние).
  * Данные хранятся в черновике (localStorage); реальное сохранение питомца — позже.
  */
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { ArrowLeft, ArrowRight, Cat, Dog } from 'lucide-react'
 import AppShell from '../../components/app/AppShell'
 import { BrandSection, BrandButton, BrandInput, PuffLottie } from '../../components/brand'
 import { loadQuizDraft, saveQuizDraft } from '../../utils/petQuizDraft'
+import { getBreeds } from '../../api/pets'
 
 const PUFF_STEPS = ['talk_gesture', 'talk_gesture2']
+
+/**
+ * Подбор породы в анкете: вводим название → выбираем из списка (сохраняем breed_id).
+ * Раньше тут был просто текст, и порода терялась при создании питомца.
+ */
+function BreedQuizField({ species, value, onSet }) {
+  const [search, setSearch] = useState(value || '')
+  const [breeds, setBreeds] = useState([])
+
+  useEffect(() => {
+    const q = (search || '').trim()
+    if (q.length < 1) { setBreeds([]); return }
+    const t = setTimeout(async () => {
+      try {
+        const r = await getBreeds({ species, search: q, limit: 8 })
+        setBreeds(r?.breeds || [])
+      } catch { setBreeds([]) }
+    }, 250)
+    return () => clearTimeout(t)
+  }, [search, species])
+
+  return (
+    <div className="relative">
+      <BrandInput
+        label="Порода"
+        placeholder="Например, Британская"
+        helper="Начните вводить и выберите из списка. Можно пропустить, если беспородный"
+        value={search}
+        onChange={(e) => { setSearch(e.target.value); onSet({ breed: e.target.value, breed_id: null }) }}
+      />
+      {breeds.length > 0 && (
+        <div className="absolute z-30 mt-1 max-h-56 w-full overflow-auto rounded-2xl border border-primary-100 bg-white shadow-card">
+          {breeds.map((b) => (
+            <button
+              key={b.id}
+              type="button"
+              onClick={() => { setSearch(b.name); onSet({ breed: b.name, breed_id: b.id }); setBreeds([]) }}
+              className="block w-full px-4 py-2.5 text-left text-sm text-primary-800 hover:bg-primary-50"
+            >
+              {b.name}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
 
 function PillRow({ options, value, onPick }) {
   return (
@@ -61,7 +109,7 @@ export default function PetQuizPage() {
     },
     {
       key: 'breed', title: 'Какая порода?', valid: () => true,
-      render: () => <BrandInput label="Порода" placeholder="Например, Британская" helper="Можно пропустить, если беспородный" value={data.breed || ''} onChange={(e) => set({ breed: e.target.value })} />,
+      render: () => <BreedQuizField species={data.species} value={data.breed} onSet={set} />,
     },
     {
       key: 'age', title: 'Сколько лет питомцу?', valid: () => data.age !== '' && data.age != null,

@@ -17,7 +17,7 @@
  *
  * Использует только существующие API: createPet, updatePetPartial, cartStore.addItem.
  */
-import { createPet, updatePetPartial } from '../api/pets'
+import { createPet, updatePetPartial, getBreeds } from '../api/pets'
 import { useCartStore } from '../store/cartStore'
 import {
   loadPendingFunnelAction,
@@ -54,6 +54,8 @@ function petPayloadFromDraft(draft = {}) {
   const weight = parseFloat(draft.weight)
   if (Number.isFinite(weight) && weight > 0) payload.weight_kg = weight
   if (typeof draft.neutered === 'boolean') payload.is_neutered = draft.neutered
+  // Порода: бэкенд принимает целочисленный breed_id (его собирает анкета при выборе из списка).
+  if (draft.breed_id != null && draft.breed_id !== '') payload.breed_id = Number(draft.breed_id)
   return payload
 }
 
@@ -61,7 +63,17 @@ function petPayloadFromDraft(draft = {}) {
 async function ensurePet(pending) {
   if (pending.createdPetId) return { petId: pending.createdPetId, pet: null }
   if (!pending.draft || !pending.draft.species) return { petId: null, pet: null } // без вида питомца создать нельзя
-  const res = await createPet(petPayloadFromDraft(pending.draft))
+  const payload = petPayloadFromDraft(pending.draft)
+  // Порода: если в анкете выбрали из списка — breed_id уже есть; если просто ввели
+  // название без выбора из подсказок — резолвим имя в id, чтобы порода не потерялась.
+  if (!payload.breed_id && (pending.draft.breed || '').trim()) {
+    try {
+      const r = await getBreeds({ species: pending.draft.species, search: pending.draft.breed.trim(), limit: 1 })
+      const b = r?.breeds?.[0]
+      if (b?.id) payload.breed_id = b.id
+    } catch { /* порода необязательна — не блокируем создание питомца */ }
+  }
+  const res = await createPet(payload)
   const created = (res && res.data && res.data.data) || (res && res.data) || null
   const petId = created && created.id ? created.id : null
   if (petId) updatePendingFunnelAction({ createdPetId: petId })
