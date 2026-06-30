@@ -1637,11 +1637,13 @@ class OrderCreateView(APIView):
                     # Обработка товара
                     product = products[item.product_id]
                     # Сохраняем цену
-                    item_price = product.price
+                    item_price = item.sku.price if item.sku else product.price
 
                     OrderItem.objects.create(
                         order=order,
                         product=product,
+                        sku=item.sku,
+                        sku_name=item.sku.name if item.sku else None,
                         product_name=product.name,
                         price=item_price,
                         quantity=item.quantity
@@ -2299,8 +2301,10 @@ class UnifiedCheckoutView(APIView):
                 OrderItem.objects.create(
                     order=order,
                     product=item.product,
+                    sku=item.sku,
+                    sku_name=item.sku.name if item.sku else None,
                     product_name=item.product.name,
-                    price=item.product.price,
+                    price=item.get_unit_price(),
                     quantity=item.quantity
                 )
 

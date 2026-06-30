@@ -1,6 +1,7 @@
 import { useState, useMemo, useRef, memo } from 'react'
 import { CalendarDays } from 'lucide-react'
 import { getEventTypeMeta } from '../../constants/eventTypes'
+import { isWeightEvent, WEIGHT_META } from '../../constants/weight'
 
 const ChevronLeftIcon = ({ className }) => (
   <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -381,7 +382,7 @@ function SimpleCalendar({
         ) : (
           <div className="space-y-3">
             {selectedDateEvents.map((event) => {
-              const eventType = getEventTypeMeta(event.type)
+              const eventType = isWeightEvent(event) ? WEIGHT_META : getEventTypeMeta(event.type)
               const Icon = eventType.icon
               const daysInfo = getDaysUntil(event.date)
 

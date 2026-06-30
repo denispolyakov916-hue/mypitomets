@@ -308,27 +308,29 @@ class CourseManager(models.Manager):
         if pet.behavior_type and pet.behavior_type != '':
             queryset = queryset.filter(
                 Q(recommended_behavior_types__contains=[pet.behavior_type]) |
-                Q(recommended_behavior_types__len=0)  # Курсы без специфики поведения
+                Q(recommended_behavior_types=[])  # Курсы без специфики поведения
             )
 
         # Фильтр по активности
         if pet.activity_level and pet.activity_level != '':
             queryset = queryset.filter(
                 Q(recommended_activity_levels__contains=[pet.activity_level]) |
-                Q(recommended_activity_levels__len=0)
+                Q(recommended_activity_levels=[])  # Курсы без специфики активности
             )
 
         # Фильтр по социализации
         if pet.social_level and pet.social_level != '':
             queryset = queryset.filter(
                 Q(recommended_social_levels__contains=[pet.social_level]) |
-                Q(recommended_social_levels__len=0)
+                Q(recommended_social_levels=[])  # Курсы без специфики социализации
             )
 
         # Фильтр по опыту дрессировки
-        if pet.training_experience and pet.training_experience != '':
-            experience_levels = ['none', 'basic', 'intermediate', 'advanced', 'professional']
-            pet_level_index = experience_levels.index(pet.training_experience)
+        # Атрибут может отсутствовать на модели Pet — читаем безопасно
+        training_experience = getattr(pet, 'training_experience', None)
+        experience_levels = ['none', 'basic', 'intermediate', 'advanced', 'professional']
+        if training_experience and training_experience in experience_levels:
+            pet_level_index = experience_levels.index(training_experience)
 
             # Курсы с подходящим минимальным уровнем опыта
             suitable_levels = []
@@ -346,10 +348,12 @@ class CourseManager(models.Manager):
             queryset = queryset.filter(min_training_experience__in=suitable_levels)
 
         # Фильтр по здоровью (исключаем несовместимые)
-        if pet.health_issues:
+        # Атрибут может отсутствовать на модели Pet — читаем безопасно
+        health_issues = getattr(pet, 'health_issues', None)
+        if health_issues:
             # Курсы которые либо совместимы с проблемами здоровья, либо не имеют специфики
             queryset = queryset.filter(
-                Q(compatible_health_issues__overlap=pet.health_issues) |
+                Q(compatible_health_issues__overlap=health_issues) |
                 Q(compatible_health_issues__len=0)
             )
 

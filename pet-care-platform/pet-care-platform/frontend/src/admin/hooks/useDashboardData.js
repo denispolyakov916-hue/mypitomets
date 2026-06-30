@@ -18,8 +18,6 @@ export const useDashboardData = () => {
       setLoading(true);
       setError(null);
 
-      console.log('[Dashboard] Starting data fetch...');
-
       // Используем доступные API эндпоинты с Promise.allSettled для устойчивости
       const responses = await Promise.allSettled([
         adminAPI.stats.summary(),
@@ -50,16 +48,6 @@ export const useDashboardData = () => {
         recent_pets: (petsResponse.status === 'fulfilled' && petsResponse.value.data?.results) || [],
         recent_reviews: [], // Заглушка, можно добавить позже
       });
-
-      // Логируем статус каждого API вызова
-      console.log('[Dashboard] API responses status:');
-      console.log('  Summary:', summaryResponse.status);
-      console.log('  Users:', usersResponse.status);
-      console.log('  Pets:', petsResponse.status);
-      console.log('  Top products:', topProductsResponse.status);
-      console.log('  Orders:', ordersResponse.status);
-
-      console.log('[Dashboard] Data loaded successfully');
     } catch (err) {
       hasFetched.current = false; // Сбрасываем при ошибке для возможности повтора
       console.error('[Dashboard] Fetch error:', err);

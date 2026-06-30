@@ -793,8 +793,10 @@ class OrderService(BaseService):
                     OrderItem.objects.create(
                         order=order,
                         product=item.product,
+                        sku=item.sku,
+                        sku_name=item.sku.name if item.sku else None,
                         product_name=item.product.name,
-                        price=item.product.discounted_price,
+                        price=item.get_unit_price(),
                         quantity=item.quantity
                     )
                 elif item.course:
@@ -2132,9 +2134,12 @@ class OrderCRUDService(BaseCRUDService):
             OrderItem.objects.create(
                 order=order,
                 product=cart_item.product,
+                sku=cart_item.sku,
                 course=cart_item.course,
+                product_name=cart_item.product.name if cart_item.product else cart_item.course.title,
+                sku_name=cart_item.sku.name if cart_item.sku else None,
                 quantity=cart_item.quantity,
-                price=cart_item.price,
+                price=cart_item.get_unit_price(),
                 pet=cart_item.pet
             )
 
@@ -2153,4 +2158,3 @@ class OrderCRUDService(BaseCRUDService):
 product_service = ProductService()
 cart_crud_service = CartCRUDService()
 order_crud_service = OrderCRUDService()
-
