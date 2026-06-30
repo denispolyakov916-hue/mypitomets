@@ -46,6 +46,20 @@ const emptyData = {
 const listToText = (list) => Array.isArray(list) ? list.join('\n') : '';
 const textToList = (text) => String(text || '').split('\n').map(v => v.trim()).filter(Boolean);
 
+// Читаемое сообщение об ошибке из ответа DRF (raw axios: err.response.data может
+// быть строкой, массивом, {detail} или {field: [...]}).
+const extractApiError = (err) => {
+  const d = err?.response?.data;
+  if (typeof d === 'string') return d;
+  if (Array.isArray(d)) return d.filter(Boolean).map(String).join(' ');
+  if (d && typeof d === 'object') {
+    if (d.detail) return String(d.detail);
+    const parts = Object.values(d).flat().filter(Boolean).map(String);
+    if (parts.length) return parts.join(' ');
+  }
+  return err?.message || 'Не удалось сохранить изменения';
+};
+
 const Field = ({ label, children }) => (
   <label className="block">
     <span className="text-sm font-medium text-gray-700">{label}</span>
@@ -63,6 +77,7 @@ const SupplierProductEditor = () => {
   const [data, setData] = useState(emptyData);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
+  const [error, setError] = useState('');
 
   useEffect(() => {
     if (isNew) return;
@@ -101,6 +116,10 @@ const SupplierProductEditor = () => {
         navigate(`/supplier-panel/products/${res.data.id}`, { replace: true });
       }
       setMessage('Черновик сохранён');
+      setError('');
+    } catch (err) {
+      setError(extractApiError(err));
+      setMessage('');
     } finally {
       setSaving(false);
     }
@@ -118,10 +137,15 @@ const SupplierProductEditor = () => {
 
   const submit = async () => {
     setSaving(true);
+    setError('');
     try {
       const res = await supplierAPI.products.submit(id);
       setSubmission(res.data);
       setMessage('Заявка отправлена на модерацию');
+      setError('');
+    } catch (err) {
+      setError(extractApiError(err));
+      setMessage('');
     } finally {
       setSaving(false);
     }
@@ -135,6 +159,7 @@ const SupplierProductEditor = () => {
           <div className="mt-2 flex items-center gap-3">
             {submission && <StatusBadge value={submission.status} />}
             {message && <span className="text-sm text-green-700">{message}</span>}
+            {error && <span className="text-sm font-medium text-red-600">{error}</span>}
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
