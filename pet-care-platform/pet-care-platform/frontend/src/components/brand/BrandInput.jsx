@@ -9,9 +9,11 @@ function fieldState({ error, helper, inputId }) {
   return {
     message: error || helper,
     messageId: error ? `${inputId}-err` : `${inputId}-help`,
+    // Видимая граница в покое (раньше border-transparent сливался с фоном и поле
+    // не читалось как input в Safari), явный золотой фокус, красная ошибка.
     border: error
       ? 'border-red-400 focus:border-red-500 focus:ring-red-200/50'
-      : 'border-transparent focus:border-gold-400 focus:ring-gold-300/40',
+      : 'border-primary-200 hover:border-primary-300 focus:border-gold-400 focus:ring-gold-300/40',
     messageClass: error ? 'mt-1.5 text-sm text-red-500' : 'mt-1.5 text-sm text-primary-400',
   }
 }

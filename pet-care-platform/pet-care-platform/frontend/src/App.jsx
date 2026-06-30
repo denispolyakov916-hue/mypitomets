@@ -83,7 +83,6 @@ const OrderDetail = lazy(() => import('./pages/Orders/OrderDetail'))
 const PetIdPage = lazy(() => import('./pages/PetId/PetIdPage'))
 const PetDetailPage = lazy(() => import('./pages/PetId/PetDetailPage'))
 const PetEditPage = lazy(() => import('./pages/PetId/PetEditPage'))
-const FoodRecommendationPage = lazy(() => import('./pages/FoodRecommendation/FoodRecommendationPage'))
 
 // Ленивая загрузка тяжёлых страниц обучения
 const CoursePageLearning = lazy(() => import('./pages/Training/Learning/CoursePageLearning'))
@@ -215,19 +214,9 @@ function App() {
               {/* Оплата - Требует аутентификации */}
               <Route path="/payment" element={<Payment />} />
 
-              {/* Подбор питания — публичный: гость идёт в воронку /start, авторизованный — на страницу рекомендаций */}
-              <Route
-                path="/food-recommendation"
-                element={
-                  isAuthenticated ? (
-                    <Suspense fallback={<Loader />}>
-                      <FoodRecommendationPage />
-                    </Suspense>
-                  ) : (
-                    <Navigate to="/start" replace />
-                  )
-                }
-              />
+              {/* Подбор питания (ссылка из футера) — ведём ВСЕХ в единую воронку /start,
+                  чтобы дизайн/флоу совпадал с подбором с главной (без второй реализации). */}
+              <Route path="/food-recommendation" element={<Navigate to="/start" replace />} />
 
               {/* Защищённые маршруты - Требуют аутентификации */}
               <Route element={<PrivateRoute />}>

@@ -10,6 +10,7 @@
  */
 import { getProducts } from '../../api/shop'
 import { formatPrice } from '../../utils/format'
+import { formatAgeLabel } from './petAge'
 
 // Группы для доп. товара «набора заботы» — пробуем по приоритету, берём первый доступный.
 const ADDON_GROUPS = ['treats', 'grooming', 'care', 'toilet', 'vet']
@@ -58,29 +59,29 @@ function pickOptimal(sorted) {
   return byValue[0] || sorted[Math.floor(n / 2)]
 }
 
-function ageWord(age) {
-  const n = Number(age)
-  if (!Number.isFinite(n)) return 'года'
-  const mod10 = n % 10
-  const mod100 = n % 100
-  if (mod10 === 1 && mod100 !== 11) return 'год'
-  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return 'года'
-  return 'лет'
-}
-
 function neuteredLabel(value) {
   if (value === true) return 'Стерилизован'
   if (value === false) return 'Не стерилизован'
   return null
 }
 
+/** Сводка особенностей здоровья/аллергий из чипов + свободного ввода. */
+function healthSummary(draft) {
+  const parts = []
+  if (Array.isArray(draft.healthTags) && draft.healthTags.length) parts.push(draft.healthTags.join(', '))
+  if (Array.isArray(draft.allergyTags) && draft.allergyTags.length) parts.push(`аллергии: ${draft.allergyTags.join(', ')}`)
+  if (draft.health && String(draft.health).trim()) parts.push(String(draft.health).trim())
+  return parts.length ? parts.join('; ') : null
+}
+
 /** Карточка профиля питомца для hero (паспорт рациона). Пустые поля не показываем. */
 function buildProfile(draft) {
   const speciesLabel = draft.species === 'dog' ? 'Собака' : 'Кошка'
   const breed = draft.breed && String(draft.breed).trim() ? String(draft.breed).trim() : null
-  const age = draft.age != null && draft.age !== '' ? `${draft.age} ${ageWord(draft.age)}` : null
+  // Возраст: корректная подпись для малышей (мес) и взрослых (лет) — не «годы×0.5».
+  const age = formatAgeLabel(draft)
   const weight = draft.weight != null && draft.weight !== '' ? `${draft.weight} кг` : null
-  const health = draft.health && String(draft.health).trim() ? String(draft.health).trim() : null
+  const health = healthSummary(draft)
   const rows = [
     { key: 'species', label: 'Вид', value: speciesLabel },
     { key: 'breed', label: 'Порода', value: breed },
@@ -95,7 +96,7 @@ function buildProfile(draft) {
 }
 
 function healthReasonText(draft, optimal) {
-  const note = draft.health && String(draft.health).trim()
+  const note = healthSummary(draft)
   if (draft.goal === 'sensitive' || note) return `Учли чувствительность: ${note || 'бережный состав'}.`
   if (draft.goal === 'weight') return 'Рацион ориентирован на контроль веса.'
   if (optimal && optimal.is_hypoallergenic) return 'Гипоаллергенный состав.'
@@ -106,9 +107,9 @@ function healthReasonText(draft, optimal) {
 /** Блок «Почему подходит» — каждый пункт опирается на реальные данные питомца. */
 function buildReasons(draft, optimal, monthly) {
   const reasons = []
-  const ageOk = draft.age != null && draft.age !== '' && Number.isFinite(Number(draft.age))
-  if (ageOk) {
-    reasons.push({ key: 'age', title: 'Подходит по возрасту', text: `Рацион рассчитан на питомца ${draft.age} ${ageWord(draft.age)}.` })
+  const ageLabel = formatAgeLabel(draft)
+  if (ageLabel) {
+    reasons.push({ key: 'age', title: 'Подходит по возрасту', text: `Рацион рассчитан на питомца ${ageLabel}.` })
   }
   const hasWeight = draft.weight != null && draft.weight !== ''
   if (hasWeight) {

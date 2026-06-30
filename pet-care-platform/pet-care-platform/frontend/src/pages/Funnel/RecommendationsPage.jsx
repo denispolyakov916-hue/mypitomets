@@ -5,21 +5,21 @@
  * справа), набор заботы на период, «почему подходит», мягкое сохранение.
  * Анонимно; покупка/сохранение → мягкий логин. Реальные товары магазина.
  */
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import {
   Sparkles, Check, ShoppingCart, Bell, Flame, Sunrise, Sun, Sunset,
   PawPrint, Cake, Scale, Heart, Stethoscope, Wallet, Target, UtensilsCrossed, Calendar, UserPlus,
 } from 'lucide-react'
 import AppShell from '../../components/app/AppShell'
-import { BrandSection, BrandCard, BrandButton, BrandBadge, BrandEmptyState, PuffLottie } from '../../components/brand'
+import { BrandSection, BrandCard, BrandButton, BrandBadge, BrandEmptyState, BrandModal, PuffLottie } from '../../components/brand'
 import { loadQuizDraft } from '../../utils/petQuizDraft'
 import { buildRecommendations } from './recommendationsAdapter'
 import { computeRation } from './rationPlan'
 import { formatPrice } from '../../utils/format'
 import { useAuthStore } from '../../store/authStore'
-import { savePendingFunnelAction, loadPendingFunnelAction } from '../../utils/pendingFunnelAction'
-import { executePendingFunnelAction } from '../../utils/executePendingFunnelAction'
+import { savePendingFunnelAction } from '../../utils/pendingFunnelAction'
+import { useFunnelActions } from './useFunnelActions'
 
 const PROFILE_ICONS = {
   species: PawPrint, breed: PawPrint, age: Cake, weight: Scale,
@@ -223,8 +223,8 @@ function CalcCard({ ration }) {
   )
 }
 
-/** Строка товара в наборе. */
-function BundleItem({ label, product }) {
+/** Строка товара в наборе. periodPrice — цена за выбранный период (14/30 дн). */
+function BundleItem({ label, product, periodPrice }) {
   return (
     <div className="flex items-center gap-3">
       <div className="flex h-14 w-14 flex-shrink-0 items-center justify-center overflow-hidden rounded-xl bg-milk">
@@ -233,14 +233,14 @@ function BundleItem({ label, product }) {
       <div className="min-w-0">
         <p className="text-xs font-medium uppercase tracking-wide text-primary-400">{label}</p>
         <p className="line-clamp-1 text-sm font-medium text-primary-800">{product.name}</p>
-        <p className="text-sm text-primary-600">{formatPrice(product.price)}</p>
+        <p className="text-sm text-primary-600">{formatPrice(periodPrice != null ? periodPrice : product.price)}</p>
       </div>
     </div>
   )
 }
 
 /** Блок 6: «Набор заботы на период» с переключателем 14/30 дней. */
-function BundleSection({ main, addon, addonLabel, periodDays, setPeriodDays, total, onAddToCart }) {
+function BundleSection({ main, addon, addonLabel, periodDays, setPeriodDays, total, periodCostOf, onAddToCart }) {
   if (!main) return null
   return (
     <BrandCard variant="elevated" padding="lg">
@@ -260,11 +260,11 @@ function BundleSection({ main, addon, addonLabel, periodDays, setPeriodDays, tot
         </div>
       </div>
       <div className="mt-5 flex flex-col items-stretch gap-4 md:flex-row md:items-center">
-        <div className="flex-1"><BundleItem label="Основной корм" product={main} /></div>
+        <div className="flex-1"><BundleItem label="Основной корм" product={main} periodPrice={periodCostOf(main)} /></div>
         <div className="flex items-center justify-center text-primary-300 font-bold">+</div>
         <div className="flex-1">
           {addon
-            ? <BundleItem label={addonLabel || 'Дополнение'} product={addon} />
+            ? <BundleItem label={addonLabel || 'Дополнение'} product={addon} periodPrice={periodCostOf(addon)} />
             : (
               <span className="inline-flex items-center gap-1.5 rounded-full bg-primary-50 px-3 py-2 text-sm text-primary-600">
                 <Sparkles className="h-4 w-4 text-gold-500" /> Лакомство-комплимент от Пуфыча
@@ -355,6 +355,42 @@ function FunnelActionNotice({ actionError, savedNotice, onRetry }) {
   return null
 }
 
+/**
+ * Плашка выбора питомца: если у пользователя уже есть питомцы, даём выбрать
+ * существующего (или создать нового), вместо того чтобы всегда плодить новых.
+ * Рендерится в BrandModal (центрирована, ESC/клик-вне, scroll-lock) — не «улетает».
+ */
+function PetPickerModal({ open, pets, onPick, onCreateNew, onClose }) {
+  return (
+    <BrandModal open={open} onClose={onClose} size="md" title="Для какого питомца?">
+      <p className="text-sm text-primary-500">Выберите питомца или заведите нового.</p>
+      <div className="mt-4 max-h-72 space-y-2 overflow-auto">
+        {pets.map((p) => (
+          <button
+            key={p.id}
+            type="button"
+            onClick={() => onPick(p.id)}
+            className="flex w-full items-center gap-3 rounded-2xl border border-primary-100 bg-white px-4 py-3 text-left transition hover:bg-primary-50"
+          >
+            <span className="flex h-11 w-11 flex-shrink-0 items-center justify-center overflow-hidden rounded-full bg-milk">
+              {p.photo_url || p.photo
+                ? <img src={p.photo_url || p.photo} alt={p.name} className="h-full w-full object-cover" />
+                : <PawPrint className="h-5 w-5 text-primary-400" />}
+            </span>
+            <span className="min-w-0">
+              <span className="block truncate font-medium text-primary-800">{p.name || 'Питомец'}</span>
+              <span className="block text-xs text-primary-400">{p.species === 'dog' ? 'Собака' : 'Кошка'}{p.breed_name ? ` · ${p.breed_name}` : ''}</span>
+            </span>
+          </button>
+        ))}
+      </div>
+      <BrandButton variant="outline" fullWidth className="mt-4" leftIcon={<UserPlus className="h-5 w-5" />} onClick={onCreateNew}>
+        Создать нового питомца
+      </BrandButton>
+    </BrandModal>
+  )
+}
+
 export default function RecommendationsPage() {
   const navigate = useNavigate()
   const [draft] = useState(() => loadQuizDraft())
@@ -362,21 +398,10 @@ export default function RecommendationsPage() {
   const [selectedKey, setSelectedKey] = useState('optimal')
   const [periodDays, setPeriodDays] = useState(30)
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
-  const [savedNotice, setSavedNotice] = useState(false)
-  const [actionError, setActionError] = useState(false)
-  const executedRef = useRef(false)
-
-  // 1B: единый запуск отложенного действия + единая обработка ошибки (DRY).
-  const runPendingAction = useCallback(() => {
-    setSavedNotice(true)
-    setActionError(false)
-    executePendingFunnelAction({ navigate }).then((r) => {
-      if (!r.ok && r.error !== 'no_pending' && r.error !== 'in_flight') {
-        setActionError(true)
-        executedRef.current = false // разрешаем повтор
-      }
-    })
-  }, [navigate])
+  const {
+    savedNotice, actionError, picker,
+    runPendingAction, startSavedAction, startOnceIfPending, closePicker,
+  } = useFunnelActions()
 
   useEffect(() => {
     let alive = true
@@ -389,11 +414,8 @@ export default function RecommendationsPage() {
   // 1B: вернулись с логина (или уже авторизованы) и есть подготовленное намерение —
   // выполняем его (создаём питомца / сохраняем рацион / кладём в корзину) и уходим дальше.
   useEffect(() => {
-    if (!isAuthenticated || executedRef.current) return
-    if (!loadPendingFunnelAction()) return
-    executedRef.current = true
-    runPendingAction()
-  }, [isAuthenticated, runPendingAction])
+    if (isAuthenticated) startOnceIfPending()
+  }, [isAuthenticated, startOnceIfPending])
 
   const petName = draft.name || 'вашего питомца'
 
@@ -403,6 +425,7 @@ export default function RecommendationsPage() {
     [tiers, selectedKey],
   )
   const ration = useMemo(() => computeRation(draft, selectedTier?.product), [draft, selectedTier])
+  // Стоимость на период: базовая цена товара рассчитана на ~30 дней, масштабируем по periodDays.
   const periodCostOf = (p) => Math.round(((p?.price) || 0) * (periodDays / 30))
 
   if (state.loading) {
@@ -436,7 +459,8 @@ export default function RecommendationsPage() {
   }
 
   const { bundle, profile, reasons } = state.data
-  const bundleTotal = (selectedTier.product?.price || 0) + (bundle?.addon?.price || 0)
+  // Полная цена набора за выбранный период (корм + доп) — пересчитывается при смене 14/30.
+  const bundleTotal = periodCostOf(selectedTier.product) + periodCostOf(bundle?.addon)
 
   const pickProduct = (pr) => (pr ? { id: pr.id, name: pr.name, brand_name: pr.brand_name, price: pr.price, image_url: pr.image_url } : null)
 
@@ -454,13 +478,20 @@ export default function RecommendationsPage() {
         total: bundleTotal,
       },
     })
-    if (isAuthenticated) { runPendingAction(); return }
+    if (isAuthenticated) { startSavedAction(); return }
     navigate('/login?redirect=/recommendations')
   }
 
   return (
     <AppShell>
-      <FunnelActionNotice actionError={actionError} savedNotice={savedNotice} onRetry={runPendingAction} />
+      <FunnelActionNotice actionError={actionError} savedNotice={savedNotice} onRetry={startSavedAction} />
+      <PetPickerModal
+        open={picker.open}
+        pets={picker.pets}
+        onPick={(id) => runPendingAction(id)}
+        onCreateNew={() => runPendingAction(null)}
+        onClose={closePicker}
+      />
       <BrandSection bg="milk" container="max-w-6xl">
         <div className="text-center">
           <div className="flex justify-center">
@@ -499,6 +530,7 @@ export default function RecommendationsPage() {
           periodDays={periodDays}
           setPeriodDays={setPeriodDays}
           total={bundleTotal}
+          periodCostOf={periodCostOf}
           onAddToCart={() => startFunnelAuth('add_ration_to_cart')}
         />
       </BrandSection>
