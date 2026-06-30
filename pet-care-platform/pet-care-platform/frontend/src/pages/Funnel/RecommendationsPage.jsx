@@ -481,7 +481,14 @@ export default function RecommendationsPage() {
       },
     })
     if (isAuthenticated) { startSavedAction(); return }
-    navigate('/login?redirect=/recommendations')
+    // P1.6: не «выбрасываем» гостя на /login без объяснения — показываем причину
+    // на самой странице входа (через query authMessage + state.authMessage),
+    // а returnTo='/recommendations' гарантирует автоматический возврат и докладку рациона.
+    const authMessage = type === 'add_ration_to_cart'
+      ? 'Войдите или зарегистрируйтесь — мы сохраним ваш рацион и добавим его в корзину'
+      : 'Войдите или зарегистрируйтесь — мы сохраним ваш рацион'
+    const next = `/login?redirect=${encodeURIComponent('/recommendations')}&authMessage=${encodeURIComponent(authMessage)}`
+    navigate(next, { state: { authMessage } })
   }
 
   return (

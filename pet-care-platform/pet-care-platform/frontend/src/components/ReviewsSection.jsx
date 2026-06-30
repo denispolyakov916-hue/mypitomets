@@ -18,6 +18,7 @@ import {
 } from '../api/reviews'
 import { useToastStore } from '../store/toastStore'
 import { useAuthStore } from '../store/authStore'
+import { pluralizeRu } from '../utils/format'
 
 function ReviewsSection({ type, itemId, isPurchased = false }) {
   const isAuthenticated = useAuthStore(s => s.isAuthenticated)
@@ -139,7 +140,11 @@ function ReviewsSection({ type, itemId, isPurchased = false }) {
       <div className="border-t border-gray-200 pt-4">
         <div className="flex items-center justify-between gap-3">
           <h2 className="text-lg font-semibold text-gray-900">Отзывы</h2>
-          <span className="text-xs text-gray-500">{reviewsCount} отзывов</span>
+          <span className="text-xs text-gray-500">
+            {reviewsCount > 0
+              ? `${reviewsCount} ${pluralizeRu(reviewsCount, ['отзыв', 'отзыва', 'отзывов'])}`
+              : 'Пока нет отзывов'}
+          </span>
         </div>
       </div>
 
@@ -200,27 +205,37 @@ function ReviewsSection({ type, itemId, isPurchased = false }) {
 
         {/* Сайдбар с рейтингом */}
         <aside className="rounded-xl border border-gray-100 bg-gray-50 p-3 h-fit">
-          <div className="flex items-center justify-between mb-2">
-            <div className="text-xs text-gray-600">Средний рейтинг</div>
-            <div className="text-lg font-semibold text-gray-900">{rating > 0 ? rating.toFixed(1) : '—'}</div>
-          </div>
-          <Rating rating={rating} reviewsCount={null} readonly={true} size="md" />
-          <div className="mt-2 space-y-1.5">
-            {ratingDistribution.map(({ star, count, percentage }) => (
-              <div key={star} className="flex items-center gap-2">
-                <div className="flex items-center gap-1 w-10">
-                  <span className="text-xs font-medium text-gray-700 w-3">{star}</span>
-                  <svg className="w-3 h-3 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
-                    <path d="M10 15l-5.878 3.09 1.123-6.545L.489 6.91l6.572-.955L10 0l2.939 5.955 6.572.955-4.756 4.635 1.123 6.545z" />
-                  </svg>
-                </div>
-                <div className="flex-1 h-1.5 bg-gray-200 rounded-full overflow-hidden">
-                  <div className="h-full bg-yellow-400 transition-all duration-300" style={{ width: `${percentage}%` }} />
-                </div>
-                <span className="text-xs text-gray-600 w-6 text-right">{count}</span>
+          {reviewsCount > 0 ? (
+            <>
+              <div className="flex items-center justify-between mb-2">
+                <div className="text-xs text-gray-600">Средний рейтинг</div>
+                <div className="text-lg font-semibold text-gray-900">{rating.toFixed(1)}</div>
               </div>
-            ))}
-          </div>
+              <Rating rating={rating} reviewsCount={null} readonly={true} size="md" />
+              <div className="mt-2 space-y-1.5">
+                {ratingDistribution.map(({ star, count, percentage }) => (
+                  <div key={star} className="flex items-center gap-2">
+                    <div className="flex items-center gap-1 w-10">
+                      <span className="text-xs font-medium text-gray-700 w-3">{star}</span>
+                      <svg className="w-3 h-3 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M10 15l-5.878 3.09 1.123-6.545L.489 6.91l6.572-.955L10 0l2.939 5.955 6.572.955-4.756 4.635 1.123 6.545z" />
+                      </svg>
+                    </div>
+                    <div className="flex-1 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                      <div className="h-full bg-yellow-400 transition-all duration-300" style={{ width: `${percentage}%` }} />
+                    </div>
+                    <span className="text-xs text-gray-600 w-6 text-right">{count}</span>
+                  </div>
+                ))}
+              </div>
+            </>
+          ) : (
+            <div className="py-4 text-center">
+              <div className="text-2xl mb-1" aria-hidden>💬</div>
+              <div className="text-sm font-medium text-gray-700">Пока нет отзывов</div>
+              <p className="mt-1 text-xs text-gray-500">Станьте первым, кто оставит отзыв.</p>
+            </div>
+          )}
         </aside>
       </div>
     </div>

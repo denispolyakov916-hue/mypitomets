@@ -39,6 +39,7 @@ import PagesRouter from './Страницы/Роутер'
 
 // Страницы ошибок
 import Error404 from './pages/Errors/Error404'
+import ErrorBoundary from './components/ErrorBoundary'
 
 // Скелетоны для ленивой загрузки
 import { LessonPageSkeleton } from './components/Skeletons'
@@ -88,6 +89,12 @@ const PetEditPage = lazy(() => import('./pages/PetId/PetEditPage'))
 const CoursePageLearning = lazy(() => import('./pages/Training/Learning/CoursePageLearning'))
 const CourseBuilderPage = lazy(() => import('./pages/CourseBuilder/CourseBuilderPage'))
 const BrandKit = lazy(() => import('./pages/BrandKit/BrandKit')) // dev: /brand-kit — витрина Brand UI Kit
+
+// Правовые документы (публичные) — ленивая загрузка
+const PrivacyPolicy = lazy(() => import('./pages/Legal/PrivacyPolicy'))
+const TermsOfUse = lazy(() => import('./pages/Legal/TermsOfUse'))
+const DataConsent = lazy(() => import('./pages/Legal/DataConsent'))
+const Offer = lazy(() => import('./pages/Legal/Offer'))
 
 // Ленивая загрузка React админ-панели
 const AdminApp = lazy(() => import('./admin/App'))
@@ -179,8 +186,57 @@ function App() {
               <Route path="/coming-soon" element={<ComingSoon />} />
               {/* О нас — публичная страница истории и миссии проекта */}
               <Route path="/about" element={<About />} />
-              {/* Brand UI Kit — внутренняя витрина компонентов (публичный route) */}
-              <Route path="/brand-kit" element={<BrandKit />} />
+
+              {/* Правовые документы — публичные (открываются из футера и при регистрации) */}
+              <Route
+                path="/privacy"
+                element={
+                  <Suspense fallback={<Loader />}>
+                    <PrivacyPolicy />
+                  </Suspense>
+                }
+              />
+              <Route
+                path="/terms"
+                element={
+                  <Suspense fallback={<Loader />}>
+                    <TermsOfUse />
+                  </Suspense>
+                }
+              />
+              <Route
+                path="/consent"
+                element={
+                  <Suspense fallback={<Loader />}>
+                    <DataConsent />
+                  </Suspense>
+                }
+              />
+              <Route
+                path="/offer"
+                element={
+                  <Suspense fallback={<Loader />}>
+                    <Offer />
+                  </Suspense>
+                }
+              />
+
+              {/* Brand UI Kit — внутренняя витрина компонентов.
+                  Монтируется ТОЛЬКО в dev: в продакшне /brand-kit отдаёт обычный 404
+                  (не утекает «kitchen-sink» наружу). ErrorBoundary гасит возможные
+                  ошибки рендера демо-компонентов, чтобы не показывать «Что-то пошло не так». */}
+              {import.meta.env.DEV && (
+                <Route
+                  path="/brand-kit"
+                  element={
+                    <ErrorBoundary>
+                      <Suspense fallback={<Loader />}>
+                        <BrandKit />
+                      </Suspense>
+                    </ErrorBoundary>
+                  }
+                />
+              )}
 
               {/* Магазин - Публичный */}
               <Route path="/shop" element={<Shop />} />

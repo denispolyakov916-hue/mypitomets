@@ -34,13 +34,12 @@ const FOOTER_COMPANY = [
   { to: '/coming-soon?name=Вакансии', label: 'Вакансии' },
 ];
 
-// Документы
+// Документы — реальные правовые страницы (см. src/pages/Legal)
 const FOOTER_DOCS = [
-  { to: '/coming-soon?name=Политика+конфиденциальности', label: 'Политика конфиденциальности' },
-  { to: '/coming-soon?name=Пользовательское+соглашение', label: 'Пользовательское соглашение' },
-  { to: '/coming-soon?name=Согласие+на+получение+рекламы', label: 'Согласие на получение рекламы' },
-  { to: '/coming-soon?name=Согласие+на+обработку+персональных+данных', label: 'Согласие на обработку персональных данных' },
-  { to: '/coming-soon?name=Партнёрская+оферта', label: 'Партнёрская оферта' },
+  { to: '/privacy', label: 'Политика конфиденциальности' },
+  { to: '/terms', label: 'Пользовательское соглашение' },
+  { to: '/consent', label: 'Согласие на обработку персональных данных' },
+  { to: '/offer', label: 'Публичная оферта' },
 ];
 
 const SOCIAL_LINKS = [
@@ -153,7 +152,7 @@ export function Footer() {
                 </p>
                 <p className="text-xs text-white/75">
                   Подписываясь, вы соглашаетесь с нашей{' '}
-                  <Link to="/coming-soon?name=Политика+конфиденциальности" className="text-white/90 underline hover:text-white">
+                  <Link to="/privacy" className="text-white/90 underline hover:text-white">
                     Политикой конфиденциальности
                   </Link>
                 </p>

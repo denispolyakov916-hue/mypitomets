@@ -7,12 +7,35 @@
 import { useState, useRef, useEffect, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import { Link, useLocation } from 'react-router-dom'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import { useAuthStore } from '../store/authStore'
 import { usePets } from '../hooks/usePets'
 import HeaderCounters from './HeaderCounters'
-import { ChevronDown, ChevronRight, Coins } from 'lucide-react'
+import {
+  ChevronDown,
+  ChevronRight,
+  Coins,
+  Menu,
+  X,
+  ShoppingBag,
+  UtensilsCrossed,
+  GraduationCap,
+  PawPrint,
+  Dog,
+  User,
+} from 'lucide-react'
 import { buildNavPetsDropdown, staticDropdownNavItems } from '../nav/dropdownNavConfig'
+
+/**
+ * Пункты мобильного меню (бургер). Лейблы — с явными пробелами,
+ * чтобы не слипались («Подбор питания», «Мои питомцы»). См. баг P2.13.
+ */
+const MOBILE_MENU_SECTIONS = [
+  { to: '/shop', label: 'Магазин', icon: ShoppingBag },
+  { to: '/food-recommendation', label: 'Подбор питания', icon: UtensilsCrossed },
+  { to: '/courses', label: 'Курсы', icon: GraduationCap },
+  { to: '/breeds', label: 'Породы', icon: Dog },
+]
 
 const ChevronDownIcon = ({ className = '' }) => (
   <ChevronDown className={`w-3.5 h-3.5 ${className}`} aria-hidden />
@@ -32,6 +55,7 @@ function Navbar() {
   )
   const [openDropdownId, setOpenDropdownId] = useState(null)
   const [dropdownPosition, setDropdownPosition] = useState(null)
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const dropdownRef = useRef(null)
   const dropdownPanelRef = useRef(null)
 
@@ -48,6 +72,11 @@ function Navbar() {
     const name = user?.first_name || user?.email || ''
     return (name.charAt(0) || 'П').toUpperCase()
   })()
+
+  // Верхний пункт мобильного меню: профиль (для авторизованных) либо «Мои питомцы».
+  const mobileAccountLink = isAuthenticated
+    ? { to: '/profile', label: 'Профиль', icon: User }
+    : { to: '/pet-id', label: 'Мои питомцы', icon: PawPrint }
 
   const pillShadow = '0 8px 24px rgba(82, 47, 129, 0.35), 0 2px 8px rgba(0, 0, 0, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.08)'
   const profilePillShadow = '0 2px 8px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.06)'
@@ -94,7 +123,28 @@ function Navbar() {
     }
   }, [openDropdownId])
 
+  // Мобильное меню: закрытие при смене маршрута
+  useEffect(() => {
+    setIsMobileMenuOpen(false)
+  }, [location.pathname])
+
+  // Мобильное меню: Escape закрывает, фон не скроллится пока открыто
+  useEffect(() => {
+    if (!isMobileMenuOpen) return
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') setIsMobileMenuOpen(false)
+    }
+    document.addEventListener('keydown', handleKeyDown)
+    const prevOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown)
+      document.body.style.overflow = prevOverflow
+    }
+  }, [isMobileMenuOpen])
+
   return (
+    <>
     <header
       className="hidden md:block fixed top-0 left-0 right-0 z-50 pt-[env(safe-area-inset-top)] px-3 sm:px-4 md:px-5"
       style={{ paddingTop: 'max(12px, env(safe-area-inset-top))' }}
@@ -334,6 +384,129 @@ function Navbar() {
         </motion.div>
       </div>
     </header>
+
+    {/* ───────── Мобильный бургер (P1.8) ─────────
+        Рендерится поверх верхней мобильной полоски (MobileHomeStrip, z-70).
+        Кнопка-бургер у левого края (там у полоски пустой спейсер) — даёт доступ
+        к разделам и Вход/Регистрация, которых в полоске и нижней панели нет. */}
+    <div
+      className="md:hidden fixed left-4 z-[80] sm:left-5"
+      style={{ top: 'calc(env(safe-area-inset-top, 0px) + 0.5rem)' }}
+    >
+      <button
+        type="button"
+        onClick={() => setIsMobileMenuOpen(true)}
+        className="flex h-9 w-9 items-center justify-center rounded-full bg-primary-700 text-white outline-none border-none cursor-pointer active:scale-95 transition-transform sm:h-10 sm:w-10"
+        style={{ boxShadow: pillShadow }}
+        aria-label="Открыть меню"
+        aria-expanded={isMobileMenuOpen}
+        aria-haspopup="true"
+        aria-controls="mobile-nav-menu"
+      >
+        <Menu className="h-5 w-5 sm:h-6 sm:w-6" aria-hidden />
+      </button>
+    </div>
+
+    {/* Выезжающее мобильное меню + затемнение */}
+    <AnimatePresence>
+      {isMobileMenuOpen && (
+        <div className="md:hidden fixed inset-0 z-[9998]">
+          <motion.div
+            className="absolute inset-0 bg-black/50"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            onClick={() => setIsMobileMenuOpen(false)}
+            aria-hidden
+          />
+          <motion.nav
+            id="mobile-nav-menu"
+            className="absolute right-0 top-0 flex h-full w-[82%] max-w-[340px] flex-col bg-primary-700 shadow-2xl"
+            style={{ paddingTop: 'env(safe-area-inset-top)' }}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Меню навигации"
+            initial={{ x: '100%' }}
+            animate={{ x: 0 }}
+            exit={{ x: '100%' }}
+            transition={{ type: 'tween', duration: 0.25, ease: [0.25, 0.46, 0.45, 0.94] }}
+          >
+            <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
+              <span className="text-white font-semibold text-base">Меню</span>
+              <button
+                type="button"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white outline-none border-none cursor-pointer active:scale-95 transition-transform"
+                aria-label="Закрыть меню"
+              >
+                <X className="h-6 w-6" aria-hidden />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto py-2">
+              {/* Профиль / Мои питомцы */}
+              <Link
+                to={mobileAccountLink.to}
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="flex items-center gap-3 px-5 py-3.5 text-white/95 hover:bg-white/10 transition-colors"
+                aria-current={isLinkActive(mobileAccountLink.to) ? 'page' : undefined}
+              >
+                <mobileAccountLink.icon className="h-5 w-5 text-accent-400 shrink-0" aria-hidden />
+                <span className="font-medium text-[15px]">{mobileAccountLink.label}</span>
+              </Link>
+
+              {MOBILE_MENU_SECTIONS.map(({ to, label, icon: Icon }) => (
+                <Link
+                  key={to}
+                  to={to}
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="flex items-center gap-3 px-5 py-3.5 text-white/95 hover:bg-white/10 transition-colors"
+                  aria-current={isLinkActive(to) ? 'page' : undefined}
+                >
+                  <Icon className="h-5 w-5 text-accent-400 shrink-0" aria-hidden />
+                  <span className="font-medium text-[15px]">{label}</span>
+                </Link>
+              ))}
+            </div>
+
+            {/* Низ меню: Вход / Регистрация (или коротко профиль для авторизованных) */}
+            <div className="border-t border-white/10 px-4 py-4 space-y-2.5" style={{ paddingBottom: 'max(16px, env(safe-area-inset-bottom))' }}>
+              {isAuthenticated ? (
+                <Link
+                  to="/profile"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="flex w-full items-center justify-center gap-2 rounded-full bg-white/10 py-3 text-white font-medium text-[15px]"
+                >
+                  <User className="h-5 w-5 text-accent-400 shrink-0" aria-hidden />
+                  Личный кабинет
+                </Link>
+              ) : (
+                <>
+                  <Link
+                    to="/login"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="flex w-full items-center justify-center rounded-full bg-white/10 py-3 text-white font-medium text-[15px] hover:bg-white/15 transition-colors"
+                    aria-current={location.pathname === '/login' ? 'page' : undefined}
+                  >
+                    Вход
+                  </Link>
+                  <Link
+                    to="/register"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="flex w-full items-center justify-center rounded-full bg-accent-400 py-3 text-primary-800 font-semibold text-[15px] hover:brightness-110 transition-all"
+                    aria-current={location.pathname === '/register' ? 'page' : undefined}
+                  >
+                    Регистрация
+                  </Link>
+                </>
+              )}
+            </div>
+          </motion.nav>
+        </div>
+      )}
+    </AnimatePresence>
+    </>
   )
 }
 
