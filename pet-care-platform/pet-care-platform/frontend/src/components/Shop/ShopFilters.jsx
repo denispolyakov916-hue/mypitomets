@@ -13,6 +13,7 @@
 
 import React, { useState, useEffect, useMemo, memo, useRef } from 'react'
 import { Link } from 'react-router-dom'
+import { formatProductCount } from '../../utils/format'
 
 // Category icons mapping
 const CATEGORY_ICONS = {
@@ -1126,9 +1127,9 @@ const ShopFilters = memo(function ShopFilters({
           type="button"
           onClick={() => onShowResults?.()}
           className={`w-full rounded-xl bg-primary-700 hover:bg-primary-800 text-white font-medium flex items-center justify-center transition-colors ${largeButtons ? 'py-5 px-4 text-base' : 'py-3.5 px-4 text-sm'}`}
-          aria-label={`Показать ${productCount.toLocaleString('ru-RU')} товаров`}
+          aria-label={`Показать ${formatProductCount(productCount)}`}
         >
-          Показать {productCount.toLocaleString('ru-RU')} товаров
+          Показать {formatProductCount(productCount)}
         </button>
         <button
           type="button"

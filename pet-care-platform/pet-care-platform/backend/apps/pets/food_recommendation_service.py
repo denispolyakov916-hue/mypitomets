@@ -857,6 +857,24 @@ class FoodRecommendationService:
             slots = []
         if treat:
             slots.append((treat, treat_share, ration.get('treat_alternatives') or []))
+
+        # Честные сообщения: если для запрошенного типа питания не осталось ни одного
+        # корма ИМЕННО из-за исключения по аллергии — не подсовываем несоответствующий
+        # продукт, а честно сообщаем. Применяется ко всем вариантам и набору в корзину.
+        if ration.get('has_allergens'):
+            def _excluded_all(stats):
+                stats = stats or {}
+                return bool(stats.get('total')) and not stats.get('remaining')
+            if food_type in ('dry', 'multi') and not dry and _excluded_all(ration.get('dry_stats')):
+                filters.warnings.append(
+                    'Сухой корм без выбранных аллергенов не найден — подберите другой '
+                    'тип питания или обратитесь к специалисту.'
+                )
+            if food_type in ('wet', 'multi') and not wet and _excluded_all(ration.get('wet_stats')):
+                filters.warnings.append(
+                    'Влажный корм без выбранных аллергенов не найден — подберите другой '
+                    'тип питания или обратитесь к специалисту.'
+                )
         components = []
         for cand, share, alts in slots:
             off = cand['offer']

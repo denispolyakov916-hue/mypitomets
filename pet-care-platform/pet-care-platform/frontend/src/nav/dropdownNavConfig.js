@@ -12,6 +12,7 @@ import {
   FileHeart,
   Activity,
   PawPrint,
+  CalendarDays,
 } from 'lucide-react'
 
 export const navShop = {
@@ -46,7 +47,17 @@ export const navHealth = {
   ],
 }
 
-export const staticDropdownNavItems = [navShop, navNutrition, navHealth]
+export const navContent = {
+  id: 'content',
+  label: 'Сообщество',
+  icon: CalendarDays,
+  sectionTitle: 'СООБЩЕСТВО',
+  items: [
+    { label: 'Новости и мероприятия', to: '/news-events', description: 'сходки, выставки, вебинары', icon: CalendarDays },
+  ],
+}
+
+export const staticDropdownNavItems = [navShop, navContent, navNutrition, navHealth]
 
 /** Дропдаун «Питомцы»: «Мои питомцы» + список питомцев */
 export function buildNavPetsDropdown(pets) {

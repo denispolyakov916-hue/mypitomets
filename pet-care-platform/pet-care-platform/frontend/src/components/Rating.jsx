@@ -98,18 +98,23 @@ function Rating({
         })}
       </div>
       
-      {/* Отображение рейтинга и количества отзывов */}
-      {(safeRating > 0 || reviewsCount !== null) && (
+      {/* Отображение рейтинга и количества отзывов.
+          Не показываем «0.0» при отсутствии оценки — это вводит в заблуждение (P2.14). */}
+      {safeRating > 0 ? (
         <div className="flex items-center gap-1.5 text-sm">
           <span className="font-medium text-gray-700">
-            {safeRating > 0 ? safeRating.toFixed(1) : '0.0'}
+            {safeRating.toFixed(1)}
           </span>
-          {reviewsCount !== null && reviewsCount !== undefined && (
+          {reviewsCount !== null && reviewsCount !== undefined && reviewsCount > 0 && (
             <span className="text-gray-500">
-              ({reviewsCount} {reviewsCount === 1 ? 'отзыв' : reviewsCount < 5 ? 'отзыва' : 'отзывов'})
+              ({reviewsCount} {reviewsCount === 1 ? 'отзыв' : reviewsCount % 10 >= 2 && reviewsCount % 10 <= 4 && (reviewsCount % 100 < 10 || reviewsCount % 100 >= 20) ? 'отзыва' : 'отзывов'})
             </span>
           )}
         </div>
+      ) : (
+        reviewsCount !== null && reviewsCount !== undefined && (
+          <span className="text-sm text-gray-400">Нет отзывов</span>
+        )
       )}
     </div>
   )

@@ -6,6 +6,7 @@ import {
   weightStepFor,
   hasValidAge,
   formatAgeLabel,
+  ageError,
 } from './petAge'
 
 // Фиксированная «сегодня» — 15 июня 2026 (локально), чтобы тесты были детерминированы.
@@ -22,6 +23,25 @@ describe('draftToDateOfBirth', () => {
 
   it('режим years: целые годы', () => {
     expect(draftToDateOfBirth({ ageMode: 'years', ageYears: 2 }, NOW)).toBe('2024-06-15')
+  })
+
+  it('BUG1: ageYears без выставленного ageMode (дефолтная вкладка «Лет») работает', () => {
+    // Регрессия: при отсутствии ageMode читалось legacy-поле age, и «Далее» не включалось.
+    expect(draftToDateOfBirth({ ageYears: '3' }, NOW)).toBe('2023-06-15')
+    expect(hasValidAge({ ageYears: '3' })).toBe(true)
+  })
+
+  it('BUG1: режим years принимает строку с запятой', () => {
+    expect(draftToDateOfBirth({ ageMode: 'years', ageYears: '1,5' }, NOW)).toBe('2024-12-15')
+  })
+
+  it('BUG1: будущая дата рождения → null (отклоняется)', () => {
+    expect(draftToDateOfBirth({ ageMode: 'dob', dob: '2030-01-01' }, NOW)).toBeNull()
+    expect(hasValidAge({ ageMode: 'dob', dob: '2030-01-01' })).toBe(false)
+  })
+
+  it('BUG1: сегодняшняя дата рождения принимается (не «будущее»)', () => {
+    expect(draftToDateOfBirth({ ageMode: 'dob', dob: '2026-06-15' }, NOW)).toBe('2026-06-15')
   })
 
   it('режим years: дробные годы считаются по месяцам', () => {
@@ -78,6 +98,26 @@ describe('hasValidAge', () => {
   it('true при заданном возрасте, false при пустом', () => {
     expect(hasValidAge({ ageMode: 'months', ageMonths: 2 })).toBe(true)
     expect(hasValidAge({})).toBe(false)
+  })
+  it('true для всех трёх режимов одинаково (years/months/dob)', () => {
+    expect(hasValidAge({ ageMode: 'years', ageYears: '3' })).toBe(true)
+    expect(hasValidAge({ ageMode: 'months', ageMonths: '8' })).toBe(true)
+    expect(hasValidAge({ ageMode: 'dob', dob: '2025-01-20' })).toBe(true)
+  })
+})
+
+describe('ageError', () => {
+  it('пустое поле — без ошибки (не трогали)', () => {
+    expect(ageError({ ageMode: 'years' }, NOW)).toBeNull()
+    expect(ageError({ ageMode: 'dob' }, NOW)).toBeNull()
+    expect(ageError({ ageMode: 'months' }, NOW)).toBeNull()
+  })
+  it('будущая дата рождения → текст ошибки', () => {
+    expect(ageError({ ageMode: 'dob', dob: '2030-01-01' }, NOW)).toBe('Дата рождения не может быть в будущем')
+  })
+  it('корректные значения → без ошибки', () => {
+    expect(ageError({ ageMode: 'years', ageYears: '3' }, NOW)).toBeNull()
+    expect(ageError({ ageMode: 'dob', dob: '2025-01-20' }, NOW)).toBeNull()
   })
 })
 

@@ -6,6 +6,15 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowUp } from 'lucide-react';
+import { useAuthStore } from '../store/authStore';
+
+// Партнёрские входы. Подрядчик по корму и специалист по курсам — видны всем
+// (это входы в их панели; сами панели закрыты server-side). Ссылка на админку
+// владельца показывается ТОЛЬКО суперпользователю (владельцу) — см. isOwner ниже.
+const FOOTER_PARTNERS = [
+  { to: '/supplier-panel', label: 'Подрядчик по корму' },
+  { to: '/admin-panel', label: 'Специалист по курсам' },
+];
 
 // Сервисы — соответствуют разделам главной (Питомцы, Питание, Здоровье, обучение)
 const FOOTER_SERVICES = [
@@ -34,13 +43,12 @@ const FOOTER_COMPANY = [
   { to: '/coming-soon?name=Вакансии', label: 'Вакансии' },
 ];
 
-// Документы
+// Документы — реальные правовые страницы (см. src/pages/Legal)
 const FOOTER_DOCS = [
-  { to: '/coming-soon?name=Политика+конфиденциальности', label: 'Политика конфиденциальности' },
-  { to: '/coming-soon?name=Пользовательское+соглашение', label: 'Пользовательское соглашение' },
-  { to: '/coming-soon?name=Согласие+на+получение+рекламы', label: 'Согласие на получение рекламы' },
-  { to: '/coming-soon?name=Согласие+на+обработку+персональных+данных', label: 'Согласие на обработку персональных данных' },
-  { to: '/coming-soon?name=Партнёрская+оферта', label: 'Партнёрская оферта' },
+  { to: '/privacy', label: 'Политика конфиденциальности' },
+  { to: '/terms', label: 'Пользовательское соглашение' },
+  { to: '/consent', label: 'Согласие на обработку персональных данных' },
+  { to: '/offer', label: 'Публичная оферта' },
 ];
 
 const SOCIAL_LINKS = [
@@ -114,6 +122,10 @@ function FooterColumn({ title, links }) {
 export function Footer() {
   const [email, setEmail] = useState('');
   const currentYear = new Date().getFullYear();
+  const user = useAuthStore((s) => s.user);
+  // Владелец = суперпользователь. Ссылку на «Мою админку» показываем ТОЛЬКО ему.
+  // Это лишь видимость в футере; доступ к панелям всё равно проверяется на сервере.
+  const isOwner = user?.is_superuser === true;
 
   const handleSubscribe = (e) => {
     e.preventDefault();
@@ -153,7 +165,7 @@ export function Footer() {
                 </p>
                 <p className="text-xs text-white/75">
                   Подписываясь, вы соглашаетесь с нашей{' '}
-                  <Link to="/coming-soon?name=Политика+конфиденциальности" className="text-white/90 underline hover:text-white">
+                  <Link to="/privacy" className="text-white/90 underline hover:text-white">
                     Политикой конфиденциальности
                   </Link>
                 </p>
@@ -174,6 +186,38 @@ export function Footer() {
                 </form>
               </div>
             </div>
+          </div>
+        </div>
+
+        {/* Для партнёров — отдельная секция. Подрядчик по корму и специалист по
+            курсам видны всем; «Моя админка» — только владельцу (is_superuser). */}
+        <div className="mt-10 pt-6 border-t border-white/15">
+          <h4 className="font-semibold text-white mb-3">Для партнёров</h4>
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
+            {FOOTER_PARTNERS.map(({ to, label }) => (
+              <Link
+                key={label}
+                to={to}
+                className="text-white/90 hover:text-white transition-colors"
+              >
+                {label}
+              </Link>
+            ))}
+            {/* Заявка на партнёрский доступ — видна всем (вход в форму заявки). */}
+            <Link
+              to="/partner-access"
+              className="text-white/90 hover:text-white transition-colors"
+            >
+              Стать партнёром
+            </Link>
+            {isOwner && (
+              <Link
+                to="/admin-panel"
+                className="font-semibold text-amber-300 hover:text-amber-200 transition-colors"
+              >
+                Моя админка
+              </Link>
+            )}
           </div>
         </div>
       </div>

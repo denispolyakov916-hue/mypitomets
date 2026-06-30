@@ -81,6 +81,9 @@ urlpatterns = [
     # Интеграции с поставщиками: Dinozavrik catalog.sync, fulfillment webhooks
     path('api/integrations/', include('apps.integrations.urls')),
 
+    # Новости и Мероприятия (публичный контент + календарь)
+    path('api/events/', include('apps.events.urls')),
+
     # Календарь событий питомцев теперь в /api/pets/calendar/
 
     # Загрузка файлов и медиа
@@ -95,6 +98,10 @@ urlpatterns = [
     # Кабинет поставщика
     # Обрабатывает: ассортимент поставщика, заявки, продажи, возвраты, импорты
     path('api/supplier/', include('config.urls_supplier')),
+
+    # Заявки на партнёрский доступ
+    # Обрабатывает: запрос/просмотр/модерацию доступа к кабинетам партнёров
+    path('api/partner-access/', include('config.urls_partner_access')),
     
     # Health check и мониторинг
     # Health check доступен без аутентификации для использования в мониторинге

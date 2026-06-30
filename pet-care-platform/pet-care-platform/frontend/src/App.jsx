@@ -40,6 +40,7 @@ import PagesRouter from './Страницы/Роутер'
 
 // Страницы ошибок
 import Error404 from './pages/Errors/Error404'
+import ErrorBoundary from './components/ErrorBoundary'
 
 // Скелетоны для ленивой загрузки
 import { LessonPageSkeleton } from './components/Skeletons'
@@ -64,6 +65,9 @@ import About from './pages/About/About'
 // Ленивая загрузка страниц пород
 const BreedsPage = lazy(() => import('./pages/Breeds/BreedsPage'))
 const BreedDetailPage = lazy(() => import('./pages/Breeds/BreedDetailPage'))
+const NewsEventsPage = lazy(() => import('./pages/NewsEvents/NewsEventsPage'))
+const EventDetailPage = lazy(() => import('./pages/NewsEvents/EventDetailPage'))
+const NewsDetailPage = lazy(() => import('./pages/NewsEvents/NewsDetailPage'))
 import Shop from './pages/Shop/Shop'
 import ProductDetail from './pages/Shop/ProductDetail'
 import Cart from './pages/Shop/Cart'
@@ -73,6 +77,7 @@ import Payment from './pages/Payment/Payment'
 import Profile from './pages/Dashboard/Profile'
 import Favorites from './pages/Favorites'
 import SharedWishlistPage from './pages/Wishlist/SharedWishlistPage'
+import RequestAccessPage from './pages/PartnerAccess/RequestAccessPage'
 
 // Ленивая загрузка некритичных страниц (улучшает время первой загрузки)
 const UnifiedCheckout = lazy(() => import('./pages/Checkout/UnifiedCheckout'))
@@ -89,6 +94,12 @@ const PetEditPage = lazy(() => import('./pages/PetId/PetEditPage'))
 const CoursePageLearning = lazy(() => import('./pages/Training/Learning/CoursePageLearning'))
 const CourseBuilderPage = lazy(() => import('./pages/CourseBuilder/CourseBuilderPage'))
 const BrandKit = lazy(() => import('./pages/BrandKit/BrandKit')) // dev: /brand-kit — витрина Brand UI Kit
+
+// Правовые документы (публичные) — ленивая загрузка
+const PrivacyPolicy = lazy(() => import('./pages/Legal/PrivacyPolicy'))
+const TermsOfUse = lazy(() => import('./pages/Legal/TermsOfUse'))
+const DataConsent = lazy(() => import('./pages/Legal/DataConsent'))
+const Offer = lazy(() => import('./pages/Legal/Offer'))
 
 // Ленивая загрузка React админ-панели
 const AdminApp = lazy(() => import('./admin/App'))
@@ -188,12 +199,66 @@ function App() {
               <Route path="/forgot-password" element={<ForgotPassword />} />
               <Route path="/reset-password" element={<ResetPassword />} />
 
+              {/* Заявка на партнёрский доступ — публичный маршрут.
+                  Гость видит приглашение войти; залогиненный — форму заявки.
+                  Предвыбор роли через ?role=supplier|course_specialist. */}
+              <Route path="/partner-access" element={<RequestAccessPage />} />
+
               {/* Заглушка «В разработке» — публичная */}
               <Route path="/coming-soon" element={<ComingSoon />} />
               {/* О нас — публичная страница истории и миссии проекта */}
               <Route path="/about" element={<About />} />
-              {/* Brand UI Kit — внутренняя витрина компонентов (публичный route) */}
-              <Route path="/brand-kit" element={<BrandKit />} />
+
+              {/* Правовые документы — публичные (открываются из футера и при регистрации) */}
+              <Route
+                path="/privacy"
+                element={
+                  <Suspense fallback={<Loader />}>
+                    <PrivacyPolicy />
+                  </Suspense>
+                }
+              />
+              <Route
+                path="/terms"
+                element={
+                  <Suspense fallback={<Loader />}>
+                    <TermsOfUse />
+                  </Suspense>
+                }
+              />
+              <Route
+                path="/consent"
+                element={
+                  <Suspense fallback={<Loader />}>
+                    <DataConsent />
+                  </Suspense>
+                }
+              />
+              <Route
+                path="/offer"
+                element={
+                  <Suspense fallback={<Loader />}>
+                    <Offer />
+                  </Suspense>
+                }
+              />
+
+              {/* Brand UI Kit — внутренняя витрина компонентов.
+                  Монтируется ТОЛЬКО в dev: в продакшне /brand-kit отдаёт обычный 404
+                  (не утекает «kitchen-sink» наружу). ErrorBoundary гасит возможные
+                  ошибки рендера демо-компонентов, чтобы не показывать «Что-то пошло не так». */}
+              {import.meta.env.DEV && (
+                <Route
+                  path="/brand-kit"
+                  element={
+                    <ErrorBoundary>
+                      <Suspense fallback={<Loader />}>
+                        <BrandKit />
+                      </Suspense>
+                    </ErrorBoundary>
+                  }
+                />
+              )}
 
               {/* Магазин - Публичный */}
               <Route path="/shop" element={<Shop />} />
@@ -223,6 +288,11 @@ function App() {
               {/* Курсы - Публичный каталог */}
               <Route path="/courses" element={<Courses />} />
               <Route path="/courses/:id" element={<CourseDetail />} />
+
+              {/* Новости и Мероприятия - Публичный */}
+              <Route path="/news-events" element={<Suspense fallback={<Loader />}><NewsEventsPage /></Suspense>} />
+              <Route path="/news-events/events/:slug" element={<Suspense fallback={<Loader />}><EventDetailPage /></Suspense>} />
+              <Route path="/news-events/news/:slug" element={<Suspense fallback={<Loader />}><NewsDetailPage /></Suspense>} />
 
               {/* Оплата - Требует аутентификации */}
               <Route path="/payment" element={<Payment />} />
