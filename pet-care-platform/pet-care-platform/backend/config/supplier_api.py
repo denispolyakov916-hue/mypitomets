@@ -276,19 +276,36 @@ class SupplierProfileViewSet(viewsets.ViewSet):
 
     @action(detail=False, methods=['get'])
     def me(self, request):
-        accesses = _supplier_accesses(request.user)
+        if _is_admin_user(request.user):
+            access = _active_access(request)
+            accesses = []
+            if access:
+                accesses.append({
+                    'id': 'admin',
+                    'supplier': SupplierSerializer(access.supplier).data,
+                    'role': access.role,
+                    'can_edit_catalog': access.can_edit_catalog,
+                    'can_view_finance': access.can_view_finance,
+                    'can_export_reports': access.can_export_reports,
+                    'is_active': True,
+                })
+        else:
+            accesses = SupplierAccessSerializer(_supplier_accesses(request.user), many=True).data
         return Response({
             'user': {
                 'id': str(request.user.id),
                 'email': request.user.email,
                 'role': request.user.role,
             },
-            'accesses': SupplierAccessSerializer(accesses, many=True).data,
+            'accesses': accesses,
         })
 
     @action(detail=False, methods=['get'])
     def suppliers(self, request):
-        suppliers = [access.supplier for access in _supplier_accesses(request.user)]
+        if _is_admin_user(request.user):
+            suppliers = Supplier.objects.filter(is_active=True).order_by('name')
+        else:
+            suppliers = [access.supplier for access in _supplier_accesses(request.user)]
         return Response({'suppliers': SupplierSerializer(suppliers, many=True).data})
 
 
