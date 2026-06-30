@@ -14,7 +14,7 @@ from decimal import Decimal
 from django.db.models import Count, Sum, Avg, Q, F
 from django.db.models.functions import TruncDate
 from django.utils import timezone
-from django.utils.dateparse import parse_date
+from django.utils.dateparse import parse_date, parse_datetime
 from django.http import HttpResponse
 
 from rest_framework import viewsets, status
@@ -30,6 +30,7 @@ from apps.shop.models import Product, Order, OrderItem
 from apps.training.models import Course, UserCourse, UserCourseProgress
 from apps.payments.models import Payment
 from apps.reviews.models import Review
+from apps.events.models import Event, NewsPost
 
 # Импорт системы кэширования
 from .admin_cache import (
@@ -1366,6 +1367,344 @@ class AdminPetViewSet(AdminModelViewSet):
                 {'error': 'Питомец не найден'},
                 status=status.HTTP_404_NOT_FOUND
             )
+
+
+class IsAdminOrMarketingManager(BasePermission):
+    """Доступ к контент-кабинету: администратор или маркетолог."""
+
+    def has_permission(self, request, view):
+        if not request.user or not request.user.is_authenticated:
+            return False
+        role = getattr(request.user, 'role', None)
+        return request.user.is_staff or request.user.is_superuser or role in ['admin', 'marketing_manager']
+
+
+def _admin_bool(value, default=False):
+    if isinstance(value, bool):
+        return value
+    if value in [None, '']:
+        return default
+    return str(value).lower() in ['1', 'true', 'yes', 'on']
+
+
+def _admin_datetime(value):
+    if not value:
+        return None
+    parsed = parse_datetime(value)
+    if parsed and timezone.is_naive(parsed):
+        parsed = timezone.make_aware(parsed, timezone.get_current_timezone())
+    return parsed
+
+
+class AdminMarketingDashboardViewSet(viewsets.ViewSet):
+    """Сводка для отдельного кабинета маркетолога."""
+
+    permission_classes = [IsAdminOrMarketingManager]
+
+    def list(self, request):
+        now = timezone.now()
+        return Response({
+            'news': {
+                'total': NewsPost.objects.count(),
+                'published': NewsPost.objects.filter(status='published').count(),
+                'drafts': NewsPost.objects.filter(status='draft').count(),
+                'featured': NewsPost.objects.filter(is_featured=True).count(),
+            },
+            'events': {
+                'total': Event.objects.count(),
+                'published': Event.objects.filter(status='published').count(),
+                'drafts': Event.objects.filter(status='draft').count(),
+                'featured': Event.objects.filter(is_featured=True).count(),
+                'upcoming': Event.objects.filter(status='published', start_at__gte=now).count(),
+            },
+        })
+
+
+class AdminMarketingNewsViewSet(viewsets.GenericViewSet):
+    """CRUD новостей для маркетолога."""
+
+    permission_classes = [IsAdminOrMarketingManager]
+    pagination_class = AdminPagination
+
+    def get_queryset(self):
+        queryset = NewsPost.objects.select_related('author', 'related_event').all()
+        search = self.request.query_params.get('search', '').strip()
+        if search:
+            queryset = queryset.filter(
+                Q(title__icontains=search) |
+                Q(excerpt__icontains=search) |
+                Q(category__icontains=search)
+            )
+        status_filter = self.request.query_params.get('status', '').strip()
+        if status_filter:
+            queryset = queryset.filter(status=status_filter)
+        category = self.request.query_params.get('category', '').strip()
+        if category:
+            queryset = queryset.filter(category=category)
+        featured = self.request.query_params.get('featured', '').strip()
+        if featured:
+            queryset = queryset.filter(is_featured=_admin_bool(featured))
+        return queryset.order_by('-updated_at', '-created_at')
+
+    def _serialize(self, post):
+        data = post.to_dict(with_body=True)
+        data.update({
+            'author_email': post.author.email if post.author else None,
+            'related_event_id': str(post.related_event_id) if post.related_event_id else None,
+            'related_event_title': post.related_event.title if post.related_event_id else None,
+            'created_at': post.created_at.isoformat() if post.created_at else None,
+            'updated_at': post.updated_at.isoformat() if post.updated_at else None,
+        })
+        return data
+
+    def _apply_payload(self, post, payload, partial=True):
+        required = [] if partial else ['title']
+        missing = [field for field in required if not str(payload.get(field, '')).strip()]
+        if missing:
+            return {'error': f'Заполните поля: {", ".join(missing)}'}
+
+        text_fields = ['title', 'slug', 'excerpt', 'body', 'cover_image_url', 'category']
+        for field in text_fields:
+            if field in payload:
+                setattr(post, field, (payload.get(field) or '').strip() if field != 'body' else payload.get(field) or '')
+
+        if 'status' in payload:
+            if payload['status'] not in ['draft', 'published']:
+                return {'error': 'Некорректный статус новости'}
+            post.status = payload['status']
+        if 'is_featured' in payload:
+            post.is_featured = _admin_bool(payload.get('is_featured'))
+        if 'published_at' in payload:
+            post.published_at = _admin_datetime(payload.get('published_at'))
+        if 'related_event_id' in payload or 'related_event' in payload:
+            event_id = payload.get('related_event_id') or payload.get('related_event')
+            if event_id:
+                try:
+                    post.related_event = Event.objects.get(id=event_id)
+                except Event.DoesNotExist:
+                    return {'error': 'Связанное мероприятие не найдено'}
+            else:
+                post.related_event = None
+
+        return None
+
+    def list(self, request):
+        queryset = self.get_queryset()
+        page = self.paginate_queryset(queryset)
+        rows = [self._serialize(post) for post in (page if page is not None else queryset)]
+        if page is not None:
+            return self.get_paginated_response(rows)
+        return Response(rows)
+
+    def retrieve(self, request, pk=None):
+        try:
+            return Response(self._serialize(self.get_queryset().get(id=pk)))
+        except NewsPost.DoesNotExist:
+            return Response({'error': 'Новость не найдена'}, status=status.HTTP_404_NOT_FOUND)
+
+    def create(self, request):
+        post = NewsPost(author=request.user)
+        error = self._apply_payload(post, request.data, partial=False)
+        if error:
+            return Response(error, status=status.HTTP_400_BAD_REQUEST)
+        post.save()
+        return Response(self._serialize(post), status=status.HTTP_201_CREATED)
+
+    def update(self, request, pk=None):
+        try:
+            post = NewsPost.objects.get(id=pk)
+        except NewsPost.DoesNotExist:
+            return Response({'error': 'Новость не найдена'}, status=status.HTTP_404_NOT_FOUND)
+        error = self._apply_payload(post, request.data, partial=False)
+        if error:
+            return Response(error, status=status.HTTP_400_BAD_REQUEST)
+        post.save()
+        return Response(self._serialize(post))
+
+    def partial_update(self, request, pk=None):
+        try:
+            post = NewsPost.objects.get(id=pk)
+        except NewsPost.DoesNotExist:
+            return Response({'error': 'Новость не найдена'}, status=status.HTTP_404_NOT_FOUND)
+        error = self._apply_payload(post, request.data, partial=True)
+        if error:
+            return Response(error, status=status.HTTP_400_BAD_REQUEST)
+        post.save()
+        return Response(self._serialize(post))
+
+    def destroy(self, request, pk=None):
+        deleted, _ = NewsPost.objects.filter(id=pk).delete()
+        if not deleted:
+            return Response({'error': 'Новость не найдена'}, status=status.HTTP_404_NOT_FOUND)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @action(detail=True, methods=['post'])
+    def publish(self, request, pk=None):
+        try:
+            post = NewsPost.objects.get(id=pk)
+        except NewsPost.DoesNotExist:
+            return Response({'error': 'Новость не найдена'}, status=status.HTTP_404_NOT_FOUND)
+        post.status = 'published'
+        if not post.published_at:
+            post.published_at = timezone.now()
+        post.save()
+        return Response(self._serialize(post))
+
+    @action(detail=True, methods=['post'])
+    def unpublish(self, request, pk=None):
+        try:
+            post = NewsPost.objects.get(id=pk)
+        except NewsPost.DoesNotExist:
+            return Response({'error': 'Новость не найдена'}, status=status.HTTP_404_NOT_FOUND)
+        post.status = 'draft'
+        post.save(update_fields=['status', 'updated_at'])
+        return Response(self._serialize(post))
+
+
+class AdminMarketingEventViewSet(viewsets.GenericViewSet):
+    """CRUD мероприятий для маркетолога."""
+
+    permission_classes = [IsAdminOrMarketingManager]
+    pagination_class = AdminPagination
+
+    def get_queryset(self):
+        queryset = Event.objects.select_related('author').all()
+        search = self.request.query_params.get('search', '').strip()
+        if search:
+            queryset = queryset.filter(
+                Q(title__icontains=search) |
+                Q(summary__icontains=search) |
+                Q(location__icontains=search)
+            )
+        status_filter = self.request.query_params.get('status', '').strip()
+        if status_filter:
+            queryset = queryset.filter(status=status_filter)
+        event_type = self.request.query_params.get('event_type', '').strip()
+        if event_type:
+            queryset = queryset.filter(event_type=event_type)
+        featured = self.request.query_params.get('featured', '').strip()
+        if featured:
+            queryset = queryset.filter(is_featured=_admin_bool(featured))
+        return queryset.order_by('-updated_at', 'start_at')
+
+    def _serialize(self, event):
+        data = event.to_dict()
+        data.update({
+            'author_email': event.author.email if event.author else None,
+            'created_at': event.created_at.isoformat() if event.created_at else None,
+            'updated_at': event.updated_at.isoformat() if event.updated_at else None,
+            'saved_count': getattr(event, 'saved_count', event.saved_by.count()),
+        })
+        return data
+
+    def _apply_payload(self, event, payload, partial=True):
+        required = [] if partial else ['title', 'start_at']
+        missing = [field for field in required if not str(payload.get(field, '')).strip()]
+        if missing:
+            return {'error': f'Заполните поля: {", ".join(missing)}'}
+
+        text_fields = ['title', 'slug', 'summary', 'description', 'cover_image_url', 'location', 'online_url']
+        for field in text_fields:
+            if field in payload:
+                value = payload.get(field)
+                setattr(event, field, (value or '').strip() if field != 'description' else value or '')
+
+        if 'event_type' in payload:
+            allowed_types = {choice[0] for choice in Event.EVENT_TYPES}
+            if payload['event_type'] not in allowed_types:
+                return {'error': 'Некорректный тип мероприятия'}
+            event.event_type = payload['event_type']
+        if 'status' in payload:
+            allowed_statuses = {choice[0] for choice in Event.STATUS_CHOICES}
+            if payload['status'] not in allowed_statuses:
+                return {'error': 'Некорректный статус мероприятия'}
+            event.status = payload['status']
+        if 'start_at' in payload:
+            parsed = _admin_datetime(payload.get('start_at'))
+            if not parsed:
+                return {'error': 'Укажите корректную дату начала'}
+            event.start_at = parsed
+        if 'end_at' in payload:
+            event.end_at = _admin_datetime(payload.get('end_at'))
+        if 'published_at' in payload:
+            event.published_at = _admin_datetime(payload.get('published_at'))
+        if 'is_online' in payload:
+            event.is_online = _admin_bool(payload.get('is_online'))
+        if 'is_featured' in payload:
+            event.is_featured = _admin_bool(payload.get('is_featured'))
+        return None
+
+    def list(self, request):
+        queryset = self.get_queryset().annotate(saved_count=Count('saved_by', distinct=True))
+        page = self.paginate_queryset(queryset)
+        rows = [self._serialize(event) for event in (page if page is not None else queryset)]
+        if page is not None:
+            return self.get_paginated_response(rows)
+        return Response(rows)
+
+    def retrieve(self, request, pk=None):
+        try:
+            return Response(self._serialize(self.get_queryset().get(id=pk)))
+        except Event.DoesNotExist:
+            return Response({'error': 'Мероприятие не найдено'}, status=status.HTTP_404_NOT_FOUND)
+
+    def create(self, request):
+        event = Event(author=request.user)
+        error = self._apply_payload(event, request.data, partial=False)
+        if error:
+            return Response(error, status=status.HTTP_400_BAD_REQUEST)
+        event.save()
+        return Response(self._serialize(event), status=status.HTTP_201_CREATED)
+
+    def update(self, request, pk=None):
+        try:
+            event = Event.objects.get(id=pk)
+        except Event.DoesNotExist:
+            return Response({'error': 'Мероприятие не найдено'}, status=status.HTTP_404_NOT_FOUND)
+        error = self._apply_payload(event, request.data, partial=False)
+        if error:
+            return Response(error, status=status.HTTP_400_BAD_REQUEST)
+        event.save()
+        return Response(self._serialize(event))
+
+    def partial_update(self, request, pk=None):
+        try:
+            event = Event.objects.get(id=pk)
+        except Event.DoesNotExist:
+            return Response({'error': 'Мероприятие не найдено'}, status=status.HTTP_404_NOT_FOUND)
+        error = self._apply_payload(event, request.data, partial=True)
+        if error:
+            return Response(error, status=status.HTTP_400_BAD_REQUEST)
+        event.save()
+        return Response(self._serialize(event))
+
+    def destroy(self, request, pk=None):
+        deleted, _ = Event.objects.filter(id=pk).delete()
+        if not deleted:
+            return Response({'error': 'Мероприятие не найдено'}, status=status.HTTP_404_NOT_FOUND)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @action(detail=True, methods=['post'])
+    def publish(self, request, pk=None):
+        try:
+            event = Event.objects.get(id=pk)
+        except Event.DoesNotExist:
+            return Response({'error': 'Мероприятие не найдено'}, status=status.HTTP_404_NOT_FOUND)
+        event.status = 'published'
+        if not event.published_at:
+            event.published_at = timezone.now()
+        event.save()
+        return Response(self._serialize(event))
+
+    @action(detail=True, methods=['post'])
+    def unpublish(self, request, pk=None):
+        try:
+            event = Event.objects.get(id=pk)
+        except Event.DoesNotExist:
+            return Response({'error': 'Мероприятие не найдено'}, status=status.HTTP_404_NOT_FOUND)
+        event.status = 'draft'
+        event.save(update_fields=['status', 'updated_at'])
+        return Response(self._serialize(event))
 
 
 class AdminProductViewSet(AdminModelViewSet):

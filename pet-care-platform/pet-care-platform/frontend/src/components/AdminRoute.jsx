@@ -108,6 +108,10 @@ const AdminRoute = ({ children }) => {
     return <Navigate to="/specialist-panel/courses" replace />;
   }
 
+  if (user.role === 'marketing_manager') {
+    return <Navigate to="/marketing-panel/content" replace />;
+  }
+
   // Проверяем права: общая админка доступна только администраторам компании
   const hasAdminAccess = user.is_staff || user.is_superuser || user.role === 'admin';
   if (!hasAdminAccess) {
@@ -153,7 +157,7 @@ const AdminRoute = ({ children }) => {
             <p className="text-red-200/60 text-xs uppercase tracking-wider mb-2">Текущий аккаунт</p>
             <p className="text-white font-medium">{user.email}</p>
             <p className="text-red-300/60 text-sm mt-1">
-              Роль: {user.role === 'admin' ? 'Администратор' : user.role === 'course_creator' ? 'Создатель курсов' : 'Пользователь'}
+              Роль: {user.role === 'admin' ? 'Администратор' : user.role === 'course_creator' ? 'Создатель курсов' : user.role === 'marketing_manager' ? 'Маркетолог' : 'Пользователь'}
             </p>
           </div>
 

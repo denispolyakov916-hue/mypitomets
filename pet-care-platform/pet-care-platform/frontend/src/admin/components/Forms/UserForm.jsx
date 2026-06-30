@@ -194,6 +194,7 @@ const UserForm = ({
             >
               <option value="user">Пользователь</option>
               <option value="course_creator">Создатель курсов</option>
+              <option value="marketing_manager">Маркетолог</option>
               <option value="admin">Администратор</option>
             </FormField>
           </div>

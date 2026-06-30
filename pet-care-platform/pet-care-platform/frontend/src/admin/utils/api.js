@@ -54,9 +54,13 @@ adminApi.interceptors.response.use(
       localStorage.removeItem('access_token');
       localStorage.removeItem('refresh_token');
       // Редирект на страницу входа админки, а не на основной login
-      window.location.href = window.location.pathname.startsWith('/specialist-panel')
-        ? '/specialist-panel'
-        : '/admin-panel';
+      if (window.location.pathname.startsWith('/specialist-panel')) {
+        window.location.href = '/specialist-panel';
+      } else if (window.location.pathname.startsWith('/marketing-panel')) {
+        window.location.href = '/marketing-panel';
+      } else {
+        window.location.href = '/admin-panel';
+      }
     } else if (error.response?.status === 403) {
       // Нет прав доступа
       console.warn('[AdminAPI] Forbidden - user does not have admin permissions');
@@ -204,6 +208,28 @@ export const adminAPI = {
     approve: (id, data = {}) => adminApi.post(`admin/courses/${id}/approve/`, data),
     students: (id) => adminApi.get(`admin/courses/${id}/students/`),
     analytics: (id) => adminApi.get(`admin/courses/${id}/analytics/`),
+  },
+
+  marketing: {
+    summary: () => adminApi.get('admin/marketing/'),
+    news: {
+      list: (params) => adminApi.get('admin/marketing-news/', { params }),
+      create: (data) => adminApi.post('admin/marketing-news/', data),
+      retrieve: (id) => adminApi.get(`admin/marketing-news/${id}/`),
+      update: (id, data) => adminApi.patch(`admin/marketing-news/${id}/`, data),
+      delete: (id) => adminApi.delete(`admin/marketing-news/${id}/`),
+      publish: (id) => adminApi.post(`admin/marketing-news/${id}/publish/`),
+      unpublish: (id) => adminApi.post(`admin/marketing-news/${id}/unpublish/`),
+    },
+    events: {
+      list: (params) => adminApi.get('admin/marketing-events/', { params }),
+      create: (data) => adminApi.post('admin/marketing-events/', data),
+      retrieve: (id) => adminApi.get(`admin/marketing-events/${id}/`),
+      update: (id, data) => adminApi.patch(`admin/marketing-events/${id}/`, data),
+      delete: (id) => adminApi.delete(`admin/marketing-events/${id}/`),
+      publish: (id) => adminApi.post(`admin/marketing-events/${id}/publish/`),
+      unpublish: (id) => adminApi.post(`admin/marketing-events/${id}/unpublish/`),
+    },
   },
 
   // Быстрая статистика

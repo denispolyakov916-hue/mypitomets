@@ -20,6 +20,7 @@ const AdminLoginPage = ({ panel = 'admin' }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const isSpecialistPanel = panel === 'specialist' || location.pathname.startsWith('/specialist-panel');
+  const isMarketingPanel = panel === 'marketing' || location.pathname.startsWith('/marketing-panel');
   
   // Stores
   const isAuthenticated = useAuthStore(s => s.isAuthenticated);
@@ -37,6 +38,28 @@ const AdminLoginPage = ({ panel = 'admin' }) => {
   const [showSuccess, setShowSuccess] = useState(false);
   
   // Получаем URL для редиректа после входа (вычисляется после авторизации)
+  const getPanelBase = () => {
+    if (isSpecialistPanel) return '/specialist-panel';
+    if (isMarketingPanel) return '/marketing-panel';
+    return '/admin-panel';
+  };
+
+  const getDefaultPanelPath = (currentUser) => {
+    if (currentUser?.role === 'course_creator') return '/specialist-panel/courses';
+    if (currentUser?.role === 'marketing_manager') return '/marketing-panel/content';
+    if (isSpecialistPanel) return '/specialist-panel/courses';
+    if (isMarketingPanel) return '/marketing-panel/content';
+    return '/admin-panel/dashboard';
+  };
+
+  const hasPanelAccess = (currentUser) => {
+    if (!currentUser) return false;
+    const isCompanyAdmin = currentUser.is_staff || currentUser.is_superuser || currentUser.role === 'admin';
+    if (isMarketingPanel) return isCompanyAdmin || currentUser.role === 'marketing_manager';
+    if (isSpecialistPanel) return isCompanyAdmin || currentUser.role === 'course_creator';
+    return isCompanyAdmin;
+  };
+
   const getRedirectPath = (currentUser) => {
     const savedPath = location.state?.from?.pathname;
     if (currentUser?.role === 'course_creator') {
@@ -51,7 +74,19 @@ const AdminLoginPage = ({ panel = 'admin' }) => {
       return '/specialist-panel/courses';
     }
 
-    const currentPanelBase = isSpecialistPanel ? '/specialist-panel' : '/admin-panel';
+    if (currentUser?.role === 'marketing_manager') {
+      if (
+        savedPath &&
+        savedPath.startsWith('/marketing-panel') &&
+        savedPath !== '/marketing-panel' &&
+        savedPath !== '/marketing-panel/'
+      ) {
+        return savedPath;
+      }
+      return '/marketing-panel/content';
+    }
+
+    const currentPanelBase = getPanelBase();
     if (
       savedPath &&
       savedPath.startsWith(currentPanelBase) &&
@@ -61,7 +96,7 @@ const AdminLoginPage = ({ panel = 'admin' }) => {
       return savedPath;
     }
 
-    return isSpecialistPanel ? '/specialist-panel/courses' : '/admin-panel/dashboard';
+    return getDefaultPanelPath(currentUser);
   };
   const redirectMessage = location.state?.message || '';
 
@@ -71,9 +106,9 @@ const AdminLoginPage = ({ panel = 'admin' }) => {
     setLocalError('');
   }, [clearError]);
 
-  // Если уже авторизован как админ/создатель курсов - редирект
+  // Если уже авторизован с нужной ролью - редирект
   useEffect(() => {
-    if (isAuthenticated && (user?.is_staff || user?.role === 'course_creator')) {
+    if (isAuthenticated && hasPanelAccess(user)) {
       navigate(getRedirectPath(user), { replace: true });
     }
   }, [isAuthenticated, user, navigate]);
@@ -149,10 +184,10 @@ const AdminLoginPage = ({ panel = 'admin' }) => {
         return;
       }
       
-      // Проверяем права: администратор или создатель курсов
-      if (!currentUser.is_staff && !currentUser.is_superuser && currentUser.role !== 'course_creator') {
+      // Проверяем права под конкретный кабинет
+      if (!hasPanelAccess(currentUser)) {
         console.log('[AdminLogin] User is not staff');
-        setLocalError('У вас нет прав для доступа к админ-панели. Обратитесь к администратору системы.');
+        setLocalError('У вас нет прав для доступа к этой панели. Обратитесь к администратору системы.');
         // Выходим, так как обычный пользователь не должен оставаться залогиненным в админке
         await useAuthStore.getState().logout();
         setIsSubmitting(false);
@@ -233,10 +268,14 @@ const AdminLoginPage = ({ panel = 'admin' }) => {
               </svg>
             </div>
             <h1 className="text-2xl font-bold text-white mb-2">
-              {isSpecialistPanel ? 'Кабинет специалиста' : 'Админ-панель'}
+              {isMarketingPanel ? 'Кабинет маркетолога' : isSpecialistPanel ? 'Кабинет специалиста' : 'Админ-панель'}
             </h1>
             <p className="text-primary-200 text-sm">
-              {isSpecialistPanel ? 'Питомец+ | Курсы коррекции поведения' : 'Питомец+ | Система управления'}
+              {isMarketingPanel
+                ? 'Питомец+ | Новости, события и баннеры'
+                : isSpecialistPanel
+                  ? 'Питомец+ | Курсы коррекции поведения'
+                  : 'Питомец+ | Система управления'}
             </p>
           </div>
 
@@ -342,7 +381,7 @@ const AdminLoginPage = ({ panel = 'admin' }) => {
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
                   </svg>
-                  <span>Войти в админ-панель</span>
+                  <span>{isMarketingPanel ? 'Войти в кабинет' : isSpecialistPanel ? 'Войти в кабинет' : 'Войти в админ-панель'}</span>
                 </>
               )}
             </button>
@@ -351,7 +390,11 @@ const AdminLoginPage = ({ panel = 'admin' }) => {
           {/* Разделитель */}
           <div className="mt-8 pt-6 border-t border-white/10">
             <p className="text-center text-primary-200/60 text-sm">
-              Для доступа требуются права администратора
+              {isMarketingPanel
+                ? 'Для доступа нужна роль маркетолога'
+                : isSpecialistPanel
+                  ? 'Для доступа нужны права специалиста'
+                  : 'Для доступа требуются права администратора'}
             </p>
           </div>
 

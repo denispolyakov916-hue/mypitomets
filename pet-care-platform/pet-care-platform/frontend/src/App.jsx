@@ -34,6 +34,7 @@ import PrivateRoute from './components/PrivateRoute'
 import AdminRoute from './components/AdminRoute'
 import SupplierRoute from './components/SupplierRoute'
 import SpecialistRoute from './components/SpecialistRoute'
+import MarketingRoute from './components/MarketingRoute'
 
 // Витрина страниц (для редизайна)
 import PagesRouter from './Страницы/Роутер'
@@ -105,6 +106,7 @@ const Offer = lazy(() => import('./pages/Legal/Offer'))
 const AdminApp = lazy(() => import('./admin/App'))
 const SupplierApp = lazy(() => import('./supplier/App'))
 const SpecialistApp = lazy(() => import('./specialist/App'))
+const MarketingApp = lazy(() => import('./marketing/App'))
 
 // Хранилище для состояния аутентификации
 import { useAuthStore } from './store/authStore'
@@ -165,6 +167,17 @@ function App() {
               <SpecialistApp />
             </Suspense>
           </SpecialistRoute>
+        }
+      />
+
+      <Route
+        path="/marketing-panel/*"
+        element={
+          <MarketingRoute>
+            <Suspense fallback={<AdminPanelLoader />}>
+              <MarketingApp />
+            </Suspense>
+          </MarketingRoute>
         }
       />
 

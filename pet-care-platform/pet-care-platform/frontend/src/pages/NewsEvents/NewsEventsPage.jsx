@@ -7,7 +7,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import {
-  CalendarDays, MapPin, Video, Star, Newspaper, Copy, Check, Loader2, CalendarHeart,
+  ArrowRight, CalendarDays, Check, Clock, Copy, Loader2, MapPin, Megaphone, Newspaper, Sparkles, Star, Video, CalendarHeart,
 } from 'lucide-react'
 import { BrandSection, BrandTabs, BrandEmptyState, BrandButton } from '../../components/brand'
 import { useAuthStore } from '../../store/authStore'
@@ -75,6 +75,144 @@ function NewsCard({ item }) {
         )}
       </div>
     </Link>
+  )
+}
+
+function CoverFallback({ type = 'event' }) {
+  const Icon = type === 'news' ? Newspaper : CalendarDays
+  return (
+    <div className="flex h-full w-full items-center justify-center bg-primary-50 text-primary-200">
+      <Icon className="h-12 w-12" />
+    </div>
+  )
+}
+
+function FeatureVisual({ item, type, className = '' }) {
+  return (
+    <div className={`overflow-hidden bg-primary-50 ${className}`}>
+      {item?.cover_image_url ? (
+        <img src={item.cover_image_url} alt={item.title} className="h-full w-full object-cover" />
+      ) : (
+        <CoverFallback type={type} />
+      )}
+    </div>
+  )
+}
+
+function FeaturedHero({ events, news, onSelectTab }) {
+  const mainEvent = events?.find((item) => item.is_featured) || events?.[0]
+  const mainNews = news?.find((item) => item.is_featured) || news?.[0]
+
+  return (
+    <div className="mb-8 overflow-hidden rounded-2xl bg-white shadow-card">
+      <div className="grid lg:grid-cols-[minmax(0,1.35fr)_minmax(20rem,0.65fr)]">
+        <div className="relative min-h-[26rem] bg-primary-900 text-white">
+          <FeatureVisual item={mainEvent} type="event" className="absolute inset-0 opacity-75" />
+          <div className="absolute inset-0 bg-primary-950/55" />
+          <div className="relative flex min-h-[26rem] flex-col justify-end p-6 sm:p-8 lg:p-10">
+            <div className="mb-4 inline-flex w-fit items-center rounded-full bg-white/15 px-3 py-1 text-sm font-medium text-white ring-1 ring-white/20">
+              <Megaphone className="mr-2 h-4 w-4" />
+              Афиша Питомец+
+            </div>
+            <h1 className="max-w-3xl font-heading text-4xl font-bold leading-tight sm:text-5xl">
+              Новости, встречи и события для владельцев питомцев
+            </h1>
+            <p className="mt-4 max-w-2xl text-base leading-7 text-white/80">
+              Главные анонсы, полезные публикации и мероприятия сообщества в одном месте.
+            </p>
+
+            {mainEvent && (
+              <div className="mt-7 max-w-3xl rounded-lg bg-white/10 p-4 ring-1 ring-white/20 backdrop-blur">
+                <div className="flex flex-wrap items-center gap-2 text-xs font-medium text-white/75">
+                  <span className="rounded-full bg-white/15 px-2.5 py-1">{mainEvent.event_type_display}</span>
+                  <span className="inline-flex items-center gap-1">
+                    <Clock className="h-3.5 w-3.5" />
+                    {formatEventDate(mainEvent.start_at)}
+                  </span>
+                </div>
+                <Link to={`/news-events/events/${mainEvent.slug}`} className="mt-2 inline-flex items-center text-xl font-semibold text-white hover:text-white/90">
+                  {mainEvent.title}
+                  <ArrowRight className="ml-2 h-5 w-5" />
+                </Link>
+                {mainEvent.summary && <p className="mt-2 line-clamp-2 text-sm text-white/75">{mainEvent.summary}</p>}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="grid gap-0 bg-white">
+          <button
+            type="button"
+            onClick={() => onSelectTab('events')}
+            className="group grid min-h-52 grid-cols-[7rem_1fr] gap-4 border-b border-primary-100 p-5 text-left transition hover:bg-primary-50/60 sm:grid-cols-[9rem_1fr]"
+          >
+            <FeatureVisual item={mainEvent} type="event" className="h-full rounded-lg" />
+            <div className="min-w-0 self-center">
+              <div className="inline-flex items-center rounded-full bg-primary-50 px-2.5 py-1 text-xs font-medium text-primary-700">
+                <CalendarDays className="mr-1.5 h-3.5 w-3.5" />
+                Ближайшее
+              </div>
+              <h2 className="mt-3 line-clamp-2 text-lg font-bold text-primary-900 group-hover:text-primary-700">
+                {mainEvent?.title || 'Скоро здесь появятся мероприятия'}
+              </h2>
+              <p className="mt-2 line-clamp-2 text-sm text-primary-500">
+                {mainEvent?.summary || 'Маркетолог сможет вывести сюда главный анонс.'}
+              </p>
+            </div>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => onSelectTab('news')}
+            className="group grid min-h-52 grid-cols-[7rem_1fr] gap-4 p-5 text-left transition hover:bg-gold-50/60 sm:grid-cols-[9rem_1fr]"
+          >
+            <FeatureVisual item={mainNews} type="news" className="h-full rounded-lg" />
+            <div className="min-w-0 self-center">
+              <div className="inline-flex items-center rounded-full bg-gold-50 px-2.5 py-1 text-xs font-medium text-gold-700">
+                <Newspaper className="mr-1.5 h-3.5 w-3.5" />
+                Последнее
+              </div>
+              <h2 className="mt-3 line-clamp-2 text-lg font-bold text-primary-900 group-hover:text-primary-700">
+                {mainNews?.title || 'Скоро здесь появятся новости'}
+              </h2>
+              <p className="mt-2 line-clamp-2 text-sm text-primary-500">
+                {mainNews?.excerpt || 'Новости, промо и полезные материалы будут собираться здесь.'}
+              </p>
+            </div>
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function PromoBanner({ events, news }) {
+  const featuredCount = [
+    ...(events || []).filter((item) => item.is_featured),
+    ...(news || []).filter((item) => item.is_featured),
+  ].length
+
+  return (
+    <div className="mb-8 grid gap-4 lg:grid-cols-[1fr_1fr_1fr]">
+      <div className="rounded-lg border border-emerald-100 bg-emerald-50 p-5">
+        <Sparkles className="h-5 w-5 text-emerald-700" />
+        <div className="mt-3 text-sm font-semibold text-primary-900">Главные баннеры</div>
+        <div className="mt-1 text-3xl font-bold text-emerald-700">{featuredCount}</div>
+        <p className="mt-2 text-sm text-primary-500">Материалы, которые маркетолог вывел в промо-зоны.</p>
+      </div>
+      <div className="rounded-lg border border-primary-100 bg-white p-5">
+        <CalendarDays className="h-5 w-5 text-primary-600" />
+        <div className="mt-3 text-sm font-semibold text-primary-900">Мероприятия</div>
+        <div className="mt-1 text-3xl font-bold text-primary-700">{events?.length || 0}</div>
+        <p className="mt-2 text-sm text-primary-500">Встречи, вебинары, лекции и выставки для сообщества.</p>
+      </div>
+      <div className="rounded-lg border border-gold-100 bg-gold-50 p-5">
+        <Newspaper className="h-5 w-5 text-gold-700" />
+        <div className="mt-3 text-sm font-semibold text-primary-900">Новости</div>
+        <div className="mt-1 text-3xl font-bold text-gold-700">{news?.length || 0}</div>
+        <p className="mt-2 text-sm text-primary-500">Последние публикации, обновления сервиса и полезные подборки.</p>
+      </div>
+    </div>
   )
 }
 
@@ -175,6 +313,7 @@ export default function NewsEventsPage() {
   }, [news])
 
   useEffect(() => { loadEvents() }, [loadEvents])
+  useEffect(() => { loadNews() }, [loadNews])
   useEffect(() => { if (tab === 'news') loadNews() }, [tab, loadNews])
 
   const tabs = isAuthenticated ? [...TABS, { value: 'mine', label: 'Мой календарь' }] : TABS
@@ -182,9 +321,10 @@ export default function NewsEventsPage() {
   return (
     <BrandSection
       bg="milk"
-      title="Новости и Мероприятия"
-      subtitle="Сходки, встречи, выставки, вебинары и новости сообщества «Питомец+»."
     >
+      <FeaturedHero events={events || []} news={news || []} onSelectTab={setTab} />
+      <PromoBanner events={events || []} news={news || []} />
+
       <div className="mb-8">
         <BrandTabs items={tabs} value={tab} onChange={setTab} />
       </div>
