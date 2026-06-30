@@ -1,281 +1,279 @@
-import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
+import { render, screen, act } from '@testing-library/react'
+import { createRef } from 'react'
 import Canvas from './Canvas'
 import {
-  createDOMContainer,
   createTestData,
   createTestConfig,
-  assertSVGElements,
-  assertAxes,
-  assertLegend,
-  simulateMouseEvent
+  createTestStyleConfig,
 } from '../../../test/utils/d3-test-utils'
 
-// Mock D3 helpers
-vi.mock('../../../utils/d3-helpers', () => ({
-  renderChart: vi.fn(),
-  renderMultiLayerChart: vi.fn(),
-  createScales: vi.fn(() => ({
-    xScale: vi.fn(() => 100),
-    yScale: vi.fn(() => 200),
-    chartWidth: 700,
-    chartHeight: 300,
-    margin: { top: 20, right: 30, bottom: 40, left: 50 }
-  })),
-  addInteractivity: vi.fn()
-}))
+/**
+ * Эти тесты проверяют «живой» компонент Canvas — тот, что реально использует
+ * админский ChartBuilder. Canvas рисует график напрямую через d3 (inline),
+ * исходя из props { config, data, loading, styleConfig, selectedMetrics },
+ * и экспортирует через ref методы exportToPNG/SVG/CSV.
+ */
+
+const lineMetrics = [{ id: 'value', name: 'Значение', data_type: 'integer' }]
+const multiMetrics = [
+  { id: 'series_a', name: 'Серия A', data_type: 'integer' },
+  { id: 'series_b', name: 'Серия B', data_type: 'integer' },
+]
+
+const getSvg = (container: HTMLElement): SVGSVGElement => {
+  const svg = container.querySelector('svg')
+  expect(svg).not.toBeNull()
+  return svg as SVGSVGElement
+}
+
+// Реальные линии данных: <path fill="none"> с непустым `d` (начинается с "M").
+// Это отсекает 2 всегда присутствующих доменных <path> у осей (stroke #d1d5db,
+// без fill) и «пустые» линии метрик, которых нет в данных (d="").
+const dataLinePaths = (svg: SVGSVGElement): SVGPathElement[] =>
+  Array.from(svg.querySelectorAll('path')).filter(
+    (p) => p.getAttribute('fill') === 'none' && (p.getAttribute('d') || '').startsWith('M')
+  ) as SVGPathElement[]
+
+// Сектора круговой диаграммы: d3 рисует их как <path stroke="#fff">.
+const pieSlicePaths = (svg: SVGSVGElement): SVGPathElement[] =>
+  Array.from(svg.querySelectorAll('path')).filter(
+    (p) => p.getAttribute('stroke') === '#fff'
+  ) as SVGPathElement[]
 
 describe('Canvas Component', () => {
-  let domContainer: { container: HTMLElement; svg: SVGSVGElement }
-
   beforeEach(() => {
-    domContainer = createDOMContainer()
-    // Mock window.getComputedStyle
+    // d3 обращается к getComputedStyle при отрисовке осей/текста.
     Object.defineProperty(window, 'getComputedStyle', {
-      value: vi.fn(() => ({
-        getPropertyValue: vi.fn(() => '16px')
-      }))
+      configurable: true,
+      value: vi.fn(() => ({ getPropertyValue: vi.fn(() => '16px') })),
     })
+    // jsdom не реализует Blob URL и переход по ссылке — заглушаем для экспорта.
+    ;(URL as unknown as { createObjectURL: () => string }).createObjectURL = vi.fn(
+      () => 'blob:mock'
+    )
+    ;(URL as unknown as { revokeObjectURL: () => void }).revokeObjectURL = vi.fn()
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
   })
 
   afterEach(() => {
-    vi.clearAllMocks()
+    vi.restoreAllMocks()
   })
 
   describe('Initial Rendering', () => {
-    it('renders loading state when loading is true', () => {
-      const config = createTestConfig()
-      const data = null
-      const loading = true
-
+    it('renders loading overlay when loading is true', () => {
       render(
         <Canvas
-          config={config}
-          data={data}
-          loading={loading}
-          onConfigChange={vi.fn()}
+          config={createTestConfig()}
+          data={null}
+          loading={true}
+          styleConfig={createTestStyleConfig()}
+          selectedMetrics={lineMetrics}
         />
       )
-
       expect(screen.getByText('Загрузка данных...')).toBeInTheDocument()
     })
 
-    it('renders empty state when no data is available', () => {
-      const config = createTestConfig()
-      const data = []
-      const loading = false
-
-      render(
+    it('always renders an <svg> drawing surface', () => {
+      const { container } = render(
         <Canvas
-          config={config}
-          data={data}
-          loading={loading}
-          onConfigChange={vi.fn()}
-        />
-      )
-
-      expect(screen.getByText('Нет данных для отображения')).toBeInTheDocument()
-      expect(screen.getByText('📊')).toBeInTheDocument()
-    })
-
-    it('renders chart when data is available', () => {
-      const config = createTestConfig()
-      const data = createTestData('line', 5)
-      const loading = false
-
-      render(
-        <Canvas
-          config={config}
-          data={data}
-          loading={loading}
-          onConfigChange={vi.fn()}
-        />
-      )
-
-      // Проверяем наличие SVG контейнера
-      const canvasContainer = screen.getByTestId('canvas-container') ||
-                             document.querySelector('.canvas-container')
-      expect(canvasContainer).toBeInTheDocument()
-    })
-  })
-
-  describe('Chart Rendering', () => {
-    it('calls renderChart for single layer charts', async () => {
-      const { renderChart } = await import('../../../utils/d3-helpers')
-      const config = createTestConfig()
-      const data = createTestData('line', 5)
-
-      render(
-        <Canvas
-          config={config}
-          data={data}
+          config={createTestConfig()}
+          data={createTestData('line', 5)}
           loading={false}
-          onConfigChange={vi.fn()}
+          styleConfig={createTestStyleConfig()}
+          selectedMetrics={lineMetrics}
         />
       )
-
-      await waitFor(() => {
-        expect(renderChart).toHaveBeenCalled()
-      })
-    })
-
-    it('calls renderMultiLayerChart for multi-layer charts', async () => {
-      const { renderMultiLayerChart } = await import('../../../utils/d3-helpers')
-      const config = createTestConfig({
-        layers: [
-          { id: 'layer-1', type: 'line', visible: true },
-          { id: 'layer-2', type: 'bar', visible: true }
-        ]
-      })
-      const data = createTestData('line', 5)
-
-      render(
-        <Canvas
-          config={config}
-          data={data}
-          loading={false}
-          onConfigChange={vi.fn()}
-        />
-      )
-
-      await waitFor(() => {
-        expect(renderMultiLayerChart).toHaveBeenCalled()
-      })
-    })
-
-    it('passes correct parameters to render functions', async () => {
-      const { renderChart } = await import('../../../utils/d3-helpers')
-      const config = createTestConfig()
-      const data = createTestData('line', 5)
-
-      render(
-        <Canvas
-          config={config}
-          data={data}
-          loading={false}
-          onConfigChange={vi.fn()}
-        />
-      )
-
-      await waitFor(() => {
-        expect(renderChart).toHaveBeenCalledWith(
-          expect.any(Object), // SVG element
-          config,
-          data,
-          expect.any(Object), // dimensions
-          expect.any(Object) // zoom
-        )
-      })
-    })
-  })
-
-  describe('Toolbar Functionality', () => {
-    it('displays chart info in toolbar', () => {
-      const config = createTestConfig({ name: 'Test Chart' })
-      const data = createTestData('line', 10)
-
-      render(
-        <Canvas
-          config={config}
-          data={data}
-          loading={false}
-          onConfigChange={vi.fn()}
-        />
-      )
-
-      expect(screen.getByText('Test Chart • 10 точек данных')).toBeInTheDocument()
-    })
-
-    it('shows zoom level in status bar', () => {
-      const config = createTestConfig()
-      const data = createTestData('line', 5)
-
-      render(
-        <Canvas
-          config={config}
-          data={data}
-          loading={false}
-          onConfigChange={vi.fn()}
-        />
-      )
-
-      // Проверяем наличие статуса
-      const statusBar = document.querySelector('.canvas-status')
-      expect(statusBar).toBeInTheDocument()
-    })
-  })
-
-  describe('Performance Monitoring', () => {
-    it('measures render performance', async () => {
-      const config = createTestConfig()
-      const data = createTestData('line', 100) // Большой датасет
-
-      const startTime = performance.now()
-
-      render(
-        <Canvas
-          config={config}
-          data={data}
-          loading={false}
-          onConfigChange={vi.fn()}
-        />
-      )
-
-      await waitFor(() => {
-        const renderTime = performance.now() - startTime
-        // Рендеринг должен занять разумное время
-        expect(renderTime).toBeLessThan(1000)
-      })
-    })
-  })
-
-  describe('Accessibility', () => {
-    it('has proper ARIA labels', () => {
-      const config = createTestConfig()
-      const data = createTestData('line', 5)
-
-      render(
-        <Canvas
-          config={config}
-          data={data}
-          loading={false}
-          onConfigChange={vi.fn()}
-        />
-      )
-
-      // Проверяем наличие SVG с правильными атрибутами
-      const svg = document.querySelector('svg')
+      const svg = getSvg(container)
       expect(svg).toBeInTheDocument()
-      expect(svg?.getAttribute('role')).toBe('img')
+      expect(svg.getAttribute('width')).toBeTruthy()
+      expect(svg.getAttribute('height')).toBeTruthy()
+    })
+
+    it('does not crash and draws nothing when there are no selected metrics', () => {
+      const { container } = render(
+        <Canvas
+          config={createTestConfig()}
+          data={createTestData('line', 5)}
+          loading={false}
+          styleConfig={createTestStyleConfig()}
+          selectedMetrics={[]}
+        />
+      )
+      const svg = getSvg(container)
+      // Без выбранных метрик график не строится — в svg нет линий/столбцов.
+      expect(svg.querySelectorAll('path').length).toBe(0)
+      expect(svg.querySelectorAll('rect').length).toBe(0)
+    })
+
+    it('does not crash on empty data array', () => {
+      const { container } = render(
+        <Canvas
+          config={createTestConfig()}
+          data={[]}
+          loading={false}
+          styleConfig={createTestStyleConfig()}
+          selectedMetrics={lineMetrics}
+        />
+      )
+      expect(getSvg(container)).toBeInTheDocument()
+    })
+  })
+
+  describe('Chart Rendering (inline d3)', () => {
+    it('draws a line chart (paths) for type "line"', () => {
+      const { container } = render(
+        <Canvas
+          config={createTestConfig({ type: 'line' })}
+          data={createTestData('line', 6)}
+          loading={false}
+          styleConfig={createTestStyleConfig()}
+          selectedMetrics={lineMetrics}
+        />
+      )
+      const svg = getSvg(container)
+      // Ровно одна линия данных (одна метрика), а не просто «есть какой-то path».
+      expect(dataLinePaths(svg).length).toBe(1)
+    })
+
+    it('draws bars (rects) for type "bar"', () => {
+      const { container } = render(
+        <Canvas
+          config={createTestConfig({ type: 'bar' })}
+          data={createTestData('bar', 6)}
+          loading={false}
+          styleConfig={createTestStyleConfig()}
+          selectedMetrics={lineMetrics}
+        />
+      )
+      const svg = getSvg(container)
+      // Столбцы рисуются как <rect> (помимо них в svg могут быть только линии сетки).
+      expect(svg.querySelectorAll('rect').length).toBeGreaterThan(0)
+    })
+
+    it('draws pie slices (paths) for type "pie"', () => {
+      const { container } = render(
+        <Canvas
+          config={createTestConfig({ type: 'pie' })}
+          data={createTestData('pie', 6)}
+          loading={false}
+          styleConfig={createTestStyleConfig()}
+          selectedMetrics={multiMetrics}
+        />
+      )
+      const svg = getSvg(container)
+      // Две метрики с положительными значениями => ровно два сектора.
+      expect(pieSlicePaths(svg).length).toBe(2)
+    })
+
+    it('renders one line per selected metric for a multi-metric chart', () => {
+      const { container } = render(
+        <Canvas
+          config={createTestConfig({ type: 'line' })}
+          data={createTestData('line', 6)}
+          loading={false}
+          styleConfig={createTestStyleConfig()}
+          selectedMetrics={multiMetrics}
+        />
+      )
+      const svg = getSvg(container)
+      // Ровно одна линия данных на каждую выбранную метрику (две), а не >=2.
+      expect(dataLinePaths(svg).length).toBe(multiMetrics.length)
+    })
+  })
+
+  describe('Reactivity', () => {
+    it('clears the drawing when selected metrics are removed', () => {
+      const props = {
+        config: createTestConfig({ type: 'line' }),
+        data: createTestData('line', 6),
+        loading: false,
+        styleConfig: createTestStyleConfig(),
+      }
+      const { container, rerender } = render(
+        <Canvas {...props} selectedMetrics={lineMetrics} />
+      )
+      expect(getSvg(container).querySelectorAll('path').length).toBeGreaterThan(0)
+
+      rerender(<Canvas {...props} selectedMetrics={[]} />)
+      expect(getSvg(container).querySelectorAll('path').length).toBe(0)
+    })
+
+    it('redraws when the chart type changes (line → bar adds bars)', () => {
+      const base = {
+        data: createTestData('line', 6),
+        loading: false,
+        styleConfig: createTestStyleConfig(),
+        selectedMetrics: lineMetrics,
+      }
+      const { container, rerender } = render(
+        <Canvas {...base} config={createTestConfig({ type: 'line' })} />
+      )
+      // У линейного графика <rect> встречаются только как образцы цвета в легенде.
+      const lineRects = getSvg(container).querySelectorAll('rect').length
+
+      rerender(<Canvas {...base} config={createTestConfig({ type: 'bar' })} />)
+      // Переключение на столбчатый тип добавляет столбцы-<rect> сверх легенды.
+      const barRects = getSvg(container).querySelectorAll('rect').length
+      expect(barRects).toBeGreaterThan(lineRects)
+    })
+  })
+
+  describe('Export API (imperative handle)', () => {
+    it('exposes exportToPNG/SVG/CSV through the ref', () => {
+      const ref = createRef<{
+        exportToPNG: (s?: object) => Promise<void>
+        exportToSVG: () => void
+        exportToCSV: () => void
+      }>()
+      render(
+        <Canvas
+          ref={ref}
+          config={createTestConfig({ type: 'line' })}
+          data={createTestData('line', 5)}
+          loading={false}
+          styleConfig={createTestStyleConfig()}
+          selectedMetrics={lineMetrics}
+        />
+      )
+      expect(typeof ref.current?.exportToPNG).toBe('function')
+      expect(typeof ref.current?.exportToSVG).toBe('function')
+      expect(typeof ref.current?.exportToCSV).toBe('function')
+    })
+
+    it('exportToCSV builds a download without throwing', () => {
+      const ref = createRef<{ exportToCSV: () => void }>()
+      const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click')
+      render(
+        <Canvas
+          ref={ref}
+          config={createTestConfig({ type: 'line' })}
+          data={createTestData('line', 5)}
+          loading={false}
+          styleConfig={createTestStyleConfig()}
+          selectedMetrics={lineMetrics}
+        />
+      )
+      act(() => {
+        ref.current?.exportToCSV()
+      })
+      expect(clickSpy).toHaveBeenCalled()
     })
   })
 
   describe('Error Handling', () => {
-    it('handles render errors gracefully', () => {
-      const { renderChart } = require('../../../utils/d3-helpers')
-      renderChart.mockImplementation(() => {
-        throw new Error('Render error')
-      })
-
-      const config = createTestConfig()
-      const data = createTestData('line', 5)
-
-      // Mock console.error to avoid noise in test output
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
-
-      expect(() => {
+    it('handles malformed data gracefully (no throw)', () => {
+      expect(() =>
         render(
           <Canvas
-            config={config}
-            data={data}
+            config={createTestConfig({ type: 'line' })}
+            data={[{ foo: 'bar' }] as unknown as Record<string, unknown>[]}
             loading={false}
-            onConfigChange={vi.fn()}
+            styleConfig={createTestStyleConfig()}
+            selectedMetrics={lineMetrics}
           />
         )
-      }).not.toThrow()
-
-      consoleSpy.mockRestore()
+      ).not.toThrow()
     })
   })
 })
