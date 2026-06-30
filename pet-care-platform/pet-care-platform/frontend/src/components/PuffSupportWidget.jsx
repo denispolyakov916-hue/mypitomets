@@ -2,22 +2,36 @@
  * Виджет «Чат с Пуфом» — помощник в правом нижнем углу.
  * Показывается на всех страницах (кроме админки).
  * Дизайн и поведение соответствуют виджету с лендинга.
+ *
+ * Подключён к бэкенду POST /api/assistant/chat/ (через src/api/chat.js):
+ * - требует авторизации (гостю предлагаем войти);
+ * - для вопросов о здоровье/питании передаёт id выбранного питомца;
+ * - показывает дисклеймер ответа и индикатор набора.
  */
 
 import { useState, useRef, useEffect } from 'react'
-import { X, Send } from 'lucide-react'
+import { X, Send, ThumbsUp, ThumbsDown } from 'lucide-react'
 import { PuffLottie } from './brand'
+import { useAuthStore } from '../store/authStore'
+import { getPets } from '../api/pets'
+import { sendChatMessage, sendChatFeedback } from '../api/chat'
 
 const GREETING = 'Привет! Я Пуф, твой помощник. Чем могу помочь?'
-const REPLY_PLACEHOLDER = 'Получил! Постараюсь ответить скоро. Если срочно — напишите в поддержку на сайте.'
+const LOGIN_PROMPT = 'Чтобы я мог помочь, войдите в аккаунт 🙂'
+const ERROR_REPLY = 'Не получилось ответить. Попробуйте ещё раз или напишите в поддержку на сайте.'
 
 /**
  * @param {{ stackGuestStrip?: boolean }} props — если true, кнопка на одной вертикали с полоской «Начать бесплатно» (над таблеткой)
  */
 export default function PuffSupportWidget({ stackGuestStrip = false }) {
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
+
   const [isOpen, setIsOpen] = useState(false)
   const [messages, setMessages] = useState([{ text: GREETING, isUser: false }])
   const [inputValue, setInputValue] = useState('')
+  const [isSending, setIsSending] = useState(false)
+  const [pets, setPets] = useState([])
+  const [selectedPetId, setSelectedPetId] = useState(null)
   const messagesEndRef = useRef(null)
 
   const scrollToBottom = () => {
@@ -26,16 +40,64 @@ export default function PuffSupportWidget({ stackGuestStrip = false }) {
 
   useEffect(() => {
     scrollToBottom()
-  }, [messages])
+  }, [messages, isSending])
 
-  const sendMessage = () => {
+  // Питомцев грузим лениво — только при первом открытии чата для авторизованного
+  // пользователя (без лишнего запроса на каждой странице).
+  useEffect(() => {
+    if (!isOpen || !isAuthenticated || pets.length) return undefined
+    let cancelled = false
+    getPets()
+      .then((r) => { if (!cancelled) setPets(r?.pets || []) })
+      .catch(() => { /* список питомцев необязателен для работы поддержки */ })
+    return () => { cancelled = true }
+  }, [isOpen, isAuthenticated, pets.length])
+
+  // Один питомец — выбираем автоматически; иначе ждём явного выбора в селекторе.
+  const effectivePetId = selectedPetId || (pets.length === 1 ? pets[0].id : null)
+
+  const sendMessage = async () => {
     const text = inputValue.trim()
-    if (!text) return
-    setMessages(prev => [...prev, { text, isUser: true }])
+    if (!text || isSending) return
+
+    if (!isAuthenticated) {
+      setMessages((prev) => [...prev, { text, isUser: true }, { text: LOGIN_PROMPT, isUser: false }])
+      setInputValue('')
+      return
+    }
+
+    setMessages((prev) => [...prev, { text, isUser: true }])
     setInputValue('')
-    setTimeout(() => {
-      setMessages(prev => [...prev, { text: REPLY_PLACEHOLDER, isUser: false }])
-    }, 600)
+    setIsSending(true)
+    try {
+      const data = await sendChatMessage({ message: text, petId: effectivePetId })
+      setMessages((prev) => [...prev, {
+        text: data?.reply || 'Готово.',
+        isUser: false,
+        disclaimer: data?.disclaimer || null,
+        // для оценки 👍/👎: сохраняем вопрос и тему ответа
+        query: text,
+        capability: data?.capability || null,
+      }])
+    } catch (err) {
+      const msg = err?.isAuthRequired ? LOGIN_PROMPT : ERROR_REPLY
+      setMessages((prev) => [...prev, { text: msg, isUser: false }])
+    } finally {
+      setIsSending(false)
+    }
+  }
+
+  const handleFeedback = (index, rating) => {
+    const msg = messages[index]
+    if (!msg || msg.rated) return
+    setMessages((prev) => prev.map((m, i) => (i === index ? { ...m, rated: rating } : m)))
+    // оценку отправляем «тихо»: ошибка отправки не должна мешать пользователю
+    sendChatFeedback({
+      rating,
+      message: msg.query || '',
+      reply: msg.text || '',
+      capability: msg.capability || null,
+    }).catch(() => {})
   }
 
   const handleKeyDown = (e) => {
@@ -87,19 +149,76 @@ export default function PuffSupportWidget({ stackGuestStrip = false }) {
 
         <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto overflow-x-hidden px-6 pt-9 pb-2">
           {messages.map((msg, i) => (
-            <div
-              key={i}
-              className={`flex-shrink-0 rounded-2xl px-3 py-2 text-sm leading-snug ${
-                msg.isUser
-                  ? 'ml-auto max-w-[85%] rounded-br-md bg-primary-900/10 text-gray-800'
-                  : 'w-full rounded-bl-md bg-[#522f81] text-[#F5F5F5] shadow-sm'
-              }`}
-            >
-              {msg.text}
+            <div key={i} className="flex flex-shrink-0 flex-col gap-0.5">
+              <div
+                className={`rounded-2xl px-3 py-2 text-sm leading-snug ${
+                  msg.isUser
+                    ? 'ml-auto max-w-[85%] rounded-br-md bg-primary-900/10 text-gray-800'
+                    : 'w-full rounded-bl-md bg-[#522f81] text-[#F5F5F5] shadow-sm'
+                }`}
+              >
+                {msg.text}
+              </div>
+              {msg.disclaimer && (
+                <div className="px-1 text-[11px] italic leading-tight text-gray-500">
+                  {msg.disclaimer}
+                </div>
+              )}
+              {!msg.isUser && msg.query && (
+                msg.rated ? (
+                  <div className="px-1 text-[11px] text-gray-400">Спасибо за оценку!</div>
+                ) : (
+                  <div className="flex items-center gap-2 px-1 pt-0.5">
+                    <button
+                      type="button"
+                      onClick={() => handleFeedback(i, 'up')}
+                      className="text-gray-400 transition-colors hover:text-[#522f81]"
+                      title="Полезно"
+                      aria-label="Полезный ответ"
+                    >
+                      <ThumbsUp className="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleFeedback(i, 'down')}
+                      className="text-gray-400 transition-colors hover:text-[#522f81]"
+                      title="Не помогло"
+                      aria-label="Бесполезный ответ"
+                    >
+                      <ThumbsDown className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                )
+              )}
             </div>
           ))}
+          {isSending && (
+            <div className="flex-shrink-0 w-full animate-pulse rounded-2xl rounded-bl-md bg-[#522f81] px-3 py-2 text-sm text-[#F5F5F5]/80 shadow-sm">
+              Пуф печатает…
+            </div>
+          )}
           <div ref={messagesEndRef} />
         </div>
+
+        {/* Выбор питомца — только если их несколько (для вопросов о здоровье/питании) */}
+        {isAuthenticated && pets.length > 1 && (
+          <div className="flex shrink-0 gap-1 overflow-x-auto px-6 pb-1">
+            {pets.map((p) => (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => setSelectedPetId(p.id)}
+                className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs transition-colors ${
+                  effectivePetId === p.id
+                    ? 'bg-[#522f81] text-white'
+                    : 'bg-black/5 text-gray-600 hover:bg-black/10'
+                }`}
+              >
+                {p.name}
+              </button>
+            ))}
+          </div>
+        )}
 
         <div className="flex shrink-0 px-6 pb-5 pt-0">
           <div className="flex min-h-[34px] w-full items-center gap-0 rounded-full border border-black/10 bg-[#f8f8f8] py-1 pl-3 pr-1.5 focus-within:border-primary-900/30 focus-within:bg-white">
@@ -111,13 +230,15 @@ export default function PuffSupportWidget({ stackGuestStrip = false }) {
               placeholder="Напишите сообщение..."
               maxLength={500}
               autoComplete="off"
-              className="min-w-0 flex-1 border-0 bg-transparent py-1.5 pr-1.5 text-sm text-gray-800 outline-none placeholder:text-gray-400"
+              disabled={isSending}
+              className="min-w-0 flex-1 border-0 bg-transparent py-1.5 pr-1.5 text-sm text-gray-800 outline-none placeholder:text-gray-400 disabled:opacity-60"
               aria-label="Введите сообщение"
             />
             <button
               type="button"
               onClick={sendMessage}
-              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary-900/25 text-primary-900 transition-all hover:scale-105 hover:bg-primary-900/40"
+              disabled={isSending}
+              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary-900/25 text-primary-900 transition-all hover:scale-105 hover:bg-primary-900/40 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100"
               aria-label="Отправить"
             >
               <Send className="h-3.5 w-3.5" />

@@ -74,6 +74,10 @@ urlpatterns = [
     # Обрабатывает: отзывы на товары и курсы, рейтинги
     path('api/reviews/', include('apps.reviews.urls')),
 
+    # ИИ-ассистент «Пуф»
+    # Обрабатывает: диалог с ассистентом (поддержка / здоровье / питание)
+    path('api/assistant/', include('apps.assistant.urls')),
+
     # Календарь событий питомцев теперь в /api/pets/calendar/
 
     # Загрузка файлов и медиа

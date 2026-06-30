@@ -123,6 +123,32 @@ if DEBUG:
     print(f"[SMS CONFIG] Backend: {SMS_BACKEND}")
 
 # =============================================================================
+# ИИ-АССИСТЕНТ «ПУФ» (LLM)
+# =============================================================================
+# ASSISTANT_LLM_BACKEND: 'stub' (заглушка, по умолчанию) | 'claude' | 'yandex' | 'gigachat'.
+# Секреты — только в env; ниже лишь имена переменных (значения не хранятся в коде).
+ASSISTANT_LLM_BACKEND = os.getenv('ASSISTANT_LLM_BACKEND', 'stub')
+# Claude (Anthropic): прямой доступ к api.anthropic.com с РФ-сервера может требовать прокси.
+ASSISTANT_ANTHROPIC_API_KEY = os.getenv('ASSISTANT_ANTHROPIC_API_KEY', '')
+ASSISTANT_CLAUDE_MODEL = os.getenv('ASSISTANT_CLAUDE_MODEL', '')
+ASSISTANT_HTTP_PROXY = os.getenv('ASSISTANT_HTTP_PROXY', '')
+# YandexGPT (RU-native).
+ASSISTANT_YANDEX_API_KEY = os.getenv('ASSISTANT_YANDEX_API_KEY', '')
+ASSISTANT_YANDEX_FOLDER_ID = os.getenv('ASSISTANT_YANDEX_FOLDER_ID', '')
+ASSISTANT_YANDEX_MODEL = os.getenv('ASSISTANT_YANDEX_MODEL', '')
+# GigaChat (Сбер, RU-native).
+ASSISTANT_GIGACHAT_AUTH_KEY = os.getenv('ASSISTANT_GIGACHAT_AUTH_KEY', '')
+ASSISTANT_GIGACHAT_SCOPE = os.getenv('ASSISTANT_GIGACHAT_SCOPE', 'GIGACHAT_API_PERS')
+ASSISTANT_GIGACHAT_CA_BUNDLE = os.getenv('ASSISTANT_GIGACHAT_CA_BUNDLE', '')
+ASSISTANT_GIGACHAT_MODEL = os.getenv('ASSISTANT_GIGACHAT_MODEL', '')
+ASSISTANT_GIGACHAT_VERIFY = os.getenv('ASSISTANT_GIGACHAT_VERIFY', 'true')
+# Лимит запросов к ассистенту на пользователя (DRF ScopedRateThrottle).
+ASSISTANT_RATE_LIMIT = os.getenv('ASSISTANT_RATE_LIMIT', '20/min')
+
+if DEBUG:
+    print(f"[ASSISTANT CONFIG] LLM backend: {ASSISTANT_LLM_BACKEND}")
+
+# =============================================================================
 # ПРИЛОЖЕНИЯ
 # =============================================================================
 
@@ -148,6 +174,7 @@ INSTALLED_APPS = [
     'apps.training',
     'apps.payments',
     'apps.reviews',
+    'apps.assistant',
 ]
 
 # =============================================================================
@@ -330,6 +357,11 @@ REST_FRAMEWORK = {
         'rest_framework.renderers.JSONRenderer',
     ),
     'EXCEPTION_HANDLER': 'core.exception_handler.custom_exception_handler',
+    'DEFAULT_THROTTLE_RATES': {
+        # Применяется только во вью, которые явно объявляют throttle_scope='assistant'
+        # (глобальный троттлинг не включаем, чтобы не задеть остальные эндпоинты).
+        'assistant': ASSISTANT_RATE_LIMIT,
+    },
 }
 
 # =============================================================================
@@ -524,6 +556,11 @@ LOGGING = {
             'propagate': False,
         },
         'apps.users': {
+            'handlers': ['console', 'file'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'apps.assistant': {
             'handlers': ['console', 'file'],
             'level': 'INFO',
             'propagate': False,
