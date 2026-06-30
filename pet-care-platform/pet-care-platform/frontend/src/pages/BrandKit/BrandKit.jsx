@@ -7,6 +7,7 @@ import { PawPrint, Heart, Search, Inbox, Sparkles, ShoppingBag } from 'lucide-re
 import {
   BrandButton, BrandCard, BrandSection, BrandInput,
   BrandBadge, BrandTabs, BrandEmptyState, BrandModal,
+  PuffLottie, PUFF_ANIMATIONS,
 } from '../../components/brand'
 
 const TAB_ITEMS = [
@@ -150,6 +151,23 @@ export default function BrandKit() {
             <BrandInput label="Имя питомца" placeholder="Например, Пуф" />
           </div>
         </BrandModal>
+      </BrandSection>
+
+      {/* Маскот Пуф — база Lottie-анимаций */}
+      <BrandSection
+        bg="milk"
+        title="Пуф — база анимаций (Lottie)"
+        subtitle="Файлы: public/lottie/puff/puff_{name}.json · Реестр: components/brand/puffAnimations.js"
+      >
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
+          {Object.entries(PUFF_ANIMATIONS).map(([name, meta]) => (
+            <div key={name} className="flex flex-col items-center rounded-2xl bg-white p-3 shadow-sm">
+              <PuffLottie name={name} loop size={96} alt={meta.label} />
+              <code className="mt-1 text-xs font-semibold text-primary-800">{name}</code>
+              <span className="text-center text-[11px] leading-tight text-primary-500">{meta.label}</span>
+            </div>
+          ))}
+        </div>
       </BrandSection>
     </div>
   )
