@@ -2,8 +2,12 @@
  * PuffLottie — маскот Пуфыч на Lottie. Ленивая загрузка нужной анимации из
  * /lottie/puff/{name}.json. Уважает prefers-reduced-motion и имеет статичный fallback.
  *
- * Доступные name: hello_wave, hello_corner, think, talk_gesture, talk_gesture2, celebrate_jump2,
- * sit, sit_down, stand_up, stand_up2, stay, bored_yawn, teleport_in, teleport_out
+ * Доступные name см. в реестре ./puffAnimations.js (PUFF_ANIMATIONS): hello_wave,
+ * hello_corner(2), think, talk_gesture(2), celebrate_jump2, banana2, sit, sit_down,
+ * stand_up(2), stay, bored_yawn, teleport_in, teleport_out.
+ *
+ * onComplete вызывается, когда НЕциклическая (loop=false) анимация доиграла —
+ * удобно для сценариев-цепочек (сыграть жест → вернуться в покой).
  */
 import { useEffect, useState } from 'react'
 import Lottie from 'lottie-react'
@@ -33,6 +37,7 @@ export default function PuffLottie({
   autoplay = true,
   className = '',
   alt = 'Пуфыч',
+  onComplete,
 }) {
   const [data, setData] = useState(null)
   const [failed, setFailed] = useState(false)
@@ -76,6 +81,7 @@ export default function PuffLottie({
       animationData={data}
       loop={loop}
       autoplay={autoplay}
+      onComplete={onComplete}
       style={box}
       className={`select-none ${className}`}
       aria-label={alt}
