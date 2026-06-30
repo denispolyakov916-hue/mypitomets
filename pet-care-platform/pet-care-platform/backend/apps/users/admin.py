@@ -2,12 +2,13 @@
 Полноценная админка для управления пользователями и их данными.
 """
 
-from django.contrib import admin
+from django.contrib import admin, messages
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
+from django.core.exceptions import ValidationError
 from django.utils.html import format_html
 from django.urls import reverse
 from django.utils.safestring import mark_safe
-from .models import User, Token
+from .models import User, Token, PartnerAccessRequest
 
 
 class PetInline(admin.TabularInline):
@@ -236,3 +237,53 @@ class TokenAdmin(admin.ModelAdmin):
         return False
     is_active.boolean = True
     is_active.short_description = 'Активен'
+
+
+@admin.register(PartnerAccessRequest)
+class PartnerAccessRequestAdmin(admin.ModelAdmin):
+    """Заявки на доступ к партнёрским кабинетам (модерация владельцем)."""
+
+    list_display = (
+        'user', 'requested_role', 'status', 'granted_supplier',
+        'company_name', 'created_at',
+    )
+    list_filter = ('status', 'requested_role', 'created_at')
+    search_fields = ('user__email', 'company_name', 'message')
+    raw_id_fields = ('user', 'granted_supplier', 'reviewed_by')
+    readonly_fields = ('created_at', 'reviewed_at', 'reviewed_by')
+    date_hierarchy = 'created_at'
+    actions = ('action_approve', 'action_reject')
+
+    @admin.action(description='Одобрить и выдать доступ')
+    def action_approve(self, request, queryset):
+        approved = 0
+        for req in queryset:
+            if req.requested_role == PartnerAccessRequest.ROLE_SUPPLIER and not req.granted_supplier_id:
+                self.message_user(
+                    request,
+                    f'Заявка #{req.pk} ({req.user}): укажите «Выданный поставщик» '
+                    f'перед одобрением.',
+                    level=messages.WARNING,
+                )
+                continue
+            try:
+                req.approve(reviewer=request.user)
+                approved += 1
+            except ValidationError as exc:
+                self.message_user(
+                    request,
+                    f'Заявка #{req.pk}: {"; ".join(exc.messages)}',
+                    level=messages.ERROR,
+                )
+        if approved:
+            self.message_user(
+                request, f'Одобрено и выдано доступов: {approved}.', level=messages.SUCCESS,
+            )
+
+    @admin.action(description='Отклонить')
+    def action_reject(self, request, queryset):
+        rejected = 0
+        for req in queryset:
+            req.reject(reviewer=request.user)
+            rejected += 1
+        self.message_user(request, f'Отклонено заявок: {rejected}.', level=messages.SUCCESS)

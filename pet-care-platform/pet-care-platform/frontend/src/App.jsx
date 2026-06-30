@@ -73,6 +73,7 @@ import Payment from './pages/Payment/Payment'
 import Profile from './pages/Dashboard/Profile'
 import Favorites from './pages/Favorites'
 import SharedWishlistPage from './pages/Wishlist/SharedWishlistPage'
+import RequestAccessPage from './pages/PartnerAccess/RequestAccessPage'
 
 // Ленивая загрузка некритичных страниц (улучшает время первой загрузки)
 const UnifiedCheckout = lazy(() => import('./pages/Checkout/UnifiedCheckout'))
@@ -181,6 +182,11 @@ function App() {
               <Route path="/activate" element={<Activate />} />
               <Route path="/forgot-password" element={<ForgotPassword />} />
               <Route path="/reset-password" element={<ResetPassword />} />
+
+              {/* Заявка на партнёрский доступ — публичный маршрут.
+                  Гость видит приглашение войти; залогиненный — форму заявки.
+                  Предвыбор роли через ?role=supplier|course_specialist. */}
+              <Route path="/partner-access" element={<RequestAccessPage />} />
 
               {/* Заглушка «В разработке» — публичная */}
               <Route path="/coming-soon" element={<ComingSoon />} />

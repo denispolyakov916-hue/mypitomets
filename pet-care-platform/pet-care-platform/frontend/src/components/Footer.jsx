@@ -203,6 +203,13 @@ export function Footer() {
                 {label}
               </Link>
             ))}
+            {/* Заявка на партнёрский доступ — видна всем (вход в форму заявки). */}
+            <Link
+              to="/partner-access"
+              className="text-white/90 hover:text-white transition-colors"
+            >
+              Стать партнёром
+            </Link>
             {isOwner && (
               <Link
                 to="/admin-panel"
