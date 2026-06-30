@@ -154,7 +154,10 @@ function HealthDiary() {
   // Защита от двойного удаления (двойной клик по «Удалить» / повторный вызов).
   const deletingRef = useRef(false)
   const [selectedDate, setSelectedDate] = useState(new Date())
-  const [activeTab, setActiveTab] = useState('overview')
+  const [activeTab, setActiveTab] = useState(() => {
+    const tab = searchParams.get('tab')
+    return ['overview', 'calendar', 'list'].includes(tab) ? tab : 'overview'
+  })
   const [deleteConfirmId, setDeleteConfirmId] = useState(null)
   const [addModalOpen, setAddModalOpen] = useState(false)
   const [addModalType, setAddModalType] = useState(undefined)

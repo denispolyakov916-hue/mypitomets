@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { ChevronLeft, ChevronRight, Sparkles, UtensilsCrossed, Dog, HeartPulse, Tag } from 'lucide-react'
 
 const SLIDES = [
@@ -17,6 +17,8 @@ const SLIDES = [
     eyebrow: 'Корма, игрушки и уход — с доставкой',
     title: 'Всё для питомца в одном месте',
     cta: 'В каталог',
+    // Без фильтра — показать весь каталог
+    filter: {},
   },
   {
     id: 'play',
@@ -24,6 +26,7 @@ const SLIDES = [
     eyebrow: 'Игрушки и активный досуг',
     title: 'Больше игр — счастливее питомец',
     cta: 'В каталог',
+    filter: { category_code: 'toys' },
   },
   {
     id: 'health',
@@ -31,6 +34,7 @@ const SLIDES = [
     eyebrow: 'Здоровье и витамины',
     title: 'Забота о здоровье каждый день',
     cta: 'В каталог',
+    filter: { category_code: 'food.supplements' },
   },
   {
     id: 'deals',
@@ -38,19 +42,16 @@ const SLIDES = [
     eyebrow: 'Выгодные предложения',
     title: 'Заботиться о питомце выгодно',
     cta: 'В каталог',
+    filter: { has_discount: 'true' },
   },
 ]
 
 const CATEGORIES = [
-  { label: 'Премиальное питание', Icon: UtensilsCrossed, img: '/banners/cat-treat.jpg', pos: 'object-[center_30%]' },
-  { label: 'Игрушки и досуг', Icon: Dog, img: '/banners/dog-jack.jpg' },
-  { label: 'Здоровье и витамины', Icon: HeartPulse, img: '/banners/dog-pointer.jpg' },
-  { label: 'Выгодные предложения', Icon: Tag, img: '/banners/cats-cozy.jpg' },
+  { label: 'Премиальное питание', Icon: UtensilsCrossed, img: '/banners/cat-treat.jpg', pos: 'object-[center_30%]', filter: { category_code: 'food' } },
+  { label: 'Игрушки и досуг', Icon: Dog, img: '/banners/dog-jack.jpg', filter: { category_code: 'toys' } },
+  { label: 'Здоровье и витамины', Icon: HeartPulse, img: '/banners/dog-pointer.jpg', filter: { category_code: 'food.supplements' } },
+  { label: 'Выгодные предложения', Icon: Tag, img: '/banners/cats-cozy.jpg', filter: { has_discount: 'true' } },
 ]
-
-const scrollToCatalog = () => {
-  document.getElementById('shop-catalog')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-}
 
 function SlideMedia({ slide, isActive }) {
   const { media } = slide
@@ -78,7 +79,32 @@ function SlideMedia({ slide, isActive }) {
 export default function ShopHeroBanner() {
   const [active, setActive] = useState(0)
   const hovering = useRef(false)
+  const [, setSearchParams] = useSearchParams()
   const go = useCallback((dir) => setActive((a) => (a + dir + SLIDES.length) % SLIDES.length), [])
+
+  /**
+   * Применяет фильтр баннера к каталогу через URL и прокручивает к листингу.
+   * Полностью переписываем category-* и has_discount, чтобы баннер был
+   * предсказуемым «входом» в категорию (а не наслаивался на старый фильтр).
+   */
+  const applyFilter = useCallback((filter = {}) => {
+    setSearchParams((prev) => {
+      const p = new URLSearchParams(prev)
+      // Сбрасываем взаимоисключающие/связанные параметры категории
+      p.delete('category_code')
+      p.delete('category_slug')
+      p.delete('has_discount')
+      for (const [key, value] of Object.entries(filter)) {
+        if (value === '' || value === null || value === undefined) p.delete(key)
+        else p.set(key, String(value))
+      }
+      p.set('page', '1')
+      return p
+    })
+    requestAnimationFrame(() => {
+      document.getElementById('shop-catalog')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    })
+  }, [setSearchParams])
 
   useEffect(() => {
     const t = setInterval(() => {
@@ -116,7 +142,7 @@ export default function ShopHeroBanner() {
                     <Sparkles className="h-4 w-4" aria-hidden /> {s.cta}
                   </Link>
                 ) : (
-                  <button type="button" onClick={scrollToCatalog} className="inline-flex items-center gap-2 rounded-full bg-white px-5 py-2.5 text-sm font-bold text-primary-800 shadow-lg transition hover:bg-white/90 active:scale-95">
+                  <button type="button" onClick={() => applyFilter(s.filter)} className="inline-flex items-center gap-2 rounded-full bg-white px-5 py-2.5 text-sm font-bold text-primary-800 shadow-lg transition hover:bg-white/90 active:scale-95">
                     {s.cta} <ChevronRight className="h-4 w-4" aria-hidden />
                   </button>
                 )}
@@ -141,11 +167,11 @@ export default function ShopHeroBanner() {
 
       {/* Боковые категории */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-1 lg:grid-rows-4">
-        {CATEGORIES.map(({ label, Icon, img, pos }) => (
+        {CATEGORIES.map(({ label, Icon, img, pos, filter }) => (
           <button
             key={label}
             type="button"
-            onClick={scrollToCatalog}
+            onClick={() => applyFilter(filter)}
             className="group relative flex min-h-[64px] items-center gap-3 overflow-hidden rounded-2xl p-3 text-left text-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md lg:p-4"
           >
             <img src={img} alt="" className={`absolute inset-0 h-full w-full object-cover transition duration-500 group-hover:scale-105 ${pos || ''}`} />

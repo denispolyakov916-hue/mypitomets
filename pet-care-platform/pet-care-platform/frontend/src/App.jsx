@@ -58,6 +58,7 @@ import Activate from './pages/Auth/Activate'
 import ForgotPassword from './pages/Auth/ForgotPassword'
 import ResetPassword from './pages/Auth/ResetPassword'
 import ComingSoon from './pages/ComingSoon/ComingSoon'
+import About from './pages/About/About'
 
 // Ленивая загрузка страниц пород
 const BreedsPage = lazy(() => import('./pages/Breeds/BreedsPage'))
@@ -177,6 +178,8 @@ function App() {
 
               {/* Заглушка «В разработке» — публичная */}
               <Route path="/coming-soon" element={<ComingSoon />} />
+              {/* О нас — публичная страница истории и миссии проекта */}
+              <Route path="/about" element={<About />} />
               {/* Brand UI Kit — внутренняя витрина компонентов (публичный route) */}
               <Route path="/brand-kit" element={<BrandKit />} />
 

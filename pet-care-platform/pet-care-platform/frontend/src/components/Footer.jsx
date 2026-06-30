@@ -5,6 +5,7 @@
 
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { ArrowUp } from 'lucide-react';
 
 // Сервисы — соответствуют разделам главной (Питомцы, Питание, Здоровье, обучение)
 const FOOTER_SERVICES = [
@@ -12,21 +13,22 @@ const FOOTER_SERVICES = [
   { to: '/coming-soon?name=Подбор+питомца+для+вас', label: 'Подбор питомца для вас' },
   { to: '/courses', label: 'Обучающие курсы' },
   { to: '/pet-id', label: 'Мои питомцы' },
-  { to: '/pet-id', label: 'Умный календарь' },
+  // Умный календарь живёт во вкладке «Календарь» дневника здоровья
+  { to: '/health-diary?tab=calendar', label: 'Умный календарь' },
   { to: '/health-diary', label: 'Дневник здоровья' },
 ];
 
-// Каталог — Магазин на главной
+// Каталог — Магазин с предустановленным фильтром категории (category_code)
 const FOOTER_CATALOG = [
-  { to: '/shop', label: 'Корма и добавки' },
-  { to: '/shop', label: 'Аксессуары' },
-  { to: '/shop', label: 'Уход и гигиена' },
-  { to: '/shop', label: 'Игрушки' },
+  { to: '/shop?category_code=food', label: 'Корма и добавки' },
+  { to: '/shop?category_code=walk', label: 'Аксессуары' },
+  { to: '/shop?category_code=care', label: 'Уход и гигиена' },
+  { to: '/shop?category_code=toys', label: 'Игрушки' },
 ];
 
-// Компания — разделы о проекте (якоря на главной при переходе на /)
+// Компания — разделы о проекте
 const FOOTER_COMPANY = [
-  { to: '/#hero', label: 'О нас' },
+  { to: '/about', label: 'О нас' },
   { to: '/coming-soon?name=Блог', label: 'Блог' },
   { to: '/coming-soon?name=Контакты', label: 'Контакты' },
   { to: '/coming-soon?name=Вакансии', label: 'Вакансии' },
@@ -111,6 +113,7 @@ function FooterColumn({ title, links }) {
 
 export function Footer() {
   const [email, setEmail] = useState('');
+  const currentYear = new Date().getFullYear();
 
   const handleSubscribe = (e) => {
     e.preventDefault();
@@ -118,12 +121,17 @@ export function Footer() {
     setEmail('');
   };
 
+  const scrollToTop = () => {
+    const prefersReducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    window.scrollTo({ top: 0, behavior: prefersReducedMotion ? 'auto' : 'smooth' });
+  };
+
   return (
     <footer className="footer-landing bg-primary-700 text-white overflow-hidden">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-12 pb-6">
         <div className="grid grid-cols-1 md:grid-cols-7 gap-8 md:gap-6">
           <div className="md:col-span-1">
-            <p className="text-lg font-semibold text-white mb-3">2025-2026 © ПИТОМЕЦПЛЮС</p>
+            <p className="text-lg font-semibold text-white mb-3">{currentYear} © ПИТОМЕЦПЛЮС</p>
             <p className="text-sm text-white/80 leading-relaxed">
               Умная экосистема заботы о вашем питомце.
             </p>
@@ -186,6 +194,15 @@ export function Footer() {
                 <Icon className="w-6 h-6" />
               </a>
             ))}
+            <button
+              type="button"
+              onClick={scrollToTop}
+              className="ml-auto inline-flex h-11 w-11 items-center justify-center rounded-full bg-white/15 text-white transition-colors hover:bg-white/25 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
+              aria-label="Наверх"
+              title="Наверх"
+            >
+              <ArrowUp className="h-5 w-5" aria-hidden="true" />
+            </button>
           </div>
           <span className="footer-handle text-white/85 text-sm font-medium">@pitometsplus</span>
         </div>

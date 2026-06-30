@@ -312,15 +312,24 @@ export default function PetDetailPage() {
         draft_step: options.draftStep ?? formData?.draft_step ?? null,
       };
       if (options.partial) {
+        // Частичное автосохранение черновика — без закрытия модалки и без refetch.
         await updatePetPartial(id, payload);
         return;
       }
+      // ПОЛНОЕ сохранение: сначала ждём подтверждения сервера (PUT/PATCH).
+      // Локальное состояние (карточку) обновляем ТОЛЬКО после успеха — через loadPetData,
+      // который перечитывает канонические данные с backend (activity_level и пр. персистятся).
       await updatePet(id, payload);
       setShowWizard(false);
-      loadPetData();
+      await loadPetData();
     } catch (err) {
+      // На ошибке НЕ закрываем модалку и НЕ трогаем карточку: показываем реальное
+      // сообщение бэкенда и пробрасываем ошибку, чтобы редактор не запускал
+      // синхронизацию здоровья/аллергий против несохранённого питомца.
       console.error('Ошибка сохранения:', err);
-      alert('Не удалось сохранить изменения. Попробуйте ещё раз.');
+      const msg = (err && err.message) || 'Не удалось сохранить изменения. Попробуйте ещё раз.';
+      if (notifyErr) notifyErr(msg);
+      throw err;
     }
   };
 
@@ -1253,6 +1262,8 @@ function CreateReminderModal({ petId, petName, onClose, onCreated }) {
     if (!date) { setFormError('Выберите дату'); return; }
     setSubmitting(true); setFormError('');
     try {
+      // Успех = промис зафиксировался (axios-клиент уже вернул data, см. api/client.js).
+      // 201 НЕ считается ошибкой: на этой ветке показываем успех и закрываем модалку.
       await createReminder({
         pet_id: petId,
         title: title.trim(),
@@ -1262,9 +1273,11 @@ function CreateReminderModal({ petId, petName, onClose, onCreated }) {
         frequency,
       });
       if (showSuccess) showSuccess('Напоминание создано');
-      onCreated();
+      onCreated(); // обновит список и закроет модалку
     } catch (err) {
-      const msg = (err && err.response && err.response.data && err.response.data.message) || 'Не удалось создать напоминание';
+      // Интерцептор уплощает ошибку до { status, message, errors } — никакого err.response.
+      // Берём реальное сообщение бэкенда (например «Дата не может быть в прошлом»).
+      const msg = (err && err.message) || 'Не удалось создать напоминание';
       setFormError(msg);
       if (showError) showError(msg);
     } finally {

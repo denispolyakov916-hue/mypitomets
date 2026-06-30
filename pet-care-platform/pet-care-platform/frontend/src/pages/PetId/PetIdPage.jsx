@@ -20,6 +20,50 @@ import PetCreateForm from './components/PetCreateForm';
 import PetProfileEditor from './components/PetProfileEditor';
 import { PageLoader } from '../../components/Loader';
 import { EmptyState } from '../../components/ui/EmptyState';
+import { useToastStore } from '../../store/toastStore';
+
+/**
+ * Поделиться ссылкой на профиль питомца.
+ *
+ * Safari (desktop) поддерживает navigator.share ТОЛЬКО внутри жеста пользователя,
+ * поэтому вызываем navigator.share СИНХРОННО в обработчике клика — без await до него,
+ * иначе цепочка жеста рвётся и share молча не открывается.
+ * Fallback — копирование в буфер обмена. AbortError (пользователь закрыл шит) глотаем.
+ *
+ * @param {{id: string|number, name?: string}} pet
+ * @param {{success?: Function, error?: Function}} toast
+ */
+function sharePet(pet, toast) {
+  const url = `${window.location.origin}/pet-id/${pet.id}`;
+  const shareData = {
+    title: pet?.name ? `Питомец: ${pet.name}` : 'Профиль питомца',
+    text: pet?.name ? `Профиль питомца ${pet.name} в Питомец+` : 'Профиль питомца в Питомец+',
+    url,
+  };
+
+  // navigator.share — вызываем напрямую (синхронно в жесте), промис обрабатываем после.
+  if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
+    navigator.share(shareData).catch((err) => {
+      // Пользователь отменил системный share-лист — это не ошибка.
+      if (err && err.name === 'AbortError') return;
+      // Иначе пробуем буфер обмена как запасной вариант.
+      copyToClipboard(url, toast);
+    });
+    return;
+  }
+
+  copyToClipboard(url, toast);
+}
+
+function copyToClipboard(url, toast) {
+  if (typeof navigator !== 'undefined' && navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+    navigator.clipboard.writeText(url)
+      .then(() => { if (toast?.success) toast.success('Ссылка скопирована'); })
+      .catch(() => { if (toast?.error) toast.error('Не удалось скопировать ссылку'); });
+    return;
+  }
+  if (toast?.error) toast.error('Не удалось скопировать ссылку');
+}
 
 // Иконка вида животного
 const getSpeciesEmoji = (species) => {
@@ -125,6 +169,8 @@ const PetCard = React.memo(({ pet, index, onEdit, onDelete, onViewAnalysis, onNa
   const [menuOpen, setMenuOpen] = useState(false);
   const [photoError, setPhotoError] = useState(false);
   const menuRef = useRef(null);
+  const showSuccess = useToastStore((s) => s.success);
+  const showError = useToastStore((s) => s.error);
   const accent = getSpeciesAccent(pet.species);
   const nextStep = getNextProfileStep(pet);
   const diaryToday = getDiaryTodayLine(pet.id);
@@ -220,7 +266,12 @@ const PetCard = React.memo(({ pet, index, onEdit, onDelete, onViewAnalysis, onNa
                   <button
                     type="button"
                     className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
-                    onClick={() => setMenuOpen(false)}
+                    onClick={() => {
+                      // ВАЖНО: navigator.share вызываем синхронно в жесте (внутри sharePet),
+                      // меню закрываем ПОСЛЕ — закрытие через setState не рвёт user-gesture.
+                      sharePet(pet, { success: showSuccess, error: showError });
+                      setMenuOpen(false);
+                    }}
                   >
                     <Share2 className="w-4 h-4" /> Поделиться
                   </button>
