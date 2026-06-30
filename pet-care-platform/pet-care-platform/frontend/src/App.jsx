@@ -32,6 +32,7 @@ import { Routes, Route, Navigate } from 'react-router-dom'
 import Layout from './components/Layout'
 import PrivateRoute from './components/PrivateRoute'
 import AdminRoute from './components/AdminRoute'
+import SupplierRoute from './components/SupplierRoute'
 
 // Витрина страниц (для редизайна)
 import PagesRouter from './Страницы/Роутер'
@@ -90,6 +91,7 @@ const BrandKit = lazy(() => import('./pages/BrandKit/BrandKit')) // dev: /brand-
 
 // Ленивая загрузка React админ-панели
 const AdminApp = lazy(() => import('./admin/App'))
+const SupplierApp = lazy(() => import('./supplier/App'))
 
 // Хранилище для состояния аутентификации
 import { useAuthStore } from './store/authStore'
@@ -128,6 +130,17 @@ function App() {
               <AdminApp />
             </Suspense>
           </AdminRoute>
+        }
+      />
+
+      <Route
+        path="/supplier-panel/*"
+        element={
+          <SupplierRoute>
+            <Suspense fallback={<AdminPanelLoader />}>
+              <SupplierApp />
+            </Suspense>
+          </SupplierRoute>
         }
       />
 

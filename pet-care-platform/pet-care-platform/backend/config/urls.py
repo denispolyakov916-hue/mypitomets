@@ -88,6 +88,10 @@ urlpatterns = [
     # Обрабатывает: аналитика, управление данными, CRUD операций
     # Доступ: только для пользователей с is_staff=True
     path('api/admin/', include('config.urls_admin')),
+
+    # Кабинет поставщика
+    # Обрабатывает: ассортимент поставщика, заявки, продажи, возвраты, импорты
+    path('api/supplier/', include('config.urls_supplier')),
     
     # Health check и мониторинг
     # Health check доступен без аутентификации для использования в мониторинге

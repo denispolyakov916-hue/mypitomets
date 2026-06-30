@@ -28,6 +28,12 @@ from .admin_api import (
     AdminCourseViewSet,
     admin_stats_summary
 )
+from .supplier_api import (
+    AdminSupplierSubmissionViewSet,
+    AdminSupplierSyncLogViewSet,
+    AdminSupplierUserAccessViewSet,
+    AdminSupplierViewSet,
+)
 
 # Создаем роутер для ViewSets
 admin_router = DefaultRouter()
@@ -44,6 +50,10 @@ admin_router.register(r'pets', AdminPetViewSet, basename='admin-pets')
 admin_router.register(r'products', AdminProductViewSet, basename='admin-products')
 admin_router.register(r'orders', AdminOrderViewSet, basename='admin-orders')
 admin_router.register(r'courses', AdminCourseViewSet, basename='admin-courses')
+admin_router.register(r'suppliers', AdminSupplierViewSet, basename='admin-suppliers')
+admin_router.register(r'supplier-users', AdminSupplierUserAccessViewSet, basename='admin-supplier-users')
+admin_router.register(r'supplier-submissions', AdminSupplierSubmissionViewSet, basename='admin-supplier-submissions')
+admin_router.register(r'supplier-sync-logs', AdminSupplierSyncLogViewSet, basename='admin-supplier-sync-logs')
 
 # URL паттерны для admin API
 urlpatterns = [

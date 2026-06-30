@@ -166,6 +166,28 @@ export const adminAPI = {
     delete: (id) => adminApi.delete(`admin/orders/${id}/`),
   },
 
+  suppliers: {
+    list: (params) => adminApi.get('admin/suppliers/', { params }),
+    create: (data) => adminApi.post('admin/suppliers/', data),
+    retrieve: (id) => adminApi.get(`admin/suppliers/${id}/`),
+    update: (id, data) => adminApi.patch(`admin/suppliers/${id}/`, data),
+  },
+
+  supplierUsers: {
+    list: (params) => adminApi.get('admin/supplier-users/', { params }),
+    create: (data) => adminApi.post('admin/supplier-users/', data),
+    update: (id, data) => adminApi.patch(`admin/supplier-users/${id}/`, data),
+  },
+
+  supplierSubmissions: {
+    list: (params) => adminApi.get('admin/supplier-submissions/', { params }),
+    retrieve: (id) => adminApi.get(`admin/supplier-submissions/${id}/`),
+    requestFixes: (id, data) => adminApi.post(`admin/supplier-submissions/${id}/request-fixes/`, data),
+    reject: (id, data) => adminApi.post(`admin/supplier-submissions/${id}/reject/`, data),
+    approveShop: (id, data = {}) => adminApi.post(`admin/supplier-submissions/${id}/approve-shop/`, data),
+    approveRecommendation: (id, data = {}) => adminApi.post(`admin/supplier-submissions/${id}/approve-recommendation/`, data),
+  },
+
   // CRUD операции - Курсы
   courses: {
     list: (params) => adminApi.get('admin/courses/', { params }),

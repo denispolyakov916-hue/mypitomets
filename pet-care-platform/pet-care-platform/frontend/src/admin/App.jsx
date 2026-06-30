@@ -34,6 +34,8 @@ import PetsTable from './components/Tables/PetsTable';
 import ProductsTable from './components/Tables/ProductsTable';
 import OrdersTable from './components/Tables/OrdersTable';
 import CoursesTable from './components/Tables/CoursesTable';
+import SupplierSubmissionsPage from './components/Suppliers/SupplierSubmissionsPage';
+import SuppliersPage from './components/Suppliers/SuppliersPage';
 
 // Course creation and editing
 import CourseEditorPage from './components/Courses/CourseEditorPage';
@@ -89,6 +91,8 @@ const AdminApp = () => {
         <Route path="products" element={<ProductsTable />} />
         <Route path="orders" element={<OrdersTable />} />
         <Route path="courses" element={<CoursesTable />} />
+        <Route path="suppliers" element={<SuppliersPage />} />
+        <Route path="supplier-submissions" element={<SupplierSubmissionsPage />} />
 
         {/* Редактирование курса (единый редактор) */}
         <Route path="courses/:id/edit" element={<CourseEditorPage />} />

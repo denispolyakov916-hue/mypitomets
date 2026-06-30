@@ -72,6 +72,20 @@ const Sidebar = ({ isOpen, onClose, desktop = false }) => {
           adminOnly: true,
         },
         {
+          name: 'Поставщики',
+          href: '/admin-panel/suppliers',
+          icon: '🏢',
+          current: location.pathname === '/admin-panel/suppliers',
+          adminOnly: true,
+        },
+        {
+          name: 'Модерация кормов',
+          href: '/admin-panel/supplier-submissions',
+          icon: '✅',
+          current: location.pathname === '/admin-panel/supplier-submissions',
+          adminOnly: true,
+        },
+        {
           name: 'Курсы',
           href: '/admin-panel/courses',
           icon: '🎓',
