@@ -13,7 +13,7 @@ import { useAuthStore } from '../store/authStore';
 // владельца показывается ТОЛЬКО суперпользователю (владельцу) — см. isOwner ниже.
 const FOOTER_PARTNERS = [
   { to: '/supplier-panel', label: 'Подрядчик по корму' },
-  { to: '/admin-panel', label: 'Специалист по курсам' },
+  { to: '/specialist-panel', label: 'Специалист по курсам' },
 ];
 
 // Сервисы — соответствуют разделам главной (Питомцы, Питание, Здоровье, обучение)
