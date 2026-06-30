@@ -743,16 +743,33 @@ class AdminAnalyticsViewSet(viewsets.ViewSet, DashboardCacheMixin):
         """Топ товаров по продажам."""
         limit = int(request.query_params.get('limit', 10))
 
-        top_products = Product.objects.filter(
-            status=1
-        ).order_by('-order_count')[:limit]
+        top_sales = list(OrderItem.objects.filter(
+            product__isnull=False,
+            order__status__in=['processing', 'partially_delivered', 'shipped', 'delivered']
+        ).values('product_id').annotate(
+            orders_count=Sum('quantity')
+        ).filter(
+            orders_count__gt=0
+        ).order_by('-orders_count')[:limit])
+
+        products_by_id = {
+            product.id: product
+            for product in Product.objects.filter(
+                id__in=[item['product_id'] for item in top_sales],
+                status=1
+            ).select_related('brand', 'new_category')
+        }
 
         data = []
-        for product in top_products:
+        for item in top_sales:
+            product = products_by_id.get(item['product_id'])
+            if not product:
+                continue
+
             data.append({
                 'id': str(product.kotmatros_product_id or product.id),
                 'name': product.name,
-                'orders_count': product.order_count,
+                'orders_count': item['orders_count'],
                 'price': float(product.price),
                 'compare_price': float(product.compare_price) if product.compare_price else None,
                 'brand': product.brand.name if product.brand else None,
@@ -1128,6 +1145,24 @@ class AdminPagination(PageNumberPagination):
     page_size = 50
     page_size_query_param = 'page_size'
     max_page_size = 1000
+
+    def get_paginated_response(self, data):
+        """Единый формат пагинации для таблиц React-админки."""
+        return Response({
+            'count': self.page.paginator.count,
+            'next': self.get_next_link(),
+            'previous': self.get_previous_link(),
+            'results': data,
+            'pagination': {
+                'count': self.page.paginator.count,
+                'current_page': self.page.number,
+                'num_pages': self.page.paginator.num_pages,
+                'has_next': self.page.has_next(),
+                'has_previous': self.page.has_previous(),
+                'start_index': self.page.start_index(),
+                'end_index': self.page.end_index(),
+            }
+        })
 
 
 class AdminModelViewSet(viewsets.ModelViewSet):
@@ -1763,7 +1798,7 @@ def admin_stats_summary(request):
         'summary': {
             'users': User.objects.count(),
             'pets': Pet.objects.count(),
-            'products': Product.objects.filter(is_available=True).count(),
+            'products': Product.objects.count(),
             'orders_today': Order.objects.filter(
                 created_at__date=timezone.now().date()
             ).count(),

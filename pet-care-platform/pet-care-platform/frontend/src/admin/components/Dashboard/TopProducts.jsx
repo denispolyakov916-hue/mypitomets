@@ -17,7 +17,7 @@ const TopProducts = ({ products }) => {
       {products.length === 0 ? (
         <div className="text-center py-8 text-gray-500">
           <div className="text-4xl mb-2">📦</div>
-          <p>Нет данных о товарах</p>
+          <p>Пока нет продаж по товарам</p>
         </div>
       ) : (
         <div className="space-y-3">
@@ -44,7 +44,7 @@ const TopProducts = ({ products }) => {
 
               <div className="text-right">
                 <div className="text-sm font-semibold text-gray-900">
-                  {product.orders_count} заказов
+                  {product.orders_count ?? product.order_count ?? 0} заказов
                 </div>
                 <div className="text-xs text-gray-500">
                   {product.is_available ? '✅ В наличии' : '⚠️ Нет в наличии'}

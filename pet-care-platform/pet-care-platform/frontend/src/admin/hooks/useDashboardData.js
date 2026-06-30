@@ -25,11 +25,11 @@ export const useDashboardData = () => {
         adminAPI.stats.summary(),
         adminAPI.users.list({ page_size: 5 }), // Последние 5 пользователей
         adminAPI.pets.list({ page_size: 5 }),  // Последние 5 питомцев
-        adminAPI.products.list({ page_size: 8 }), // Топ 8 товаров (без аналитики)
+        adminAPI.analytics.topProducts(8), // Реальный топ по продажам
         adminAPI.orders.list({ page_size: 5 }), // Последние 5 заказов
       ]);
 
-      const [summaryResponse, usersResponse, petsResponse, productsResponse, ordersResponse] = responses;
+      const [summaryResponse, usersResponse, petsResponse, topProductsResponse, ordersResponse] = responses;
 
       // Формируем данные для дашборда из доступных API
       setData({
@@ -40,7 +40,10 @@ export const useDashboardData = () => {
           orders_today: (summaryResponse.status === 'fulfilled' && summaryResponse.value.data?.summary?.orders_today) || 0,
           revenue_today: (summaryResponse.status === 'fulfilled' && summaryResponse.value.data?.summary?.revenue_today) || 0,
         },
-        top_products: (productsResponse.status === 'fulfilled' && productsResponse.value.data?.results) || [],
+        top_products: (topProductsResponse.status === 'fulfilled' && (
+          topProductsResponse.value.data?.products ||
+          topProductsResponse.value.data?.results
+        )) || [],
         recent_orders: (ordersResponse.status === 'fulfilled' && ordersResponse.value.data?.results) || [],
         pets_by_species: [], // Заглушка - аналитика по видам не реализована
         recent_users: (usersResponse.status === 'fulfilled' && usersResponse.value.data?.results) || [],
@@ -53,7 +56,7 @@ export const useDashboardData = () => {
       console.log('  Summary:', summaryResponse.status);
       console.log('  Users:', usersResponse.status);
       console.log('  Pets:', petsResponse.status);
-      console.log('  Products:', productsResponse.status);
+      console.log('  Top products:', topProductsResponse.status);
       console.log('  Orders:', ordersResponse.status);
 
       console.log('[Dashboard] Data loaded successfully');

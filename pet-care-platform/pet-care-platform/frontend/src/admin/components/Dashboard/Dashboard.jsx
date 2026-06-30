@@ -76,6 +76,7 @@ const Dashboard = () => {
           subtitle={`${overview.orders_today || 0} заказов`}
           icon="💰"
           color="success"
+          to="/admin-panel/orders"
         />
         <MetricCard
           title="Заказы сегодня"
@@ -83,6 +84,7 @@ const Dashboard = () => {
           subtitle="За текущий день"
           icon="📦"
           color="warning"
+          to="/admin-panel/orders"
         />
         <MetricCard
           title="Всего пользователей"
@@ -90,6 +92,7 @@ const Dashboard = () => {
           subtitle="Зарегистрированных"
           icon="👥"
           color="primary"
+          to="/admin-panel/users"
         />
         <MetricCard
           title="Всего питомцев"
@@ -97,6 +100,7 @@ const Dashboard = () => {
           subtitle="В системе"
           icon="🐾"
           color="purple"
+          to="/admin-panel/pets"
         />
       </div>
 
@@ -108,6 +112,7 @@ const Dashboard = () => {
           subtitle="В каталоге"
           icon="📦"
           color="primary"
+          to="/admin-panel/products"
         />
         <MetricCard
           title="Последние пользователи"
@@ -115,6 +120,7 @@ const Dashboard = () => {
           subtitle="Недавно зарегистрированные"
           icon="👤"
           color="success"
+          to="/admin-panel/users"
         />
         <MetricCard
           title="Последние питомцы"
@@ -122,6 +128,7 @@ const Dashboard = () => {
           subtitle="Недавно добавленные"
           icon="🐕"
           color="warning"
+          to="/admin-panel/pets"
         />
         <MetricCard
           title="Топ товаров"
@@ -129,6 +136,7 @@ const Dashboard = () => {
           subtitle="В дашборде"
           icon="🏆"
           color="purple"
+          to="/admin-panel/products"
         />
       </div>
 

@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 
 const MetricCard = ({
   title,
@@ -6,7 +7,9 @@ const MetricCard = ({
   subtitle,
   trend,
   icon,
-  color = 'primary'
+  color = 'primary',
+  to,
+  onClick
 }) => {
   const colorClasses = {
     primary: 'border-primary-200 bg-primary-50',
@@ -24,11 +27,18 @@ const MetricCard = ({
     purple: 'text-primary-700',
   };
 
+  const Wrapper = to ? Link : onClick ? 'button' : 'div';
+  const wrapperProps = to ? { to } : onClick ? { type: 'button', onClick } : {};
+
   return (
-    <div className={`
+    <Wrapper
+      {...wrapperProps}
+      className={`
       relative overflow-hidden rounded-lg border p-6 shadow-sm transition-all duration-200 hover:shadow-md
+      ${to || onClick ? 'block w-full text-left cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2' : ''}
       ${colorClasses[color]}
-    `}>
+    `}
+    >
       {/* Фоновый элемент */}
       <div className="absolute -right-4 -top-4 h-16 w-16 rounded-full opacity-10"
            style={{ backgroundColor: `var(--color-${color})` }}>
@@ -68,7 +78,7 @@ const MetricCard = ({
           </div>
         )}
       </div>
-    </div>
+    </Wrapper>
   );
 };
 
