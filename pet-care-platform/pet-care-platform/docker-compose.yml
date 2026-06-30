@@ -71,8 +71,7 @@ services:
     volumes:
       - backend_static:/app/staticfiles:ro
       - backend_media:/app/media:ro
-      # Beta-prod: файл паролей Basic Auth (создаётся на сервере, в git не коммитится)
-      - ./nginx/.htpasswd:/etc/nginx/.htpasswd:ro
+      # Бета публичная — htpasswd-монтаж убран (Basic-Auth снят в app.conf).
       # Раскомментировать при подключении SSL (Let's Encrypt / certbot):
       - ./certbot/conf:/etc/letsencrypt:ro
       - ./certbot/www:/var/www/certbot:ro
