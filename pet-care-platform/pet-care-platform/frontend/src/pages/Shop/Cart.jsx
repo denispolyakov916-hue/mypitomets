@@ -66,6 +66,10 @@ function Cart() {
   // Состояние для ошибок загрузки изображений
   const [imageErrors, setImageErrors] = useState(new Set())
 
+  // Локальное состояние обновления количества по конкретной строке (product.id).
+  // Позволяет блокировать только затронутые кнопки +/- без перемонтирования корзины.
+  const [updatingItems, setUpdatingItems] = useState(new Set())
+
   /**
    * Проверка, является ли элемент курсом
    */
@@ -231,10 +235,25 @@ function Cart() {
 
   /**
    * Обработчик изменения количества
+   *
+   * Блокирует только кнопки затронутой строки (per-row loading), не трогая
+   * остальную корзину. Само обновление в store оптимистичное с откатом при ошибке.
    */
   const handleQuantityChange = async (productId, newQuantity) => {
     if (newQuantity < 0) return
-    await updateQuantity(productId, newQuantity)
+    // Защита от параллельных кликов по той же строке
+    if (updatingItems.has(productId)) return
+
+    setUpdatingItems(prev => new Set(prev).add(productId))
+    try {
+      await updateQuantity(productId, newQuantity)
+    } finally {
+      setUpdatingItems(prev => {
+        const next = new Set(prev)
+        next.delete(productId)
+        return next
+      })
+    }
   }
 
   /**
@@ -263,9 +282,19 @@ function Cart() {
           showError('Не удалось удалить курс из корзины. Попробуйте обновить страницу.')
         }
       } else {
-        // Для товаров используем стандартное удаление
-        await removeItem(itemId)
-        success('Товар удалён из корзины')
+        // Для товаров используем стандартное удаление (per-row pending как у +/-)
+        if (updatingItems.has(itemId)) return
+        setUpdatingItems(prev => new Set(prev).add(itemId))
+        try {
+          await removeItem(itemId)
+          success('Товар удалён из корзины')
+        } finally {
+          setUpdatingItems(prev => {
+            const next = new Set(prev)
+            next.delete(itemId)
+            return next
+          })
+        }
       }
     } catch (err) {
       showError(err.message || 'Не удалось удалить элемент из корзины')
@@ -444,6 +473,7 @@ function Cart() {
 
                   const unit = item.unit_price || item.sku?.price || itemPrice
                   const lineTotal = unit * itemQuantity
+                  const isRowUpdating = item.product?.id != null && updatingItems.has(item.product.id)
 
                   return (
                     <div key={cartItemId} className="py-4 first:pt-0 last:pb-0">
@@ -544,8 +574,8 @@ function Cart() {
                             <button
                               type="button"
                               onClick={() => handleQuantityChange(item.product.id, itemQuantity - 1)}
-                              className="flex h-10 w-10 items-center justify-center rounded-lg border border-gray-300 transition-colors hover:bg-gray-50"
-                              disabled={isLoading}
+                              className="flex h-10 w-10 items-center justify-center rounded-lg border border-gray-300 transition-colors hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                              disabled={isRowUpdating || itemQuantity <= 1}
                               aria-label="Уменьшить количество"
                             >
                               -
@@ -554,8 +584,8 @@ function Cart() {
                             <button
                               type="button"
                               onClick={() => handleQuantityChange(item.product.id, itemQuantity + 1)}
-                              className="flex h-10 w-10 items-center justify-center rounded-lg border border-gray-300 transition-colors hover:bg-gray-50"
-                              disabled={isLoading}
+                              className="flex h-10 w-10 items-center justify-center rounded-lg border border-gray-300 transition-colors hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                              disabled={isRowUpdating}
                               aria-label="Увеличить количество"
                             >
                               +
@@ -570,7 +600,7 @@ function Cart() {
                               type="button"
                               onClick={() => handleRemove(itemId, false, cartItemId)}
                               className="text-sm text-red-600 transition-all hover:text-red-700 hover:underline disabled:opacity-50"
-                              disabled={isLoading}
+                              disabled={isRowUpdating}
                               title="Удалить товар из корзины"
                             >
                               Удалить

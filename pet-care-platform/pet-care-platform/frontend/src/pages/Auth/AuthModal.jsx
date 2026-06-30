@@ -5,13 +5,27 @@
  * между формами входа и регистрации.
  */
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useLocation, Link } from 'react-router-dom'
 import { useAuthStore } from '../../store/authStore'
 import PhoneAuthForm from './PhoneAuthForm'
 import { resolvePostAuthRedirect } from '../../utils/postAuthRedirect'
 import { ButtonLoader } from '../../components/Loader'
 import '../../styles/auth.css'
+
+// .auth-success нет в auth.css (а его править нельзя) — стилизуем инлайн,
+// зеркаля геометрию .auth-info-box, но в зелёной палитре успеха.
+const successBoxStyle = {
+  background: '#ecfdf5',
+  border: '1px solid #a7f3d0',
+  color: '#047857',
+  padding: '12px',
+  borderRadius: '8px',
+  fontSize: '14px',
+  marginBottom: '20px',
+  textAlign: 'center',
+  fontWeight: 500,
+}
 
 /**
  * Компонент AuthModal
@@ -24,7 +38,7 @@ function AuthModal() {
   const location = useLocation()
   const isLoading = useAuthStore(s => s.isLoading)
   const error = useAuthStore(s => s.error)
-  const { login, register, activateByCode, clearError } = useAuthStore()
+  const { login, register, activateByCode, resendActivationCode, clearError } = useAuthStore()
   const [authMethod, setAuthMethod] = useState('email') // 'email' | 'phone'
 
   // Определяем начальный режим по URL
@@ -50,6 +64,59 @@ function AuthModal() {
   const [registrationSuccess, setRegistrationSuccess] = useState(false)
   const [activationCode, setActivationCode] = useState('')
   const [validationErrors, setValidationErrors] = useState({})
+
+  // Повторная отправка кода активации (email) с кулдауном 60с
+  const [resendCooldown, setResendCooldown] = useState(0)
+  const [resending, setResending] = useState(false)
+  const [resendSuccess, setResendSuccess] = useState('')
+  const resendTimerRef = useRef(null)
+
+  // Чистим таймер кулдауна при размонтировании, чтобы не текли интервалы
+  useEffect(() => {
+    return () => {
+      if (resendTimerRef.current) clearInterval(resendTimerRef.current)
+    }
+  }, [])
+
+  const startResendCooldown = () => {
+    setResendCooldown(60)
+    if (resendTimerRef.current) clearInterval(resendTimerRef.current)
+    resendTimerRef.current = setInterval(() => {
+      setResendCooldown((c) => {
+        if (c <= 1) {
+          clearInterval(resendTimerRef.current)
+          resendTimerRef.current = null
+          return 0
+        }
+        return c - 1
+      })
+    }, 1000)
+  }
+
+  const handleResendCode = async () => {
+    if (resendCooldown > 0 || resending) return
+    setResendSuccess('')
+    clearError()
+    setResending(true)
+    try {
+      const ok = await resendActivationCode(registerData.email)
+      if (ok) {
+        setResendSuccess('Код отправлен повторно')
+        startResendCooldown()
+      }
+      // при ok === false store уже выставил error → покажется в .auth-error
+    } finally {
+      setResending(false)
+    }
+  }
+
+  // Без вложенного тернарника — иначе линтер ругается (no-nested-ternary)
+  let resendLabel = 'Отправить код заново'
+  if (resending) {
+    resendLabel = 'Отправляем…'
+  } else if (resendCooldown > 0) {
+    resendLabel = `Отправить заново через ${resendCooldown}с`
+  }
 
   // Обновление режима при изменении пути
   useEffect(() => {
@@ -405,6 +472,12 @@ const toggleMode = () => {
                 </div>
               )}
 
+              {resendSuccess && !error && (
+                <div style={successBoxStyle} role="status">
+                  {resendSuccess}
+                </div>
+              )}
+
               <div className="auth-info-box">
                 Код активации отправлен на <strong>{registerData.email}</strong>
               </div>
@@ -442,6 +515,16 @@ const toggleMode = () => {
                 disabled={isLoading || activationCode.length !== 6}
               >
                 {isLoading ? 'Активация...' : 'Активировать'}
+              </button>
+
+              <button
+                type="button"
+                onClick={handleResendCode}
+                disabled={resendCooldown > 0 || resending || isLoading}
+                className="auth-back-link"
+                style={{ opacity: resendCooldown > 0 || resending ? 0.5 : 1 }}
+              >
+                {resendLabel}
               </button>
 
               <button

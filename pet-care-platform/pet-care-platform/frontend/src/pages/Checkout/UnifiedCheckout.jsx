@@ -677,7 +677,8 @@ function SummarySection({
   isSubmitting,
   onSubmit,
   paymentMethod,
-  formData
+  formData,
+  onFormChange
 }) {
   const grandTotal = (totals?.products || 0) + (totals?.courses || 0) + deliveryCost
 
@@ -720,6 +721,20 @@ function SummarySection({
           </div>
         </div>
       </div>
+
+      {/* Согласие на обработку персональных данных / оферту — блокирует оплату */}
+      <label className="flex items-start gap-3 mb-4 cursor-pointer">
+        <input
+          type="checkbox"
+          checked={formData.personal_data_accepted}
+          onChange={(e) => onFormChange({ personal_data_accepted: e.target.checked })}
+          className="mt-0.5 w-5 h-5 shrink-0 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
+        />
+        <span className="text-sm text-gray-700">
+          Я согласен(а) на <span className="font-medium text-gray-900">обработку персональных данных</span>{' '}
+          и принимаю условия <span className="font-medium text-gray-900">публичной оферты</span>
+        </span>
+      </label>
 
       <button
         onClick={onSubmit}
@@ -783,6 +798,10 @@ const getDisabledReason = (formData, hasProducts, hasCourses) => {
     return 'Примите условия использования курсов'
   }
 
+  if (!formData.personal_data_accepted) {
+    return 'Подтвердите согласие на обработку персональных данных'
+  }
+
   return 'Заполните все необходимые поля'
 }
 
@@ -816,6 +835,7 @@ function UnifiedCheckout() {
     shipping_address: '',
     pickup_location_id: '', // ID пункта самовывоза
     courses_disclaimer_accepted: false,
+    personal_data_accepted: false, // Согласие на обработку персональных данных и оферту
     payment_method: 'card' // 'card' или 'sbp'
   })
 
@@ -927,6 +947,11 @@ function UnifiedCheckout() {
 
     if (hasCourses && !formData.courses_disclaimer_accepted) {
       setError('Примите условия использования курсов')
+      return
+    }
+
+    if (!formData.personal_data_accepted) {
+      setError('Подтвердите согласие на обработку персональных данных')
       return
     }
 
@@ -1147,7 +1172,9 @@ function UnifiedCheckout() {
   const hasAddress = formData.address_id || formData.shipping_address.trim()
   const deliveryCondition = !hasProducts || formData.delivery_type === 'pickup' || hasAddress
   const coursesCondition = !hasCourses || formData.courses_disclaimer_accepted
-  const canSubmit = deliveryCondition && coursesCondition
+  // Согласие на обработку персональных данных / оферту обязательно для любого заказа
+  const personalDataCondition = formData.personal_data_accepted
+  const canSubmit = deliveryCondition && coursesCondition && personalDataCondition
 
   // Отладка блокировки кнопки
   console.log('=== CAN SUBMIT DEBUG ===')
@@ -1243,6 +1270,7 @@ function UnifiedCheckout() {
               onSubmit={handleSubmit}
               paymentMethod={formData.payment_method}
               formData={formData}
+              onFormChange={handleFormChange}
             />
           </div>
         </div>

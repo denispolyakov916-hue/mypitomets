@@ -93,8 +93,33 @@ api.interceptors.response.use(
     
     const { status, data } = error.response
 
+    // Запрос к интерактивному эндпоинту аутентификации (логин/регистрация/
+    // активация/повторная отправка/телефон). Для них 401 — это «неверные данные»,
+    // а НЕ «истёкшая сессия»: нельзя ни обновлять токен, ни редиректить/
+    // перезагружать страницу, иначе простой неправильный логин уводит в
+    // reload-петлю. Исключение — /auth/refresh/: это и есть механизм проверки
+    // сессии, его 401 обрабатывается ниже (clear + redirect).
+    const requestUrl = error.config?.url || ''
+    const isRefreshEndpoint = /(^|\/)auth\/refresh\//.test(requestUrl)
+    const isAuthEndpoint = /(^|\/)auth\//.test(requestUrl) && !isRefreshEndpoint
+
     // Обработка 401 Unauthorized - токен истёк или невалиден
     if (status === 401) {
+      // Для эндпоинтов /api/auth/* отдаём inline-ошибку без редиректа и без
+      // попытки refresh — пусть форма входа покажет её на месте.
+      if (isAuthEndpoint) {
+        const authErrorMessage = data?.error
+          || data?.message
+          || data?.detail
+          || 'Неверные данные. Проверьте и попробуйте снова.'
+        return Promise.reject({
+          status,
+          message: authErrorMessage,
+          errors: data?.errors || null,
+          isNetworkError: false,
+        })
+      }
+
       // Анонимный пользователь (токенов нет) на публичной странице дёрнул защищённый
       // эндпоинт — НЕ редиректим на /login. Отдаём ошибку вызвавшему компоненту,
       // он покажет гостевое состояние. Редирект — только при истёкшей сессии (ниже).

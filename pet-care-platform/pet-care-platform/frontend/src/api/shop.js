@@ -517,6 +517,20 @@ export const updateOrder = async (orderId, orderData) => {
   return await api.patch(`/shop/orders/${orderId}/`, orderData)
 }
 
+/**
+ * Отмена заказа пользователем
+ *
+ * Доступно только для неоплаченных заказов (статус pending/expired).
+ * Возвращает товары на склад и отменяет связанные платежи.
+ *
+ * @param {string} orderId - ID заказа
+ * @param {string} [reason] - Причина отмены (опционально)
+ * @returns {Promise<Object>} Обновлённый заказ
+ */
+export const cancelOrder = async (orderId, reason = '') => {
+  return await api.post(`/shop/orders/${orderId}/cancel/`, reason ? { reason } : {})
+}
+
 // =============================================================================
 // АДРЕСА
 // =============================================================================

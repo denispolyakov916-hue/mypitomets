@@ -278,16 +278,34 @@ export const useCartStore = create((set, get) => ({
   
   /**
    * Обновление количества товара
-   * 
+   *
+   * Оптимистичное обновление: сразу меняет количество в локальном состоянии
+   * (только затронутая строка + пересчёт totals), затем синхронизирует с сервером.
+   * При ошибке откатывает изменение к предыдущему состоянию.
+   *
+   * НЕ выставляет глобальный isLoading, чтобы не перемонтировать всю корзину
+   * (страница показывает PageLoader только при первичной загрузке).
+   *
    * @param {number} productId - Товар для обновления
    * @param {number} quantity - Новое количество (0 для удаления)
    * @returns {Promise<boolean>} True если обновление успешно
    */
   updateQuantity: async (productId, quantity) => {
-    set({ isLoading: true, error: null })
+    const { items: prevItems, itemsCount: prevCount } = get()
+
+    // Оптимистично обновляем только затронутую строку.
+    // quantity === 0 — удаление: убираем строку из списка.
+    const optimisticItems = quantity === 0
+      ? prevItems.filter(item => item.product?.id !== productId)
+      : prevItems.map(item =>
+          item.product?.id === productId
+            ? { ...item, quantity }
+            : item
+        )
+
+    set({ items: optimisticItems, error: null })
 
     try {
-      const { items: currentItems } = get()
       const response = await shopApi.updateCartItem(productId, quantity)
 
       // PUT возвращает: {products: [...], courses: [...], totals: {...}, items_count}
@@ -300,8 +318,9 @@ export const useCartStore = create((set, get) => ({
       const newItemsMap = new Map(newItems.map(item => [item.id, item]))
       const orderedItems = []
 
-      // Сначала добавляем существующие элементы в том же порядке
-      for (const currentItem of currentItems) {
+      // Сначала добавляем существующие элементы в том же порядке.
+      // Берём за основу оптимистичный список, чтобы сохранить актуальный порядок строк.
+      for (const currentItem of optimisticItems) {
         if (newItemsMap.has(currentItem.id)) {
           orderedItems.push(newItemsMap.get(currentItem.id))
           newItemsMap.delete(currentItem.id)
@@ -316,8 +335,7 @@ export const useCartStore = create((set, get) => ({
       set({
         items: orderedItems,
         total: response.totals?.total || 0,
-        itemsCount: response.items_count || 0,
-        isLoading: false
+        itemsCount: response.items_count || 0
       })
 
       // Инвалидируем кэш счетчиков после изменения корзины
@@ -325,6 +343,8 @@ export const useCartStore = create((set, get) => ({
 
       return true
     } catch (error) {
+      // Откат: восстанавливаем предыдущее состояние строки/корзины
+      set({ items: prevItems, itemsCount: prevCount })
       handleStoreError(error, set, 'Не удалось обновить количество')
       return false
     }

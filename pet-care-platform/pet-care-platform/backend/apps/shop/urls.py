@@ -57,6 +57,7 @@ from .views import (
     OrderHistoryView,
     OrderDetailView,
     OrderConfirmPaymentView,
+    OrderCancelView,
     AddressListView,
     AddressSearchView,
     ReturnCreateView,
@@ -179,7 +180,10 @@ urlpatterns = [
     
     # POST /api/shop/orders/{order_id}/confirm-payment/ - подтверждение оплаты
     path('orders/<str:order_id>/confirm-payment/', OrderConfirmPaymentView.as_view(), name='order-confirm-payment'),
-    
+
+    # POST /api/shop/orders/{order_id}/cancel/ - отмена заказа пользователем
+    path('orders/<str:order_id>/cancel/', OrderCancelView.as_view(), name='order-cancel'),
+
     # GET /api/shop/orders/{order_id}/ - детали заказа
     path('orders/<str:order_id>/', OrderDetailView.as_view(), name='order-detail'),
     

@@ -10,8 +10,8 @@
  */
 
 import { useState, useEffect } from 'react'
-import { useParams, useNavigate, Link } from 'react-router-dom'
-import { getOrders, getOrderDetails, createReturn, updateOrder, getAddresses } from '../../api/shop'
+import { useParams, useNavigate, useLocation, Link } from 'react-router-dom'
+import { getOrders, getOrderDetails, createReturn, updateOrder, getAddresses, cancelOrder } from '../../api/shop'
 import { createPayment } from '../../api/payments'
 import { PageLoader } from '../../components/Loader'
 import { useToastStore } from '../../store/toastStore'
@@ -118,10 +118,19 @@ const deliveryTypeLabels = {
 function OrderDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const location = useLocation()
   const [order, setOrder] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState(null)
   const { error: showError, success } = useToastStore()
+
+  // Сообщение из редиректа (например, после неуспешной/отменённой оплаты)
+  const [redirectMessage, setRedirectMessage] = useState(location.state?.message || null)
+
+  // Состояние отмены заказа
+  const [isCancelling, setIsCancelling] = useState(false)
+  // Двухшаговое подтверждение отмены (без window.confirm)
+  const [confirmCancel, setConfirmCancel] = useState(false)
 
   // Модальное окно возврата
   const [returnModal, setReturnModal] = useState({
@@ -196,6 +205,33 @@ function OrderDetail() {
       } else {
         alert(`Не удалось создать платеж: ${errorMessage}`)
       }
+    }
+  }
+
+  /**
+   * Отмена заказа пользователем
+   *
+   * Доступно только для неоплаченных заказов (pending/expired).
+   * Возвращает товары на склад и переводит заказ в статус "Отменён".
+   */
+  const handleCancelOrder = async () => {
+    if (!order) return
+
+    setIsCancelling(true)
+    try {
+      const response = await cancelOrder(order.id)
+      if (response.order) {
+        setOrder(response.order)
+      } else {
+        setOrder(prev => (prev ? { ...prev, status: 'cancelled' } : prev))
+      }
+      setRedirectMessage(null)
+      setConfirmCancel(false)
+      success('Заказ отменён')
+    } catch (err) {
+      showError(err.message || 'Не удалось отменить заказ')
+    } finally {
+      setIsCancelling(false)
     }
   }
 
@@ -371,6 +407,14 @@ function OrderDetail() {
     fetchOrder()
   }, [id])
 
+  // Очищаем state редиректа, чтобы сообщение не показывалось повторно при навигации
+  useEffect(() => {
+    if (location.state?.message) {
+      navigate(location.pathname, { replace: true, state: {} })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   // Автообновление заказа каждую минуту, если он в статусе pending
   useEffect(() => {
     if (!order || order.status !== 'pending') {
@@ -428,7 +472,31 @@ function OrderDetail() {
         </svg>
         <span className="font-medium">Вернуться к заказам</span>
       </button>
-      
+
+      {/* Сообщение из редиректа (например, после неуспешной/отменённой оплаты) */}
+      {redirectMessage && (order.status === 'pending' || order.status === 'expired') && (
+        <div className="card mb-6 bg-secondary-50 border-secondary-200">
+          <div className="flex items-start gap-3">
+            <svg className="w-5 h-5 text-secondary-600 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <div className="flex-1">
+              <p className="text-secondary-800">{redirectMessage}</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setRedirectMessage(null)}
+              className="text-secondary-500 hover:text-secondary-700"
+              aria-label="Закрыть"
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Сообщение об истечении срока оплаты */}
       {order.status === 'expired' && (
         <div className="card mb-6 bg-red-50 border-red-200">
@@ -674,17 +742,55 @@ function OrderDetail() {
                 </span>
               </div>
               
-              {/* Кнопка оплаты - показываем только для неоплаченных заказов */}
+              {/* Действия для неоплаченных заказов: оплатить / отменить / вернуться в магазин */}
               {(order.status === 'pending' || order.status === 'expired') && (
-                <div className="pt-3 border-t border-gray-200">
+                <div className="pt-3 border-t border-gray-200 space-y-2">
                   <button
                     onClick={() => handlePayOrder(order.id, order.total_amount, paymentMethod)}
-                    className="btn-primary w-full"
+                    disabled={isCancelling}
+                    className="btn-primary w-full disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {order.status === 'pending' 
+                    {order.status === 'pending'
                       ? `Оплатить заказ ${paymentMethod === 'sbp' ? 'через СБП' : 'картой'}`
                       : 'Попробовать оплатить снова'}
                   </button>
+                  {!confirmCancel ? (
+                    <button
+                      onClick={() => setConfirmCancel(true)}
+                      disabled={isCancelling}
+                      className="w-full px-4 py-2 rounded-lg border border-red-200 text-red-600 hover:bg-red-50 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Отменить заказ
+                    </button>
+                  ) : (
+                    <div className="space-y-2 p-3 bg-red-50 border border-red-200 rounded-lg">
+                      <p className="text-sm text-red-800">
+                        Отменить заказ? Это действие нельзя отменить.
+                      </p>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={handleCancelOrder}
+                          disabled={isCancelling}
+                          className="flex-1 px-3 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors font-medium text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {isCancelling ? 'Отмена...' : 'Да, отменить'}
+                        </button>
+                        <button
+                          onClick={() => setConfirmCancel(false)}
+                          disabled={isCancelling}
+                          className="flex-1 px-3 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-100 transition-colors font-medium text-sm disabled:opacity-50"
+                        >
+                          Нет
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                  <Link
+                    to="/shop"
+                    className="block w-full text-center px-4 py-2 rounded-lg text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-colors font-medium"
+                  >
+                    Вернуться в магазин
+                  </Link>
                 </div>
               )}
             </div>

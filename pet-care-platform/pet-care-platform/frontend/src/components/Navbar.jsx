@@ -34,19 +34,6 @@ function Navbar() {
   const [dropdownPosition, setDropdownPosition] = useState(null)
   const dropdownRef = useRef(null)
   const dropdownPanelRef = useRef(null)
-  const hoverCloseTimeoutRef = useRef(null)
-
-  const clearHoverCloseTimeout = () => {
-    if (hoverCloseTimeoutRef.current) {
-      clearTimeout(hoverCloseTimeoutRef.current)
-      hoverCloseTimeoutRef.current = null
-    }
-  }
-
-  const scheduleHoverClose = () => {
-    clearHoverCloseTimeout()
-    hoverCloseTimeoutRef.current = setTimeout(() => setOpenDropdownId(null), 200)
-  }
 
   const isLinkActive = (path) =>
     location.pathname === path || location.pathname.startsWith(path + '/')
@@ -90,18 +77,21 @@ function Navbar() {
   }, [openDropdownId])
 
   useEffect(() => {
-    return () => clearHoverCloseTimeout()
-  }, [])
-
-  useEffect(() => {
     if (!openDropdownId) return
     const handleClickOutside = (e) => {
       const inTrigger = dropdownRef.current && dropdownRef.current.contains(e.target)
       const inPanel = dropdownPanelRef.current && dropdownPanelRef.current.contains(e.target)
       if (!inTrigger && !inPanel) setOpenDropdownId(null)
     }
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') setOpenDropdownId(null)
+    }
     document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
+    document.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+      document.removeEventListener('keydown', handleKeyDown)
+    }
   }, [openDropdownId])
 
   return (
@@ -109,7 +99,7 @@ function Navbar() {
       className="hidden md:block fixed top-0 left-0 right-0 z-50 pt-[env(safe-area-inset-top)] px-3 sm:px-4 md:px-5"
       style={{ paddingTop: 'max(12px, env(safe-area-inset-top))' }}
     >
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <motion.div
           className="rounded-full bg-primary-700 flex flex-col overflow-visible pb-0"
           style={{ boxShadow: pillShadow }}
@@ -134,16 +124,12 @@ function Navbar() {
               const isOpen = openDropdownId === nav.id
               const active = isNavItemActive(nav)
               const isHighlight = active || isOpen
+              const NavIcon = nav.icon
               return (
                 <div
                   key={nav.id}
                   ref={isOpen ? dropdownRef : undefined}
                   className="relative flex items-center justify-center flex-1 min-w-0"
-                  onMouseEnter={() => {
-                    clearHoverCloseTimeout()
-                    setOpenDropdownId(nav.id)
-                  }}
-                  onMouseLeave={scheduleHoverClose}
                 >
                   <motion.div
                     className="flex justify-center w-full"
@@ -153,19 +139,32 @@ function Navbar() {
                     <button
                       type="button"
                       onClick={() => setOpenDropdownId((prev) => (prev === nav.id ? null : nav.id))}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ' || e.key === 'ArrowDown') {
+                          e.preventDefault()
+                          setOpenDropdownId((prev) => (prev === nav.id ? null : nav.id))
+                        }
+                      }}
                       className="flex items-center gap-1 font-medium text-sm py-2 px-2.5 rounded-full whitespace-nowrap w-fit text-white outline-none border-none cursor-pointer"
                       aria-expanded={isOpen}
                       aria-haspopup="true"
+                      aria-current={active ? 'page' : undefined}
                       aria-controls={isOpen ? `nav-dropdown-${nav.id}` : undefined}
                     >
                       <motion.span
-                        className="rounded-full py-2 px-2.5 -m-2 flex items-center gap-1"
+                        className="rounded-full py-2 px-2.5 -m-2 flex items-center gap-1.5"
                         animate={{
                           backgroundColor: isHighlight ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0)',
                         }}
                         transition={{ duration: 0.25 }}
                         whileHover={{ backgroundColor: isHighlight ? 'rgba(255,255,255,0.14)' : 'rgba(255,255,255,0.06)' }}
                       >
+                        {NavIcon && (
+                          <NavIcon
+                            className={`w-4 h-4 shrink-0 ${active ? 'text-accent-400' : 'text-white/80'}`}
+                            aria-hidden
+                          />
+                        )}
                         {nav.label}
                         <motion.span
                           className="inline-flex shrink-0"
@@ -177,6 +176,12 @@ function Navbar() {
                       </motion.span>
                     </button>
                   </motion.div>
+                  {active && (
+                    <span
+                      className="pointer-events-none absolute -bottom-1 left-1/2 -translate-x-1/2 h-1 w-1.5 rounded-full bg-accent-400"
+                      aria-hidden
+                    />
+                  )}
                 </div>
               )
             })}
@@ -197,8 +202,6 @@ function Navbar() {
                   top: dropdownPosition.top,
                   left: dropdownPosition.left,
                 }}
-                onMouseEnter={clearHoverCloseTimeout}
-                onMouseLeave={scheduleHoverClose}
               >
                 <motion.div
                   className="rounded-2xl bg-primary-700 border border-white/10 py-3 shadow-xl"

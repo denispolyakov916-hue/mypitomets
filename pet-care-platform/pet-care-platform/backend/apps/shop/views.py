@@ -1913,6 +1913,75 @@ class OrderConfirmPaymentView(APIView):
             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 
+class OrderCancelView(APIView):
+    """
+    Отмена заказа пользователем.
+
+    POST /api/shop/orders/{order_id}/cancel/
+
+    Разрешено только владельцу заказа и только для заказов,
+    ожидающих оплаты (статус 'pending' или 'expired').
+    Возвращает товары на склад и отменяет связанные платежи.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, order_id):
+        from .services import OrderService
+
+        try:
+            order = Order.objects.prefetch_related(
+                'items__product', 'items__course', 'items__pet'
+            ).select_related('address', 'user').get(
+                id=order_id,
+                user=request.user
+            )
+        except Order.DoesNotExist:
+            return Response(
+                {'error': 'Заказ не найден'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        # Отменять можно только неоплаченные заказы
+        if order.status not in ['pending', 'expired']:
+            status_display = dict(Order.STATUS_CHOICES).get(order.status, order.status)
+            return Response(
+                {'error': f'Заказ нельзя отменить. Текущий статус: {status_display}'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        reason = (request.data.get('reason') or 'Отменён пользователем').strip()
+
+        # cancel_order возвращает товары на склад и отменяет платежи.
+        # Он принимает заказы в статусах 'pending'/'processing'; для 'expired'
+        # выставляем статус и возвращаем товары здесь же.
+        if order.status == 'pending':
+            cancelled = OrderService.cancel_order(order, reason=reason)
+            if not cancelled:
+                return Response(
+                    {'error': 'Не удалось отменить заказ'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+        else:  # expired
+            with transaction.atomic():
+                for item in order.items.filter(product__isnull=False):
+                    product = item.product
+                    if not product.is_available:
+                        product.is_available = True
+                        product.save(update_fields=['is_available'])
+                order.status = 'cancelled'
+                order.save(update_fields=['status', 'updated_at'])
+                Payment.objects.filter(
+                    object_id=str(order.id),
+                    status__in=['pending', 'processing']
+                ).update(status='cancelled')
+
+        order.refresh_from_db()
+        return Response({
+            'message': 'Заказ отменён',
+            'order': order.to_dict()
+        }, status=status.HTTP_200_OK)
+
+
 class AddressListView(APIView):
     """
     Список адресов пользователя.

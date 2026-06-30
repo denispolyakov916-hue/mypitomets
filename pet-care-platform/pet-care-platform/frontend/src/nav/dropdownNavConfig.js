@@ -17,6 +17,7 @@ import {
 export const navShop = {
   id: 'shop',
   label: 'Магазин',
+  icon: ShoppingBag,
   sectionTitle: 'ПОКУПКИ',
   items: [
     { label: 'Магазин питания и аксессуаров', to: '/shop', description: 'товары для питомцев', icon: ShoppingBag },
@@ -28,6 +29,7 @@ export const navShop = {
 export const navNutrition = {
   id: 'nutrition',
   label: 'Сервисы',
+  icon: UtensilsCrossed,
   sectionTitle: 'СЕРВИСЫ',
   items: [
     { label: 'Подбор питания', to: '/food-recommendation', description: 'рекомендации по питанию', icon: UtensilsCrossed },
@@ -37,6 +39,7 @@ export const navNutrition = {
 export const navHealth = {
   id: 'health',
   label: 'Здоровье',
+  icon: Stethoscope,
   sectionTitle: 'КОНТРОЛЬ',
   items: [
     { label: 'Дневник здоровья', to: '/health-diary', description: 'симптомы, самочувствие', icon: Stethoscope },
@@ -56,5 +59,5 @@ export function buildNavPetsDropdown(pets) {
       icon: PawPrint,
     })),
   ]
-  return { id: 'pets', label: 'Питомцы', sectionTitle: 'ПИТОМЦЫ', items }
+  return { id: 'pets', label: 'Питомцы', icon: PawPrint, sectionTitle: 'ПИТОМЦЫ', items }
 }

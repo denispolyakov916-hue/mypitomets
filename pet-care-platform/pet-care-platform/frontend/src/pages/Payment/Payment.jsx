@@ -6,7 +6,7 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { useSearchParams, useNavigate, Link } from 'react-router-dom'
+import { useSearchParams, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../../store/authStore'
 import { confirmPayment, getPayment, createPayment, getPaymentByOrder } from '../../api/payments'
 import { PageLoader, ButtonLoader } from '../../components/Loader'
@@ -348,18 +348,55 @@ function Payment() {
       }
 
     } catch (err) {
-      // В демо-режиме даже при ошибке считаем оплату успешной
-      console.error('Ошибка при обработке платежа (демо-режим):', err)
-      setIsPaid(true)
-      setTimeout(() => {
-        navigateAfterPayment()
-      }, 3000)
+      // Оплата не прошла: заказ НЕ теряется — он сохраняется на бэкенде со статусом
+      // "Ожидает оплаты". Ведём пользователя на страницу заказа, где он может
+      // повторить оплату, отменить заказ или вернуться в магазин.
+      console.error('Ошибка при обработке платежа:', err)
+      handlePaymentFailure(err)
     } finally {
       setIsProcessing(false)
       setSbpProcessing(false)
     }
   }
 
+
+  /**
+   * Обработка неуспешной оплаты.
+   *
+   * Заказ сохраняется на бэкенде со статусом "Ожидает оплаты". Для заказов
+   * товаров ведём на страницу заказа, иначе показываем ошибку на месте.
+   */
+  const handlePaymentFailure = (err) => {
+    const targetOrderId = orderId || paymentInfo?.object_id
+    const isShopOrder = type === 'shop_order' || type === 'unified_checkout'
+
+    if (isShopOrder && targetOrderId) {
+      navigate(`/orders/${targetOrderId}`, {
+        state: { message: 'Оплата не завершена. Заказ ожидает оплаты — вы можете оплатить его позже или отменить.' }
+      })
+    } else {
+      setError(err?.message || 'Не удалось завершить оплату. Попробуйте ещё раз.')
+    }
+  }
+
+  /**
+   * Отмена оплаты пользователем.
+   *
+   * Заказ НЕ удаляется и корзина НЕ очищается. Для заказов товаров ведём на
+   * страницу заказа (статус "Ожидает оплаты"), для курсов — обратно к курсу.
+   */
+  const handleCancelPayment = () => {
+    const targetOrderId = orderId || paymentInfo?.object_id
+    const isShopOrder = type === 'shop_order' || type === 'unified_checkout'
+
+    if (isShopOrder && targetOrderId) {
+      navigate(`/orders/${targetOrderId}`)
+    } else if (courseId) {
+      navigate(`/courses/${courseId}`)
+    } else {
+      navigate('/courses')
+    }
+  }
 
   /**
    * Перенаправление после успешной оплаты
@@ -691,12 +728,19 @@ function Payment() {
               )}
             </button>
 
-            <Link
-              to={type === 'unified_checkout' ? '/cart' : type === 'shop_order' ? '/cart' : courseId ? `/courses/${courseId}` : '/courses'}
-              className="block text-center text-sm text-gray-500 hover:text-gray-700 mt-4"
+            {/*
+              Отмена оплаты НЕ очищает корзину и НЕ удаляет заказ.
+              Для заказов товаров ведём пользователя на страницу заказа со статусом
+              "Ожидает оплаты", где доступны действия: Оплатить / Отменить заказ /
+              Вернуться в магазин. Заказ сохраняется на бэкенде.
+            */}
+            <button
+              type="button"
+              onClick={handleCancelPayment}
+              className="block w-full text-center text-sm text-gray-500 hover:text-gray-700 mt-4"
             >
               Отменить
-            </Link>
+            </button>
           </>
         )}
         </div>

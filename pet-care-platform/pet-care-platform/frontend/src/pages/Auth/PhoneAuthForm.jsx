@@ -7,6 +7,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../../store/authStore'
+import { formatPhoneDisplay, normalizePhone, isPhoneComplete } from './phoneFormat'
 
 const linkBtnStyle = {
   background: 'none',
@@ -18,6 +19,21 @@ const linkBtnStyle = {
   padding: 0,
 }
 
+// .auth-success нет в auth.css (а его править нельзя) — стилизуем инлайн,
+// зеркаля геометрию .auth-error, но в зелёной палитре успеха.
+const successBoxStyle = {
+  background: '#ecfdf5',
+  border: '1px solid #a7f3d0',
+  color: '#047857',
+  padding: '12px',
+  borderRadius: '8px',
+  fontSize: '14px',
+  marginBottom: '20px',
+  textAlign: 'center',
+  fontWeight: 500,
+  width: '100%',
+}
+
 export default function PhoneAuthForm({ redirectPath = '/' }) {
   const navigate = useNavigate()
   const isLoading = useAuthStore((s) => s.isLoading)
@@ -25,9 +41,12 @@ export default function PhoneAuthForm({ redirectPath = '/' }) {
   const { requestPhoneCode, loginWithPhone, clearError } = useAuthStore()
 
   const [step, setStep] = useState('phone') // 'phone' | 'code'
+  // phone хранит ТОЛЬКО отображаемую маску «+7 (XXX) XXX-XX-XX».
+  // На бэкенд уходит normalizePhone(phone) → «+7XXXXXXXXXX».
   const [phone, setPhone] = useState('')
   const [code, setCode] = useState('')
   const [localError, setLocalError] = useState('')
+  const [localSuccess, setLocalSuccess] = useState('')
   const [cooldown, setCooldown] = useState(0)
   const [sending, setSending] = useState(false)
 
@@ -44,19 +63,27 @@ export default function PhoneAuthForm({ redirectPath = '/' }) {
     }, 1000)
   }
 
-  const handleRequest = async (e) => {
+  const handlePhoneChange = (e) => {
+    setLocalError('')
+    setLocalSuccess('')
+    setPhone(formatPhoneDisplay(e.target.value))
+  }
+
+  const handleRequest = async (e, { isResend = false } = {}) => {
     e?.preventDefault()
     setLocalError('')
+    setLocalSuccess('')
     clearError()
-    if (phone.replace(/\D/g, '').length < 10) {
+    if (!isPhoneComplete(phone)) {
       setLocalError('Введите корректный номер телефона')
       return
     }
     setSending(true)
     try {
-      await requestPhoneCode(phone)
+      await requestPhoneCode(normalizePhone(phone))
       setStep('code')
       startCooldown()
+      if (isResend) setLocalSuccess('Код отправлен повторно')
     } catch (err) {
       setLocalError(err.message || 'Не удалось отправить код')
     } finally {
@@ -67,19 +94,27 @@ export default function PhoneAuthForm({ redirectPath = '/' }) {
   const handleVerify = async (e) => {
     e?.preventDefault()
     setLocalError('')
+    setLocalSuccess('')
     clearError()
     if (code.trim().length !== 6) {
       setLocalError('Код состоит из 6 цифр')
       return
     }
-    const ok = await loginWithPhone(phone, code)
+    const ok = await loginWithPhone(normalizePhone(phone), code)
     if (ok) navigate(redirectPath, { replace: true })
   }
 
+  const displayError = localError || storeError
+  const resendDisabled = cooldown > 0 || sending
+  const resendLabel = cooldown > 0 ? `Отправить заново через ${cooldown}с` : 'Отправить код заново'
+
   return (
     <div>
-      {(localError || storeError) && (
-        <div className="auth-error" role="alert">{localError || storeError}</div>
+      {displayError && (
+        <div className="auth-error" role="alert">{displayError}</div>
+      )}
+      {localSuccess && !displayError && (
+        <div style={successBoxStyle} role="status">{localSuccess}</div>
       )}
 
       {step === 'phone' ? (
@@ -88,11 +123,12 @@ export default function PhoneAuthForm({ redirectPath = '/' }) {
             <input
               type="tel"
               value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              placeholder="Телефон"
+              onChange={handlePhoneChange}
+              placeholder="+7 (___) ___-__-__"
               required
               disabled={sending}
               autoComplete="tel"
+              inputMode="tel"
               autoFocus
             />
             <i className="bx bxs-phone"></i>
@@ -124,16 +160,16 @@ export default function PhoneAuthForm({ redirectPath = '/' }) {
             {isLoading ? 'Проверяем…' : 'Войти'}
           </button>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 14 }}>
-            <button type="button" style={linkBtnStyle} onClick={() => { setStep('phone'); setCode('') }}>
+            <button type="button" style={linkBtnStyle} onClick={() => { setStep('phone'); setCode(''); setLocalError(''); setLocalSuccess('') }}>
               ← Изменить номер
             </button>
             <button
               type="button"
-              style={{ ...linkBtnStyle, opacity: cooldown > 0 || sending ? 0.5 : 1 }}
-              disabled={cooldown > 0 || sending}
-              onClick={handleRequest}
+              style={{ ...linkBtnStyle, opacity: resendDisabled ? 0.5 : 1 }}
+              disabled={resendDisabled}
+              onClick={(e) => handleRequest(e, { isResend: true })}
             >
-              {cooldown > 0 ? `Повторить через ${cooldown}с` : 'Отправить снова'}
+              {resendLabel}
             </button>
           </div>
         </form>
