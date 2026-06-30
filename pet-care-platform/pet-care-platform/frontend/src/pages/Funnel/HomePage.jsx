@@ -11,7 +11,6 @@ import {
 } from 'lucide-react'
 import AppShell from '../../components/app/AppShell'
 import { BrandSection, BrandCard, BrandButton, BrandBadge, BrandTabs, PuffLottie } from '../../components/brand'
-import { saveQuizDraft } from '../../utils/petQuizDraft'
 
 /* ----------------------------- данные ----------------------------- */
 const PAINS = {
@@ -210,7 +209,9 @@ function ConsiderGroups() {
 /* ----------------------------- страница ----------------------------- */
 export default function HomePage() {
   const navigate = useNavigate()
-  const pick = (species) => { saveQuizDraft({ species }); navigate(`/pet-quiz?species=${species}`) }
+  // Через /start: там, если у пользователя есть анкеты, предложим выбрать питомца,
+  // а не гнать сразу в новую анкету. Для нового — /start сам уведёт в анкету по виду.
+  const pick = (species) => navigate(`/start?species=${species}`)
   const scrollToHow = () => document.getElementById('how')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
 
   return (
