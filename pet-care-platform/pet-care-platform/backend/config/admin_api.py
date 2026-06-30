@@ -27,7 +27,7 @@ from rest_framework.pagination import PageNumberPagination
 from apps.users.models import User
 from apps.pets.models import Pet
 from apps.shop.models import Product, Order, OrderItem
-from apps.training.models import Course
+from apps.training.models import Course, UserCourse, UserCourseProgress
 from apps.payments.models import Payment
 from apps.reviews.models import Review
 
@@ -1198,6 +1198,14 @@ class AdminUserViewSet(AdminModelViewSet):
                 Q(first_name__icontains=search) |
                 Q(last_name__icontains=search)
             )
+        role = self.request.query_params.get('role', '')
+        if role:
+            queryset = queryset.filter(role=role)
+
+        is_active = self.request.query_params.get('is_active', '')
+        if is_active:
+            queryset = queryset.filter(is_active=is_active.lower() == 'true')
+
         return queryset.annotate(
             pets_count=Count('pets', distinct=True),
             orders_count=Count('orders', distinct=True),
@@ -1592,7 +1600,39 @@ class IsAdminOrCourseCreator(BasePermission):
     def has_permission(self, request, view):
         if not request.user or not request.user.is_authenticated:
             return False
-        return request.user.is_staff or getattr(request.user, 'role', None) == 'course_creator'
+        return request.user.is_staff or request.user.is_superuser or getattr(request.user, 'role', None) == 'course_creator'
+
+
+COURSE_ADMIN_WRITE_FIELDS = [
+    'title', 'description', 'detailed_description', 'what_you_will_learn',
+    'category', 'subcategory', 'level', 'pet_type', 'format_type',
+    'price', 'duration', 'completion_time',
+    'is_active', 'status',
+    'instructor_name', 'instructor_bio',
+    'author_id',
+    'course_type',
+    'recommended_behavior_types', 'recommended_activity_levels',
+    'recommended_social_levels', 'min_training_experience',
+    'compatible_health_issues', 'addresses_special_needs',
+    'suitable_activities', 'addresses_behavioral_problems',
+    'correction_problem', 'correction_problem_tags', 'correction_symptoms',
+    'correction_goal', 'success_metrics', 'risk_level',
+    'contraindications', 'red_flags', 'safety_notes', 'required_equipment',
+    'owner_daily_time_minutes', 'min_age_months', 'max_age_months',
+    'excluded_behavioral_problems', 'excluded_health_issues',
+    'requires_specialist_supervision', 'requires_vet_clearance',
+    'review_status', 'review_notes',
+]
+
+COURSE_ADMIN_LIST_FIELDS = [
+    'recommended_behavior_types', 'recommended_activity_levels',
+    'recommended_social_levels', 'compatible_health_issues',
+    'addresses_special_needs', 'suitable_activities',
+    'addresses_behavioral_problems', 'correction_problem_tags',
+    'correction_symptoms', 'success_metrics', 'contraindications',
+    'red_flags', 'required_equipment', 'excluded_behavioral_problems',
+    'excluded_health_issues',
+]
 
 
 class AdminCourseViewSet(viewsets.ModelViewSet):
@@ -1619,6 +1659,17 @@ class AdminCourseViewSet(viewsets.ModelViewSet):
                 'created_at': lesson.created_at.isoformat(),
             })
 
+        students_count = getattr(course, 'students_count_value', None)
+        if students_count is None:
+            students_count = course.user_courses.count()
+
+        pets_count = getattr(course, 'pets_count_value', None)
+        if pets_count is None:
+            pets_count = course.user_courses.exclude(pet__isnull=True).values('pet_id').distinct().count()
+
+        avg_progress = getattr(course, 'avg_progress_value', None)
+        publish_check = course.get_behavior_correction_publish_check(getattr(self.request, 'user', None))
+
         return {
             'id': str(course.id),
             'title': course.title,
@@ -1633,14 +1684,48 @@ class AdminCourseViewSet(viewsets.ModelViewSet):
             'is_free': course.is_free,
             'status': course.status,
             'pet_type': getattr(course, 'pet_type', None),
+            'course_type': course.course_type,
             'duration': course.duration,
             'format_type': course.format_type,
             'completion_time': course.completion_time or '',
             'instructor_name': course.instructor_name or '',
             'instructor_bio': course.instructor_bio or '',
+            'recommended_behavior_types': course.recommended_behavior_types or [],
+            'recommended_activity_levels': course.recommended_activity_levels or [],
+            'recommended_social_levels': course.recommended_social_levels or [],
+            'min_training_experience': course.min_training_experience or '',
+            'compatible_health_issues': course.compatible_health_issues or [],
+            'addresses_special_needs': course.addresses_special_needs or [],
+            'suitable_activities': course.suitable_activities or [],
+            'addresses_behavioral_problems': course.addresses_behavioral_problems or [],
+            'correction_problem': course.correction_problem or '',
+            'correction_problem_tags': course.correction_problem_tags or [],
+            'correction_symptoms': course.correction_symptoms or [],
+            'correction_goal': course.correction_goal or '',
+            'success_metrics': course.success_metrics or [],
+            'risk_level': course.risk_level,
+            'contraindications': course.contraindications or [],
+            'red_flags': course.red_flags or [],
+            'safety_notes': course.safety_notes or '',
+            'required_equipment': course.required_equipment or [],
+            'owner_daily_time_minutes': course.owner_daily_time_minutes,
+            'min_age_months': course.min_age_months,
+            'max_age_months': course.max_age_months,
+            'excluded_behavioral_problems': course.excluded_behavioral_problems or [],
+            'excluded_health_issues': course.excluded_health_issues or [],
+            'requires_specialist_supervision': course.requires_specialist_supervision,
+            'requires_vet_clearance': course.requires_vet_clearance,
+            'review_status': course.review_status,
+            'review_notes': course.review_notes or '',
             'lessons': lessons,
             'lessons_count': len(lessons),
+            'students': students_count,
+            'students_count': students_count,
+            'pets_count': pets_count,
+            'completion_rate': round(float(avg_progress or 0), 1),
+            'publish_check': publish_check,
             'author_id': str(course.author_id) if course.author_id else None,
+            'author_email': course.author.email if course.author else '',
             'created_at': course.created_at.isoformat(),
             'updated_at': course.updated_at.isoformat(),
         }
@@ -1648,10 +1733,61 @@ class AdminCourseViewSet(viewsets.ModelViewSet):
     def _is_course_creator(self):
         return getattr(self.request.user, 'role', None) == 'course_creator'
 
+    def _normalize_field_value(self, field, value):
+        """Привести значение из админки к типу поля модели Course."""
+        if field == 'price':
+            return Decimal(str(value)) if value not in (None, '') else Decimal('0')
+        if field == 'duration':
+            return int(value) if value not in (None, '') else 60
+        if field in ('owner_daily_time_minutes', 'min_age_months', 'max_age_months'):
+            return int(value) if value not in (None, '') else None
+        if field in (
+            'is_active', 'requires_specialist_supervision',
+            'requires_vet_clearance',
+        ):
+            if isinstance(value, str):
+                return value.lower() in ('true', '1', 'yes', 'on')
+            return bool(value)
+        if field in COURSE_ADMIN_LIST_FIELDS:
+            return value if isinstance(value, list) else []
+        return value
+
+    def _apply_course_data(self, course, data, allowed_fields):
+        """Записать разрешенные поля курса из request.data."""
+        for field in allowed_fields:
+            if field in data:
+                if field == 'author_id':
+                    author_id = data[field]
+                    if author_id in (None, ''):
+                        course.author = None
+                    else:
+                        course.author = User.objects.get(id=author_id, role='course_creator')
+                    continue
+                setattr(course, field, self._normalize_field_value(field, data[field]))
+
+        if course.course_type == 'behavior_correction':
+            course.category = course.category or 'behavior'
+            if course.category != 'behavior':
+                course.category = 'behavior'
+            if not course.format_type:
+                course.format_type = 'mixed'
+            course.is_active = course.status == 'published'
+
+        return course
+
     def get_queryset(self):
         """Получить queryset с фильтрами."""
         # Оптимизация: предзагружаем уроки для избежания N+1
-        queryset = Course.objects.prefetch_related('lessons').all()
+        queryset = (
+            Course.objects
+            .prefetch_related('lessons')
+            .annotate(
+                students_count_value=Count('user_courses', distinct=True),
+                pets_count_value=Count('user_courses__pet', distinct=True),
+                avg_progress_value=Avg('user_progress__progress_percent'),
+            )
+            .all()
+        )
 
         # Создатели курсов видят только свои курсы
         if self._is_course_creator():
@@ -1670,9 +1806,29 @@ class AdminCourseViewSet(viewsets.ModelViewSet):
         if category:
             queryset = queryset.filter(category=category)
 
+        course_type = self.request.query_params.get('course_type', '')
+        if course_type:
+            queryset = queryset.filter(course_type=course_type)
+
+        pet_type = self.request.query_params.get('pet_type', '')
+        if pet_type:
+            queryset = queryset.filter(pet_type=pet_type)
+
         level = self.request.query_params.get('level', '')
         if level:
             queryset = queryset.filter(level=level)
+
+        risk_level = self.request.query_params.get('risk_level', '')
+        if risk_level:
+            queryset = queryset.filter(risk_level=risk_level)
+
+        correction_problem = self.request.query_params.get('correction_problem', '')
+        if correction_problem:
+            queryset = queryset.filter(correction_problem=correction_problem)
+
+        review_status = self.request.query_params.get('review_status', '')
+        if review_status:
+            queryset = queryset.filter(review_status=review_status)
 
         is_active = self.request.query_params.get('is_active', '')
         if is_active:
@@ -1695,21 +1851,31 @@ class AdminCourseViewSet(viewsets.ModelViewSet):
         """Создать новый курс (черновик)."""
         try:
             data = request.data.copy()
+            course_type = data.get('course_type', 'general')
             course = Course.objects.create(
                 title=data.get('title', 'Новый курс'),
                 description=data.get('description', ''),
                 duration=int(data.get('duration', 60)),
-                category=data.get('category', 'basics'),
+                category='behavior' if course_type == 'behavior_correction' else data.get('category', 'basics'),
                 level=data.get('level', 'beginner'),
                 pet_type=data.get('pet_type', 'all'),
-                format_type=data.get('format_type', 'video'),
+                format_type='mixed' if course_type == 'behavior_correction' else data.get('format_type', 'video'),
                 price=Decimal(str(data.get('price', 0))) if data.get('price') else Decimal('0'),
                 is_active=False,
                 status='draft',
                 instructor_name=data.get('instructor_name', ''),
                 instructor_bio=data.get('instructor_bio', ''),
                 author=request.user,
+                course_type=course_type,
             )
+            if not self._is_course_creator() and data.get('author_id'):
+                course.author = User.objects.get(id=data.get('author_id'), role='course_creator')
+            self._apply_course_data(course, data, COURSE_ADMIN_WRITE_FIELDS)
+            course.is_active = False
+            course.status = 'draft'
+            if self._is_course_creator():
+                course.author = request.user
+            course.save()
             return Response(self._serialize_course(course), status=status.HTTP_201_CREATED)
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
@@ -1718,6 +1884,11 @@ class AdminCourseViewSet(viewsets.ModelViewSet):
         """Получить один курс."""
         try:
             course = Course.objects.get(id=pk)
+            if self._is_course_creator() and course.author_id != request.user.id:
+                return Response(
+                    {'error': 'Вы можете смотреть только свои курсы'},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
             return Response(self._serialize_course(course))
         except Course.DoesNotExist:
             return Response({'error': 'Курс не найден'}, status=status.HTTP_404_NOT_FOUND)
@@ -1741,28 +1912,16 @@ class AdminCourseViewSet(viewsets.ModelViewSet):
                     status=status.HTTP_403_FORBIDDEN,
                 )
 
-            allowed_fields = [
-                'title', 'description', 'detailed_description', 'what_you_will_learn',
-                'category', 'subcategory', 'level', 'pet_type', 'format_type',
-                'price', 'duration', 'completion_time',
-                'is_active', 'status',
-                'instructor_name', 'instructor_bio',
-            ]
+            allowed_fields = list(COURSE_ADMIN_WRITE_FIELDS)
 
             # Создатели курсов не могут менять статус и is_active
             if self._is_course_creator():
-                allowed_fields = [f for f in allowed_fields if f not in ('status', 'is_active')]
+                allowed_fields = [
+                    f for f in allowed_fields
+                    if f not in ('status', 'is_active', 'review_status', 'review_notes', 'author_id')
+                ]
 
-            for field in allowed_fields:
-                if field in request.data:
-                    value = request.data[field]
-                    if field == 'price':
-                        value = Decimal(str(value)) if value else Decimal('0')
-                    elif field == 'duration':
-                        value = int(value) if value else 60
-                    elif field == 'is_active':
-                        value = bool(value)
-                    setattr(course, field, value)
+            self._apply_course_data(course, request.data, allowed_fields)
             course.save()
             return Response(self._serialize_course(course))
         except Course.DoesNotExist:
@@ -1786,6 +1945,157 @@ class AdminCourseViewSet(viewsets.ModelViewSet):
                 {'error': 'Курс не найден'},
                 status=status.HTTP_404_NOT_FOUND
             )
+
+    @action(detail=True, methods=['get'], url_path='publish-check')
+    def publish_check(self, request, pk=None):
+        """Проверка готовности курса к публикации."""
+        try:
+            course = Course.objects.get(id=pk)
+        except Course.DoesNotExist:
+            return Response({'error': 'Курс не найден'}, status=status.HTTP_404_NOT_FOUND)
+
+        if self._is_course_creator() and course.author_id != request.user.id:
+            return Response(
+                {'error': 'Вы можете проверять только свои курсы'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        return Response(course.get_behavior_correction_publish_check(request.user))
+
+    @action(detail=True, methods=['post'], url_path='submit-for-review')
+    def submit_for_review(self, request, pk=None):
+        """Отправить курс на проверку."""
+        try:
+            course = Course.objects.get(id=pk)
+        except Course.DoesNotExist:
+            return Response({'error': 'Курс не найден'}, status=status.HTTP_404_NOT_FOUND)
+
+        if self._is_course_creator() and course.author_id != request.user.id:
+            return Response(
+                {'error': 'Вы можете отправлять на проверку только свои курсы'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        course.review_status = 'in_review'
+        course.save(update_fields=['review_status', 'updated_at'])
+        return Response(self._serialize_course(course))
+
+    @action(detail=True, methods=['post'], url_path='request-changes')
+    def request_changes(self, request, pk=None):
+        """Вернуть курс автору на доработку."""
+        if self._is_course_creator():
+            return Response({'error': 'Недостаточно прав'}, status=status.HTTP_403_FORBIDDEN)
+
+        try:
+            course = Course.objects.get(id=pk)
+        except Course.DoesNotExist:
+            return Response({'error': 'Курс не найден'}, status=status.HTTP_404_NOT_FOUND)
+
+        course.review_status = 'changes_requested'
+        course.review_notes = request.data.get('review_notes', course.review_notes or '')
+        course.save(update_fields=['review_status', 'review_notes', 'updated_at'])
+        return Response(self._serialize_course(course))
+
+    @action(detail=True, methods=['post'], url_path='approve')
+    def approve(self, request, pk=None):
+        """Одобрить курс после проверки."""
+        if self._is_course_creator():
+            return Response({'error': 'Недостаточно прав'}, status=status.HTTP_403_FORBIDDEN)
+
+        try:
+            course = Course.objects.get(id=pk)
+        except Course.DoesNotExist:
+            return Response({'error': 'Курс не найден'}, status=status.HTTP_404_NOT_FOUND)
+
+        course.review_status = 'approved'
+        course.review_notes = request.data.get('review_notes', course.review_notes or '')
+        course.save(update_fields=['review_status', 'review_notes', 'updated_at'])
+        return Response(self._serialize_course(course))
+
+    @action(detail=True, methods=['get'], url_path='students')
+    def students(self, request, pk=None):
+        """Реальные пользователи и питомцы, проходящие курс."""
+        try:
+            course = Course.objects.get(id=pk)
+        except Course.DoesNotExist:
+            return Response({'error': 'Курс не найден'}, status=status.HTTP_404_NOT_FOUND)
+
+        if self._is_course_creator() and course.author_id != request.user.id:
+            return Response({'error': 'Недостаточно прав'}, status=status.HTTP_403_FORBIDDEN)
+
+        enrollments = (
+            UserCourse.objects
+            .filter(course=course)
+            .select_related('user', 'pet', 'pet__breed')
+            .order_by('-purchased_at')
+        )
+        progress_by_key = {
+            (progress.user_id, progress.pet_id): progress
+            for progress in UserCourseProgress.objects.filter(course=course)
+        }
+
+        data = []
+        for enrollment in enrollments:
+            progress = progress_by_key.get((enrollment.user_id, enrollment.pet_id))
+            pet = enrollment.pet
+            user_name = ' '.join(
+                part for part in [
+                    getattr(enrollment.user, 'first_name', ''),
+                    getattr(enrollment.user, 'last_name', ''),
+                ] if part
+            ) or enrollment.user.email
+            data.append({
+                'id': enrollment.id,
+                'user_id': str(enrollment.user_id),
+                'user_email': enrollment.user.email,
+                'user_name': user_name,
+                'pet': {
+                    'id': str(pet.id),
+                    'name': pet.name,
+                    'species': pet.species,
+                    'breed_name': pet.breed.name if pet.breed else None,
+                    'age_months': pet.age_months,
+                    'behavioral_problems': getattr(pet, 'behavioral_problems', []) or [],
+                } if pet else None,
+                'purchased_at': enrollment.purchased_at.isoformat() if enrollment.purchased_at else None,
+                'progress': progress.progress_percent if progress else enrollment.progress,
+                'status': progress.status if progress else 'not_started',
+                'last_activity_at': progress.last_activity_at.isoformat() if progress and progress.last_activity_at else None,
+            })
+
+        return Response({
+            'count': len(data),
+            'results': data,
+        })
+
+    @action(detail=True, methods=['get'], url_path='analytics')
+    def analytics(self, request, pk=None):
+        """Базовая аналитика курса только по реальным данным."""
+        try:
+            course = Course.objects.get(id=pk)
+        except Course.DoesNotExist:
+            return Response({'error': 'Курс не найден'}, status=status.HTTP_404_NOT_FOUND)
+
+        if self._is_course_creator() and course.author_id != request.user.id:
+            return Response({'error': 'Недостаточно прав'}, status=status.HTTP_403_FORBIDDEN)
+
+        enrollments = UserCourse.objects.filter(course=course)
+        progress_qs = UserCourseProgress.objects.filter(course=course)
+        total_students = enrollments.count()
+        total_pets = enrollments.exclude(pet__isnull=True).values('pet_id').distinct().count()
+        completed = progress_qs.filter(status='completed').count()
+        avg_progress = progress_qs.aggregate(value=Avg('progress_percent'))['value'] or 0
+
+        return Response({
+            'students_count': total_students,
+            'pets_count': total_pets,
+            'completed_count': completed,
+            'completion_rate': round(float(avg_progress), 1),
+            'in_progress_count': progress_qs.filter(status='in_progress').count(),
+            'not_started_count': max(total_students - progress_qs.exclude(status='not_started').count(), 0),
+            'revenue': None,
+            'revenue_note': 'Выручка не рассчитана: в модели курса нет отдельной подтвержденной оплаты курса',
+        })
 
 
 @api_view(['GET'])

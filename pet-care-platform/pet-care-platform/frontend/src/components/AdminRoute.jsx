@@ -13,7 +13,7 @@
  */
 
 import React, { useEffect, useState, useRef } from 'react';
-import { useLocation } from 'react-router-dom';
+import { Navigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import AdminLoginPage from '../admin/components/Auth/AdminLoginPage';
 
@@ -24,7 +24,6 @@ import AdminLoginPage from '../admin/components/Auth/AdminLoginPage';
  * @param {React.ReactNode} props.children - Дочерние компоненты для рендеринга
  */
 const AdminRoute = ({ children }) => {
-  const location = useLocation();
   const isAuthenticated = useAuthStore(s => s.isAuthenticated);
   const user = useAuthStore(s => s.user);
   const isLoading = useAuthStore(s => s.isLoading);
@@ -105,8 +104,12 @@ const AdminRoute = ({ children }) => {
     );
   }
 
-  // Проверяем права: администратор или создатель курсов
-  const hasAdminAccess = user.is_staff || user.is_superuser || user.role === 'course_creator';
+  if (user.role === 'course_creator') {
+    return <Navigate to="/specialist-panel/courses" replace />;
+  }
+
+  // Проверяем права: общая админка доступна только администраторам компании
+  const hasAdminAccess = user.is_staff || user.is_superuser || user.role === 'admin';
   if (!hasAdminAccess) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-red-900 to-slate-800">

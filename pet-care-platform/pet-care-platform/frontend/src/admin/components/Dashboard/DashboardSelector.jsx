@@ -12,7 +12,7 @@ const DashboardSelector = () => {
   const { user, isCourseCreator } = useAdminAuth();
 
   if (isCourseCreator) {
-    return <Navigate to="/admin-panel/courses" replace />;
+    return <Navigate to="/specialist-panel/courses" replace />;
   }
   const [dashboardType, setDashboardType] = useState('overview');
 

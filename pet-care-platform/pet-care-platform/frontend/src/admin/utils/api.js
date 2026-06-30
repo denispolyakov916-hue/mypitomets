@@ -54,7 +54,9 @@ adminApi.interceptors.response.use(
       localStorage.removeItem('access_token');
       localStorage.removeItem('refresh_token');
       // Редирект на страницу входа админки, а не на основной login
-      window.location.href = '/admin-panel';
+      window.location.href = window.location.pathname.startsWith('/specialist-panel')
+        ? '/specialist-panel'
+        : '/admin-panel';
     } else if (error.response?.status === 403) {
       // Нет прав доступа
       console.warn('[AdminAPI] Forbidden - user does not have admin permissions');
@@ -196,6 +198,12 @@ export const adminAPI = {
     update: (id, data) => adminApi.patch(`admin/courses/${id}/`, data),
     delete: (id) => adminApi.delete(`admin/courses/${id}/`),
     publish: (id) => adminApi.post(`courses/${id}/publish/`),
+    publishCheck: (id) => adminApi.get(`admin/courses/${id}/publish-check/`),
+    submitForReview: (id) => adminApi.post(`admin/courses/${id}/submit-for-review/`),
+    requestChanges: (id, data) => adminApi.post(`admin/courses/${id}/request-changes/`, data),
+    approve: (id, data = {}) => adminApi.post(`admin/courses/${id}/approve/`, data),
+    students: (id) => adminApi.get(`admin/courses/${id}/students/`),
+    analytics: (id) => adminApi.get(`admin/courses/${id}/analytics/`),
   },
 
   // Быстрая статистика

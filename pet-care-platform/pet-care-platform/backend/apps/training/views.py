@@ -394,7 +394,7 @@ class CourseListView(APIView):
                     'species': pet.species,
                     'behavior_type': pet.behavior_type,
                     'activity_level': pet.activity_level,
-                    'training_experience': pet.training_experience
+                    'training_experience': getattr(pet, 'training_experience', None)
                 }
 
                 # Получить рекомендации по проблемам

@@ -33,6 +33,7 @@ import Layout from './components/Layout'
 import PrivateRoute from './components/PrivateRoute'
 import AdminRoute from './components/AdminRoute'
 import SupplierRoute from './components/SupplierRoute'
+import SpecialistRoute from './components/SpecialistRoute'
 
 // Витрина страниц (для редизайна)
 import PagesRouter from './Страницы/Роутер'
@@ -92,6 +93,7 @@ const BrandKit = lazy(() => import('./pages/BrandKit/BrandKit')) // dev: /brand-
 // Ленивая загрузка React админ-панели
 const AdminApp = lazy(() => import('./admin/App'))
 const SupplierApp = lazy(() => import('./supplier/App'))
+const SpecialistApp = lazy(() => import('./specialist/App'))
 
 // Хранилище для состояния аутентификации
 import { useAuthStore } from './store/authStore'
@@ -141,6 +143,17 @@ function App() {
               <SupplierApp />
             </Suspense>
           </SupplierRoute>
+        }
+      />
+
+      <Route
+        path="/specialist-panel/*"
+        element={
+          <SpecialistRoute>
+            <Suspense fallback={<AdminPanelLoader />}>
+              <SpecialistApp />
+            </Suspense>
+          </SpecialistRoute>
         }
       />
 

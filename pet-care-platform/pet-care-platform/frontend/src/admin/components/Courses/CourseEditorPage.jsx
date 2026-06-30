@@ -21,6 +21,11 @@ import { useAuthStore } from '../../../store/authStore'
 import CourseFormFields from '../Forms/CourseFormFields'
 import CourseBuilder from '../../../components/CourseBuilder/CourseBuilder'
 import ErrorBoundary from '../../../components/ErrorBoundary'
+import BehaviorCorrectionPassport from './BehaviorCorrectionPassport'
+import BehaviorMatchingRules from './BehaviorMatchingRules'
+import BehaviorSafetyChecklist from './BehaviorSafetyChecklist'
+import CourseStudentsPanel from './CourseStudentsPanel'
+import CourseAnalyticsPanel from './CourseAnalyticsPanel'
 
 const STATUS_LABELS = { draft: 'Черновик', published: 'Опубликован', archived: 'Архив' }
 const STATUS_COLORS = {
@@ -28,12 +33,44 @@ const STATUS_COLORS = {
   published: 'bg-green-100 text-green-800',
   archived: 'bg-gray-100 text-gray-600',
 }
+const REVIEW_LABELS = {
+  not_submitted: 'Не отправлен',
+  in_review: 'На проверке',
+  changes_requested: 'Нужны правки',
+  approved: 'Одобрен',
+}
+const REVIEW_COLORS = {
+  not_submitted: 'bg-gray-100 text-gray-600',
+  in_review: 'bg-blue-100 text-blue-800',
+  changes_requested: 'bg-orange-100 text-orange-800',
+  approved: 'bg-green-100 text-green-800',
+}
 
-export default function CourseEditorPage() {
+const COURSE_SAVE_FIELDS = [
+  'title', 'description', 'detailed_description', 'what_you_will_learn',
+  'category', 'subcategory', 'level', 'pet_type', 'format_type',
+  'price', 'duration', 'completion_time',
+  'instructor_name', 'instructor_bio',
+  'author_id',
+  'course_type',
+  'recommended_behavior_types', 'recommended_activity_levels',
+  'recommended_social_levels', 'min_training_experience',
+  'compatible_health_issues', 'addresses_special_needs',
+  'suitable_activities', 'addresses_behavioral_problems',
+  'correction_problem', 'correction_problem_tags', 'correction_symptoms',
+  'correction_goal', 'success_metrics', 'risk_level',
+  'contraindications', 'red_flags', 'safety_notes', 'required_equipment',
+  'owner_daily_time_minutes', 'min_age_months', 'max_age_months',
+  'excluded_behavioral_problems', 'excluded_health_issues',
+  'requires_specialist_supervision', 'requires_vet_clearance',
+]
+
+export default function CourseEditorPage({ panelBase = '/admin-panel', specialistMode = false }) {
   const { id } = useParams()
   const navigate = useNavigate()
+  const routeBase = panelBase.replace(/\/$/, '')
   const user = useAuthStore(s => s.user)
-  const canPublish = user?.is_staff || user?.is_superuser || user?.role === 'admin'
+  const canPublish = !specialistMode && (user?.is_staff || user?.is_superuser || user?.role === 'admin')
 
   const [course, setCourse] = useState(null)
   const [builderData, setBuilderData] = useState(null)
@@ -43,6 +80,8 @@ export default function CourseEditorPage() {
   const [saving, setSaving] = useState(false)
   const [lastSaved, setLastSaved] = useState(null)
   const [saveError, setSaveError] = useState(null)
+  const [publishCheckTick, setPublishCheckTick] = useState(0)
+  const [specialists, setSpecialists] = useState([])
   const [, setTick] = useState(0) // force re-render for save status timer
 
   const dirtyRef = useRef(false)
@@ -85,13 +124,37 @@ export default function CourseEditorPage() {
       }
     } catch (err) {
       console.error('Error loading course:', err)
-      navigate('/admin-panel/courses')
+      navigate(`${routeBase}/courses`)
     } finally {
       setLoading(false)
     }
-  }, [id, navigate])
+  }, [id, navigate, routeBase])
 
   useEffect(() => { loadCourse() }, [loadCourse])
+
+  useEffect(() => {
+    if (specialistMode || !canPublish) return
+
+    const loadSpecialists = async () => {
+      try {
+        const response = await adminAPI.users.list({
+          role: 'course_creator',
+          is_active: 'true',
+          page_size: 100,
+        })
+        const users = response.data?.results || response.data || []
+        setSpecialists(users.map(item => ({
+          value: item.id,
+          label: item.email || `${item.first_name || ''} ${item.last_name || ''}`.trim() || `Специалист #${item.id}`,
+        })))
+      } catch (err) {
+        console.warn('Failed to load course specialists:', err)
+        setSpecialists([])
+      }
+    }
+
+    loadSpecialists()
+  }, [canPublish, specialistMode])
 
   /* ─── Save metadata ─── */
   const saveCourse = useCallback(async () => {
@@ -100,27 +163,17 @@ export default function CourseEditorPage() {
     setSaveError(null)
     try {
       const d = courseRef.current
-      const res = await adminAPI.courses.update(id, {
-        title: d.title,
-        description: d.description,
-        detailed_description: d.detailed_description,
-        what_you_will_learn: d.what_you_will_learn,
-        category: d.category,
-        subcategory: d.subcategory,
-        level: d.level,
-        pet_type: d.pet_type,
-        format_type: d.format_type,
-        price: d.price,
-        duration: d.duration,
-        completion_time: d.completion_time,
-        instructor_name: d.instructor_name,
-        instructor_bio: d.instructor_bio,
-      })
+      const payload = COURSE_SAVE_FIELDS.reduce((acc, field) => {
+        acc[field] = d[field]
+        return acc
+      }, {})
+      const res = await adminAPI.courses.update(id, payload)
       // Update local state with server response
       const updated = res.data || res
       setCourse(prev => ({ ...prev, ...updated }))
       setIsDirty(false)
       setLastSaved(new Date())
+      setPublishCheckTick(n => n + 1)
     } catch (err) {
       console.error('Error saving course:', err)
       setSaveError('Ошибка сохранения')
@@ -157,13 +210,40 @@ export default function CourseEditorPage() {
     if (isDirty) await saveCourse()
     setSaving(true)
     try {
+      if (courseRef.current?.course_type === 'behavior_correction') {
+        const checkResponse = await adminAPI.courses.publishCheck(id)
+        const check = checkResponse.data
+        if (!check.can_publish) {
+          setSaveError(check.blocking_errors?.[0] || 'Курс пока нельзя опубликовать')
+          setPublishCheckTick(n => n + 1)
+          return
+        }
+      }
       await publishCourse(id)
       setCourse(prev => ({ ...prev, status: 'published', is_active: true }))
       setLastSaved(new Date())
       setSaveError(null)
+      setPublishCheckTick(n => n + 1)
     } catch (err) {
       console.error('Error publishing:', err)
-      setSaveError(err.response?.data?.error || 'Ошибка публикации')
+      setSaveError(err.response?.data?.blocking_errors?.[0] || err.response?.data?.error || 'Ошибка публикации')
+    } finally {
+      setSaving(false)
+    }
+  }, [id, isDirty, saveCourse])
+
+  const handleSubmitForReview = useCallback(async () => {
+    if (isDirty) await saveCourse()
+    setSaving(true)
+    try {
+      const res = await adminAPI.courses.submitForReview(id)
+      const updated = res.data || res
+      setCourse(prev => ({ ...prev, ...updated }))
+      setLastSaved(new Date())
+      setSaveError(null)
+    } catch (err) {
+      console.error('Error submitting course for review:', err)
+      setSaveError(err.response?.data?.error || 'Ошибка отправки на проверку')
     } finally {
       setSaving(false)
     }
@@ -215,7 +295,7 @@ export default function CourseEditorPage() {
       <div className="flex items-center justify-center h-full">
         <div className="text-center">
           <p className="text-gray-500 text-lg mb-3">Курс не найден</p>
-          <button onClick={() => navigate('/admin-panel/courses')} className="text-primary-600 hover:underline text-sm">
+          <button onClick={() => navigate(`${routeBase}/courses`)} className="text-primary-600 hover:underline text-sm">
             К списку курсов
           </button>
         </div>
@@ -225,6 +305,25 @@ export default function CourseEditorPage() {
 
   const saveStatus = getSaveStatus()
   const isPublished = course.status === 'published'
+  const isBehaviorCorrection = course.course_type === 'behavior_correction'
+  const canSubmitForReview = (
+    isBehaviorCorrection &&
+    !canPublish &&
+    !['in_review', 'approved'].includes(course.review_status)
+  )
+  const tabs = [
+    { key: 'settings', label: 'Настройки', icon: '⚙️' },
+    ...(isBehaviorCorrection ? [
+      { key: 'passport', label: 'Паспорт коррекции', icon: '📋' },
+      { key: 'matching', label: 'Подбор', icon: '🎯' },
+      { key: 'safety', label: 'Безопасность', icon: '🛡' },
+    ] : []),
+    { key: 'builder', label: 'Конструктор', icon: '🧩' },
+    ...(isBehaviorCorrection ? [
+      { key: 'students', label: 'Ученики', icon: '👥' },
+      { key: 'analytics', label: 'Аналитика', icon: '📈' },
+    ] : []),
+  ]
 
   return (
     <div className="flex flex-col h-full">
@@ -234,7 +333,7 @@ export default function CourseEditorPage() {
           <button
             onClick={() => {
               if (isDirty && !window.confirm('У вас есть несохранённые изменения. Покинуть страницу?')) return
-              navigate('/admin-panel/courses')
+              navigate(`${routeBase}/courses`)
             }}
             className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg flex-shrink-0"
             title="К списку курсов"
@@ -251,6 +350,12 @@ export default function CourseEditorPage() {
           <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium flex-shrink-0 ${STATUS_COLORS[course.status] || STATUS_COLORS.draft}`}>
             {STATUS_LABELS[course.status] || 'Черновик'}
           </span>
+
+          {isBehaviorCorrection && (
+            <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium flex-shrink-0 ${REVIEW_COLORS[course.review_status] || REVIEW_COLORS.not_submitted}`}>
+              {REVIEW_LABELS[course.review_status] || 'Не отправлен'}
+            </span>
+          )}
 
           {saveStatus && (
             <div className="flex items-center gap-1.5 flex-shrink-0">
@@ -277,6 +382,16 @@ export default function CourseEditorPage() {
             Сохранить
           </button>
 
+          {canSubmitForReview && (
+            <button
+              onClick={handleSubmitForReview}
+              disabled={saving}
+              className="px-3 py-1.5 text-xs font-medium bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 transition-colors"
+            >
+              {course.review_status === 'changes_requested' ? 'Повторно на проверку' : 'Отправить на проверку'}
+            </button>
+          )}
+
           {canPublish && (
             isPublished ? (
               <button
@@ -300,16 +415,13 @@ export default function CourseEditorPage() {
       </div>
 
       {/* ─── Tabs ─── */}
-      <div className="bg-white border-b border-gray-200 px-4 flex-shrink-0">
-        <nav className="flex gap-5">
-          {[
-            { key: 'settings', label: 'Настройки', icon: '⚙️' },
-            { key: 'builder', label: 'Конструктор', icon: '🧩' },
-          ].map(tab => (
+      <div className="bg-white border-b border-gray-200 px-4 flex-shrink-0 overflow-x-auto">
+        <nav className="flex gap-5 min-w-max">
+          {tabs.map(tab => (
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
-              className={`flex items-center gap-1.5 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+              className={`flex items-center gap-1.5 py-2.5 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
                 activeTab === tab.key
                   ? 'border-primary-500 text-primary-600'
                   : 'border-transparent text-gray-500 hover:text-gray-700'
@@ -328,9 +440,43 @@ export default function CourseEditorPage() {
         <ErrorBoundary>
           <div className={`absolute inset-0 overflow-y-auto bg-gray-50 ${activeTab === 'settings' ? '' : 'hidden'}`}>
             <div className="max-w-3xl mx-auto p-5 pb-20">
-              <CourseFormFields values={course} onChange={handleFieldChange} />
+              <CourseFormFields
+                values={course}
+                onChange={handleFieldChange}
+                specialistOptions={specialists}
+                canManageAuthor={canPublish}
+              />
             </div>
           </div>
+
+          {isBehaviorCorrection && (
+            <div className={`absolute inset-0 overflow-y-auto bg-gray-50 ${activeTab === 'passport' ? '' : 'hidden'}`}>
+              <div className="max-w-5xl mx-auto p-5 pb-20">
+                <BehaviorCorrectionPassport values={course} onChange={handleFieldChange} />
+              </div>
+            </div>
+          )}
+
+          {isBehaviorCorrection && (
+            <div className={`absolute inset-0 overflow-y-auto bg-gray-50 ${activeTab === 'matching' ? '' : 'hidden'}`}>
+              <div className="max-w-5xl mx-auto p-5 pb-20">
+                <BehaviorMatchingRules values={course} onChange={handleFieldChange} />
+              </div>
+            </div>
+          )}
+
+          {isBehaviorCorrection && (
+            <div className={`absolute inset-0 overflow-y-auto bg-gray-50 ${activeTab === 'safety' ? '' : 'hidden'}`}>
+              <div className="max-w-5xl mx-auto p-5 pb-20">
+                <BehaviorSafetyChecklist
+                  courseId={id}
+                  values={course}
+                  onChange={handleFieldChange}
+                  refreshKey={publishCheckTick}
+                />
+              </div>
+            </div>
+          )}
 
           <div className={`absolute inset-0 ${activeTab === 'builder' ? '' : 'hidden'}`}>
             {builderData && (
@@ -342,6 +488,22 @@ export default function CourseEditorPage() {
               />
             )}
           </div>
+
+          {isBehaviorCorrection && (
+            <div className={`absolute inset-0 overflow-y-auto bg-gray-50 ${activeTab === 'students' ? '' : 'hidden'}`}>
+              <div className="max-w-6xl mx-auto p-5 pb-20">
+                <CourseStudentsPanel courseId={id} />
+              </div>
+            </div>
+          )}
+
+          {isBehaviorCorrection && (
+            <div className={`absolute inset-0 overflow-y-auto bg-gray-50 ${activeTab === 'analytics' ? '' : 'hidden'}`}>
+              <div className="max-w-6xl mx-auto p-5 pb-20">
+                <CourseAnalyticsPanel courseId={id} />
+              </div>
+            </div>
+          )}
         </ErrorBoundary>
       </div>
     </div>
