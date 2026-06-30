@@ -222,3 +222,8 @@ class PhoneOtp(models.Model):
 
     def __str__(self):
         return f"OTP {self.phone}"
+
+
+# Заявки на доступ к партнёрским кабинетам (поставщик / специалист по курсам).
+# Модель вынесена в отдельный модуль; импорт здесь регистрирует её в app 'users'.
+from .partner_access_models import PartnerAccessRequest  # noqa: E402,F401

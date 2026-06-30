@@ -45,6 +45,14 @@ function AuthModal() {
   const isRegisterPath = location.pathname === '/register'
   const isLoginPath = location.pathname === '/login'
 
+  // P1.6: причина, по которой гость попал на вход (например, из воронки «Рацион»).
+  // Берём из navigation state (приоритет) либо из query authMessage — показываем
+  // дружелюбную плашку, чтобы человек понимал, зачем вход, и не «терялся».
+  const authGateMessage =
+    location.state?.authMessage ||
+    new URLSearchParams(location.search).get('authMessage') ||
+    ''
+
   // Состояние переключения форм
   const [isRegisterMode, setIsRegisterMode] = useState(isRegisterPath)
   const [isActive, setIsActive] = useState(isRegisterPath)
@@ -64,6 +72,9 @@ function AuthModal() {
   const [registrationSuccess, setRegistrationSuccess] = useState(false)
   const [activationCode, setActivationCode] = useState('')
   const [validationErrors, setValidationErrors] = useState({})
+
+  // P1.11.1: обязательные согласия при регистрации (блокируют отправку).
+  const [consents, setConsents] = useState({ terms: false, personalData: false })
 
   // Повторная отправка кода активации (email) с кулдауном 60с
   const [resendCooldown, setResendCooldown] = useState(0)
@@ -148,6 +159,7 @@ const toggleMode = () => {
   setValidationErrors({})
   setRegistrationSuccess(false)
   setActivationCode('')
+  setConsents({ terms: false, personalData: false })
 }
 
   /**
@@ -171,6 +183,15 @@ const toggleMode = () => {
     setValidationErrors(errors)
     return Object.keys(errors).length === 0
   }
+
+  // P1.11.3: правила пароля, синхронные с backend (core/validators.validate_password_strength):
+  // ≥8 символов, буква, цифра, спецсимвол. Показываем чек-лист с инлайн-обратной связью.
+  const passwordRules = [
+    { key: 'len', label: 'Минимум 8 символов', test: (v) => v.length >= 8 },
+    { key: 'letter', label: 'Хотя бы одна буква', test: (v) => /[a-zA-Zа-яА-ЯёЁ]/.test(v) },
+    { key: 'digit', label: 'Хотя бы одна цифра', test: (v) => /\d/.test(v) },
+    { key: 'special', label: 'Хотя бы один спецсимвол (!@#$%…)', test: (v) => /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?`~]/.test(v) },
+  ]
 
   /**
    * Валидация формы регистрации
@@ -204,6 +225,14 @@ const toggleMode = () => {
       errors.passwordConfirm = 'Пароли не совпадают. Убедитесь, что ввели одинаковый пароль в обоих полях'
     }
 
+    // P1.11.1: согласия обязательны — без них регистрация невозможна.
+    if (!consents.terms) {
+      errors.terms = 'Подтвердите согласие с условиями, чтобы продолжить'
+    }
+    if (!consents.personalData) {
+      errors.personalData = 'Подтвердите согласие на обработку персональных данных'
+    }
+
     setValidationErrors(errors)
     return Object.keys(errors).length === 0
   }
@@ -227,6 +256,17 @@ const toggleMode = () => {
     const { name, value } = e.target
     setRegisterData(prev => ({ ...prev, [name]: value }))
 
+    if (validationErrors[name]) {
+      setValidationErrors(prev => ({ ...prev, [name]: null }))
+    }
+  }
+
+  /**
+   * P1.11.1: переключение чекбоксов согласий + сброс их ошибки.
+   */
+  const handleConsentChange = (e) => {
+    const { name, checked } = e.target
+    setConsents(prev => ({ ...prev, [name]: checked }))
     if (validationErrors[name]) {
       setValidationErrors(prev => ({ ...prev, [name]: null }))
     }
@@ -325,6 +365,9 @@ const toggleMode = () => {
             authMethod === 'phone' ? (
               <div className="auth-form">
                 <h1>{isRegisterMode ? 'Регистрация' : 'Вход'}</h1>
+                {authGateMessage && (
+                  <div className="auth-info-box" role="status">{authGateMessage}</div>
+                )}
                 {methodTabs}
                 <PhoneAuthForm redirectPath={resolvePostAuthRedirect({ location })} />
               </div>
@@ -332,6 +375,11 @@ const toggleMode = () => {
             <form onSubmit={isRegisterMode ? handleRegisterSubmit : handleLoginSubmit} className="auth-form">
               <h1>{isRegisterMode ? 'Регистрация' : 'Вход'}</h1>
               {methodTabs}
+
+              {/* P1.6: причина входа из воронки — чтобы гость не «терялся» */}
+              {authGateMessage && (
+                <div className="auth-info-box" role="status">{authGateMessage}</div>
+              )}
 
               {/* Серверная ошибка */}
               {error && (
@@ -384,6 +432,35 @@ const toggleMode = () => {
                 )}
               </div>
 
+              {/* P1.11.3: видимые требования к паролю с инлайн-обратной связью (только регистрация) */}
+              {isRegisterMode && (
+                <ul
+                  className="auth-password-rules"
+                  aria-label="Требования к паролю"
+                  style={{ listStyle: 'none', margin: '-8px 0 14px', padding: 0, textAlign: 'left' }}
+                >
+                  {passwordRules.map((rule) => {
+                    const ok = rule.test(registerData.password)
+                    return (
+                      <li
+                        key={rule.key}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          fontSize: '12px',
+                          lineHeight: 1.6,
+                          color: ok ? '#047857' : '#7c6f93',
+                        }}
+                      >
+                        <i className={ok ? 'bx bx-check-circle' : 'bx bx-circle'} aria-hidden="true" />
+                        <span>{rule.label}</span>
+                      </li>
+                    )
+                  })}
+                </ul>
+              )}
+
               {/* Поле подтверждения пароля (только для регистрации) */}
               {isRegisterMode && (
                 <div className="auth-input-box">
@@ -406,6 +483,62 @@ const toggleMode = () => {
                     <div className="auth-field-error" id="auth-password-confirm-error" role="alert">
                       {validationErrors.passwordConfirm}
                     </div>
+                  )}
+                </div>
+              )}
+
+              {/* P1.11.1: обязательные согласия со ссылками на правовые документы */}
+              {isRegisterMode && (
+                <div className="auth-consent" style={{ margin: '4px 0 16px', textAlign: 'left' }}>
+                  <label
+                    htmlFor="consent-terms"
+                    style={{ display: 'flex', gap: '8px', alignItems: 'flex-start', fontSize: '13px', color: '#4b3a63', cursor: 'pointer', lineHeight: 1.5 }}
+                  >
+                    <input
+                      type="checkbox"
+                      id="consent-terms"
+                      name="terms"
+                      checked={consents.terms}
+                      onChange={handleConsentChange}
+                      disabled={isLoading}
+                      required
+                      style={{ marginTop: '3px', flexShrink: 0 }}
+                      aria-invalid={Boolean(validationErrors.terms)}
+                    />
+                    <span>
+                      Я принимаю{' '}
+                      <a href="/terms" target="_blank" rel="noopener noreferrer" style={{ color: '#522f81', fontWeight: 600 }}>пользовательское соглашение</a>,{' '}
+                      <a href="/offer" target="_blank" rel="noopener noreferrer" style={{ color: '#522f81', fontWeight: 600 }}>оферту</a>{' '}
+                      и{' '}
+                      <a href="/privacy" target="_blank" rel="noopener noreferrer" style={{ color: '#522f81', fontWeight: 600 }}>политику конфиденциальности</a>
+                    </span>
+                  </label>
+                  {validationErrors.terms && (
+                    <div className="auth-field-error" role="alert">{validationErrors.terms}</div>
+                  )}
+
+                  <label
+                    htmlFor="consent-pdn"
+                    style={{ display: 'flex', gap: '8px', alignItems: 'flex-start', fontSize: '13px', color: '#4b3a63', cursor: 'pointer', lineHeight: 1.5, marginTop: '10px' }}
+                  >
+                    <input
+                      type="checkbox"
+                      id="consent-pdn"
+                      name="personalData"
+                      checked={consents.personalData}
+                      onChange={handleConsentChange}
+                      disabled={isLoading}
+                      required
+                      style={{ marginTop: '3px', flexShrink: 0 }}
+                      aria-invalid={Boolean(validationErrors.personalData)}
+                    />
+                    <span>
+                      Я даю{' '}
+                      <a href="/consent" target="_blank" rel="noopener noreferrer" style={{ color: '#522f81', fontWeight: 600 }}>согласие на обработку персональных данных</a>
+                    </span>
+                  </label>
+                  {validationErrors.personalData && (
+                    <div className="auth-field-error" role="alert">{validationErrors.personalData}</div>
                   )}
                 </div>
               )}
@@ -444,21 +577,8 @@ const toggleMode = () => {
                 </Link>
               )}
 
-              {/* Социальные сети */}
-              <div className="auth-social-text">
-                или {isRegisterMode ? 'зарегистрируйтесь' : 'войдите'} через
-              </div>
-              <div className="auth-social-icons">
-                <a href="#" className="auth-social-icon" title="ВКонтакте">
-                  <i className='bx bxl-vk'></i>
-                </a>
-                <a href="#" className="auth-social-icon" title="Яндекс">
-                  <span className="social-text-icon">Я</span>
-                </a>
-                <a href="#" className="auth-social-icon" title="Telegram">
-                  <i className='bx bxl-telegram'></i>
-                </a>
-              </div>
+              {/* P1.11.2: соц-вход скрыт до реальной OAuth-интеграции (нет конфигурации
+                  Яндекс/VK/Telegram) — убраны нерабочие href="#" заглушки. */}
             </form>
             )
           ) : (

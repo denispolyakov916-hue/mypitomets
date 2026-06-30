@@ -124,15 +124,26 @@ const AdminRoute = ({ children }) => {
             </svg>
           </div>
 
-          <h1 className="text-2xl font-bold text-white mb-3">Доступ ограничен</h1>
-          
+          <h1 className="text-2xl font-bold text-white mb-3">Нет доступа</h1>
+
           <p className="text-red-200 mb-2">
-            У вас нет прав администратора для доступа к этой панели.
+            У вас нет прав для доступа к этой панели.
           </p>
-          
-            <p className="text-red-300/70 text-sm mb-8">
-            Для получения доступа обратитесь к администратору системы.
+
+            <p className="text-red-300/70 text-sm mb-6">
+            Чтобы стать специалистом по курсам, отправьте заявку — её рассмотрит
+            администратор платформы.
           </p>
+
+          <a
+            href="/partner-access?role=course_specialist"
+            className="inline-flex w-full items-center justify-center gap-2 px-6 py-3 mb-6 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white rounded-xl transition-all shadow-lg"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            Запросить доступ специалиста
+          </a>
 
           {/* Информация о пользователе */}
           <div className="bg-white/5 rounded-xl p-4 mb-6 text-left">

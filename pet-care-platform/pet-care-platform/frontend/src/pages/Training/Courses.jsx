@@ -212,8 +212,14 @@ function Courses() {
 
   return (
     <div className="animate-fadeIn page-container-with-sidebar courses-catalog-shell flex flex-col min-h-[calc(100vh-4rem)]">
-      <CourseHero courseCount={courseCount} onSearch={(q) => handleFilterChange('search', q)} />
-      <CourseExperts />
+      <CourseHero
+        courseCount={courseCount}
+        isLoading={isLoading}
+        onSearch={(q) => handleFilterChange('search', q)}
+      />
+      {/* Секция экспертов скрыта, пока каталог курсов пуст — иначе она противоречит
+          пустому списку ниже (см. баг P1.10: честное отображение раздела). */}
+      {!isLoading && courseCount > 0 && <CourseExperts />}
       <CourseHeader
         onOpenMobileFilters={() => setIsMobileFiltersOpen(true)}
         onCategoryChange={handleFilterChange}

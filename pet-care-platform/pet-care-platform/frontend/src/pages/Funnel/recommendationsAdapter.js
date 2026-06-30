@@ -11,6 +11,7 @@
 import { getProducts } from '../../api/shop'
 import { formatPrice } from '../../utils/format'
 import { formatAgeLabel } from './petAge'
+import { filterOutAllergens, tokensForAllergens } from './allergenMatcher'
 
 // Группы для доп. товара «набора заботы» — пробуем по приоритету, берём первый доступный.
 const ADDON_GROUPS = ['treats', 'grooming', 'care', 'toilet', 'vet']
@@ -126,10 +127,8 @@ function buildReasons(draft, optimal, monthly) {
   return reasons
 }
 
-export async function buildRecommendations(draft = {}) {
-  const species = draft.species === 'dog' ? 'dog' : 'cat'
-
-  // Основной пул — реальные корма по виду питомца.
+/** Пул кормов по виду + ЕДИНОЕ исключение аллергенов (до деления на варианты/набор). */
+async function fetchFoodPool(species, allergyTags) {
   let food = await fetchGroup(species, 'food')
   if (food.length < 3) {
     // запасной путь: общий список и фильтр по названию/группе
@@ -137,8 +136,42 @@ export async function buildRecommendations(draft = {}) {
     const asFood = general.filter((p) => /корм|food/i.test(`${p.name || ''} ${p.product_group || ''}`))
     food = asFood.length >= 3 ? asFood : general
   }
+  const safe = filterOutAllergens(food, allergyTags)
+  return { safe, excludedAll: food.length > 0 && safe.length === 0 }
+}
+
+/** Доп. товар набора заботы — тоже без аллергенов (набор уходит в корзину). */
+async function pickAddon(species, allergyTags, excludeId) {
+  for (const group of ADDON_GROUPS) {
+    const items = filterOutAllergens(await fetchGroup(species, group), allergyTags)
+      .filter((it) => it.id !== excludeId)
+    if (items.length) {
+      const byPrice = [...items].sort((a, b) => (a.price || 0) - (b.price || 0))
+      // не самый дешёвый «мусор» и не самый дорогой — берём из нижней трети
+      return { addon: byPrice[Math.min(byPrice.length - 1, Math.floor(byPrice.length * 0.25))], group }
+    }
+  }
+  return { addon: null, group: null }
+}
+
+export async function buildRecommendations(draft = {}) {
+  const species = draft.species === 'dog' ? 'dog' : 'cat'
+
+  // Выбранные аллергии (квиз хранит RU-метки). Единый источник исключения для
+  // ВСЕХ вариантов (эконом/оптимальный/премиум) и набора в корзину.
+  const allergyTags = Array.isArray(draft.allergyTags) ? draft.allergyTags : []
+  const hasAllergens = tokensForAllergens(allergyTags).length > 0
+
+  const { safe: food, excludedAll } = await fetchFoodPool(species, allergyTags)
+
   const sorted = [...food].sort((a, b) => (a.price || 0) - (b.price || 0))
-  if (sorted.length === 0) return { species, tiers: [], profile: buildProfile(draft), reasons: [], bundle: null }
+  if (sorted.length === 0) {
+    // Честное сообщение вместо подсовывания корма с аллергеном.
+    const noticeNoSafeFood = (hasAllergens && excludedAll)
+      ? `Не нашли корм без выбранных аллергенов (${allergyTags.join(', ')}). Измените список аллергий или обратитесь к специалисту.`
+      : null
+    return { species, tiers: [], profile: buildProfile(draft), reasons: [], bundle: null, notice: noticeNoSafeFood }
+  }
 
   const economy = sorted[0]
   const premium = sorted[sorted.length - 1]
@@ -159,18 +192,7 @@ export async function buildRecommendations(draft = {}) {
     .map((t) => ({ ...t, attrs: productAttrs(t.product), monthly: monthlyOf(t.product) }))
 
   // Набор заботы: основной корм (оптимальный) + доп. товар из смежной группы.
-  let addon = null
-  let addonGroup = null
-  for (const group of ADDON_GROUPS) {
-    const items = (await fetchGroup(species, group)).filter((it) => it.id !== optimal.id)
-    if (items.length) {
-      const byPrice = [...items].sort((a, b) => (a.price || 0) - (b.price || 0))
-      // не самый дешёвый «мусор» и не самый дорогой — берём из нижней трети
-      addon = byPrice[Math.min(byPrice.length - 1, Math.floor(byPrice.length * 0.25))]
-      addonGroup = group
-      break
-    }
-  }
+  const { addon, group: addonGroup } = await pickAddon(species, allergyTags, optimal.id)
   const main = optimal
   const bundle = {
     main,
@@ -185,5 +207,10 @@ export async function buildRecommendations(draft = {}) {
   const reasons = buildReasons(draft, optimal, monthlyOf(optimal))
   const profile = buildProfile(draft)
 
-  return { species, tiers, bundle, profile, reasons }
+  // Сообщение, если корм подобран, но часть отсеяна по аллергии (для прозрачности).
+  const notice = hasAllergens
+    ? `Из подбора исключены корма с выбранными аллергенами: ${allergyTags.join(', ')}.`
+    : null
+
+  return { species, tiers, bundle, profile, reasons, notice }
 }

@@ -7,8 +7,8 @@
  */
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
-import { useNavigate, useSearchParams, Link } from 'react-router-dom'
-import { useCartStore } from '../../store/cartStore'
+import { useNavigate, useSearchParams, useLocation, Link } from 'react-router-dom'
+import { useCartStore, setPendingCartAdd } from '../../store/cartStore'
 import { useAuthStore } from '../../store/authStore'
 import { useToastStore } from '../../store/toastStore'
 import { useProducts } from '../../hooks/useProducts'
@@ -16,14 +16,16 @@ import { usePets } from '../../hooks/usePets'
 import ShopFilters from '../../components/Shop/ShopFilters'
 import { ShopHeader, MobileFiltersModal, ProductGrid, Pagination, ShopHeroBanner } from './components'
 import { BrandButton, BrandCard, BrandEmptyState } from '../../components/brand'
+import { pluralizeRu } from '../../utils/format'
 import { SearchX, AlertTriangle, Sparkles } from 'lucide-react'
 
 function Shop() {
   const navigate = useNavigate()
+  const location = useLocation()
   const [searchParams, setSearchParams] = useSearchParams()
   const isAuthenticated = useAuthStore(s => s.isAuthenticated)
-  const { addItem, loadCart } = useCartStore()
-  const { success, error: showError } = useToastStore()
+  const { addItem, loadCart, replayPendingCartAdd } = useCartStore()
+  const { success, error: showError, info } = useToastStore()
   const [isMobileFiltersOpen, setIsMobileFiltersOpen] = useState(false)
   const isFirstProductsLoadRef = useRef(true)
   const { pets: userPets } = usePets()
@@ -188,21 +190,29 @@ function Shop() {
   useEffect(() => {
     if (!isAuthenticated) return
     loadCart(false)
-  }, [isAuthenticated, loadCart])
+    // P1.6: если гость нажал «В корзину» и вошёл — добавляем сохранённый товар
+    replayPendingCartAdd().then((added) => {
+      if (added) success('Товар из вашего списка добавлен в корзину.', 4000)
+    })
+  }, [isAuthenticated, loadCart, replayPendingCartAdd, success])
   
   const handleAddToCart = useCallback(async (product, quantity = 1) => {
     if (!isAuthenticated) {
-      if (confirm('Для добавления в корзину необходимо войти в аккаунт. Перейти на страницу входа?')) {
-        navigate('/login', { state: { from: { pathname: '/shop' } } })
-      }
+      // P1.6: сохраняем товар и возвращаем пользователя туда, где он был.
+      setPendingCartAdd(product.id, quantity)
+      const redirectPath = `${location.pathname}${location.search}` || '/shop'
+      info('Войдите или зарегистрируйтесь — мы сохраним товар и добавим его в корзину.', 5000)
+      navigate(`/login?redirect=${encodeURIComponent(redirectPath)}`)
       return false
     }
 
     try {
       const result = await addItem(product.id, quantity)
       if (result) {
-        const itemText = quantity === 1 ? 'Товар' : `${quantity} товара`
-        success(`${itemText} добавлен${quantity > 1 ? 'ы' : ''} в корзину.`, 3000)
+        const noun = pluralizeRu(quantity, ['товар', 'товара', 'товаров'])
+        const verb = pluralizeRu(quantity, ['добавлен', 'добавлено', 'добавлено'])
+        const countText = quantity === 1 ? noun : `${quantity} ${noun}`
+        success(`${countText} ${verb} в корзину.`, 3000)
         return true
       } else {
         showError('Не удалось добавить товар в корзину. Попробуйте ещё раз.', 5000)
@@ -213,7 +223,7 @@ function Shop() {
       showError('Произошла ошибка при добавлении товара.', 5000)
       return false
     }
-  }, [isAuthenticated, navigate, addItem, success, showError])
+  }, [isAuthenticated, navigate, location, info, addItem, success, showError])
   
   const selectedPet = useMemo(() => {
     if (filters.pet_id && availableFilters.user_pets) {
@@ -221,6 +231,11 @@ function Shop() {
     }
     return null
   }, [filters.pet_id, availableFilters.user_pets])
+
+  // Активен ли фильтр категории (для информативного пустого состояния P1.7).
+  // Ссылки из футера/баннеров ведут на /shop?category_code=…, которые могут
+  // не содержать товаров — показываем дружелюбное состояние с возвратом в каталог.
+  const hasCategoryFilter = Boolean(filters.category_code || filters.category_slug)
   
   const showRefetchIndicator = isRefetching && !isLoading
 
@@ -336,12 +351,25 @@ function Shop() {
           
           {!isLoading && !error && products.length === 0 && (
             <BrandCard variant="default" padding="lg">
-              <BrandEmptyState
-                icon={<SearchX className="h-8 w-8" />}
-                title="Ничего не нашлось"
-                description="Попробуйте изменить фильтры — подберём подходящее для вашего питомца."
-                action={<BrandButton variant="primary" onClick={handleReset}>Сбросить фильтры</BrandButton>}
-              />
+              {hasCategoryFilter ? (
+                <BrandEmptyState
+                  icon={<SearchX className="h-8 w-8" />}
+                  title="В этой категории пока нет товаров"
+                  description="Мы уже наполняем её. А пока загляните в полный каталог — там точно найдётся подходящее."
+                  action={(
+                    <BrandButton as={Link} to="/shop" variant="primary" onClick={handleReset}>
+                      Перейти в каталог
+                    </BrandButton>
+                  )}
+                />
+              ) : (
+                <BrandEmptyState
+                  icon={<SearchX className="h-8 w-8" />}
+                  title="Ничего не нашлось"
+                  description="Попробуйте изменить фильтры — подберём подходящее для вашего питомца."
+                  action={<BrandButton variant="primary" onClick={handleReset}>Сбросить фильтры</BrandButton>}
+                />
+              )}
             </BrandCard>
           )}
           

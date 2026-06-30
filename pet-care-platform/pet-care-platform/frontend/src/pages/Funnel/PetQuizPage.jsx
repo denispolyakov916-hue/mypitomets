@@ -9,7 +9,7 @@ import AppShell from '../../components/app/AppShell'
 import { BrandSection, BrandButton, BrandInput, PuffLottie } from '../../components/brand'
 import { loadQuizDraft, saveQuizDraft } from '../../utils/petQuizDraft'
 import { getBreeds, HEALTH_ISSUES_OPTIONS, EXCLUDED_INGREDIENTS_OPTIONS } from '../../api/pets'
-import { hasValidAge, weightStepFor } from './petAge'
+import { hasValidAge, weightStepFor, draftToDateOfBirth, ageError } from './petAge'
 
 const PUFF_STEPS = ['talk_gesture', 'talk_gesture2']
 
@@ -145,6 +145,17 @@ function AgeQuizField({ data, set }) {
     { value: 'dob', label: 'Дата рождения' },
   ]
   const today = new Date().toISOString().split('T')[0]
+
+  // Любое изменение возраста (смена вкладки или ввод) пересчитывает канонический
+  // date_of_birth и кладёт его в черновик. Так все три режима валидируются
+  // одинаково и единообразно сохраняются — кнопка «Далее» включается в каждом.
+  const setAge = (patch) => {
+    const merged = { ...data, ...patch }
+    set({ ...patch, date_of_birth: draftToDateOfBirth(merged) })
+  }
+
+  const error = ageError(data)
+
   return (
     <div className="space-y-4">
       <div className="inline-flex flex-wrap gap-1 rounded-full bg-primary-50 p-1">
@@ -152,7 +163,7 @@ function AgeQuizField({ data, set }) {
           <button
             key={t.value}
             type="button"
-            onClick={() => set({ ageMode: t.value })}
+            onClick={() => setAge({ ageMode: t.value })}
             className={`rounded-full px-4 py-1.5 text-sm font-semibold transition ${mode === t.value ? 'bg-primary-700 text-white shadow-card' : 'text-primary-600 hover:text-primary-800'}`}
           >
             {t.label}
@@ -162,15 +173,18 @@ function AgeQuizField({ data, set }) {
       {mode === 'years' && (
         <BrandInput label="Возраст (лет)" type="number" min="0" step="0.5" inputMode="decimal"
           helper="Для малышей удобнее месяцы или дата рождения"
-          placeholder="3" value={data.ageYears ?? ''} onChange={(e) => set({ ageYears: e.target.value })} />
+          error={error}
+          placeholder="3" value={data.ageYears ?? ''} onChange={(e) => setAge({ ageYears: e.target.value })} />
       )}
       {mode === 'months' && (
         <BrandInput label="Возраст (месяцев)" type="number" min="0" step="1" inputMode="numeric"
-          placeholder="6" value={data.ageMonths ?? ''} onChange={(e) => set({ ageMonths: e.target.value })} />
+          error={error}
+          placeholder="6" value={data.ageMonths ?? ''} onChange={(e) => setAge({ ageMonths: e.target.value })} />
       )}
       {mode === 'dob' && (
         <BrandInput label="Дата рождения" type="date" max={today}
-          value={data.dob ?? ''} onChange={(e) => set({ dob: e.target.value })} />
+          error={error}
+          value={data.dob ?? ''} onChange={(e) => setAge({ dob: e.target.value })} />
       )}
     </div>
   )
@@ -238,11 +252,15 @@ function PillRow({ options, value, onPick }) {
   return (
     <div className="flex flex-wrap gap-2">
       {options.map((o) => {
-        const active = value === o.value
+        // Сравниваем по строковому ключу: булевы true/false (и undefined) надёжно
+        // различаются и не «слипаются». Раньше при value === undefined ни одна
+        // пилюля не подсвечивалась, а булева false могла не отличаться от «не выбрано».
+        const active = value != null && String(value) === String(o.value)
         return (
           <button
             key={String(o.value)}
             type="button"
+            aria-pressed={active}
             onClick={() => onPick(o.value)}
             className={`min-h-[44px] rounded-full px-4 py-2 text-sm font-medium transition ${active ? 'bg-primary-700 text-white shadow-card' : 'border border-primary-100 bg-white text-primary-700 hover:bg-primary-50'}`}
           >
@@ -308,8 +326,10 @@ export default function PetQuizPage() {
         placeholder="4.5" value={data.weight || ''} onChange={(e) => set({ weight: e.target.value })} />,
     },
     {
-      key: 'neutered', title: neuterTitle(data.sex), valid: () => data.neutered != null,
-      render: () => <PillRow value={data.neutered} onPick={(v) => set({ neutered: v })} options={[{ value: true, label: 'Да' }, { value: false, label: 'Нет' }]} />,
+      key: 'neutered', title: neuterTitle(data.sex), valid: () => typeof data.neutered === 'boolean',
+      // onPick принудительно приводим к строгому булеву (===) — оба значения Да/Нет
+      // выбираются и переключаются свободно, подсветка и «Далее» всегда корректны.
+      render: () => <PillRow value={data.neutered} onPick={(v) => set({ neutered: v === true })} options={[{ value: true, label: 'Да' }, { value: false, label: 'Нет' }]} />,
     },
     {
       key: 'health', title: 'Здоровье и аллергии', valid: () => true,

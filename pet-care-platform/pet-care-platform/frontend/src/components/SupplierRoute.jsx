@@ -55,16 +55,27 @@ const SupplierRoute = ({ children }) => {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-950 px-4">
         <div className="max-w-md rounded-lg border border-white/10 bg-white p-6 text-center shadow-xl">
-          <h1 className="text-xl font-semibold text-gray-900">Доступ ограничен</h1>
+          <h1 className="text-xl font-semibold text-gray-900">
+            У вас нет доступа к панели поставщика
+          </h1>
           <p className="mt-2 text-sm text-gray-600">
-            Для кабинета поставщика нужен доступ, выданный администратором платформы.
+            Чтобы получить доступ к кабинету поставщика корма, отправьте заявку —
+            её рассмотрит администратор платформы.
           </p>
-          <a
-            href="/"
-            className="mt-5 inline-flex items-center justify-center rounded-md bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700"
-          >
-            На главную
-          </a>
+          <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:justify-center">
+            <a
+              href="/partner-access?role=supplier"
+              className="inline-flex items-center justify-center rounded-md bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700"
+            >
+              Запросить доступ
+            </a>
+            <a
+              href="/"
+              className="inline-flex items-center justify-center rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            >
+              На главную
+            </a>
+          </div>
         </div>
       </div>
     );

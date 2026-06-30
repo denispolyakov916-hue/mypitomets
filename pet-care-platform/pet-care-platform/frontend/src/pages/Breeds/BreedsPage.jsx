@@ -2,6 +2,105 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../../api/client';
 
+const ENERGY_LABELS = {
+  very_low: 'Очень низкая',
+  low: 'Низкая',
+  medium: 'Средняя',
+  moderate: 'Умеренная',
+  high: 'Высокая',
+  very_high: 'Очень высокая',
+};
+
+const SIZE_LABELS = {
+  toy: 'Миниатюрный',
+  tiny: 'Миниатюрный',
+  small: 'Маленький',
+  medium: 'Средний',
+  large: 'Крупный',
+  giant: 'Гигантский',
+};
+
+const getEnergyLabel = (level) => ENERGY_LABELS[level] || level;
+const getSizeLabel = (size) => SIZE_LABELS[size] || size;
+
+/** Строит список характеристик карточки, пропуская отсутствующие поля. */
+const buildBreedStats = (breed) => {
+  const stats = [];
+  if (breed.size_category) {
+    stats.push({ icon: '📏', text: getSizeLabel(breed.size_category) });
+  }
+  if (breed.energy_level) {
+    stats.push({ icon: '⚡', text: getEnergyLabel(breed.energy_level) });
+  }
+  if (breed.weight_min != null || breed.weight_max != null) {
+    stats.push({ icon: '⚖️', text: `${breed.weight_min ?? '?'}-${breed.weight_max ?? '?'} кг` });
+  }
+  if (breed.lifespan_min != null || breed.lifespan_max != null) {
+    stats.push({ icon: '❤️', text: `${breed.lifespan_min}-${breed.lifespan_max} лет` });
+  }
+  return stats;
+};
+
+/** Строит список тегов карточки на основе булевых флагов породы. */
+const buildBreedTags = (breed) =>
+  [
+    { key: 'apartment', show: breed.apartment_friendly, label: 'Для квартиры', cls: 'bg-blue-100 text-blue-700' },
+    { key: 'novice', show: breed.good_for_novice, label: 'Для новичков', cls: 'bg-primary-100 text-primary-700' },
+    { key: 'brachy', show: breed.brachycephalic, label: 'Брахицефал', cls: 'bg-accent-100 text-accent-700' },
+  ].filter((tag) => tag.show);
+
+/**
+ * Карточка породы в каталоге. Все поля опциональны — рендерим только
+ * то, что реально пришло из API (LIST-эндпоинт отдаёт подмножество).
+ */
+const BreedCard = ({ breed }) => (
+  <Link
+    to={`/breeds/${breed.slug || breed.id}`}
+    className="bg-white rounded-xl shadow-sm hover:shadow-md transition overflow-hidden group"
+  >
+    {/* Заголовок карточки */}
+    <div className={`p-4 ${breed.species === 'dog' ? 'bg-secondary-50' : 'bg-primary-50'}`}>
+      <div className="flex items-center justify-between">
+        <span className="text-2xl">{breed.species === 'dog' ? '🐕' : '🐈'}</span>
+        {breed.hypoallergenic && (
+          <span className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full">
+            Гипоаллергенная
+          </span>
+        )}
+      </div>
+      <h3 className="font-semibold text-lg text-gray-800 mt-2 group-hover:text-primary-600 transition">
+        {breed.name}
+      </h3>
+      {breed.name_en && <p className="text-sm text-gray-500">{breed.name_en}</p>}
+    </div>
+
+    {/* Характеристики */}
+    <div className="p-4">
+      {breed.short_description && (
+        <p className="text-sm text-gray-600 mb-3 line-clamp-3">{breed.short_description}</p>
+      )}
+
+      <div className="grid grid-cols-2 gap-2 text-sm">
+        {buildBreedStats(breed).map((stat) => (
+          <div key={stat.icon} className="flex items-center text-gray-500">
+            <span className="mr-1">{stat.icon}</span>
+            {stat.text}
+          </div>
+        ))}
+      </div>
+
+      {/* Теги */}
+      <div className="mt-3 flex flex-wrap gap-1">
+        {buildBreedTags(breed).map((tag) => (
+          <span key={tag.key} className={`px-2 py-0.5 ${tag.cls} text-xs rounded`}>
+            {tag.label}
+          </span>
+        ))}
+      </div>
+    </div>
+  </Link>
+);
+
 /**
  * Страница каталога пород
  */
@@ -55,28 +154,6 @@ const BreedsPage = () => {
       apartment_friendly: '',
       search: '',
     });
-  };
-
-  const getEnergyLabel = (level) => {
-    const labels = {
-      very_low: 'Очень низкая',
-      low: 'Низкая',
-      medium: 'Средняя',
-      high: 'Высокая',
-      very_high: 'Очень высокая',
-    };
-    return labels[level] || level;
-  };
-
-  const getSizeLabel = (size) => {
-    const labels = {
-      tiny: 'Миниатюрный',
-      small: 'Маленький',
-      medium: 'Средний',
-      large: 'Крупный',
-      giant: 'Гигантский',
-    };
-    return labels[size] || size;
   };
 
   return (
@@ -214,76 +291,7 @@ const BreedsPage = () => {
             <p className="text-gray-600 mb-4">Найдено: {breeds.length} пород</p>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {breeds.map((breed) => (
-                <Link
-                  key={breed.id}
-                  to={`/breeds/${breed.slug}`}
-                  className="bg-white rounded-xl shadow-sm hover:shadow-md transition overflow-hidden group"
-                >
-                  {/* Заголовок карточки */}
-                  <div className={`p-4 ${breed.species === 'dog' ? 'bg-secondary-50' : 'bg-primary-50'}`}>
-                    <div className="flex items-center justify-between">
-                      <span className={`text-2xl`}>
-                        {breed.species === 'dog' ? '🐕' : '🐈'}
-                      </span>
-                      {breed.hypoallergenic && (
-                        <span className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full">
-                          Гипоаллергенная
-                        </span>
-                      )}
-                    </div>
-                    <h3 className="font-semibold text-lg text-gray-800 mt-2 group-hover:text-primary-600 transition">
-                      {breed.name}
-                    </h3>
-                    {breed.name_en && (
-                      <p className="text-sm text-gray-500">{breed.name_en}</p>
-                    )}
-                  </div>
-
-                  {/* Характеристики */}
-                  <div className="p-4">
-                    {breed.short_description && (
-                      <p className="text-sm text-gray-600 mb-3">{breed.short_description}</p>
-                    )}
-
-                    <div className="grid grid-cols-2 gap-2 text-sm">
-                      <div className="flex items-center text-gray-500">
-                        <span className="mr-1">📏</span>
-                        {getSizeLabel(breed.size_category)}
-                      </div>
-                      <div className="flex items-center text-gray-500">
-                        <span className="mr-1">⚡</span>
-                        {getEnergyLabel(breed.energy_level)}
-                      </div>
-                      <div className="flex items-center text-gray-500">
-                        <span className="mr-1">⚖️</span>
-                        {breed.weight_min}-{breed.weight_max} кг
-                      </div>
-                      <div className="flex items-center text-gray-500">
-                        <span className="mr-1">❤️</span>
-                        {breed.lifespan_min}-{breed.lifespan_max} лет
-                      </div>
-                    </div>
-
-                    {/* Теги */}
-                    <div className="mt-3 flex flex-wrap gap-1">
-                      {breed.apartment_friendly && (
-                        <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs rounded">
-                          Для квартиры
-                        </span>
-                      )}
-                      {breed.good_for_novice && (
-                        <span className="px-2 py-0.5 bg-primary-100 text-primary-700 text-xs rounded">
-                          Для новичков
-                        </span>
-                      )}
-                      {breed.brachycephalic && (
-                        <span className="px-2 py-0.5 bg-accent-100 text-accent-700 text-xs rounded">
-                          Брахицефал
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </Link>
+                <BreedCard key={breed.id} breed={breed} />
               ))}
             </div>
           </>
