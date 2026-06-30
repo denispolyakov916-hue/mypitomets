@@ -7,6 +7,8 @@
 существующего S3-аплоада (как в shop), slug автогенерится из кириллицы.
 """
 
+import secrets
+
 from django.conf import settings
 from django.db import models
 from django.utils import timezone
@@ -14,6 +16,11 @@ from django.utils.text import slugify
 from unidecode import unidecode
 
 from core.utils import generate_uuid7
+
+
+def _generate_feed_key():
+    """Непредсказуемый ключ для webcal-подписки (~43 символа)."""
+    return secrets.token_urlsafe(32)
 
 
 def _unique_slug(model_cls, title, instance_pk=None):
@@ -166,3 +173,51 @@ class NewsPost(models.Model):
         if with_body:
             data['body'] = self.body
         return data
+
+
+class SavedEvent(models.Model):
+    """
+    Мероприятие, добавленное пользователем в СВОЙ календарь.
+
+    Это НЕ RSVP/регистрация (без статуса «иду»/листа ожидания) — просто «у меня в
+    календаре». Наполняет персональный webcal-фид и список «Мой календарь».
+    """
+
+    id = models.UUIDField(primary_key=True, default=generate_uuid7, editable=False)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE,
+                             related_name='saved_events', verbose_name='Пользователь')
+    event = models.ForeignKey('Event', on_delete=models.CASCADE,
+                              related_name='saved_by', verbose_name='Мероприятие')
+    created_at = models.DateTimeField('Добавлено', default=timezone.now)
+
+    class Meta:
+        db_table = 'saved_events'
+        unique_together = [['user', 'event']]
+        ordering = ['-created_at']
+        verbose_name = 'Сохранённое мероприятие'
+        verbose_name_plural = 'Сохранённые мероприятия'
+
+    def __str__(self):
+        return f'{self.user_id} → {self.event_id}'
+
+
+class CalendarSubscriptionToken(models.Model):
+    """
+    Токен webcal-подписки: Apple/Google опрашивают фид по URL с токеном, без JWT
+    (календарные клиенты не умеют слать Bearer). Токен непубличный и ротируемый.
+    """
+
+    id = models.UUIDField(primary_key=True, default=generate_uuid7, editable=False)
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE,
+                                related_name='calendar_token', verbose_name='Пользователь')
+    key = models.CharField('Ключ подписки', max_length=64, unique=True, db_index=True,
+                           default=_generate_feed_key)
+    created_at = models.DateTimeField('Создан', default=timezone.now)
+
+    class Meta:
+        db_table = 'calendar_subscription_tokens'
+        verbose_name = 'Токен подписки на календарь'
+        verbose_name_plural = 'Токены подписки на календарь'
+
+    def __str__(self):
+        return f'token<{self.user_id}>'

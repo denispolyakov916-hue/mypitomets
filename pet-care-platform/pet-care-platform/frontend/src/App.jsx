@@ -63,6 +63,9 @@ import About from './pages/About/About'
 // Ленивая загрузка страниц пород
 const BreedsPage = lazy(() => import('./pages/Breeds/BreedsPage'))
 const BreedDetailPage = lazy(() => import('./pages/Breeds/BreedDetailPage'))
+const NewsEventsPage = lazy(() => import('./pages/NewsEvents/NewsEventsPage'))
+const EventDetailPage = lazy(() => import('./pages/NewsEvents/EventDetailPage'))
+const NewsDetailPage = lazy(() => import('./pages/NewsEvents/NewsDetailPage'))
 import Shop from './pages/Shop/Shop'
 import ProductDetail from './pages/Shop/ProductDetail'
 import Cart from './pages/Shop/Cart'
@@ -210,6 +213,11 @@ function App() {
               {/* Курсы - Публичный каталог */}
               <Route path="/courses" element={<Courses />} />
               <Route path="/courses/:id" element={<CourseDetail />} />
+
+              {/* Новости и Мероприятия - Публичный */}
+              <Route path="/news-events" element={<Suspense fallback={<Loader />}><NewsEventsPage /></Suspense>} />
+              <Route path="/news-events/events/:slug" element={<Suspense fallback={<Loader />}><EventDetailPage /></Suspense>} />
+              <Route path="/news-events/news/:slug" element={<Suspense fallback={<Loader />}><NewsDetailPage /></Suspense>} />
 
               {/* Оплата - Требует аутентификации */}
               <Route path="/payment" element={<Payment />} />

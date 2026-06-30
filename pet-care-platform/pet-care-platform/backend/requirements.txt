@@ -34,6 +34,9 @@ uuid7==0.1.0
 # Транслитерация для генерации slug из кириллицы
 unidecode==1.3.8
 
+# Генерация iCalendar (.ics) для мероприятий («Новости и Мероприятия» + Apple/Google sync)
+icalendar==5.0.13
+
 # S3-совместимое облачное хранилище (Yandex Cloud Object Storage)
 django-storages[s3]==1.14.4
 
