@@ -53,7 +53,7 @@ class Command(BaseCommand):
         
         # Check fields
         fields = {
-            'kotmatros_category_id': Category.objects.exclude(kotmatros_category_id__isnull=True).count(),
+            'external_id': Category.objects.exclude(external_id__isnull=True).count(),
             'code': Category.objects.exclude(code__isnull=True).exclude(code='').count(),
             'slug': Category.objects.exclude(slug='').count(),
             'name': Category.objects.exclude(name='').count(),
@@ -87,7 +87,7 @@ class Command(BaseCommand):
             return
         
         fields = {
-            'kotmatros_brand_id': Brand.objects.exclude(kotmatros_brand_id__isnull=True).count(),
+            'external_id': Brand.objects.exclude(external_id__isnull=True).count(),
             'slug': Brand.objects.exclude(slug='').count(),
             'name': Brand.objects.exclude(name='').count(),
             'logo_url': Brand.objects.exclude(logo_url='').count(),
@@ -126,7 +126,7 @@ class Command(BaseCommand):
             return
         
         fields = {
-            'kotmatros_product_id': Product.objects.exclude(kotmatros_product_id__isnull=True).count(),
+            'external_id': Product.objects.exclude(external_id__isnull=True).count(),
             'slug': Product.objects.exclude(slug='').count(),
             'name': Product.objects.exclude(name='').count(),
             'short_description': Product.objects.exclude(short_description='').exclude(short_description__isnull=True).count(),
@@ -178,7 +178,7 @@ class Command(BaseCommand):
             return
         
         fields = {
-            'kotmatros_variant_id': ProductSKU.objects.exclude(kotmatros_variant_id__isnull=True).count(),
+            'external_id': ProductSKU.objects.exclude(external_id__isnull=True).count(),
             'sku': ProductSKU.objects.exclude(sku='').count(),
             'name': ProductSKU.objects.exclude(name='').exclude(name__isnull=True).count(),
             'price > 0': ProductSKU.objects.filter(price__gt=0).count(),

@@ -767,7 +767,7 @@ class AdminAnalyticsViewSet(viewsets.ViewSet, DashboardCacheMixin):
                 continue
 
             data.append({
-                'id': str(product.kotmatros_product_id or product.id),
+                'id': str(product.external_id or product.id),
                 'name': product.name,
                 'orders_count': item['orders_count'],
                 'price': float(product.price),
@@ -1018,7 +1018,7 @@ class AdminManagementViewSet(viewsets.ViewSet):
                 if product.compare_price and product.compare_price > product.price:
                     discount_percent = round((1 - float(product.price) / float(product.compare_price)) * 100)
                 data.append({
-                    'ID': str(product.kotmatros_product_id or product.id),
+                    'ID': str(product.external_id or product.id),
                     'Название': product.name,
                     'Цена': float(product.price),
                     'Скидка (%)': discount_percent,
@@ -1372,7 +1372,7 @@ class AdminProductViewSet(AdminModelViewSet):
     """ViewSet для управления товарами."""
     queryset = Product.objects.all()
     ordering = ('-order_count', 'name')
-    lookup_field = 'kotmatros_product_id'
+    lookup_field = 'external_id'
     lookup_url_kwarg = 'id'
 
     def _serialize_product(self, product):
@@ -1381,7 +1381,7 @@ class AdminProductViewSet(AdminModelViewSet):
         if product.compare_price and product.compare_price > product.price:
             discount_percent = round((1 - float(product.price) / float(product.compare_price)) * 100)
         return {
-            'id': str(product.kotmatros_product_id or product.id),
+            'id': str(product.external_id or product.id),
             'name': product.name,
             'description': product.description or '',
             'price': float(product.price),
@@ -1408,7 +1408,7 @@ class AdminProductViewSet(AdminModelViewSet):
             queryset = queryset.filter(
                 Q(name__icontains=search) |
                 Q(brand__name__icontains=search) |
-                Q(kotmatros_product_id__icontains=search)
+                Q(external_id__icontains=search)
             )
         
         category_slug = request.query_params.get('category_slug', '')
@@ -1431,7 +1431,7 @@ class AdminProductViewSet(AdminModelViewSet):
     def retrieve(self, request, id=None):
         """Получить один товар по external_id."""
         try:
-            product = Product.objects.get(kotmatros_product_id=id)
+            product = Product.objects.get(external_id=id)
             return Response(self._serialize_product(product))
         except Product.DoesNotExist:
             return Response(
@@ -1442,7 +1442,7 @@ class AdminProductViewSet(AdminModelViewSet):
     def update(self, request, id=None, **kwargs):
         """Обновить товар."""
         try:
-            product = Product.objects.get(kotmatros_product_id=id)
+            product = Product.objects.get(external_id=id)
             allowed_fields = [
                 'name', 'description', 'price', 'compare_price', 'is_available',
                 'product_group', 'animal_type', 'brand_id', 'category_id'
@@ -1466,7 +1466,7 @@ class AdminProductViewSet(AdminModelViewSet):
     def destroy(self, request, id=None):
         """Удалить товар."""
         try:
-            product = Product.objects.get(kotmatros_product_id=id)
+            product = Product.objects.get(external_id=id)
             product.delete()
             return Response(status=status.HTTP_204_NO_CONTENT)
         except Product.DoesNotExist:

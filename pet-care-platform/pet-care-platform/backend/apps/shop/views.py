@@ -155,10 +155,10 @@ class ProductListView(APIView):
             from .models import Category
             from apps.shop.management.commands.populate_category_codes import CATEGORY_CODE_MAPPING
             categories = Category.objects.filter(is_active=True).only(
-                'id', 'kotmatros_category_id', 'code'
+                'id', 'external_id', 'code'
             )
             def _code_for(cat):
-                return cat.code or CATEGORY_CODE_MAPPING.get(cat.kotmatros_category_id)
+                return cat.code or CATEGORY_CODE_MAPPING.get(cat.external_id)
             matched_ids = [
                 cat.id for cat in categories
                 if _code_for(cat) and (
@@ -760,7 +760,7 @@ class ProductListView(APIView):
             return category_counts.get(cat.id, 0)
 
         def _code_for(cat):
-            return cat.code or CATEGORY_CODE_MAPPING.get(cat.kotmatros_category_id)
+            return cat.code or CATEGORY_CODE_MAPPING.get(cat.external_id)
 
         def _normalize_code(code):
             if not code:
@@ -3353,7 +3353,7 @@ class ProductListViewV2(APIView):
                 # Включаем товары из подкатегорий
                 products = products.filter(
                     Q(new_category=cat) | 
-                    Q(new_category__path__contains=[cat.kotmatros_category_id])
+                    Q(new_category__path__contains=[cat.external_id])
                 )
             except Category.DoesNotExist:
                 pass
@@ -3362,7 +3362,7 @@ class ProductListViewV2(APIView):
                 cat = Category.objects.get(id=category_id, is_active=True)
                 products = products.filter(
                     Q(new_category=cat) | 
-                    Q(new_category__path__contains=[cat.kotmatros_category_id])
+                    Q(new_category__path__contains=[cat.external_id])
                 )
             except Category.DoesNotExist:
                 pass

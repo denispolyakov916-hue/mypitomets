@@ -54,13 +54,13 @@ class Category(models.Model):
     ]
     
     # Идентификаторы
-    kotmatros_category_id = models.BigIntegerField(
+    external_id = models.BigIntegerField(
         unique=True, 
         null=True, 
         blank=True,
         db_column='external_id',  # Сохраняем имя колонки для обратной совместимости
-        verbose_name='ID в Kotmatros',
-        help_text='ID категории из внешнего API Kotmatros'
+        verbose_name='ID внешнего источника',
+        help_text='ID категории из внешнего API'
     )
     
     # Основные поля
@@ -144,7 +144,7 @@ class Category(models.Model):
             models.Index(fields=['parent']),
             models.Index(fields=['animal_type', 'product_group']),
             models.Index(fields=['depth', 'is_active', 'sort_order']),
-            models.Index(fields=['kotmatros_category_id'], name='idx_cat_kotmatros'),
+            models.Index(fields=['external_id'], name='idx_cat_external'),
         ]
     
     def __str__(self):
@@ -154,27 +154,27 @@ class Category(models.Model):
         """Автоматически обновляет path и depth при сохранении."""
         if self.parent:
             self.depth = self.parent.depth + 1
-            self.path = self.parent.path + [self.kotmatros_category_id or self.pk]
+            self.path = self.parent.path + [self.external_id or self.pk]
         else:
             self.depth = 0
-            self.path = [self.kotmatros_category_id or self.pk]
+            self.path = [self.external_id or self.pk]
         super().save(*args, **kwargs)
     
     def get_ancestors(self):
         """Получить всех предков категории."""
         if not self.parent:
             return Category.objects.none()
-        return Category.objects.filter(kotmatros_category_id__in=self.path[:-1])
+        return Category.objects.filter(external_id__in=self.path[:-1])
     
     def get_descendants(self):
         """Получить всех потомков категории."""
-        return Category.objects.filter(path__contains=[self.kotmatros_category_id or self.pk])
+        return Category.objects.filter(path__contains=[self.external_id or self.pk])
     
     def to_dict(self):
         """Сериализация для API."""
         return {
             'id': self.id,
-            'kotmatros_category_id': self.kotmatros_category_id,
+            'external_id': self.external_id,
             'name': self.name,
             'slug': self.slug,
             'code': self.code,
@@ -203,12 +203,12 @@ class Brand(models.Model):
     ]
     
     # Идентификаторы
-    kotmatros_brand_id = models.BigIntegerField(
+    external_id = models.BigIntegerField(
         unique=True,
         null=True,
         blank=True,
         db_column='external_id',  # Сохраняем имя колонки для обратной совместимости
-        verbose_name='ID в Kotmatros'
+        verbose_name='ID внешнего источника'
     )
     
     # Основные поля
@@ -249,7 +249,7 @@ class Brand(models.Model):
         ordering = ['-priority', 'name']
         indexes = [
             models.Index(fields=['brand_class', '-priority']),
-            models.Index(fields=['kotmatros_brand_id'], name='idx_brand_kotmatros'),
+            models.Index(fields=['external_id'], name='idx_brand_external'),
         ]
     
     def __str__(self):
@@ -259,7 +259,7 @@ class Brand(models.Model):
         """Сериализация для API."""
         return {
             'id': self.id,
-            'kotmatros_brand_id': self.kotmatros_brand_id,
+            'external_id': self.external_id,
             'name': self.name,
             'slug': self.slug,
             'logo_url': self.logo_url,
@@ -394,14 +394,14 @@ class Product(models.Model):
     # ИДЕНТИФИКАТОРЫ
     # ==========================================================================
     
-    # ID из внешнего каталога Kotmatros
-    kotmatros_product_id = models.BigIntegerField(
+    # ID из внешнего каталога
+    external_id = models.BigIntegerField(
         unique=True,
         null=True,
         blank=True,
         db_column='external_id',  # Сохраняем имя колонки для обратной совместимости
-        verbose_name='ID в Kotmatros',
-        help_text='ID товара из внешнего API Kotmatros'
+        verbose_name='ID внешнего источника',
+        help_text='ID товара из внешнего API'
     )
     
     # ==========================================================================
@@ -677,7 +677,7 @@ class Product(models.Model):
         Возвращает URL изображения без изменений.
         
         Метод оставлен для обратной совместимости.
-        URL изображений используют домен kotmatros.ru.
+        URL изображений возвращаются без изменения.
         """
         return url
     
@@ -691,7 +691,7 @@ class Product(models.Model):
         
         return {
             'id': self.id,
-            'kotmatros_product_id': self.kotmatros_product_id,
+            'external_id': self.external_id,
             'name': self.name,
             'slug': self.slug,
             'short_description': self.short_description,
@@ -728,7 +728,7 @@ class Product(models.Model):
         """
         return {
             'id': self.id,
-            'kotmatros_product_id': self.kotmatros_product_id,
+            'external_id': self.external_id,
             'name': self.name,
             'slug': self.slug,
             'short_description': self.short_description,
@@ -951,12 +951,12 @@ class ProductSKU(models.Model):
     )
     
     # Идентификаторы
-    kotmatros_variant_id = models.BigIntegerField(
+    external_id = models.BigIntegerField(
         unique=True,
         null=True, 
         blank=True,
         db_column='external_id',  # Сохраняем имя колонки для обратной совместимости
-        verbose_name='ID SKU в Kotmatros'
+        verbose_name='ID SKU внешнего источника'
     )
     sku = models.CharField(max_length=100, blank=True, verbose_name='Артикул')
     supplier_offer = models.ForeignKey(
@@ -1123,7 +1123,7 @@ class ProductSKU(models.Model):
             models.Index(fields=['flavor'], name='idx_skus_flavor'),
             models.Index(fields=['size_code'], name='idx_skus_size'),
             models.Index(fields=['color'], name='idx_skus_color'),
-            models.Index(fields=['kotmatros_variant_id'], name='idx_skus_kotmatros'),
+            models.Index(fields=['external_id'], name='idx_skus_external'),
         ]
     
     def __str__(self):
