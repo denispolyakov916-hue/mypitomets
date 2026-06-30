@@ -74,7 +74,13 @@ health_check() {
 
     if [ -z "$health_url" ] && [ -f "$PROJECT_DIR/backend/.env" ]; then
         local client_url
-        client_url="$(grep -E '^(CLIENT_URL|API_URL)=' "$PROJECT_DIR/backend/.env" | head -n 1 | cut -d= -f2- | tr -d '"' | sed 's#/$##')" || true
+        client_url="$(awk -F= '/^(CLIENT_URL|API_URL)=/ {sub(/^[^=]*=/, ""); print; exit}' "$PROJECT_DIR/backend/.env")" || true
+        client_url="${client_url%$'\r'}"
+        client_url="${client_url%\"}"
+        client_url="${client_url#\"}"
+        client_url="${client_url%\'}"
+        client_url="${client_url#\'}"
+        client_url="${client_url%/}"
         if [ -n "$client_url" ]; then
             health_url="${client_url}/api/health/"
         fi
