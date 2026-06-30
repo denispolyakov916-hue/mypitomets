@@ -176,6 +176,7 @@ INSTALLED_APPS = [
     'apps.reviews',
     'apps.assistant',
     'apps.integrations',
+    'apps.events',
 ]
 
 # =============================================================================

@@ -81,6 +81,9 @@ urlpatterns = [
     # Интеграции с поставщиками: Dinozavrik catalog.sync, fulfillment webhooks
     path('api/integrations/', include('apps.integrations.urls')),
 
+    # Новости и Мероприятия (публичный контент + календарь)
+    path('api/events/', include('apps.events.urls')),
+
     # Календарь событий питомцев теперь в /api/pets/calendar/
 
     # Загрузка файлов и медиа
