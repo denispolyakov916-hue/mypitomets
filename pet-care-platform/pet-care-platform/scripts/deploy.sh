@@ -69,10 +69,24 @@ health_check() {
     log "Проверка здоровья (ожидание до 60 сек)..."
     local retries=12
     local wait=5
+    local health_url="${HEALTHCHECK_URL:-}"
+    local fallback_url="http://localhost/api/health/"
+
+    if [ -z "$health_url" ] && [ -f "$PROJECT_DIR/backend/.env" ]; then
+        local client_url
+        client_url="$(grep -E '^(CLIENT_URL|API_URL)=' "$PROJECT_DIR/backend/.env" | head -n 1 | cut -d= -f2- | tr -d '"' | sed 's#/$##')" || true
+        if [ -n "$client_url" ]; then
+            health_url="${client_url}/api/health/"
+        fi
+    fi
 
     for i in $(seq 1 $retries); do
-        if curl -sf http://localhost/api/health/ > /dev/null 2>&1; then
-            log "Приложение работает корректно!"
+        if [ -n "$health_url" ] && curl -ksf "$health_url" > /dev/null 2>&1; then
+            log "Приложение работает корректно! ($health_url)"
+            return 0
+        fi
+        if curl -sf "$fallback_url" > /dev/null 2>&1; then
+            log "Приложение работает корректно! ($fallback_url)"
             return 0
         fi
         warn "Попытка $i/$retries — сервис ещё не готов, ждём ${wait}с..."
