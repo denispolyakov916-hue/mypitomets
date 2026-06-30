@@ -156,7 +156,7 @@ const SupplierProducts = () => {
             <article key={item.id} className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <a href={`/supplier-panel/products/${item.id}`} className="line-clamp-3 text-sm font-semibold text-gray-900 hover:text-primary-700">
+                  <a href={`/supplier-panel/products/${item.id}`} className="block line-clamp-3 text-sm font-semibold text-gray-900 hover:text-primary-700">
                     {item.title}
                   </a>
                   <div className="mt-1 truncate text-xs text-gray-500">{data.brand || 'Бренд не указан'}</div>
@@ -225,7 +225,7 @@ const SupplierProducts = () => {
               return (
                 <tr key={item.id} className="hover:bg-gray-50">
                   <td className="px-4 py-4">
-                    <a href={`/supplier-panel/products/${item.id}`} className="font-medium text-gray-900 hover:text-primary-700">
+                    <a href={`/supplier-panel/products/${item.id}`} className="block font-medium text-gray-900 hover:text-primary-700">
                       {item.title}
                     </a>
                     <div className="mt-1 text-xs text-gray-500">{data.brand || 'Бренд не указан'}</div>
