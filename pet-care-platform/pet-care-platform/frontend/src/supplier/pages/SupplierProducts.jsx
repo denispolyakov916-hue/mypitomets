@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, Plus, Search } from 'lucide-react';
 import StatusBadge from '../components/StatusBadge';
 import { supplierAPI } from '../utils/api';
@@ -64,13 +63,13 @@ const SupplierProducts = () => {
           <h1 className="text-2xl font-semibold text-gray-900">Ассортимент</h1>
           <p className="mt-1 text-sm text-gray-500">Корма из магазина, подбора и сырые позиции фида Динозаврика</p>
         </div>
-        <Link
-          to="/supplier-panel/products/new"
+        <a
+          href="/supplier-panel/products/new"
           className="inline-flex items-center justify-center rounded-md bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700"
         >
           <Plus className="mr-2 h-4 w-4" />
           Создать корм
-        </Link>
+        </a>
       </div>
 
       <div className="flex flex-col gap-3 rounded-lg border border-gray-200 bg-white p-4 lg:flex-row">
@@ -157,9 +156,9 @@ const SupplierProducts = () => {
             <article key={item.id} className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <Link to={`/supplier-panel/products/${item.id}`} className="line-clamp-3 text-sm font-semibold text-gray-900 hover:text-primary-700">
+                  <a href={`/supplier-panel/products/${item.id}`} className="line-clamp-3 text-sm font-semibold text-gray-900 hover:text-primary-700">
                     {item.title}
-                  </Link>
+                  </a>
                   <div className="mt-1 truncate text-xs text-gray-500">{data.brand || 'Бренд не указан'}</div>
                 </div>
                 <div className="flex-shrink-0">
@@ -226,9 +225,9 @@ const SupplierProducts = () => {
               return (
                 <tr key={item.id} className="hover:bg-gray-50">
                   <td className="px-4 py-4">
-                    <Link to={`/supplier-panel/products/${item.id}`} className="font-medium text-gray-900 hover:text-primary-700">
+                    <a href={`/supplier-panel/products/${item.id}`} className="font-medium text-gray-900 hover:text-primary-700">
                       {item.title}
-                    </Link>
+                    </a>
                     <div className="mt-1 text-xs text-gray-500">{data.brand || 'Бренд не указан'}</div>
                     <div className="mt-2 flex flex-wrap gap-1.5">
                       {origin.in_shop && (
