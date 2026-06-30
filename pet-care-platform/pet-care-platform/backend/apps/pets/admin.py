@@ -5,7 +5,16 @@
 from django.contrib import admin
 from django.utils.html import format_html
 from django.urls import reverse
-from .models import Pet, FoodRecipe, Supplier, SupplierOffer, FoodBrandRule
+from .models import (
+    Pet,
+    FoodRecipe,
+    Supplier,
+    SupplierOffer,
+    FoodBrandRule,
+    SupplierUserAccess,
+    SupplierProductSubmission,
+    SupplierCatalogSyncLog,
+)
 
 
 @admin.register(Pet)
@@ -415,3 +424,47 @@ class SupplierAdmin(admin.ModelAdmin):
     search_fields = ('code', 'name', 'contact_name', 'contact_email')
     ordering = ('name',)
     readonly_fields = ('created_at', 'updated_at')
+
+
+@admin.register(SupplierUserAccess)
+class SupplierUserAccessAdmin(admin.ModelAdmin):
+    list_display = (
+        'user', 'supplier', 'role', 'can_edit_catalog',
+        'can_view_finance', 'can_export_reports', 'is_active',
+    )
+    list_editable = ('role', 'can_edit_catalog', 'can_view_finance', 'can_export_reports', 'is_active')
+    list_filter = ('role', 'is_active', 'supplier')
+    search_fields = ('user__email', 'supplier__name', 'supplier__code')
+    raw_id_fields = ('user', 'supplier')
+    ordering = ('supplier__name', 'user__email')
+
+
+@admin.register(SupplierProductSubmission)
+class SupplierProductSubmissionAdmin(admin.ModelAdmin):
+    list_display = (
+        'submission_title', 'supplier', 'status', 'submitted_by',
+        'reviewed_by', 'submitted_at', 'reviewed_at', 'updated_at',
+    )
+    list_filter = ('status', 'supplier', 'submitted_at', 'reviewed_at')
+    search_fields = ('supplier__name', 'supplier__code', 'food_recipe__name', 'product__name')
+    raw_id_fields = ('supplier', 'source_raw_item', 'food_recipe', 'product', 'submitted_by', 'reviewed_by')
+    readonly_fields = ('created_at', 'updated_at', 'submitted_at', 'reviewed_at')
+    ordering = ('-updated_at',)
+    list_per_page = 50
+
+    def submission_title(self, obj):
+        return obj.data.get('name') or obj.data.get('recipe', {}).get('name') or str(obj.id)
+    submission_title.short_description = 'Корм'
+
+
+@admin.register(SupplierCatalogSyncLog)
+class SupplierCatalogSyncLogAdmin(admin.ModelAdmin):
+    list_display = (
+        'supplier', 'source', 'file_name', 'status', 'total_items',
+        'created_items', 'updated_items', 'failed_items', 'started_at', 'finished_at',
+    )
+    list_filter = ('status', 'source', 'supplier')
+    search_fields = ('supplier__name', 'supplier__code', 'file_name')
+    raw_id_fields = ('supplier',)
+    readonly_fields = ('started_at', 'finished_at')
+    ordering = ('-started_at',)

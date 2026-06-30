@@ -69,11 +69,17 @@ class UserRole:
 
     USER = 'user'
     COURSE_CREATOR = 'course_creator'
+    SUPPLIER_MANAGER = 'supplier_manager'
+    SUPPLIER_EDITOR = 'supplier_editor'
+    SUPPLIER_ANALYST = 'supplier_analyst'
     ADMIN = 'admin'
 
     CHOICES = [
         (USER, 'Пользователь'),
         (COURSE_CREATOR, 'Создатель курсов'),
+        (SUPPLIER_MANAGER, 'Менеджер поставщика'),
+        (SUPPLIER_EDITOR, 'Редактор поставщика'),
+        (SUPPLIER_ANALYST, 'Аналитик поставщика'),
         (ADMIN, 'Администратор'),
     ]
 
