@@ -15,7 +15,12 @@ const BreedDetailPage = () => {
     const fetchBreed = async () => {
       try {
         setLoading(true);
-        const response = await api.get(`/pets/breeds/${slug}/`);
+        // Числовой параметр трактуем как ID, иначе — как SEO-slug.
+        const isNumericId = /^\d+$/.test(String(slug));
+        const url = isNumericId
+          ? `/pets/breeds/${slug}/`
+          : `/pets/breeds/by-slug/${slug}/`;
+        const response = await api.get(url);
         setBreed(response.data);
         setError(null);
       } catch (err) {
@@ -33,6 +38,7 @@ const BreedDetailPage = () => {
       very_low: 'Очень низкий',
       low: 'Низкий',
       medium: 'Средний',
+      moderate: 'Умеренный',
       high: 'Высокий',
       very_high: 'Очень высокий',
     };

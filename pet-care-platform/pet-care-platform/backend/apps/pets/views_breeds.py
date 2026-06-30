@@ -79,7 +79,8 @@ class BreedListView(APIView):
         popular_only: true - только популярные породы
         limit: максимальное количество результатов
     
-    Возвращает: { count: N, breeds: [{id, name, weight_min, weight_max}, ...] }
+    Возвращает: { count: N, breeds: [{id, slug, species, name, name_en,
+        short_description, size_category, energy_level, weight_min, weight_max}, ...] }
     """
     
     permission_classes = [AllowAny]
@@ -91,7 +92,14 @@ class BreedListView(APIView):
         species = request.query_params.get('species')
         if species:
             queryset = queryset.filter(species=species)
-        
+
+        # Фильтр по размеру (size_category). Фронтенд шлёт 'tiny' для
+        # карликового размера, в модели — 'toy'.
+        size = request.query_params.get('size')
+        if size:
+            size = 'toy' if size == 'tiny' else size
+            queryset = queryset.filter(size_category=size)
+
         # Поиск по названию
         search = request.query_params.get('search', '').strip()
         
@@ -159,7 +167,14 @@ class BreedListView(APIView):
             
             breeds_data.append({
                 'id': breed.id,
+                'slug': breed.slug,
+                'species': breed.species,
                 'name': breed.name,
+                'name_en': breed.name_en,
+                'short_description': breed.short_description,
+                'size_category': breed.size_category,
+                # energy_level — алиас для base_activity_level (поле модели)
+                'energy_level': breed.base_activity_level,
                 'weight_min': weight_min,
                 'weight_max': weight_max,
             })

@@ -28,10 +28,18 @@ function parsePositive(value) {
  * @param {Date} [now] — точка отсчёта (для тестов)
  */
 export function draftToDateOfBirth(draft = {}, now = new Date()) {
-  const mode = draft.ageMode
+  // ВАЖНО: ageMode в UI по умолчанию 'years', но в черновике поле может быть ещё
+  // не выставлено (пользователь не кликал вкладку). Поэтому undefined трактуем как
+  // 'years' и читаем ageYears — иначе ввод в поле «Лет» не проходит валидацию
+  // (раньше при отсутствии ageMode читалось legacy-поле age, и кнопка не включалась).
+  const mode = draft.ageMode || 'years'
 
   if (mode === 'dob') {
-    return draft.dob ? toLocalISODate(draft.dob) : null
+    const iso = draft.dob ? toLocalISODate(draft.dob) : null
+    if (iso == null) return null
+    // Дата рождения не может быть в будущем.
+    if (new Date(`${iso}T00:00:00`) > now) return null
+    return iso
   }
 
   if (mode === 'months') {
@@ -42,8 +50,8 @@ export function draftToDateOfBirth(draft = {}, now = new Date()) {
     return toLocalISODate(d)
   }
 
-  // mode === 'years' или legacy-черновик с полем age (годы, возможно дробные).
-  const years = parsePositive(mode === 'years' ? draft.ageYears : draft.age)
+  // mode === 'years' (или undefined) / legacy-черновик с полем age (годы, дробные).
+  const years = parsePositive(draft.ageYears != null && draft.ageYears !== '' ? draft.ageYears : draft.age)
   if (years == null) return null
   const whole = Math.floor(years)
   const extraMonths = Math.round((years - whole) * 12)
@@ -59,7 +67,7 @@ export function draftToDateOfBirth(draft = {}, now = new Date()) {
  * @param {Date} [now]
  */
 export function draftAgeMonths(draft = {}, now = new Date()) {
-  const mode = draft.ageMode
+  const mode = draft.ageMode || 'years'
   if (mode === 'months') return parsePositive(draft.ageMonths)
   if (mode === 'dob') {
     if (!draft.dob) return null
@@ -68,13 +76,40 @@ export function draftAgeMonths(draft = {}, now = new Date()) {
     const months = (now.getFullYear() - born.getFullYear()) * 12 + (now.getMonth() - born.getMonth())
     return months < 0 ? 0 : months
   }
-  const years = parsePositive(mode === 'years' ? draft.ageYears : draft.age)
+  const years = parsePositive(draft.ageYears != null && draft.ageYears !== '' ? draft.ageYears : draft.age)
   return years == null ? null : Math.round(years * 12)
 }
 
 /** Есть ли в черновике корректно заданный возраст (для валидации шага). */
 export function hasValidAge(draft = {}) {
   return draftToDateOfBirth(draft) != null
+}
+
+/**
+ * Текст ошибки для текущего поля возраста (или null, если всё в порядке либо поле
+ * ещё не трогали). Показываем рядом с инпутом. Главный кейс — будущая дата рождения.
+ * @param {object} draft
+ * @param {Date} [now]
+ * @returns {string|null}
+ */
+function dobError(dob, now) {
+  if (!dob) return null // ещё не выбрали — без ошибки
+  const iso = toLocalISODate(dob)
+  if (iso == null) return 'Некорректная дата'
+  if (new Date(`${iso}T00:00:00`) > now) return 'Дата рождения не может быть в будущем'
+  return null
+}
+
+function numberFieldError(value, message) {
+  if (value === '' || value == null) return null // не трогали — без ошибки
+  return parsePositive(value) == null ? message : null
+}
+
+export function ageError(draft = {}, now = new Date()) {
+  const mode = draft.ageMode || 'years'
+  if (mode === 'dob') return dobError(draft.dob, now)
+  if (mode === 'months') return numberFieldError(draft.ageMonths, 'Введите число месяцев')
+  return numberFieldError(draft.ageYears, 'Введите возраст в годах')
 }
 
 /** Молодое животное (< 12 мес) — для шага веса 0.05 и «детских» подсказок. */

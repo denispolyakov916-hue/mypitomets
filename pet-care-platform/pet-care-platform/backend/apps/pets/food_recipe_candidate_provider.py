@@ -168,15 +168,24 @@ def _pet_context(pet):
         else:
             expected_stage = 'puppy' if age_months < 12 else ('senior' if age_months >= 96 else 'adult')
 
-    allergens = set()
+    # Аллергены собираем как РАЗВЁРНУТЫЕ токены-синонимы (RU+EN, основа слова),
+    # а не как display_name-предложение. Иначе «Аллергия на курицу» не находится
+    # в составе и курица протекает во все варианты подбора (P0 BUG 5).
+    raw_allergens = set()
     try:
         from .models import PetAllergy
         for pa in PetAllergy.objects.filter(pet=pet, is_active=True).select_related('allergy'):
-            name = getattr(getattr(pa, 'allergy', None), 'display_name', None)
-            if name:
-                allergens.add(name.strip().lower())
+            allergy = getattr(pa, 'allergy', None)
+            if not allergy:
+                continue
+            for attr in ('code', 'specific_allergen', 'display_name'):
+                val = getattr(allergy, attr, None)
+                if val:
+                    raw_allergens.add(str(val))
     except Exception:  # noqa: BLE001
         pass
+    from .allergen_matcher import tokens_for_allergens
+    allergen_tokens = tokens_for_allergens(raw_allergens)
 
     needs = set()
     if getattr(pet, 'sensitive_digestion', False):
@@ -195,18 +204,26 @@ def _pet_context(pet):
         pass
 
     return {'species': species, 'neutered': neutered, 'expected_stage': expected_stage,
-            'allergens': allergens, 'needs': needs}
+            'allergen_tokens': allergen_tokens, 'needs': needs}
 
 
 def suitability_score(cand, ctx):
     """Оценка кандидата 0..100 + причины. Возвращает (score, reasons, conflict)."""
-    # Жёсткий конфликт по аллергии — кандидат исключается.
-    allergy_text = ' '.join(
-        [cand.get('main_protein') or ''] + (cand.get('allergens') or []) + (cand.get('ingredients') or [])
-    ).lower()
-    for a in ctx['allergens']:
-        if a and a in allergy_text:
-            return 0.0, [f'конфликт с аллергией: {a}'], True
+    # Жёсткий конфликт по аллергии — кандидат исключается ВЕЗДЕ (dry/wet/treat),
+    # т.к. это единый источник правды для всех вариантов и набора в корзину.
+    # Сопоставление робастное: токены-синонимы (RU+EN, основа слова) подстрокой
+    # в нормализованном составе. Так «куриная грудка», «Chicken meal», «куриный жир»
+    # ловятся для аллергии «курица».
+    from .allergen_matcher import matched_allergen_tokens
+    hits = matched_allergen_tokens(
+        [cand.get('main_protein') or '']
+        + (cand.get('allergens') or [])
+        + (cand.get('ingredients') or [])
+        + [cand.get('recipe_name') or ''],
+        ctx.get('allergen_tokens') or [],
+    )
+    if hits:
+        return 0.0, [f'конфликт с аллергией: {hits[0]}'], True
 
     score = 50.0
     reasons = []
@@ -288,18 +305,25 @@ def business_score(cand, brand_rules):
 BUSINESS_CAP_RATIO = 0.30
 
 
-def _rank_candidates(candidates, ctx, brand_rules):
+def _rank_candidates(candidates, ctx, brand_rules, stats=None):
     """Suitability (медицина) → conflict-исключение → business (с cap) → final.
-    Возвращает ВЕСЬ отсортированный список (лучший первым). Бизнес НЕ перебивает пригодность."""
+    Возвращает ВЕСЬ отсортированный список (лучший первым). Бизнес НЕ перебивает пригодность.
+    stats (опц. dict) накапливает total/excluded_by_allergy для честных сообщений."""
     scored = []
+    excluded_by_allergy = 0
     for c in candidates:
         suit, reasons, conflict = suitability_score(c, ctx)
         if conflict:
+            excluded_by_allergy += 1
             continue  # медицина/аллергия НЕ перебивается бизнесом
         c = dict(c)
         c['_suit'] = suit
         c['_reasons'] = reasons
         scored.append(c)
+    if stats is not None:
+        stats['total'] = len(candidates)
+        stats['excluded_by_allergy'] = excluded_by_allergy
+        stats['remaining'] = len(scored)
     if not scored:
         return []
     costs = sorted([c['estimated_monthly_cost'] for c in scored if c['estimated_monthly_cost'] is not None])
@@ -402,9 +426,10 @@ def select_ration(pet, period_days=30, max_alternatives=5):
     dry_res = get_food_recipe_candidates(pet, food_form='dry', limit=500)
     wet_res = get_food_recipe_candidates(pet, food_form='wet', limit=500)
     treat_res = get_food_recipe_candidates(pet, food_form='treat', limit=500)
-    dry_ranked = _rank_candidates(dry_res['candidates'], ctx, brand_rules)
-    wet_ranked = _rank_candidates(wet_res['candidates'], ctx, brand_rules)
-    treat_ranked = _rank_candidates(treat_res['candidates'], ctx, brand_rules)
+    dry_stats, wet_stats, treat_stats = {}, {}, {}
+    dry_ranked = _rank_candidates(dry_res['candidates'], ctx, brand_rules, dry_stats)
+    wet_ranked = _rank_candidates(wet_res['candidates'], ctx, brand_rules, wet_stats)
+    treat_ranked = _rank_candidates(treat_res['candidates'], ctx, brand_rules, treat_stats)
     return {
         'dry': dry_ranked[0] if dry_ranked else None,
         'dry_alternatives': dry_ranked[1:1 + max_alternatives],
@@ -415,5 +440,11 @@ def select_ration(pet, period_days=30, max_alternatives=5):
         'dry_count': len(dry_ranked),
         'wet_count': len(wet_ranked),
         'treat_count': len(treat_ranked),
+        # Статистика исключения по аллергии — для честных сообщений в UI,
+        # когда после исключения для слота не осталось подходящего корма.
+        'dry_stats': dry_stats,
+        'wet_stats': wet_stats,
+        'treat_stats': treat_stats,
+        'has_allergens': bool(ctx.get('allergen_tokens')),
         'daily_kcal': dry_res['daily_kcal'] or wet_res['daily_kcal'],
     }
