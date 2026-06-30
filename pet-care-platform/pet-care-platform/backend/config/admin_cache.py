@@ -60,9 +60,19 @@ class AdminCacheManager:
         def decorator(func):
             @wraps(func)
             def wrapper(*args, **kwargs):
-                # Создаем ключ кэша на основе имени функции и параметров
+                # Создаем ключ кэша на основе имени функции и параметров запроса
                 func_name = func.__name__
-                params_key = cls.make_hash_key(kwargs)
+                request = args[1] if len(args) > 1 else None
+                query_params = {}
+                if request is not None and hasattr(request, 'query_params'):
+                    query_params = {
+                        key: request.query_params.getlist(key)
+                        for key in request.query_params.keys()
+                    }
+                params_key = cls.make_hash_key({
+                    'kwargs': kwargs,
+                    'query_params': query_params,
+                })
                 cache_key = f'admin:{func_name}:{params_key}'
 
                 # Проверяем кэш

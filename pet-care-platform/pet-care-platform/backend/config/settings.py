@@ -148,6 +148,7 @@ INSTALLED_APPS = [
     'apps.training',
     'apps.payments',
     'apps.reviews',
+    'apps.integrations',
 ]
 
 # =============================================================================
@@ -578,3 +579,34 @@ if not DEBUG:
 
 # Источник подбора корма: 'legacy' (shop.Product/FoodDetails) | 'recipe' (FoodRecipe/SupplierOffer)
 FOOD_RECOMMENDATION_SOURCE = os.getenv('FOOD_RECOMMENDATION_SOURCE', 'legacy')
+
+# =============================================================================
+# DINOZAVRIK / DISTRIBUTOR INTEGRATION
+# =============================================================================
+
+DINOZAVRIK_SUPPLIER_CODE = os.getenv('DINOZAVRIK_SUPPLIER_CODE', 'dinozavrik')
+
+# Dinozavrik -> Питомец+.
+# Можно задать один ключ через DINOZAVRIK_DISTRIBUTOR_* или несколько ключей JSON-массивом:
+# [{"api_key":"dk_live_...","secret":"...","supplier_code":"dinozavrik"}]
+DISTRIBUTOR_INTEGRATION_KEYS_JSON = os.getenv('DISTRIBUTOR_INTEGRATION_KEYS_JSON', '')
+DINOZAVRIK_DISTRIBUTOR_API_KEY = os.getenv('DINOZAVRIK_DISTRIBUTOR_API_KEY', '')
+DINOZAVRIK_DISTRIBUTOR_SECRET = os.getenv('DINOZAVRIK_DISTRIBUTOR_SECRET', '')
+DISTRIBUTOR_SIGNATURE_MAX_DRIFT_SECONDS = int(os.getenv('DISTRIBUTOR_SIGNATURE_MAX_DRIFT_SECONDS', '300'))
+DISTRIBUTOR_MAX_BODY_BYTES = int(os.getenv('DISTRIBUTOR_MAX_BODY_BYTES', str(10 * 1024 * 1024)))
+DISTRIBUTOR_RATE_LIMIT_ENABLED = os.getenv('DISTRIBUTOR_RATE_LIMIT_ENABLED', 'True').lower() == 'true'
+DISTRIBUTOR_RATE_LIMITS = {
+    'default': int(os.getenv('DISTRIBUTOR_RATE_LIMIT_DEFAULT_PER_MINUTE', '60')),
+    'catalog': int(os.getenv('DISTRIBUTOR_RATE_LIMIT_CATALOG_PER_MINUTE', '12')),
+    'webhook': int(os.getenv('DISTRIBUTOR_RATE_LIMIT_WEBHOOK_PER_MINUTE', '60')),
+}
+
+# Питомец+ -> Dinozavrik. Флаг включается только после sandbox-приёмки.
+DINOZAVRIK_ORDER_SYNC_ENABLED = os.getenv('DINOZAVRIK_ORDER_SYNC_ENABLED', 'False').lower() == 'true'
+DINOZAVRIK_API_BASE_URL = os.getenv('DINOZAVRIK_API_BASE_URL', '')
+DINOZAVRIK_PITOMETS_API_KEY = os.getenv('DINOZAVRIK_PITOMETS_API_KEY', '')
+DINOZAVRIK_PITOMETS_SECRET = os.getenv('DINOZAVRIK_PITOMETS_SECRET', '')
+DINOZAVRIK_API_TIMEOUT_SECONDS = int(os.getenv('DINOZAVRIK_API_TIMEOUT_SECONDS', '10'))
+DINOZAVRIK_PAYMENT_COLLECTOR = os.getenv('DINOZAVRIK_PAYMENT_COLLECTOR', 'pitometsplus')
+DINOZAVRIK_SETTLEMENT_MODEL = os.getenv('DINOZAVRIK_SETTLEMENT_MODEL', 'weekly_payout')
+DINOZAVRIK_ORDER_SYNC_STRICT = os.getenv('DINOZAVRIK_ORDER_SYNC_STRICT', 'False').lower() == 'true'

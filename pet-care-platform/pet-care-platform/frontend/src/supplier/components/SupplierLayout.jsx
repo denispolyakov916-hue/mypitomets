@@ -1,26 +1,16 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
-  BarChart3,
   Boxes,
-  ClipboardList,
-  FileDown,
-  LineChart,
   LogOut,
   Menu,
   PackageCheck,
-  RotateCcw,
   X,
 } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 
 const navItems = [
-  { name: 'Дашборд', href: '/supplier-panel/dashboard', icon: BarChart3 },
   { name: 'Ассортимент', href: '/supplier-panel/products', icon: Boxes },
-  { name: 'Заказы', href: '/supplier-panel/orders', icon: ClipboardList },
-  { name: 'Возвраты', href: '/supplier-panel/returns', icon: RotateCcw },
-  { name: 'Аналитика', href: '/supplier-panel/analytics', icon: LineChart },
-  { name: 'Импорты', href: '/supplier-panel/imports', icon: FileDown },
 ];
 
 const SidebarContent = ({ onNavigate }) => {
@@ -117,7 +107,7 @@ const SupplierLayout = ({ children }) => {
             </button>
             <div className="min-w-0">
               <div className="truncate text-sm font-semibold text-gray-900">Поставщик</div>
-              <div className="hidden truncate text-xs text-gray-500 sm:block">Ассортимент, заявки, продажи и возвраты</div>
+              <div className="hidden truncate text-xs text-gray-500 sm:block">Ассортимент и заявки Динозаврика</div>
             </div>
           </div>
           <div className="flex min-w-0 flex-shrink items-center gap-2 sm:gap-3">

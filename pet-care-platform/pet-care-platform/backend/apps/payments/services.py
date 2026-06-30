@@ -266,6 +266,57 @@ class PaymentService(BaseService):
             PaymentService._activate_unified_checkout(payment)
 
     @staticmethod
+    def _get_order_item_available_quantity(order_item):
+        """Возвращает доступный остаток по строке заказа. None означает без точного лимита."""
+        product = order_item.product
+        if not product:
+            return 0
+
+        sku = getattr(order_item, 'sku', None)
+        if sku:
+            if not sku.available or sku.status != 1:
+                return 0
+            if sku.stock_quantity is None:
+                return None
+            return max(0, sku.stock_quantity)
+
+        skus = list(product.skus.filter(status=1, available=True))
+        if skus:
+            if any(sku.stock_quantity is None for sku in skus):
+                return None
+            return sum(max(0, sku.stock_quantity or 0) for sku in skus)
+
+        return None if product.is_available else 0
+
+    @staticmethod
+    def _refresh_product_availability(product):
+        if not product:
+            return
+        active_skus = product.skus.filter(status=1)
+        if active_skus.exists():
+            product.is_available = active_skus.filter(available=True).exists()
+            product.save(update_fields=['is_available', 'updated_at'])
+
+    @staticmethod
+    def _decrement_order_item_stock(order_item):
+        """Списывает остаток с выбранного SKU, если у него ведётся количественный учёт."""
+        product = order_item.product
+        if not product:
+            return None
+
+        sku = getattr(order_item, 'sku', None)
+        if not sku:
+            sku = product.skus.filter(status=1, available=True).order_by('-is_default', 'sort_order', 'id').first()
+
+        if sku and sku.stock_quantity is not None:
+            sku.stock_quantity = max(0, sku.stock_quantity - order_item.quantity)
+            sku.available = sku.stock_quantity > 0
+            sku.save(update_fields=['stock_quantity', 'available'])
+
+        PaymentService._refresh_product_availability(product)
+        return sku
+
+    @staticmethod
     def _activate_shop_order(payment: Payment):
         """Активация заказа товаров и курсов после оплаты."""
         from apps.shop.models import Order, OrderItem, Product
@@ -281,7 +332,7 @@ class PaymentService(BaseService):
 
         try:
             order = Order.objects.prefetch_related(
-                'items__product', 'items__course', 'items__pet'
+                'items__product', 'items__sku', 'items__course', 'items__pet'
             ).get(id=payment.object_id, user=payment.user)
 
             # Анализируем состав заказа
@@ -332,13 +383,14 @@ class PaymentService(BaseService):
                                 'product_name': order_item.product_name,
                                 'quantity': order_item.quantity
                             })
-                        # Проверяем наличие на складе
-                        elif product.stock_count < order_item.quantity:
+                        else:
+                            available_quantity = PaymentService._get_order_item_available_quantity(order_item)
+                        if product and available_quantity is not None and available_quantity < order_item.quantity:
                             insufficient_items.append({
                                 'product_id': product.id,
                                 'product_name': order_item.product_name,
                                 'required': order_item.quantity,
-                                'available': product.stock_count
+                                'available': available_quantity
                             })
                     except Exception:
                         # Товар был удален
@@ -370,13 +422,11 @@ class PaymentService(BaseService):
                 # Все товары доступны - списываем со склада
                 # Для просроченных заказов товары уже возвращены на склад, так что списываем снова
                 for order_item in order.items.filter(product__isnull=False):
-                    product = order_item.product
-                    product.stock_count -= order_item.quantity
-                    # Если товаров не осталось, устанавливаем in_stock=False
-                    if product.stock_count == 0:
-                        product.in_stock = False
-                    product.save()
-                    PaymentService.log_info(f"Списан товар: {product.name}, количество: {order_item.quantity}, остаток: {product.stock_count}")
+                    sku = PaymentService._decrement_order_item_stock(order_item)
+                    stock_left = sku.stock_quantity if sku and sku.stock_quantity is not None else 'unlimited'
+                    PaymentService.log_info(
+                        f"Списан товар: {order_item.product.name}, количество: {order_item.quantity}, остаток: {stock_left}"
+                    )
 
                 # Обновляем счетчики популярности товаров
                 for order_item in order.items.filter(product__isnull=False):
@@ -463,6 +513,18 @@ class PaymentService(BaseService):
                 order.expires_at = None  # Убираем срок истечения после успешной оплаты
                 order.save()
 
+                try:
+                    from apps.integrations.services import DinozavrikOrderService
+                    DinozavrikOrderService.send_after_payment(payment)
+                except Exception as e:
+                    PaymentService.log_error(e, {
+                        'payment_id': payment.id,
+                        'order_id': order.id,
+                        'action': 'dinozavrik_send_after_payment_failed'
+                    })
+                    if getattr(settings, 'DINOZAVRIK_ORDER_SYNC_STRICT', False):
+                        raise
+
         except ValueError:
             # Бизнес-логика ошибки (недоступные товары) - пробрасываем выше
             raise
@@ -547,7 +609,7 @@ class PaymentService(BaseService):
         # Получаем заказ (для unified_checkout object_id - это ID заказа)
         try:
             order = Order.objects.prefetch_related(
-                'items__product', 'items__course', 'items__pet'
+                'items__product', 'items__sku', 'items__course', 'items__pet'
             ).get(id=payment.object_id, user=payment.user)
 
             # Анализируем состав заказа
@@ -584,17 +646,11 @@ class PaymentService(BaseService):
                         'payment_id': payment.id
                     })
 
-                # Списываем товары со склада
+                # Проверяем и списываем товары со склада
                 for order_item in order.items.filter(product__isnull=False):
                     product = order_item.product
-                    if product.stock_count >= order_item.quantity:
-                        product.stock_count -= order_item.quantity
-                        # Если товаров не осталось, устанавливаем in_stock=False
-                        if product.stock_count == 0:
-                            product.in_stock = False
-                        product.save()
-                        PaymentService.log_info(f"Списан товар в unified checkout: {product.name}, количество: {order_item.quantity}, остаток: {product.stock_count}")
-                    else:
+                    available_quantity = PaymentService._get_order_item_available_quantity(order_item)
+                    if available_quantity is not None and available_quantity < order_item.quantity:
                         # Это не должно происходить, если проверки были сделаны при создании заказа
                         PaymentService.log_error(
                             Exception(f"Недостаточно товара на складе в unified checkout: {product.name}"),
@@ -602,10 +658,15 @@ class PaymentService(BaseService):
                                 'payment_id': payment.id,
                                 'product_name': product.name,
                                 'required': order_item.quantity,
-                                'available': product.stock_count
+                                'available': available_quantity
                             }
                         )
                         raise ValueError(f"Недостаточно товара {product.name} на складе")
+                    sku = PaymentService._decrement_order_item_stock(order_item)
+                    stock_left = sku.stock_quantity if sku and sku.stock_quantity is not None else 'unlimited'
+                    PaymentService.log_info(
+                        f"Списан товар в unified checkout: {product.name}, количество: {order_item.quantity}, остаток: {stock_left}"
+                    )
 
                 # Активируем курсы в заказе
                 courses_activated = 0
@@ -689,6 +750,18 @@ class PaymentService(BaseService):
                 order.expires_at = None  # Убираем срок истечения после успешной оплаты
                 order.save()
 
+                try:
+                    from apps.integrations.services import DinozavrikOrderService
+                    DinozavrikOrderService.send_after_payment(payment)
+                except Exception as e:
+                    PaymentService.log_error(e, {
+                        'payment_id': payment.id,
+                        'order_id': order.id,
+                        'action': 'dinozavrik_send_after_payment_failed'
+                    })
+                    if getattr(settings, 'DINOZAVRIK_ORDER_SYNC_STRICT', False):
+                        raise
+
         except Order.DoesNotExist:
             PaymentService.log_error(Exception(f"Заказ не найден для unified checkout платежа: {payment.id}"), {
                 'payment_id': payment.id,
@@ -732,7 +805,7 @@ class PaymentService(BaseService):
             from django.utils import timezone
 
             try:
-                order = Order.objects.select_related('user').prefetch_related('items__product').get(
+                order = Order.objects.select_related('user').prefetch_related('items__product', 'items__sku').get(
                     id=object_id, user=user
                 )
 
@@ -755,12 +828,14 @@ class PaymentService(BaseService):
                                     'product_name': order_item.product_name,
                                     'quantity': order_item.quantity
                                 })
-                            elif product.stock_count < order_item.quantity:
+                            else:
+                                available_quantity = PaymentService._get_order_item_available_quantity(order_item)
+                            if product and available_quantity is not None and available_quantity < order_item.quantity:
                                 insufficient_items.append({
                                     'product_id': product.id,
                                     'product_name': order_item.product_name,
                                     'required': order_item.quantity,
-                                    'available': product.stock_count
+                                    'available': available_quantity
                                 })
                         except Exception:
                             unavailable_items.append({
@@ -793,7 +868,7 @@ class PaymentService(BaseService):
 
             try:
                 order = Order.objects.select_related('user').prefetch_related(
-                    'items__product', 'items__course'
+                    'items__product', 'items__sku', 'items__course'
                 ).get(id=object_id, user=user)
 
                 if order.status not in ['pending', 'expired']:
@@ -816,12 +891,14 @@ class PaymentService(BaseService):
                                     'product_name': order_item.product_name,
                                     'quantity': order_item.quantity
                                 })
-                            elif product.stock_count < order_item.quantity:
+                            else:
+                                available_quantity = PaymentService._get_order_item_available_quantity(order_item)
+                            if product and available_quantity is not None and available_quantity < order_item.quantity:
                                 insufficient_items.append({
                                     'product_id': product.id,
                                     'product_name': order_item.product_name,
                                     'required': order_item.quantity,
-                                    'available': product.stock_count
+                                    'available': available_quantity
                                 })
                         except Exception:
                             unavailable_items.append({

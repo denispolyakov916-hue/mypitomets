@@ -74,6 +74,9 @@ urlpatterns = [
     # Обрабатывает: отзывы на товары и курсы, рейтинги
     path('api/reviews/', include('apps.reviews.urls')),
 
+    # Интеграции с поставщиками: Dinozavrik catalog.sync, fulfillment webhooks
+    path('api/integrations/', include('apps.integrations.urls')),
+
     # Календарь событий питомцев теперь в /api/pets/calendar/
 
     # Загрузка файлов и медиа

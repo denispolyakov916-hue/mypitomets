@@ -19,13 +19,6 @@ export const supplierAPI = {
     me: () => supplierApi.get('supplier/profile/me/'),
     suppliers: () => supplierApi.get('supplier/profile/suppliers/'),
   },
-  dashboard: {
-    summary: (params) => supplierApi.get('supplier/dashboard/summary/', { params }),
-    salesTrend: (params) => supplierApi.get('supplier/dashboard/sales-trend/', { params }),
-    topProducts: (params) => supplierApi.get('supplier/dashboard/top-products/', { params }),
-    returns: (params) => supplierApi.get('supplier/dashboard/returns/', { params }),
-    export: (params) => supplierApi.get('supplier/dashboard/export/', { params, responseType: 'blob' }),
-  },
   products: {
     list: (params) => supplierApi.get('supplier/products/', { params }),
     create: (data) => supplierApi.post('supplier/products/', data),
@@ -34,15 +27,6 @@ export const supplierAPI = {
     validate: (id) => supplierApi.post(`supplier/products/${id}/validate/`),
     submit: (id) => supplierApi.post(`supplier/products/${id}/submit/`),
     archive: (id) => supplierApi.post(`supplier/products/${id}/archive/`),
-  },
-  orders: {
-    list: (params) => supplierApi.get('supplier/orders/', { params }),
-  },
-  returns: {
-    list: (params) => supplierApi.get('supplier/returns/', { params }),
-  },
-  imports: {
-    list: (params) => supplierApi.get('supplier/imports/', { params }),
   },
 };
 

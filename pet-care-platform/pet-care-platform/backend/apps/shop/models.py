@@ -2480,9 +2480,12 @@ class Order(models.Model):
     STATUS_CHOICES = [
         ('pending', 'Ожидает оплаты'),
         ('processing', 'В обработке'),
+        ('confirmed', 'Подтверждён поставщиком'),
+        ('packed', 'Собран'),
         ('partially_delivered', 'Частично доставлен'),
         ('shipped', 'Отправлен'),
         ('delivered', 'Доставлен'),
+        ('delivery_failed', 'Ошибка доставки'),
         ('cancelled', 'Отменён'),
         ('expired', 'Истёк срок оплаты'),
     ]
