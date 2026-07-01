@@ -211,12 +211,24 @@ export default function NewsEventsPage() {
   return (
     <div className="bg-milk min-h-screen pb-16">
       {/* Hero */}
-      <div className="bg-gradient-to-br from-primary-700 to-primary-900 px-[clamp(1rem,4vw,2rem)] pb-12 pt-[clamp(2rem,6vh,4rem)] text-white">
+      <div className="relative isolate overflow-hidden bg-primary-800 px-[clamp(1rem,4vw,2rem)] pb-12 pt-[clamp(2rem,6vh,4rem)] text-white">
+        {/* Фон: дрессировка / жизнь сообщества — фото справа, слева фиолетовая заливка для читаемости текста */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 -z-10"
+          style={{
+            backgroundImage: "url('/landing/behavior-courses-feature.png')",
+            backgroundSize: 'cover',
+            backgroundPosition: '72% 26%',
+          }}
+        />
+        <div aria-hidden className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-r from-primary-900 via-primary-900/85 to-primary-900/20" />
+        <div aria-hidden className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-t from-primary-900/80 via-primary-900/10 to-transparent" />
         <div className="mx-auto max-w-5xl">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <h1 className="font-heading text-3xl font-bold md:text-5xl">Новости и Мероприятия</h1>
-              <p className="mt-3 max-w-xl text-base text-white/80 md:text-lg">
+              <h1 className="font-heading text-3xl font-bold [text-shadow:_0_2px_16px_rgb(30_10_60_/_55%)] md:text-5xl">Новости и Мероприятия</h1>
+              <p className="mt-3 max-w-xl text-base text-white/85 [text-shadow:_0_1px_10px_rgb(30_10_60_/_45%)] md:text-lg">
                 Сходки, встречи, выставки и вебинары сообщества «Питомец+». Листайте ленту и добавляйте в свой календарь.
               </p>
             </div>
