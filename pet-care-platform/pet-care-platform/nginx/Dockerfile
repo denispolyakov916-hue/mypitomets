@@ -2,7 +2,9 @@
 # Dockerfile для Nginx (reverse proxy + раздача frontend)
 # =============================================================================
 
-FROM node:20-alpine AS frontend-build
+# Пин конкретной версии: плавающий node:20-alpine подтянул npm с багом
+# "Exit handler never called!" (краш npm при установке). 20.17.0 = npm 10.8.2 (стабильный).
+FROM node:20.17.0-alpine AS frontend-build
 
 WORKDIR /app
 COPY frontend/package.json frontend/package-lock.json* ./
