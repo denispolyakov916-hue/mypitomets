@@ -77,6 +77,9 @@ record_rollback() {
 
 build_migrate_up() {
     log "Сборка образов…"; $COMPOSE build 2>&1 | tee -a "$LOG_FILE"
+    log "Проверка конфига nginx (nginx -t)…"
+    $COMPOSE run --rm nginx nginx -t 2>&1 | tee -a "$LOG_FILE" \
+        || error "nginx config невалиден — деплой остановлен (старый nginx продолжает работать)"
     log "Проверка дрейфа миграций…"
     $COMPOSE run --rm --no-deps backend python manage.py makemigrations --check --dry-run 2>&1 | tee -a "$LOG_FILE" \
         || warn "Есть незамигрированные изменения моделей — проверьте перед следующей разработкой"
