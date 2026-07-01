@@ -17,6 +17,7 @@ import { EmptyState } from '../../components/ui/EmptyState'
 import { Alert } from '../../components/ui/Alert'
 import AuthGuard from '../../components/AuthGuard'
 import { formatPrice } from '../../utils/format'
+import { devLog } from '../../utils/logger'
 
 // =============================================================================
 // КОМПОНЕНТ: ReservationTimer
@@ -817,9 +818,9 @@ function UnifiedCheckout() {
   // Получаем выбранные элементы из state (переданы из Cart)
   const selectedItemsFromCart = location.state?.selectedItems || []
 
-  console.log('=== UnifiedCheckout INIT ===')
-  console.log('location.state:', location.state)
-  console.log('selectedItemsFromCart:', selectedItemsFromCart)
+  devLog.log('=== UnifiedCheckout INIT ===')
+  devLog.log('location.state:', location.state)
+  devLog.log('selectedItemsFromCart:', selectedItemsFromCart)
 
   const [checkoutData, setCheckoutData] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -847,13 +848,13 @@ function UnifiedCheckout() {
     setIsLoading(true)
     setError(null)
 
-    console.log('=== LOAD CHECKOUT STARTED ===')
-    console.log('selectedItemsFromCart:', selectedItemsFromCart)
+    devLog.log('=== LOAD CHECKOUT STARTED ===')
+    devLog.log('selectedItemsFromCart:', selectedItemsFromCart)
 
     try {
       // Передаём выбранные элементы в API
       const response = await getUnifiedCheckout(selectedItemsFromCart)
-      console.log('getUnifiedCheckout response:', response)
+      devLog.log('getUnifiedCheckout response:', response)
 
       setCheckoutData(response)
       reservationIdRef.current = response.reservation?.id
@@ -862,17 +863,17 @@ function UnifiedCheckout() {
       const defaultAddress = response.addresses?.find(addr => addr.is_default)
       if (defaultAddress) {
         setFormData(prev => ({ ...prev, address_id: defaultAddress.id }))
-        console.log('Set default address:', defaultAddress.id)
+        devLog.log('Set default address:', defaultAddress.id)
       }
 
       // Редирект если нет выбранных элементов
       const hasProducts = response.products?.items?.length > 0
       const hasCourses = response.courses?.items?.length > 0
 
-      console.log('hasProducts:', hasProducts, 'hasCourses:', hasCourses)
+      devLog.log('hasProducts:', hasProducts, 'hasCourses:', hasCourses)
 
       if (!hasProducts && !hasCourses) {
-        console.log('No items to checkout, redirecting to cart')
+        devLog.log('No items to checkout, redirecting to cart')
         navigate('/cart', {
           state: { message: 'Не выбрано ни одного товара или курса для оформления' }
         })
@@ -882,13 +883,13 @@ function UnifiedCheckout() {
       // Если нет товаров, сбрасываем тип доставки
       if (!hasProducts) {
         setFormData(prev => ({ ...prev, delivery_type: '' }))
-        console.log('No products, reset delivery_type to empty')
+        devLog.log('No products, reset delivery_type to empty')
       }
 
-      console.log('=== LOAD CHECKOUT COMPLETED ===')
+      devLog.log('=== LOAD CHECKOUT COMPLETED ===')
 
     } catch (err) {
-      console.error('loadCheckout error:', err)
+      devLog.error('loadCheckout error:', err)
       setError(err.message || 'Не удалось загрузить данные для оформления')
     } finally {
       setIsLoading(false)
@@ -937,7 +938,7 @@ function UnifiedCheckout() {
 
     const hasProducts = checkoutData?.products?.items?.length > 0
     const hasCourses = checkoutData?.courses?.items?.length > 0
-    console.log('hasProducts:', hasProducts, 'hasCourses:', hasCourses)
+    devLog.log('hasProducts:', hasProducts, 'hasCourses:', hasCourses)
 
     // Валидация
     if (hasProducts && formData.delivery_type !== 'pickup') {
@@ -1012,7 +1013,7 @@ function UnifiedCheckout() {
       }
 
       const response = await submitUnifiedCheckout(submitData)
-      console.log('submitUnifiedCheckout response:', response)
+      devLog.log('submitUnifiedCheckout response:', response)
 
       // Очищаем резервирование и обновляем корзину
       reservationIdRef.current = null
@@ -1061,7 +1062,7 @@ function UnifiedCheckout() {
 
       // Перенаправляем на страницу оплаты с правильными параметрами
       const paymentMethod = formData.payment_method || 'card'
-      console.log('Payment method from formData:', formData.payment_method, 'Using:', paymentMethod)
+      devLog.log('Payment method from formData:', formData.payment_method, 'Using:', paymentMethod)
 
       const params = new URLSearchParams({
         order_id: orderId,
@@ -1071,7 +1072,7 @@ function UnifiedCheckout() {
       })
 
       const paymentUrl = `/payment?${params.toString()}`
-      console.log('Redirecting to payment page:', paymentUrl)
+      devLog.log('Redirecting to payment page:', paymentUrl)
       navigate(paymentUrl)
 
     } catch (err) {
@@ -1158,11 +1159,11 @@ function UnifiedCheckout() {
   const hasProducts = checkoutData?.products?.items?.length > 0
   const hasCourses = checkoutData?.courses?.items?.length > 0
 
-  console.log('=== CHECKOUT DATA DEBUG ===')
-  console.log('checkoutData:', checkoutData)
-  console.log('checkoutData?.products:', checkoutData?.products)
-  console.log('checkoutData?.courses:', checkoutData?.courses)
-  console.log('hasProducts:', hasProducts, 'hasCourses:', hasCourses)
+  devLog.log('=== CHECKOUT DATA DEBUG ===')
+  devLog.log('checkoutData:', checkoutData)
+  devLog.log('checkoutData?.products:', checkoutData?.products)
+  devLog.log('checkoutData?.courses:', checkoutData?.courses)
+  devLog.log('hasProducts:', hasProducts, 'hasCourses:', hasCourses)
 
   // Расчёт стоимости доставки
   const selectedDelivery = checkoutData?.products?.delivery_options?.find(
@@ -1170,7 +1171,7 @@ function UnifiedCheckout() {
   )
   const deliveryCost = hasProducts ? (selectedDelivery?.cost || 0) : 0
 
-  console.log('selectedDelivery:', selectedDelivery, 'deliveryCost:', deliveryCost)
+  devLog.log('selectedDelivery:', selectedDelivery, 'deliveryCost:', deliveryCost)
 
   // Проверка возможности отправки формы
   const hasAddress = formData.address_id || formData.shipping_address.trim()
@@ -1181,17 +1182,17 @@ function UnifiedCheckout() {
   const canSubmit = deliveryCondition && coursesCondition && personalDataCondition
 
   // Отладка блокировки кнопки
-  console.log('=== CAN SUBMIT DEBUG ===')
-  console.log('hasProducts:', hasProducts, 'hasCourses:', hasCourses)
-  console.log('formData.delivery_type:', formData.delivery_type)
-  console.log('formData.address_id:', formData.address_id)
-  console.log('formData.shipping_address:', `'${formData.shipping_address}'`)
-  console.log('formData.courses_disclaimer_accepted:', formData.courses_disclaimer_accepted)
-  console.log('hasAddress:', hasAddress)
-  console.log('deliveryCondition:', deliveryCondition, '(товары проверены)')
-  console.log('coursesCondition:', coursesCondition, '(курсы проверены)')
-  console.log('canSubmit:', canSubmit, canSubmit ? '✅ Кнопка активна' : '❌ Кнопка заблокирована')
-  console.log('========================')
+  devLog.log('=== CAN SUBMIT DEBUG ===')
+  devLog.log('hasProducts:', hasProducts, 'hasCourses:', hasCourses)
+  devLog.log('formData.delivery_type:', formData.delivery_type)
+  devLog.log('formData.address_id:', formData.address_id)
+  devLog.log('formData.shipping_address:', `'${formData.shipping_address}'`)
+  devLog.log('formData.courses_disclaimer_accepted:', formData.courses_disclaimer_accepted)
+  devLog.log('hasAddress:', hasAddress)
+  devLog.log('deliveryCondition:', deliveryCondition, '(товары проверены)')
+  devLog.log('coursesCondition:', coursesCondition, '(курсы проверены)')
+  devLog.log('canSubmit:', canSubmit, canSubmit ? '✅ Кнопка активна' : '❌ Кнопка заблокирована')
+  devLog.log('========================')
 
   return (
     <div className="page-container animate-fadeIn">
@@ -1228,7 +1229,7 @@ function UnifiedCheckout() {
             <PaymentMethodSection
               paymentMethod={formData.payment_method}
               onPaymentMethodChange={(method) => {
-                console.log('Payment method changed to:', method)
+                devLog.log('Payment method changed to:', method)
                 handleFormChange({ payment_method: method })
               }}
             />

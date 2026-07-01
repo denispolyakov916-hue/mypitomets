@@ -4,6 +4,7 @@ import { useAuthStore } from '../../store/authStore'
 import { PageLoader } from '../../components/Loader'
 import { useCartStore } from '../../store/cartStore'
 import { formatPrice } from '../../utils/format'
+import { devLog } from '../../utils/logger'
 
 /**
  * Компонент выбора способа оплаты
@@ -58,7 +59,7 @@ function PaymentMethodSelection() {
         navigate(`/payment?order_id=${orderId}&amount=${amount}&method=sbp&type=${type}`)
       }
     } catch (error) {
-      console.error('Ошибка при выборе способа оплаты:', error)
+      devLog.error('Ошибка при выборе способа оплаты:', error)
       setIsProcessing(false)
     }
   }
