@@ -41,6 +41,29 @@ const ChevronDownIcon = ({ className = '' }) => (
   <ChevronDown className={`w-3.5 h-3.5 ${className}`} aria-hidden />
 )
 
+/**
+ * Явный пункт «Курсы» для НЕавторизованных гостей — платформа образовательная,
+ * а курсы иначе спрятаны внутри дропдауна «Магазин». Ненавязчивый акцентный чип.
+ * Сам решает, показываться ли (только гостям), чтобы не плодить условия в Navbar.
+ */
+const CoursesNavLink = ({ show, active = false }) => {
+  if (!show) return null
+  return (
+  <Link
+    to="/courses"
+    className={`flex items-center gap-1.5 font-semibold text-sm py-2 px-3 mr-1 rounded-full whitespace-nowrap transition-all shrink-0 border ${
+      active
+        ? 'text-primary-800 bg-accent-400 border-accent-400'
+        : 'text-accent-400 border-accent-400/50 bg-accent-400/10 hover:bg-accent-400/20 hover:border-accent-400'
+    }`}
+    aria-current={active ? 'page' : undefined}
+  >
+    <GraduationCap className="w-4 h-4 shrink-0" aria-hidden />
+    Курсы
+  </Link>
+  )
+}
+
 function Navbar() {
   const location = useLocation()
   const isAuthenticated = useAuthStore(s => s.isAuthenticated)
@@ -168,8 +191,10 @@ function Navbar() {
             </Link>
           </motion.div>
 
-          <nav className="hidden lg:flex items-center flex-1 min-w-0 overflow-visible justify-evenly gap-1">
-            {/* Кнопки с дропдаунами: Питомцы, Магазин, Сервисы, Здоровье */}
+          <nav className="hidden lg:flex items-center flex-1 min-w-0 overflow-visible justify-center gap-0.5">
+            {/* Кнопки с дропдаунами: Питомцы, Магазин, Сервисы, Здоровье —
+                компактный центрированный кластер (логотип слева, авторизация справа) */}
+            <CoursesNavLink show={!isAuthenticated} active={isLinkActive('/courses')} />
             {dropdownNavItems.map((nav) => {
               const isOpen = openDropdownId === nav.id
               const active = isNavItemActive(nav)
@@ -179,10 +204,10 @@ function Navbar() {
                 <div
                   key={nav.id}
                   ref={isOpen ? dropdownRef : undefined}
-                  className="relative flex items-center justify-center flex-1 min-w-0"
+                  className="relative flex items-center justify-center shrink-0"
                 >
                   <motion.div
-                    className="flex justify-center w-full"
+                    className="flex justify-center"
                     whileHover={{ scale: 1.04 }}
                     transition={{ type: 'spring', stiffness: 400, damping: 17 }}
                   >

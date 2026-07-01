@@ -65,7 +65,7 @@ const ProductImage = memo(function ProductImage({ src, alt, animal }) {
     <div ref={imgRef} className="w-full h-full relative">
       {/* #region agent log */}
       {(!isLoaded || !isInView) && !hasError && (
-        <div className="absolute inset-0 flex items-center justify-center bg-gray-50">
+        <div className="absolute inset-0 flex items-center justify-center bg-white">
           <span className="text-5xl opacity-30 animate-pulse">{animalEmoji}</span>
         </div>
       )}
@@ -85,7 +85,7 @@ const ProductImage = memo(function ProductImage({ src, alt, animal }) {
       )}
       
       {(hasError || !src) && (
-        <div className="absolute inset-0 flex items-center justify-center bg-gray-50">
+        <div className="absolute inset-0 flex items-center justify-center bg-white">
           <span className="text-5xl opacity-30">{animalEmoji}</span>
         </div>
       )}
@@ -340,7 +340,7 @@ const ProductCard = memo(function ProductCard({ product, onAddToCart, isLoading 
   return (
     <Card as="article" variant="default" hoverable rounded="3xl" className="group flex flex-col h-full overflow-hidden bg-white border border-primary-100/60 shadow-card hover:shadow-card-hover">
       {/* Изображение */}
-      <CardMedia aspectRatio="square" className="bg-milk rounded-t-3xl">
+      <CardMedia aspectRatio="square" className="bg-white rounded-t-3xl">
         <Link 
           to={`/shop/products/${product.id}`} 
           className="relative block w-full h-full"
