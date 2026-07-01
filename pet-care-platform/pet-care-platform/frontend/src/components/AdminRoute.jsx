@@ -13,7 +13,7 @@
  */
 
 import React, { useEffect, useState, useRef } from 'react';
-import { useLocation } from 'react-router-dom';
+import { Navigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import AdminLoginPage from '../admin/components/Auth/AdminLoginPage';
 
@@ -24,7 +24,6 @@ import AdminLoginPage from '../admin/components/Auth/AdminLoginPage';
  * @param {React.ReactNode} props.children - Дочерние компоненты для рендеринга
  */
 const AdminRoute = ({ children }) => {
-  const location = useLocation();
   const isAuthenticated = useAuthStore(s => s.isAuthenticated);
   const user = useAuthStore(s => s.user);
   const isLoading = useAuthStore(s => s.isLoading);
@@ -105,8 +104,16 @@ const AdminRoute = ({ children }) => {
     );
   }
 
-  // Проверяем права: администратор или создатель курсов
-  const hasAdminAccess = user.is_staff || user.is_superuser || user.role === 'course_creator';
+  if (user.role === 'course_creator') {
+    return <Navigate to="/specialist-panel/courses" replace />;
+  }
+
+  if (user.role === 'marketing_manager') {
+    return <Navigate to="/marketing-panel/content" replace />;
+  }
+
+  // Проверяем права: общая админка доступна только администраторам компании
+  const hasAdminAccess = user.is_staff || user.is_superuser || user.role === 'admin';
   if (!hasAdminAccess) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-red-900 to-slate-800">
@@ -124,22 +131,33 @@ const AdminRoute = ({ children }) => {
             </svg>
           </div>
 
-          <h1 className="text-2xl font-bold text-white mb-3">Доступ ограничен</h1>
-          
+          <h1 className="text-2xl font-bold text-white mb-3">Нет доступа</h1>
+
           <p className="text-red-200 mb-2">
-            У вас нет прав администратора для доступа к этой панели.
+            У вас нет прав для доступа к этой панели.
           </p>
-          
-            <p className="text-red-300/70 text-sm mb-8">
-            Для получения доступа обратитесь к администратору системы.
+
+            <p className="text-red-300/70 text-sm mb-6">
+            Чтобы стать специалистом по курсам, отправьте заявку — её рассмотрит
+            администратор платформы.
           </p>
+
+          <a
+            href="/partner-access?role=course_specialist"
+            className="inline-flex w-full items-center justify-center gap-2 px-6 py-3 mb-6 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white rounded-xl transition-all shadow-lg"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            Запросить доступ специалиста
+          </a>
 
           {/* Информация о пользователе */}
           <div className="bg-white/5 rounded-xl p-4 mb-6 text-left">
             <p className="text-red-200/60 text-xs uppercase tracking-wider mb-2">Текущий аккаунт</p>
             <p className="text-white font-medium">{user.email}</p>
             <p className="text-red-300/60 text-sm mt-1">
-              Роль: {user.role === 'admin' ? 'Администратор' : user.role === 'course_creator' ? 'Создатель курсов' : 'Пользователь'}
+              Роль: {user.role === 'admin' ? 'Администратор' : user.role === 'course_creator' ? 'Создатель курсов' : user.role === 'marketing_manager' ? 'Маркетолог' : 'Пользователь'}
             </p>
           </div>
 

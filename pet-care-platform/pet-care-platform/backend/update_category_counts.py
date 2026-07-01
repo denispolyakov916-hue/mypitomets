@@ -49,5 +49,5 @@ print(f"Updated {updated} categories")
 print("\nTop categories:")
 top = Category.objects.filter(product_count__gt=0).order_by('-product_count')[:15]
 for c in top:
-    external_id = c.kotmatros_category_id or c.id
+    external_id = c.external_id or c.id
     print(f"  {external_id}: {c.name} = {c.product_count}")

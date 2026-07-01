@@ -78,7 +78,7 @@ const ProductGrid = memo(function ProductGrid({ products, onAddToCart, isLoading
   }
   
   return (
-    <div className={`grid grid-cols-2 md:grid-cols-3 gap-5 lg:gap-7 transition-opacity duration-200 ${isLoading ? 'opacity-60' : 'opacity-100'}`}>
+    <div className={`grid grid-cols-1 min-[420px]:grid-cols-2 md:grid-cols-3 gap-3 min-[420px]:gap-5 lg:gap-7 transition-opacity duration-200 ${isLoading ? 'opacity-60' : 'opacity-100'}`}>
       {products.map((product, index) => (
         <div
           key={product.id}

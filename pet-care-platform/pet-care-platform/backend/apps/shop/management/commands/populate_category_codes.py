@@ -12,7 +12,7 @@ from django.core.management.base import BaseCommand
 from apps.shop.models import Category
 
 
-# Маппинг: kotmatros_category_id -> code
+# Маппинг: external_id -> code
 # Из docs/04 Магазин/Структура категорий/category_tree.md
 CATEGORY_CODE_MAPPING = {
     # === КОШКИ ===
@@ -218,9 +218,9 @@ class Command(BaseCommand):
         skipped = 0
         used_codes = set()
         
-        for kotmatros_id, code in CATEGORY_CODE_MAPPING.items():
+        for external_id, code in CATEGORY_CODE_MAPPING.items():
             try:
-                category = Category.objects.get(kotmatros_category_id=kotmatros_id)
+                category = Category.objects.get(external_id=external_id)
                 
                 # Пропускаем дубликаты кодов (разные external_id для кошек/собак)
                 if code in used_codes:
@@ -238,7 +238,7 @@ class Command(BaseCommand):
                 
             except Category.DoesNotExist:
                 self.stdout.write(self.style.WARNING(
-                    f'Категория с kotmatros_id={kotmatros_id} не найдена'
+                    f'Категория с external_id={external_id} не найдена'
                 ))
                 skipped += 1
         

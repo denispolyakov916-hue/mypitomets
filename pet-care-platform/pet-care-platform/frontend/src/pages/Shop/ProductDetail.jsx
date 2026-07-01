@@ -13,14 +13,14 @@ import { useState, useEffect, useMemo, useRef } from 'react'
 import { useParams, useNavigate, Link, useLocation } from 'react-router-dom'
 import { getProduct, getProductV2, addToCart, getFrequentlyBoughtTogether, getProductBreedRecommendations } from '../../api/shop'
 import { useAuthStore } from '../../store/authStore'
-import { useCartStore } from '../../store/cartStore'
+import { useCartStore, setPendingCartAdd } from '../../store/cartStore'
 import { useToastStore } from '../../store/toastStore'
 import { PageLoader, ButtonLoader } from '../../components/Loader'
 import Rating from '../../components/Rating'
 import ReviewsSection from '../../components/ReviewsSection'
 import RecommendationBlock from '../../components/RecommendationBlock'
 import FavoriteButton from '../../components/FavoriteButton'
-import { formatPrice } from '../../utils/format'
+import { formatPrice, cleanProductName } from '../../utils/format'
 
 /**
  * Получение URL изображения из различных форматов
@@ -51,8 +51,8 @@ function ProductDetail() {
   const navigate = useNavigate()
   const location = useLocation()
   const isAuthenticated = useAuthStore(s => s.isAuthenticated)
-  const { refreshCart, loadCart, getItemInCart, updateQuantity } = useCartStore()
-  const { success, error: showError } = useToastStore()
+  const { refreshCart, loadCart, getItemInCart, updateQuantity, replayPendingCartAdd } = useCartStore()
+  const { success, error: showError, info } = useToastStore()
   
   const [product, setProduct] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -75,6 +75,9 @@ function ProductDetail() {
     if (!product) return 0
     return (product.reviews_count ?? product.rating_count ?? 0)
   }, [product])
+
+  // Название товара с исправленными опечатками (P2.13) — на уровне отображения
+  const displayName = useMemo(() => cleanProductName(product?.name), [product])
 
   const detailsTabs = useMemo(() => {
     const tabs = []
@@ -187,7 +190,14 @@ function ProductDetail() {
   useEffect(() => {
     if (!isAuthenticated) return
     loadCart(false)
-  }, [isAuthenticated, loadCart])
+    // P1.6: гость нажал «В корзину» до входа — добавляем сохранённый товар после логина
+    replayPendingCartAdd().then((added) => {
+      if (added) {
+        refreshCart()
+        success('Товар добавлен в корзину.', 4000)
+      }
+    })
+  }, [isAuthenticated, loadCart, replayPendingCartAdd, refreshCart, success])
   
   /**
    * Загрузка товара из API
@@ -346,7 +356,11 @@ function ProductDetail() {
    */
   const handleAddToCart = async () => {
     if (!isAuthenticated) {
-      navigate('/login')
+      // P1.6: сохраняем товар и возвращаем пользователя на эту же страницу товара
+      setPendingCartAdd(product.id, quantity)
+      const redirectPath = `${location.pathname}${location.search}` || `/shop/products/${product.id}`
+      info('Войдите или зарегистрируйтесь — мы сохраним товар и добавим его в корзину.', 5000)
+      navigate(`/login?redirect=${encodeURIComponent(redirectPath)}`)
       return
     }
     
@@ -473,7 +487,7 @@ function ProductDetail() {
               <span className="text-gray-300">/</span>
             </>
           )}
-          <span className="text-gray-700 truncate max-w-[18rem]">{product.name}</span>
+          <span className="text-gray-700 truncate max-w-[18rem]">{displayName}</span>
         </div>
       </div>
       
@@ -504,7 +518,7 @@ function ProductDetail() {
                 <>
                   <img 
                     src={currentImage} 
-                    alt={product.name ? `${product.name} - изображение товара` : 'Изображение товара'}
+                    alt={displayName ? `${displayName} - изображение товара` : 'Изображение товара'}
                     className="w-full h-full object-contain p-6"
                     onError={(e) => {
                       e.target.onerror = null
@@ -604,7 +618,7 @@ function ProductDetail() {
             )}
 
             <h1 className="page-title mb-0 leading-tight">
-              {product.name}
+              {displayName}
             </h1>
 
             <div className="mt-3">
@@ -616,17 +630,23 @@ function ProductDetail() {
                 }}
                 className="text-left"
               >
-                <div className="flex items-center gap-3">
-                  <Rating
-                    rating={product.rating || 0}
-                    reviewsCount={reviewsCount}
-                    readonly={true}
-                    size="lg"
-                  />
-                  <span className="text-sm text-primary-600 hover:text-primary-700">
-                    Отзывы ({reviewsCount})
+                {reviewsCount > 0 ? (
+                  <div className="flex items-center gap-3">
+                    <Rating
+                      rating={product.rating || 0}
+                      reviewsCount={reviewsCount}
+                      readonly={true}
+                      size="lg"
+                    />
+                    <span className="text-sm text-primary-600 hover:text-primary-700">
+                      Отзывы ({reviewsCount})
+                    </span>
+                  </div>
+                ) : (
+                  <span className="text-sm text-gray-500 hover:text-primary-700">
+                    Пока нет отзывов — оставьте первый
                   </span>
-                </div>
+                )}
               </button>
             </div>
           </div>
@@ -969,14 +989,18 @@ function ProductDetail() {
             subtitle="Товары, которые другие покупатели выбирают вместе с этим"
             recommendations={recommendations}
             type="products"
-            onAddToCart={async (product, qty = 1) => {
+            onAddToCart={async (recProduct, qty = 1) => {
               if (!isAuthenticated) {
-                navigate('/login')
+                // P1.6: сохраняем выбранный товар и возвращаем сюда после входа
+                setPendingCartAdd(recProduct.id, qty)
+                const redirectPath = `${location.pathname}${location.search}` || `/shop/products/${recProduct.id}`
+                info('Войдите или зарегистрируйтесь — мы сохраним товар и добавим его в корзину.', 5000)
+                navigate(`/login?redirect=${encodeURIComponent(redirectPath)}`)
                 return
               }
-              await addToCart(product.id, qty)
+              await addToCart(recProduct.id, qty)
               await refreshCart()
-              success(`${product.name} добавлен в корзину`)
+              success(`${cleanProductName(recProduct.name)} добавлен в корзину`)
             }}
             loading={isLoadingRecommendations}
             showReason={true}

@@ -25,14 +25,14 @@ class Command(BaseCommand):
             help='Delete shop orders, returns, carts and shop payments',
         )
         parser.add_argument(
-            '--kotmatros',
+            '--legacy-products',
             action='store_true',
-            help='Delete legacy KotMatros products without a supplier',
+            help='Delete legacy products without a supplier',
         )
         parser.add_argument(
             '--all',
             action='store_true',
-            help='Run both --commerce and --kotmatros cleanup scopes',
+            help='Run both --commerce and --legacy-products cleanup scopes',
         )
         parser.add_argument(
             '--execute',
@@ -42,16 +42,16 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         clean_commerce = options['all'] or options['commerce']
-        clean_kotmatros = options['all'] or options['kotmatros']
+        clean_legacy_products = options['all'] or options['legacy_products']
         execute = options['execute']
 
-        if not clean_commerce and not clean_kotmatros:
-            self.stdout.write(self.style.WARNING('Nothing selected. Use --commerce, --kotmatros or --all.'))
+        if not clean_commerce and not clean_legacy_products:
+            self.stdout.write(self.style.WARNING('Nothing selected. Use --commerce, --legacy-products or --all.'))
             return
 
-        kotmatros_products = Product.objects.filter(
+        legacy_products = Product.objects.filter(
             supplier__isnull=True,
-            kotmatros_product_id__isnull=False,
+            external_id__isnull=False,
         )
         shop_payments = Payment.objects.filter(payment_type__in=SHOP_PAYMENT_TYPES)
 
@@ -61,11 +61,11 @@ class Command(BaseCommand):
             'carts': Cart.objects.count() if clean_commerce else 0,
             'cart_items': CartItem.objects.count() if clean_commerce else 0,
             'shop_payments': shop_payments.count() if clean_commerce else 0,
-            'kotmatros_products': kotmatros_products.count() if clean_kotmatros else 0,
+            'legacy_products': legacy_products.count() if clean_legacy_products else 0,
         }
 
         mode = 'EXECUTE' if execute else 'DRY_RUN'
-        self.stdout.write(f'mode={mode} scope_commerce={clean_commerce} scope_kotmatros={clean_kotmatros}')
+        self.stdout.write(f'mode={mode} scope_commerce={clean_commerce} scope_legacy_products={clean_legacy_products}')
         for key, value in counts.items():
             self.stdout.write(f'{key}={value}')
 
@@ -80,7 +80,7 @@ class Command(BaseCommand):
                 Order.objects.all().delete()
                 Cart.objects.all().delete()
 
-            if clean_kotmatros:
-                kotmatros_products.delete()
+            if clean_legacy_products:
+                legacy_products.delete()
 
         self.stdout.write(self.style.SUCCESS('Phantom admin data cleaned. Users, pets and Dinozavrik supplier data were kept.'))

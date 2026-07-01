@@ -53,7 +53,7 @@ class CategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = Category
         fields = [
-            'id', 'kotmatros_category_id', 'name', 'slug', 'code', 'description',
+            'id', 'external_id', 'name', 'slug', 'code', 'description',
             'parent', 'parent_name', 'depth', 'path',
             'animal_type', 'product_group', 'product_count',
             'icon', 'image_url', 'is_active', 'show_in_menu',
@@ -77,7 +77,7 @@ class CategoryListSerializer(serializers.ModelSerializer):
     class Meta:
         model = Category
         fields = [
-            'id', 'kotmatros_category_id', 'name', 'slug', 'code',
+            'id', 'external_id', 'name', 'slug', 'code',
             'animal_type', 'product_group', 'product_count',
             'icon', 'depth'
         ]
@@ -107,7 +107,7 @@ class BrandSerializer(serializers.ModelSerializer):
     class Meta:
         model = Brand
         fields = [
-            'id', 'kotmatros_brand_id', 'name', 'slug', 'description',
+            'id', 'external_id', 'name', 'slug', 'description',
             'logo_url', 'website_url', 'brand_class', 'country',
             'priority', 'product_count', 'is_active'
         ]
@@ -192,7 +192,7 @@ class ProductCatalogSerializer(serializers.ModelSerializer):
     class Meta:
         model = Product
         fields = [
-            'id', 'kotmatros_product_id', 'name', 'slug', 'short_description',
+            'id', 'external_id', 'name', 'slug', 'short_description',
             'price', 'compare_price', 'discount_percent',
             'image_url', 'rating', 'rating_count',
             'is_available', 'sku_count',
@@ -208,7 +208,7 @@ class ProductCatalogSerializer(serializers.ModelSerializer):
         return 0
     
     def get_image_url(self, obj):
-        """Исправляет URL изображения (kotmatros.ru -> cdn.kotmatros.ru)."""
+        """Возвращает URL изображения в едином формате."""
         url = obj.image_url or obj.main_image
         return Product._fix_image_url(url)
 
@@ -232,7 +232,7 @@ class ProductDetailSerializer(serializers.ModelSerializer):
         model = Product
         fields = [
             # Основное
-            'id', 'kotmatros_product_id', 'name', 'slug', 
+            'id', 'external_id', 'name', 'slug',
             'short_description', 'description',
             # Цены
             'price', 'compare_price', 'discount_percent',
@@ -266,7 +266,7 @@ class ProductDetailSerializer(serializers.ModelSerializer):
         return 0
     
     def get_image_url(self, obj):
-        """Исправляет URL изображения (kotmatros.ru -> cdn.kotmatros.ru)."""
+        """Возвращает URL изображения в едином формате."""
         url = obj.image_url or obj.main_image
         return Product._fix_image_url(url)
     

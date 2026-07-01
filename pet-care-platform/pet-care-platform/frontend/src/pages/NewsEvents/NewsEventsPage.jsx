@@ -202,6 +202,12 @@ export default function NewsEventsPage() {
     return Object.keys(TYPE_META).filter((t) => set.has(t))
   }, [events])
 
+  // Избранные новости — вперёд (маркетолог помечает «на главную» через панель).
+  const newsSorted = useMemo(
+    () => [...(news || [])].sort((a, b) => (b.is_featured ? 1 : 0) - (a.is_featured ? 1 : 0)),
+    [news],
+  )
+
   return (
     <div className="bg-milk min-h-screen pb-16">
       {/* Hero */}
@@ -268,7 +274,7 @@ export default function NewsEventsPage() {
               <h2 className="font-heading text-2xl font-bold text-primary-900">Новости</h2>
             </div>
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-              {news.map((item) => <NewsTile key={item.id} item={item} />)}
+              {newsSorted.map((item) => <NewsTile key={item.id} item={item} />)}
             </div>
           </section>
         )}

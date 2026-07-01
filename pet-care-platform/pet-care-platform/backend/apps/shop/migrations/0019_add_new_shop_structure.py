@@ -40,7 +40,7 @@ class Migration(migrations.Migration):
             name='Category',
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('external_id', models.IntegerField(blank=True, help_text='ID категории из внешнего API Kotmatros', null=True, unique=True, verbose_name='ID из API')),
+                ('external_id', models.IntegerField(blank=True, help_text='ID категории из внешнего API', null=True, unique=True, verbose_name='ID из API')),
                 ('name', models.CharField(max_length=255, verbose_name='Название')),
                 ('slug', models.SlugField(max_length=255, unique=True, verbose_name='URL-имя')),
                 ('description', models.TextField(blank=True, verbose_name='Описание')),

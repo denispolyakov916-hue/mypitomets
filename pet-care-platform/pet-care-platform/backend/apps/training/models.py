@@ -110,6 +110,24 @@ class Course(models.Model):
         ('webinar', 'Вебинар'),
         ('workshop', 'Мастер-класс'),
     ]
+
+    COURSE_TYPE_CHOICES = [
+        ('general', 'Обычный курс'),
+        ('behavior_correction', 'Коррекция поведения'),
+    ]
+
+    RISK_LEVEL_CHOICES = [
+        ('low', 'Низкий'),
+        ('medium', 'Средний'),
+        ('high', 'Высокий'),
+    ]
+
+    REVIEW_STATUS_CHOICES = [
+        ('not_submitted', 'Не отправлен'),
+        ('in_review', 'На проверке'),
+        ('changes_requested', 'Нужны правки'),
+        ('approved', 'Одобрен'),
+    ]
     
     id = models.AutoField(primary_key=True)
     title = models.CharField(max_length=200, verbose_name='Название')
@@ -133,6 +151,14 @@ class Course(models.Model):
         blank=True,
         related_name='authored_courses',
         verbose_name='Автор курса',
+    )
+
+    course_type = models.CharField(
+        max_length=40,
+        choices=COURSE_TYPE_CHOICES,
+        default='general',
+        db_index=True,
+        verbose_name='Тип курса',
     )
     
     pet_type = models.CharField(
@@ -311,6 +337,116 @@ class Course(models.Model):
         validators=[validate_string_list]
     )
 
+    # ===== КУРСЫ КОРРЕКЦИИ ПОВЕДЕНИЯ =====
+
+    correction_problem = models.CharField(
+        max_length=80,
+        blank=True,
+        null=True,
+        db_index=True,
+        verbose_name='Основная проблема коррекции',
+    )
+    correction_problem_tags = models.JSONField(
+        default=list,
+        blank=True,
+        verbose_name='Теги проблем коррекции',
+        validators=[validate_string_list],
+    )
+    correction_symptoms = models.JSONField(
+        default=list,
+        blank=True,
+        verbose_name='Симптомы проблемы',
+        validators=[validate_string_list],
+    )
+    correction_goal = models.TextField(
+        blank=True,
+        null=True,
+        verbose_name='Цель коррекции',
+    )
+    success_metrics = models.JSONField(
+        default=list,
+        blank=True,
+        verbose_name='Критерии успеха',
+        validators=[validate_string_list],
+    )
+    risk_level = models.CharField(
+        max_length=20,
+        choices=RISK_LEVEL_CHOICES,
+        default='low',
+        db_index=True,
+        verbose_name='Уровень риска',
+    )
+    contraindications = models.JSONField(
+        default=list,
+        blank=True,
+        verbose_name='Противопоказания',
+        validators=[validate_string_list],
+    )
+    red_flags = models.JSONField(
+        default=list,
+        blank=True,
+        verbose_name='Красные флаги',
+        validators=[validate_string_list],
+    )
+    safety_notes = models.TextField(
+        blank=True,
+        null=True,
+        verbose_name='Инструкция по безопасности',
+    )
+    required_equipment = models.JSONField(
+        default=list,
+        blank=True,
+        verbose_name='Необходимые предметы',
+        validators=[validate_string_list],
+    )
+    owner_daily_time_minutes = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        verbose_name='Время занятий в день',
+    )
+    min_age_months = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        verbose_name='Минимальный возраст питомца',
+    )
+    max_age_months = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        verbose_name='Максимальный возраст питомца',
+    )
+    excluded_behavioral_problems = models.JSONField(
+        default=list,
+        blank=True,
+        verbose_name='Исключающие поведенческие проблемы',
+        validators=[validate_string_list],
+    )
+    excluded_health_issues = models.JSONField(
+        default=list,
+        blank=True,
+        verbose_name='Исключающие проблемы здоровья',
+        validators=[validate_string_list],
+    )
+    requires_specialist_supervision = models.BooleanField(
+        default=False,
+        verbose_name='Нужен контроль специалиста',
+    )
+    requires_vet_clearance = models.BooleanField(
+        default=False,
+        verbose_name='Нужна консультация ветеринара',
+    )
+    review_status = models.CharField(
+        max_length=30,
+        choices=REVIEW_STATUS_CHOICES,
+        default='not_submitted',
+        db_index=True,
+        verbose_name='Статус проверки',
+    )
+    review_notes = models.TextField(
+        blank=True,
+        null=True,
+        verbose_name='Заметки проверки',
+    )
+
     # Популярность (количество покупок)
     order_count = models.PositiveIntegerField(default=0, verbose_name='Количество покупок')
     
@@ -350,6 +486,8 @@ class Course(models.Model):
         verbose_name_plural = 'Курсы'
         ordering = ['title']
         indexes = [
+            models.Index(fields=['course_type', 'status']),
+            models.Index(fields=['course_type', 'risk_level']),
             models.Index(fields=['pet_type', 'category']),
             models.Index(fields=['pet_type', 'category', 'level']),
             models.Index(fields=['category', 'level']),
@@ -364,6 +502,11 @@ class Course(models.Model):
     def is_free(self):
         """Является ли курс бесплатным."""
         return self.price == 0
+
+    @property
+    def is_behavior_correction(self):
+        """Является ли курс курсом коррекции поведения."""
+        return self.course_type == 'behavior_correction'
     
     def get_category_display_name(self):
         """Получить название категории."""
@@ -417,6 +560,56 @@ class Course(models.Model):
         score = 50  # Базовый балл
         reasons = []
 
+        if self.is_behavior_correction:
+            pet_problems = getattr(pet, 'behavioral_problems', None) or []
+            pet_health_issues = getattr(pet, 'health_issues', None) or []
+            pet_age_months = getattr(pet, 'age_months', None)
+
+            excluded_problems = set(self.excluded_behavioral_problems or []) & set(pet_problems)
+            if excluded_problems:
+                return {
+                    'compatible': False,
+                    'score': 0,
+                    'reasons': [
+                        f"Курс не подходит при проблемах: {', '.join(sorted(excluded_problems))}"
+                    ],
+                }
+
+            excluded_health = set(self.excluded_health_issues or []) & set(pet_health_issues)
+            if excluded_health:
+                return {
+                    'compatible': False,
+                    'score': 0,
+                    'reasons': [
+                        f"Курс не подходит при состояниях здоровья: {', '.join(sorted(excluded_health))}"
+                    ],
+                }
+
+            if pet_age_months is not None:
+                if self.min_age_months is not None and pet_age_months < self.min_age_months:
+                    return {
+                        'compatible': False,
+                        'score': 0,
+                        'reasons': ['Питомец младше минимального возраста для курса'],
+                    }
+                if self.max_age_months is not None and pet_age_months > self.max_age_months:
+                    return {
+                        'compatible': False,
+                        'score': 0,
+                        'reasons': ['Питомец старше максимального возраста для курса'],
+                    }
+
+            matching_problem_tags = set(self.correction_problem_tags or []) & set(pet_problems)
+            if matching_problem_tags:
+                score += 20
+                reasons.append(f"Совпадает проблема коррекции: {', '.join(sorted(matching_problem_tags))}")
+
+            if self.requires_specialist_supervision:
+                reasons.append("Рекомендуется контроль специалиста")
+
+            if self.requires_vet_clearance:
+                reasons.append("Перед стартом нужна консультация ветеринара")
+
         # Проверяем тип поведения
         if self.recommended_behavior_types and pet.behavior_type:
             if pet.behavior_type in self.recommended_behavior_types:
@@ -445,10 +638,11 @@ class Course(models.Model):
                 reasons.append(f"Не подходит для уровня социализации {pet.get_social_level_display()}")
 
         # Проверяем опыт дрессировки
-        if self.min_training_experience and pet.training_experience:
+        training_experience = getattr(pet, 'training_experience', None)
+        if self.min_training_experience and training_experience:
             experience_levels = ['none', 'basic', 'intermediate', 'advanced', 'professional']
             min_level_index = experience_levels.index(self.min_training_experience)
-            pet_level_index = experience_levels.index(pet.training_experience)
+            pet_level_index = experience_levels.index(training_experience)
 
             if pet_level_index >= min_level_index:
                 score += 10
@@ -458,8 +652,9 @@ class Course(models.Model):
                 reasons.append("Требуется больше опыта дрессировки")
 
         # Проверяем проблемы здоровья
-        if self.compatible_health_issues and pet.health_issues:
-            matching_issues = set(self.compatible_health_issues) & set(pet.health_issues)
+        pet_health_issues = getattr(pet, 'health_issues', None) or []
+        if self.compatible_health_issues and pet_health_issues:
+            matching_issues = set(self.compatible_health_issues) & set(pet_health_issues)
             if matching_issues:
                 score += 10
                 reasons.append(f"Учитывает проблемы здоровья: {', '.join(matching_issues)}")
@@ -468,22 +663,25 @@ class Course(models.Model):
                 reasons.append("Не учитывает текущие проблемы здоровья")
 
         # Проверяем поведенческие проблемы
-        if self.addresses_behavioral_problems and pet.behavioral_problems:
-            matching_problems = set(self.addresses_behavioral_problems) & set(pet.behavioral_problems)
+        pet_behavioral_problems = getattr(pet, 'behavioral_problems', None) or []
+        if self.addresses_behavioral_problems and pet_behavioral_problems:
+            matching_problems = set(self.addresses_behavioral_problems) & set(pet_behavioral_problems)
             if matching_problems:
                 score += 20
                 reasons.append(f"Решает проблемы поведения: {', '.join(matching_problems)}")
 
         # Проверяем особые потребности
-        if self.addresses_special_needs and pet.special_needs:
-            matching_needs = set(self.addresses_special_needs) & set(pet.special_needs)
+        pet_special_needs = getattr(pet, 'special_needs', None) or []
+        if self.addresses_special_needs and pet_special_needs:
+            matching_needs = set(self.addresses_special_needs) & set(pet_special_needs)
             if matching_needs:
                 score += 15
                 reasons.append(f"Учитывает особые потребности: {', '.join(matching_needs)}")
 
         # Проверяем предпочтительные активности
-        if self.suitable_activities and pet.preferred_activities:
-            matching_activities = set(self.suitable_activities) & set(pet.preferred_activities)
+        pet_preferred_activities = getattr(pet, 'preferred_activities', None) or []
+        if self.suitable_activities and pet_preferred_activities:
+            matching_activities = set(self.suitable_activities) & set(pet_preferred_activities)
             if matching_activities:
                 score += 10
                 reasons.append(f"Соответствует предпочтениям: {', '.join(matching_activities)}")
@@ -521,11 +719,12 @@ class Course(models.Model):
 
     def _get_difficulty_for_pet(self, pet):
         """Определяет уровень сложности курса для конкретного питомца."""
-        if not pet.training_experience:
+        training_experience = getattr(pet, 'training_experience', None)
+        if not training_experience:
             return 'unknown'
 
         experience_levels = ['none', 'basic', 'intermediate', 'advanced', 'professional']
-        pet_level_index = experience_levels.index(pet.training_experience)
+        pet_level_index = experience_levels.index(training_experience)
         course_level_index = ['beginner', 'intermediate', 'advanced', 'expert'].index(self.level)
 
         if pet_level_index >= course_level_index:
@@ -544,7 +743,8 @@ class Course(models.Model):
         base_time = int(base_time * COURSE_TIME_MULTIPLIERS.get(activity_key, COURSE_TIME_MULTIPLIERS['default']))
 
         # Корректировка по опыту (none→elderly 1.8, professional→experienced 0.8)
-        experience_key = 'elderly' if pet.training_experience == 'none' else ('experienced' if pet.training_experience == 'professional' else 'default')
+        training_experience = getattr(pet, 'training_experience', None)
+        experience_key = 'elderly' if training_experience == 'none' else ('experienced' if training_experience == 'professional' else 'default')
         base_time = int(base_time * COURSE_TIME_MULTIPLIERS.get(experience_key, COURSE_TIME_MULTIPLIERS['default']))
 
         return base_time
@@ -571,18 +771,91 @@ class Course(models.Model):
         """Получает предупреждения для конкретного питомца."""
         warnings = []
 
-        if pet.health_issues:
-            health_relevant = set(self.compatible_health_issues or []) & set(pet.health_issues)
+        pet_health_issues = getattr(pet, 'health_issues', None) or []
+        if pet_health_issues:
+            health_relevant = set(self.compatible_health_issues or []) & set(pet_health_issues)
             if not health_relevant:
                 warnings.append("Проконсультируйтесь с ветеринаром перед началом обучения")
 
-        if pet.special_needs and not self.addresses_special_needs:
+        pet_special_needs = getattr(pet, 'special_needs', None) or []
+        if pet_special_needs and not self.addresses_special_needs:
             warnings.append("Возможно, потребуется адаптация методов обучения")
 
-        if pet.behavioral_problems and not self.addresses_behavioral_problems:
+        pet_behavioral_problems = getattr(pet, 'behavioral_problems', None) or []
+        if pet_behavioral_problems and not self.addresses_behavioral_problems:
             warnings.append("Курс может не решать текущие поведенческие проблемы")
 
         return warnings
+
+    def get_behavior_correction_publish_check(self, user=None):
+        """
+        Проверяет, можно ли публиковать курс коррекции поведения.
+
+        Возвращает блокирующие ошибки и предупреждения для админки.
+        Для обычных курсов оставляет только базовую проверку наличия уроков.
+        """
+        blocking_errors = []
+        warnings = []
+
+        pages = self.get_pages_ordered()
+        pages_count = pages.count()
+        lessons_count = self.get_lessons_ordered().count()
+
+        if not self.is_behavior_correction:
+            if pages_count == 0 and lessons_count == 0:
+                blocking_errors.append('Нельзя опубликовать курс без уроков')
+            return {
+                'can_publish': not blocking_errors,
+                'blocking_errors': blocking_errors,
+                'warnings': warnings,
+                'pages_count': pages_count,
+                'lessons_count': lessons_count,
+            }
+
+        if not self.correction_problem and not self.correction_problem_tags:
+            blocking_errors.append('Не выбрана основная проблема коррекции')
+
+        if not self.correction_goal:
+            blocking_errors.append('Не заполнена цель коррекции')
+
+        if not self.addresses_behavioral_problems and not self.correction_problem_tags:
+            blocking_errors.append('Не заполнены правила подбора под поведенческие проблемы')
+
+        if not self.contraindications:
+            blocking_errors.append('Не заполнены противопоказания')
+
+        if not self.red_flags:
+            blocking_errors.append('Не заполнены красные флаги')
+
+        if not self.safety_notes:
+            blocking_errors.append('Не заполнена инструкция по безопасности')
+
+        if pages_count == 0 and lessons_count == 0:
+            blocking_errors.append('Нельзя опубликовать курс без уроков')
+
+        safety_page_exists = pages.filter(title__icontains='безопас').exists()
+        if not safety_page_exists and not self.safety_notes:
+            blocking_errors.append('Нет вводной информации по безопасности')
+
+        if self.risk_level == 'high':
+            if not self.requires_specialist_supervision:
+                warnings.append('Для курса высокого риска стоит включить контроль специалиста')
+            if user and not getattr(user, 'is_staff', False) and not getattr(user, 'is_superuser', False):
+                blocking_errors.append('Курс высокого риска может публиковать только администратор')
+
+        if not self.owner_daily_time_minutes:
+            warnings.append('Не указано время занятий владельца в день')
+
+        if not self.required_equipment:
+            warnings.append('Не указаны необходимые предметы или не отмечено, что они не нужны')
+
+        return {
+            'can_publish': not blocking_errors,
+            'blocking_errors': blocking_errors,
+            'warnings': warnings,
+            'pages_count': pages_count,
+            'lessons_count': lessons_count,
+        }
 
     # TODO: Перенести в CourseService или сигнал
     def update_counts(self):
@@ -664,6 +937,7 @@ class Course(models.Model):
             'price': float(self.price),
             'image_url': self.image_url,
             'pet_type': self.pet_type,
+            'course_type': self.course_type,
             'category': self.category,
             'category_display': self.get_category_display_name(),
             'subcategory': self.subcategory,
@@ -703,6 +977,33 @@ class Course(models.Model):
                 'instructor_bio': self.instructor_bio,
                 'requirements': self.requirements,
                 'additional_images': self.additional_images,
+                'recommended_behavior_types': self.recommended_behavior_types,
+                'recommended_activity_levels': self.recommended_activity_levels,
+                'recommended_social_levels': self.recommended_social_levels,
+                'min_training_experience': self.min_training_experience,
+                'compatible_health_issues': self.compatible_health_issues,
+                'addresses_special_needs': self.addresses_special_needs,
+                'suitable_activities': self.suitable_activities,
+                'addresses_behavioral_problems': self.addresses_behavioral_problems,
+                'correction_problem': self.correction_problem,
+                'correction_problem_tags': self.correction_problem_tags,
+                'correction_symptoms': self.correction_symptoms,
+                'correction_goal': self.correction_goal,
+                'success_metrics': self.success_metrics,
+                'risk_level': self.risk_level,
+                'contraindications': self.contraindications,
+                'red_flags': self.red_flags,
+                'safety_notes': self.safety_notes,
+                'required_equipment': self.required_equipment,
+                'owner_daily_time_minutes': self.owner_daily_time_minutes,
+                'min_age_months': self.min_age_months,
+                'max_age_months': self.max_age_months,
+                'excluded_behavioral_problems': self.excluded_behavioral_problems,
+                'excluded_health_issues': self.excluded_health_issues,
+                'requires_specialist_supervision': self.requires_specialist_supervision,
+                'requires_vet_clearance': self.requires_vet_clearance,
+                'review_status': self.review_status,
+                'review_notes': self.review_notes,
                 'lessons': lessons_data,
             })
         

@@ -21,7 +21,7 @@ import { useFavoritesStore } from '../store/favoritesStore'
 import { useShareableWishlistStore } from '../store/shareableWishlistStore'
 import { useAuthStore } from '../store/authStore'
 import { ProductPropTypes } from '../utils/propTypes'
-import { formatPrice } from '../utils/format'
+import { formatPrice, cleanProductName } from '../utils/format'
 
 /**
  * Получение URL изображения из различных форматов
@@ -199,10 +199,10 @@ const CartButton = memo(function CartButton({
 
   // Показываем счётчик, когда товар в корзине
   const showCounter = isInCart
-  const counterWidthClass = showCounter ? 'w-[88px]' : 'w-0'
+  const counterWidthClass = showCounter ? 'w-[84px]' : 'w-0'
 
   return (
-    <div className="flex items-stretch gap-1.5 h-10">
+    <div className="flex items-stretch gap-1.5 h-10 w-full max-w-full">
       {/* Основная кнопка: либо "В корзину", либо "В корзине" */}
       {showCounter ? (
         <button
@@ -241,7 +241,7 @@ const CartButton = memo(function CartButton({
       >
         <button
           onClick={() => onQuantityChange(-1)}
-          className="min-w-11 h-11 flex items-center justify-center text-primary-700 hover:bg-primary-100 transition-colors"
+          className="flex-1 min-w-0 h-10 flex items-center justify-center text-primary-700 hover:bg-primary-100 transition-colors"
           tabIndex={showCounter ? 0 : -1}
           aria-label="Уменьшить количество"
         >
@@ -249,15 +249,15 @@ const CartButton = memo(function CartButton({
             <path d="M4 12a1.5 1.5 0 0 1 1.5-1.5h13a1.5 1.5 0 0 1 0 3h-13A1.5 1.5 0 0 1 4 12" />
           </svg>
         </button>
-        
-        <span className="text-sm font-semibold text-gray-800 w-6 text-center">
+
+        <span className="text-sm font-semibold text-gray-800 w-6 text-center shrink-0">
           {cartQuantity}
         </span>
-        
+
         <button
           onClick={() => onQuantityChange(1)}
           disabled={cartQuantity >= (product.stock_count || 999)}
-          className="min-w-11 h-11 flex items-center justify-center text-primary-700 hover:bg-primary-100 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+          className="flex-1 min-w-0 h-10 flex items-center justify-center text-primary-700 hover:bg-primary-100 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           tabIndex={showCounter ? 0 : -1}
           aria-label="Увеличить количество"
         >
@@ -283,9 +283,17 @@ const ProductCard = memo(function ProductCard({ product, onAddToCart, isLoading 
   
   // Расчёт скидки
   const hasDiscount = product.compare_price && product.compare_price > product.price
-  const discountPercent = hasDiscount 
-    ? Math.round((1 - product.price / product.compare_price) * 100) 
+  const discountPercent = hasDiscount
+    ? Math.round((1 - product.price / product.compare_price) * 100)
     : 0
+
+  // Рейтинг показываем только при наличии отзывов (иначе «0.0» вводит в заблуждение)
+  const reviewsCount = Number(product.rating_count ?? product.reviews_count ?? 0)
+  const ratingValue = Number(product.rating) || 0
+  const hasReviews = reviewsCount > 0 && ratingValue > 0
+
+  // Название с исправленными опечатками (на уровне отображения)
+  const displayName = cleanProductName(product.name)
   
   // Главное изображение
   const mainImage = getImageUrl(product.image_url) 
@@ -336,9 +344,9 @@ const ProductCard = memo(function ProductCard({ product, onAddToCart, isLoading 
         <Link 
           to={`/shop/products/${product.id}`} 
           className="relative block w-full h-full"
-          aria-label={`Перейти к товару ${product.name}`}
+          aria-label={`Перейти к товару ${displayName}`}
         >
-        <ProductImage src={mainImage} alt={product.name || 'Изображение товара'} animal={animalType} />
+        <ProductImage src={mainImage} alt={displayName || 'Изображение товара'} animal={animalType} />
         
         {/* Бейджи слева сверху: «В рационе» питомца + скидка */}
         {(inRation || discountPercent > 0) && (
@@ -369,7 +377,7 @@ const ProductCard = memo(function ProductCard({ product, onAddToCart, isLoading 
             animalType === 'cat' ? 'bg-primary-100 text-primary-700' :
             'bg-gray-100 text-gray-700'
           }`}>
-            {animalType === 'dog' ? 'Собак' : animalType === 'cat' ? 'Кошек' : 'Все'}
+            {animalType === 'dog' ? 'Для собак' : animalType === 'cat' ? 'Для кошек' : 'Все'}
           </span>
         </div>
         
@@ -404,26 +412,26 @@ const ProductCard = memo(function ProductCard({ product, onAddToCart, isLoading 
                 {formatPrice(product.compare_price)}
               </span>
             )}
-            {(product.rating_count || product.reviews_count) > 0 && (
-              <span className="text-xs text-gray-500">
-                {product.rating_count || product.reviews_count}
+          </div>
+          {hasReviews ? (
+            <div className="flex items-center gap-1 shrink-0" title={`Рейтинг ${ratingValue.toFixed(1)} (${reviewsCount})`}>
+              <svg className="w-4 h-4 text-accent-400 fill-current" viewBox="0 0 20 20" aria-hidden="true">
+                <path d="M10 15l-5.878 3.09 1.123-6.545L.489 6.91l6.572-.955L10 0l2.939 5.955 6.572.955-4.756 4.635 1.123 6.545z"/>
+              </svg>
+              <span className="text-sm font-medium text-primary-700">
+                {ratingValue.toFixed(1)}
               </span>
-            )}
-          </div>
-          <div className="flex items-center gap-1 shrink-0" title="Рейтинг">
-            <svg className="w-4 h-4 text-accent-400 fill-current" viewBox="0 0 20 20" aria-hidden="true">
-              <path d="M10 15l-5.878 3.09 1.123-6.545L.489 6.91l6.572-.955L10 0l2.939 5.955 6.572.955-4.756 4.635 1.123 6.545z"/>
-            </svg>
-            <span className="text-sm font-medium text-primary-400">
-              {(Number(product.rating) || 0).toFixed(1)}
-            </span>
-          </div>
+              <span className="text-xs text-gray-400">({reviewsCount})</span>
+            </div>
+          ) : (
+            <span className="text-xs text-gray-400 shrink-0">Нет отзывов</span>
+          )}
         </div>
         
         {/* Описание (название) */}
         <Link to={`/shop/products/${product.id}`} className="block mb-3">
           <h3 className="text-sm text-gray-700 leading-snug line-clamp-2 hover:text-primary-700 transition-colors min-h-[2.6rem]">
-            {product.name}
+            {displayName}
           </h3>
         </Link>
         

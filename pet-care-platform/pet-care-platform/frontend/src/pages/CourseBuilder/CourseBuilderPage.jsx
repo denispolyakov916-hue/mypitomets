@@ -22,6 +22,10 @@ function CourseBuilderPage() {
   const navigate = useNavigate()
   const user = useAuthStore(s => s.user)
   const showToast = useToastStore(s => s.showToast)
+  const coursesPath = user?.role === 'course_creator'
+    ? '/specialist-panel/courses'
+    : '/admin-panel/courses'
+  const canPublish = user?.is_staff || user?.is_superuser || user?.role === 'admin'
 
   const [course, setCourse] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -48,11 +52,11 @@ function CourseBuilderPage() {
     } catch (error) {
       console.error('Error loading course for builder:', error)
       showToast('Ошибка загрузки курса', 'error')
-      navigate('/admin/courses')
+      navigate(coursesPath)
     } finally {
       setLoading(false)
     }
-  }, [courseId, showToast, navigate])
+  }, [courseId, showToast, navigate, coursesPath])
 
   /**
    * Сохранение изменений курса
@@ -78,14 +82,14 @@ function CourseBuilderPage() {
       setSaving(true)
       await publishCourse(courseId)
       showToast('Курс опубликован', 'success')
-      navigate('/admin/courses')
+      navigate(coursesPath)
     } catch (error) {
       console.error('Error publishing course:', error)
       showToast('Ошибка публикации курса', 'error')
     } finally {
       setSaving(false)
     }
-  }, [courseId, showToast, navigate])
+  }, [courseId, showToast, navigate, coursesPath])
 
   /**
    * Предпросмотр курса
@@ -119,7 +123,7 @@ function CourseBuilderPage() {
             Курс не найден
           </h2>
           <button
-            onClick={() => navigate('/admin/courses')}
+            onClick={() => navigate(coursesPath)}
             className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700"
           >
             Вернуться к списку курсов
@@ -159,13 +163,15 @@ function CourseBuilderPage() {
               {saving ? 'Сохранение...' : 'Сохранить'}
             </button>
 
-            <button
-              onClick={handlePublish}
-              disabled={saving}
-              className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
-            >
-              Опубликовать
-            </button>
+            {canPublish && (
+              <button
+                onClick={handlePublish}
+                disabled={saving}
+                className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
+              >
+                Опубликовать
+              </button>
+            )}
           </div>
         </div>
       </div>

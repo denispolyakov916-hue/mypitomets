@@ -442,14 +442,16 @@ export default function RecommendationsPage() {
   }
 
   if (state.error || !tiers.length || !selectedTier) {
+    // Если корм отсеян именно из-за аллергий — честно объясняем, а не молчим.
+    const allergyNotice = state.data?.notice
     return (
       <AppShell>
         <BrandSection bg="milk" container="max-w-5xl">
           <BrandCard variant="default" padding="lg">
             <BrandEmptyState
               icon={<Sparkles className="h-8 w-8" />}
-              title="Пока не удалось собрать рацион"
-              description="Загляните в магазин — там уже есть товары для заботы о питомце."
+              title={allergyNotice ? 'Не нашли безопасный корм' : 'Пока не удалось собрать рацион'}
+              description={allergyNotice || 'Загляните в магазин — там уже есть товары для заботы о питомце.'}
               action={<BrandButton as={Link} to="/shop" variant="secondary">В магазин</BrandButton>}
             />
           </BrandCard>
@@ -479,7 +481,14 @@ export default function RecommendationsPage() {
       },
     })
     if (isAuthenticated) { startSavedAction(); return }
-    navigate('/login?redirect=/recommendations')
+    // P1.6: не «выбрасываем» гостя на /login без объяснения — показываем причину
+    // на самой странице входа (через query authMessage + state.authMessage),
+    // а returnTo='/recommendations' гарантирует автоматический возврат и докладку рациона.
+    const authMessage = type === 'add_ration_to_cart'
+      ? 'Войдите или зарегистрируйтесь — мы сохраним ваш рацион и добавим его в корзину'
+      : 'Войдите или зарегистрируйтесь — мы сохраним ваш рацион'
+    const next = `/login?redirect=${encodeURIComponent('/recommendations')}&authMessage=${encodeURIComponent(authMessage)}`
+    navigate(next, { state: { authMessage } })
   }
 
   return (
@@ -502,6 +511,11 @@ export default function RecommendationsPage() {
           <p className="mx-auto mt-2 max-w-2xl text-primary-600">
             Пуфыч учёл возраст, вес, особенности здоровья, бюджет и цель владельца.
           </p>
+          {state.data?.notice ? (
+            <p className="mx-auto mt-3 max-w-2xl rounded-xl bg-primary-50 px-4 py-2 text-sm text-primary-700">
+              {state.data.notice}
+            </p>
+          ) : null}
         </div>
         <ProfileChips profile={profile} />
       </BrandSection>

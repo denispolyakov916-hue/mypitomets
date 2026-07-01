@@ -60,6 +60,51 @@ const stopCartAutoRefresh = () => {
 }
 
 /**
+ * Отложенное добавление товара в корзину для гостей (P1.6).
+ *
+ * Когда неавторизованный пользователь нажимает «В корзину», мы сохраняем
+ * товар в localStorage и отправляем его на /login?redirect=<путь>. После входа
+ * страница магазина/товара вызывает replayPendingCartAdd() и товар попадает
+ * в корзину автоматически — пользователь возвращается туда, где был.
+ */
+const PENDING_CART_KEY = 'petplus_pending_cart_add'
+// Срок жизни отложенного добавления — 30 минут (защита от «зависших» товаров).
+const PENDING_CART_TTL_MS = 30 * 60 * 1000
+
+/**
+ * Сохранить отложенное добавление товара (гость → логин).
+ *
+ * @param {number|string} productId - ID товара
+ * @param {number} [quantity=1] - Количество
+ */
+export const setPendingCartAdd = (productId, quantity = 1) => {
+  try {
+    if (!productId) return
+    localStorage.setItem(
+      PENDING_CART_KEY,
+      JSON.stringify({ productId, quantity: quantity || 1, savedAt: Date.now() })
+    )
+  } catch {
+    // localStorage недоступен (приватный режим и т.п.) — тихо игнорируем
+  }
+}
+
+/** Прочитать и удалить отложенное добавление (если оно не протухло). */
+const consumePendingCartAdd = () => {
+  try {
+    const raw = localStorage.getItem(PENDING_CART_KEY)
+    if (!raw) return null
+    localStorage.removeItem(PENDING_CART_KEY)
+    const data = JSON.parse(raw)
+    if (!data || !data.productId) return null
+    if (data.savedAt && Date.now() - data.savedAt > PENDING_CART_TTL_MS) return null
+    return data
+  } catch {
+    return null
+  }
+}
+
+/**
  * Хранилище корзины
  * 
  * Состояние:
@@ -448,6 +493,27 @@ export const useCartStore = create((set, get) => ({
    */
   refreshCart: async () => {
     return get().loadCart()
+  },
+
+  /**
+   * Повторить отложенное добавление товара после входа (P1.6).
+   *
+   * Вызывается на странице магазина/товара, когда пользователь уже авторизован.
+   * Если в localStorage есть сохранённый товар (гость нажал «В корзину» до входа) —
+   * добавляет его в корзину и возвращает его id, иначе возвращает null.
+   *
+   * @returns {Promise<{productId: number|string, quantity: number}|null>}
+   */
+  replayPendingCartAdd: async () => {
+    const pending = consumePendingCartAdd()
+    if (!pending) return null
+    try {
+      const ok = await get().addItem(pending.productId, pending.quantity || 1)
+      return ok ? pending : null
+    } catch (error) {
+      console.error('Не удалось добавить отложенный товар в корзину:', error)
+      return null
+    }
   },
 
   /**

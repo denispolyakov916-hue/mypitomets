@@ -14,7 +14,7 @@ from decimal import Decimal
 from django.db.models import Count, Sum, Avg, Q, F
 from django.db.models.functions import TruncDate
 from django.utils import timezone
-from django.utils.dateparse import parse_date
+from django.utils.dateparse import parse_date, parse_datetime
 from django.http import HttpResponse
 
 from rest_framework import viewsets, status
@@ -27,9 +27,10 @@ from rest_framework.pagination import PageNumberPagination
 from apps.users.models import User
 from apps.pets.models import Pet
 from apps.shop.models import Product, Order, OrderItem
-from apps.training.models import Course
+from apps.training.models import Course, UserCourse, UserCourseProgress
 from apps.payments.models import Payment
 from apps.reviews.models import Review
+from apps.events.models import Event, NewsPost
 
 # Импорт системы кэширования
 from .admin_cache import (
@@ -767,7 +768,7 @@ class AdminAnalyticsViewSet(viewsets.ViewSet, DashboardCacheMixin):
                 continue
 
             data.append({
-                'id': str(product.kotmatros_product_id or product.id),
+                'id': str(product.external_id or product.id),
                 'name': product.name,
                 'orders_count': item['orders_count'],
                 'price': float(product.price),
@@ -1018,7 +1019,7 @@ class AdminManagementViewSet(viewsets.ViewSet):
                 if product.compare_price and product.compare_price > product.price:
                     discount_percent = round((1 - float(product.price) / float(product.compare_price)) * 100)
                 data.append({
-                    'ID': str(product.kotmatros_product_id or product.id),
+                    'ID': str(product.external_id or product.id),
                     'Название': product.name,
                     'Цена': float(product.price),
                     'Скидка (%)': discount_percent,
@@ -1198,6 +1199,14 @@ class AdminUserViewSet(AdminModelViewSet):
                 Q(first_name__icontains=search) |
                 Q(last_name__icontains=search)
             )
+        role = self.request.query_params.get('role', '')
+        if role:
+            queryset = queryset.filter(role=role)
+
+        is_active = self.request.query_params.get('is_active', '')
+        if is_active:
+            queryset = queryset.filter(is_active=is_active.lower() == 'true')
+
         return queryset.annotate(
             pets_count=Count('pets', distinct=True),
             orders_count=Count('orders', distinct=True),
@@ -1360,11 +1369,349 @@ class AdminPetViewSet(AdminModelViewSet):
             )
 
 
+class IsAdminOrMarketingManager(BasePermission):
+    """Доступ к контент-кабинету: администратор или маркетолог."""
+
+    def has_permission(self, request, view):
+        if not request.user or not request.user.is_authenticated:
+            return False
+        role = getattr(request.user, 'role', None)
+        return request.user.is_staff or request.user.is_superuser or role in ['admin', 'marketing_manager']
+
+
+def _admin_bool(value, default=False):
+    if isinstance(value, bool):
+        return value
+    if value in [None, '']:
+        return default
+    return str(value).lower() in ['1', 'true', 'yes', 'on']
+
+
+def _admin_datetime(value):
+    if not value:
+        return None
+    parsed = parse_datetime(value)
+    if parsed and timezone.is_naive(parsed):
+        parsed = timezone.make_aware(parsed, timezone.get_current_timezone())
+    return parsed
+
+
+class AdminMarketingDashboardViewSet(viewsets.ViewSet):
+    """Сводка для отдельного кабинета маркетолога."""
+
+    permission_classes = [IsAdminOrMarketingManager]
+
+    def list(self, request):
+        now = timezone.now()
+        return Response({
+            'news': {
+                'total': NewsPost.objects.count(),
+                'published': NewsPost.objects.filter(status='published').count(),
+                'drafts': NewsPost.objects.filter(status='draft').count(),
+                'featured': NewsPost.objects.filter(is_featured=True).count(),
+            },
+            'events': {
+                'total': Event.objects.count(),
+                'published': Event.objects.filter(status='published').count(),
+                'drafts': Event.objects.filter(status='draft').count(),
+                'featured': Event.objects.filter(is_featured=True).count(),
+                'upcoming': Event.objects.filter(status='published', start_at__gte=now).count(),
+            },
+        })
+
+
+class AdminMarketingNewsViewSet(viewsets.GenericViewSet):
+    """CRUD новостей для маркетолога."""
+
+    permission_classes = [IsAdminOrMarketingManager]
+    pagination_class = AdminPagination
+
+    def get_queryset(self):
+        queryset = NewsPost.objects.select_related('author', 'related_event').all()
+        search = self.request.query_params.get('search', '').strip()
+        if search:
+            queryset = queryset.filter(
+                Q(title__icontains=search) |
+                Q(excerpt__icontains=search) |
+                Q(category__icontains=search)
+            )
+        status_filter = self.request.query_params.get('status', '').strip()
+        if status_filter:
+            queryset = queryset.filter(status=status_filter)
+        category = self.request.query_params.get('category', '').strip()
+        if category:
+            queryset = queryset.filter(category=category)
+        featured = self.request.query_params.get('featured', '').strip()
+        if featured:
+            queryset = queryset.filter(is_featured=_admin_bool(featured))
+        return queryset.order_by('-updated_at', '-created_at')
+
+    def _serialize(self, post):
+        data = post.to_dict(with_body=True)
+        data.update({
+            'author_email': post.author.email if post.author else None,
+            'related_event_id': str(post.related_event_id) if post.related_event_id else None,
+            'related_event_title': post.related_event.title if post.related_event_id else None,
+            'created_at': post.created_at.isoformat() if post.created_at else None,
+            'updated_at': post.updated_at.isoformat() if post.updated_at else None,
+        })
+        return data
+
+    def _apply_payload(self, post, payload, partial=True):
+        required = [] if partial else ['title']
+        missing = [field for field in required if not str(payload.get(field, '')).strip()]
+        if missing:
+            return {'error': f'Заполните поля: {", ".join(missing)}'}
+
+        text_fields = ['title', 'slug', 'excerpt', 'body', 'cover_image_url', 'category']
+        for field in text_fields:
+            if field in payload:
+                setattr(post, field, (payload.get(field) or '').strip() if field != 'body' else payload.get(field) or '')
+
+        if 'status' in payload:
+            if payload['status'] not in ['draft', 'published']:
+                return {'error': 'Некорректный статус новости'}
+            post.status = payload['status']
+        if 'is_featured' in payload:
+            post.is_featured = _admin_bool(payload.get('is_featured'))
+        if 'published_at' in payload:
+            post.published_at = _admin_datetime(payload.get('published_at'))
+        if 'related_event_id' in payload or 'related_event' in payload:
+            event_id = payload.get('related_event_id') or payload.get('related_event')
+            if event_id:
+                try:
+                    post.related_event = Event.objects.get(id=event_id)
+                except Event.DoesNotExist:
+                    return {'error': 'Связанное мероприятие не найдено'}
+            else:
+                post.related_event = None
+
+        return None
+
+    def list(self, request):
+        queryset = self.get_queryset()
+        page = self.paginate_queryset(queryset)
+        rows = [self._serialize(post) for post in (page if page is not None else queryset)]
+        if page is not None:
+            return self.get_paginated_response(rows)
+        return Response(rows)
+
+    def retrieve(self, request, pk=None):
+        try:
+            return Response(self._serialize(self.get_queryset().get(id=pk)))
+        except NewsPost.DoesNotExist:
+            return Response({'error': 'Новость не найдена'}, status=status.HTTP_404_NOT_FOUND)
+
+    def create(self, request):
+        post = NewsPost(author=request.user)
+        error = self._apply_payload(post, request.data, partial=False)
+        if error:
+            return Response(error, status=status.HTTP_400_BAD_REQUEST)
+        post.save()
+        return Response(self._serialize(post), status=status.HTTP_201_CREATED)
+
+    def update(self, request, pk=None):
+        try:
+            post = NewsPost.objects.get(id=pk)
+        except NewsPost.DoesNotExist:
+            return Response({'error': 'Новость не найдена'}, status=status.HTTP_404_NOT_FOUND)
+        error = self._apply_payload(post, request.data, partial=False)
+        if error:
+            return Response(error, status=status.HTTP_400_BAD_REQUEST)
+        post.save()
+        return Response(self._serialize(post))
+
+    def partial_update(self, request, pk=None):
+        try:
+            post = NewsPost.objects.get(id=pk)
+        except NewsPost.DoesNotExist:
+            return Response({'error': 'Новость не найдена'}, status=status.HTTP_404_NOT_FOUND)
+        error = self._apply_payload(post, request.data, partial=True)
+        if error:
+            return Response(error, status=status.HTTP_400_BAD_REQUEST)
+        post.save()
+        return Response(self._serialize(post))
+
+    def destroy(self, request, pk=None):
+        deleted, _ = NewsPost.objects.filter(id=pk).delete()
+        if not deleted:
+            return Response({'error': 'Новость не найдена'}, status=status.HTTP_404_NOT_FOUND)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @action(detail=True, methods=['post'])
+    def publish(self, request, pk=None):
+        try:
+            post = NewsPost.objects.get(id=pk)
+        except NewsPost.DoesNotExist:
+            return Response({'error': 'Новость не найдена'}, status=status.HTTP_404_NOT_FOUND)
+        post.status = 'published'
+        if not post.published_at:
+            post.published_at = timezone.now()
+        post.save()
+        return Response(self._serialize(post))
+
+    @action(detail=True, methods=['post'])
+    def unpublish(self, request, pk=None):
+        try:
+            post = NewsPost.objects.get(id=pk)
+        except NewsPost.DoesNotExist:
+            return Response({'error': 'Новость не найдена'}, status=status.HTTP_404_NOT_FOUND)
+        post.status = 'draft'
+        post.save(update_fields=['status', 'updated_at'])
+        return Response(self._serialize(post))
+
+
+class AdminMarketingEventViewSet(viewsets.GenericViewSet):
+    """CRUD мероприятий для маркетолога."""
+
+    permission_classes = [IsAdminOrMarketingManager]
+    pagination_class = AdminPagination
+
+    def get_queryset(self):
+        queryset = Event.objects.select_related('author').all()
+        search = self.request.query_params.get('search', '').strip()
+        if search:
+            queryset = queryset.filter(
+                Q(title__icontains=search) |
+                Q(summary__icontains=search) |
+                Q(location__icontains=search)
+            )
+        status_filter = self.request.query_params.get('status', '').strip()
+        if status_filter:
+            queryset = queryset.filter(status=status_filter)
+        event_type = self.request.query_params.get('event_type', '').strip()
+        if event_type:
+            queryset = queryset.filter(event_type=event_type)
+        featured = self.request.query_params.get('featured', '').strip()
+        if featured:
+            queryset = queryset.filter(is_featured=_admin_bool(featured))
+        return queryset.order_by('-updated_at', 'start_at')
+
+    def _serialize(self, event):
+        data = event.to_dict()
+        data.update({
+            'author_email': event.author.email if event.author else None,
+            'created_at': event.created_at.isoformat() if event.created_at else None,
+            'updated_at': event.updated_at.isoformat() if event.updated_at else None,
+            'saved_count': getattr(event, 'saved_count', event.saved_by.count()),
+        })
+        return data
+
+    def _apply_payload(self, event, payload, partial=True):
+        required = [] if partial else ['title', 'start_at']
+        missing = [field for field in required if not str(payload.get(field, '')).strip()]
+        if missing:
+            return {'error': f'Заполните поля: {", ".join(missing)}'}
+
+        text_fields = ['title', 'slug', 'summary', 'description', 'cover_image_url', 'location', 'online_url']
+        for field in text_fields:
+            if field in payload:
+                value = payload.get(field)
+                setattr(event, field, (value or '').strip() if field != 'description' else value or '')
+
+        if 'event_type' in payload:
+            allowed_types = {choice[0] for choice in Event.EVENT_TYPES}
+            if payload['event_type'] not in allowed_types:
+                return {'error': 'Некорректный тип мероприятия'}
+            event.event_type = payload['event_type']
+        if 'status' in payload:
+            allowed_statuses = {choice[0] for choice in Event.STATUS_CHOICES}
+            if payload['status'] not in allowed_statuses:
+                return {'error': 'Некорректный статус мероприятия'}
+            event.status = payload['status']
+        if 'start_at' in payload:
+            parsed = _admin_datetime(payload.get('start_at'))
+            if not parsed:
+                return {'error': 'Укажите корректную дату начала'}
+            event.start_at = parsed
+        if 'end_at' in payload:
+            event.end_at = _admin_datetime(payload.get('end_at'))
+        if 'published_at' in payload:
+            event.published_at = _admin_datetime(payload.get('published_at'))
+        if 'is_online' in payload:
+            event.is_online = _admin_bool(payload.get('is_online'))
+        if 'is_featured' in payload:
+            event.is_featured = _admin_bool(payload.get('is_featured'))
+        return None
+
+    def list(self, request):
+        queryset = self.get_queryset().annotate(saved_count=Count('saved_by', distinct=True))
+        page = self.paginate_queryset(queryset)
+        rows = [self._serialize(event) for event in (page if page is not None else queryset)]
+        if page is not None:
+            return self.get_paginated_response(rows)
+        return Response(rows)
+
+    def retrieve(self, request, pk=None):
+        try:
+            return Response(self._serialize(self.get_queryset().get(id=pk)))
+        except Event.DoesNotExist:
+            return Response({'error': 'Мероприятие не найдено'}, status=status.HTTP_404_NOT_FOUND)
+
+    def create(self, request):
+        event = Event(author=request.user)
+        error = self._apply_payload(event, request.data, partial=False)
+        if error:
+            return Response(error, status=status.HTTP_400_BAD_REQUEST)
+        event.save()
+        return Response(self._serialize(event), status=status.HTTP_201_CREATED)
+
+    def update(self, request, pk=None):
+        try:
+            event = Event.objects.get(id=pk)
+        except Event.DoesNotExist:
+            return Response({'error': 'Мероприятие не найдено'}, status=status.HTTP_404_NOT_FOUND)
+        error = self._apply_payload(event, request.data, partial=False)
+        if error:
+            return Response(error, status=status.HTTP_400_BAD_REQUEST)
+        event.save()
+        return Response(self._serialize(event))
+
+    def partial_update(self, request, pk=None):
+        try:
+            event = Event.objects.get(id=pk)
+        except Event.DoesNotExist:
+            return Response({'error': 'Мероприятие не найдено'}, status=status.HTTP_404_NOT_FOUND)
+        error = self._apply_payload(event, request.data, partial=True)
+        if error:
+            return Response(error, status=status.HTTP_400_BAD_REQUEST)
+        event.save()
+        return Response(self._serialize(event))
+
+    def destroy(self, request, pk=None):
+        deleted, _ = Event.objects.filter(id=pk).delete()
+        if not deleted:
+            return Response({'error': 'Мероприятие не найдено'}, status=status.HTTP_404_NOT_FOUND)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @action(detail=True, methods=['post'])
+    def publish(self, request, pk=None):
+        try:
+            event = Event.objects.get(id=pk)
+        except Event.DoesNotExist:
+            return Response({'error': 'Мероприятие не найдено'}, status=status.HTTP_404_NOT_FOUND)
+        event.status = 'published'
+        if not event.published_at:
+            event.published_at = timezone.now()
+        event.save()
+        return Response(self._serialize(event))
+
+    @action(detail=True, methods=['post'])
+    def unpublish(self, request, pk=None):
+        try:
+            event = Event.objects.get(id=pk)
+        except Event.DoesNotExist:
+            return Response({'error': 'Мероприятие не найдено'}, status=status.HTTP_404_NOT_FOUND)
+        event.status = 'draft'
+        event.save(update_fields=['status', 'updated_at'])
+        return Response(self._serialize(event))
+
+
 class AdminProductViewSet(AdminModelViewSet):
     """ViewSet для управления товарами."""
     queryset = Product.objects.all()
     ordering = ('-order_count', 'name')
-    lookup_field = 'kotmatros_product_id'
+    lookup_field = 'external_id'
     lookup_url_kwarg = 'id'
 
     def _serialize_product(self, product):
@@ -1373,7 +1720,7 @@ class AdminProductViewSet(AdminModelViewSet):
         if product.compare_price and product.compare_price > product.price:
             discount_percent = round((1 - float(product.price) / float(product.compare_price)) * 100)
         return {
-            'id': str(product.kotmatros_product_id or product.id),
+            'id': str(product.external_id or product.id),
             'name': product.name,
             'description': product.description or '',
             'price': float(product.price),
@@ -1400,7 +1747,7 @@ class AdminProductViewSet(AdminModelViewSet):
             queryset = queryset.filter(
                 Q(name__icontains=search) |
                 Q(brand__name__icontains=search) |
-                Q(kotmatros_product_id__icontains=search)
+                Q(external_id__icontains=search)
             )
         
         category_slug = request.query_params.get('category_slug', '')
@@ -1423,7 +1770,7 @@ class AdminProductViewSet(AdminModelViewSet):
     def retrieve(self, request, id=None):
         """Получить один товар по external_id."""
         try:
-            product = Product.objects.get(kotmatros_product_id=id)
+            product = Product.objects.get(external_id=id)
             return Response(self._serialize_product(product))
         except Product.DoesNotExist:
             return Response(
@@ -1434,7 +1781,7 @@ class AdminProductViewSet(AdminModelViewSet):
     def update(self, request, id=None, **kwargs):
         """Обновить товар."""
         try:
-            product = Product.objects.get(kotmatros_product_id=id)
+            product = Product.objects.get(external_id=id)
             allowed_fields = [
                 'name', 'description', 'price', 'compare_price', 'is_available',
                 'product_group', 'animal_type', 'brand_id', 'category_id'
@@ -1458,7 +1805,7 @@ class AdminProductViewSet(AdminModelViewSet):
     def destroy(self, request, id=None):
         """Удалить товар."""
         try:
-            product = Product.objects.get(kotmatros_product_id=id)
+            product = Product.objects.get(external_id=id)
             product.delete()
             return Response(status=status.HTTP_204_NO_CONTENT)
         except Product.DoesNotExist:
@@ -1592,7 +1939,39 @@ class IsAdminOrCourseCreator(BasePermission):
     def has_permission(self, request, view):
         if not request.user or not request.user.is_authenticated:
             return False
-        return request.user.is_staff or getattr(request.user, 'role', None) == 'course_creator'
+        return request.user.is_staff or request.user.is_superuser or getattr(request.user, 'role', None) == 'course_creator'
+
+
+COURSE_ADMIN_WRITE_FIELDS = [
+    'title', 'description', 'detailed_description', 'what_you_will_learn',
+    'category', 'subcategory', 'level', 'pet_type', 'format_type',
+    'price', 'duration', 'completion_time',
+    'is_active', 'status',
+    'instructor_name', 'instructor_bio',
+    'author_id',
+    'course_type',
+    'recommended_behavior_types', 'recommended_activity_levels',
+    'recommended_social_levels', 'min_training_experience',
+    'compatible_health_issues', 'addresses_special_needs',
+    'suitable_activities', 'addresses_behavioral_problems',
+    'correction_problem', 'correction_problem_tags', 'correction_symptoms',
+    'correction_goal', 'success_metrics', 'risk_level',
+    'contraindications', 'red_flags', 'safety_notes', 'required_equipment',
+    'owner_daily_time_minutes', 'min_age_months', 'max_age_months',
+    'excluded_behavioral_problems', 'excluded_health_issues',
+    'requires_specialist_supervision', 'requires_vet_clearance',
+    'review_status', 'review_notes',
+]
+
+COURSE_ADMIN_LIST_FIELDS = [
+    'recommended_behavior_types', 'recommended_activity_levels',
+    'recommended_social_levels', 'compatible_health_issues',
+    'addresses_special_needs', 'suitable_activities',
+    'addresses_behavioral_problems', 'correction_problem_tags',
+    'correction_symptoms', 'success_metrics', 'contraindications',
+    'red_flags', 'required_equipment', 'excluded_behavioral_problems',
+    'excluded_health_issues',
+]
 
 
 class AdminCourseViewSet(viewsets.ModelViewSet):
@@ -1619,6 +1998,17 @@ class AdminCourseViewSet(viewsets.ModelViewSet):
                 'created_at': lesson.created_at.isoformat(),
             })
 
+        students_count = getattr(course, 'students_count_value', None)
+        if students_count is None:
+            students_count = course.user_courses.count()
+
+        pets_count = getattr(course, 'pets_count_value', None)
+        if pets_count is None:
+            pets_count = course.user_courses.exclude(pet__isnull=True).values('pet_id').distinct().count()
+
+        avg_progress = getattr(course, 'avg_progress_value', None)
+        publish_check = course.get_behavior_correction_publish_check(getattr(self.request, 'user', None))
+
         return {
             'id': str(course.id),
             'title': course.title,
@@ -1633,14 +2023,48 @@ class AdminCourseViewSet(viewsets.ModelViewSet):
             'is_free': course.is_free,
             'status': course.status,
             'pet_type': getattr(course, 'pet_type', None),
+            'course_type': course.course_type,
             'duration': course.duration,
             'format_type': course.format_type,
             'completion_time': course.completion_time or '',
             'instructor_name': course.instructor_name or '',
             'instructor_bio': course.instructor_bio or '',
+            'recommended_behavior_types': course.recommended_behavior_types or [],
+            'recommended_activity_levels': course.recommended_activity_levels or [],
+            'recommended_social_levels': course.recommended_social_levels or [],
+            'min_training_experience': course.min_training_experience or '',
+            'compatible_health_issues': course.compatible_health_issues or [],
+            'addresses_special_needs': course.addresses_special_needs or [],
+            'suitable_activities': course.suitable_activities or [],
+            'addresses_behavioral_problems': course.addresses_behavioral_problems or [],
+            'correction_problem': course.correction_problem or '',
+            'correction_problem_tags': course.correction_problem_tags or [],
+            'correction_symptoms': course.correction_symptoms or [],
+            'correction_goal': course.correction_goal or '',
+            'success_metrics': course.success_metrics or [],
+            'risk_level': course.risk_level,
+            'contraindications': course.contraindications or [],
+            'red_flags': course.red_flags or [],
+            'safety_notes': course.safety_notes or '',
+            'required_equipment': course.required_equipment or [],
+            'owner_daily_time_minutes': course.owner_daily_time_minutes,
+            'min_age_months': course.min_age_months,
+            'max_age_months': course.max_age_months,
+            'excluded_behavioral_problems': course.excluded_behavioral_problems or [],
+            'excluded_health_issues': course.excluded_health_issues or [],
+            'requires_specialist_supervision': course.requires_specialist_supervision,
+            'requires_vet_clearance': course.requires_vet_clearance,
+            'review_status': course.review_status,
+            'review_notes': course.review_notes or '',
             'lessons': lessons,
             'lessons_count': len(lessons),
+            'students': students_count,
+            'students_count': students_count,
+            'pets_count': pets_count,
+            'completion_rate': round(float(avg_progress or 0), 1),
+            'publish_check': publish_check,
             'author_id': str(course.author_id) if course.author_id else None,
+            'author_email': course.author.email if course.author else '',
             'created_at': course.created_at.isoformat(),
             'updated_at': course.updated_at.isoformat(),
         }
@@ -1648,10 +2072,61 @@ class AdminCourseViewSet(viewsets.ModelViewSet):
     def _is_course_creator(self):
         return getattr(self.request.user, 'role', None) == 'course_creator'
 
+    def _normalize_field_value(self, field, value):
+        """Привести значение из админки к типу поля модели Course."""
+        if field == 'price':
+            return Decimal(str(value)) if value not in (None, '') else Decimal('0')
+        if field == 'duration':
+            return int(value) if value not in (None, '') else 60
+        if field in ('owner_daily_time_minutes', 'min_age_months', 'max_age_months'):
+            return int(value) if value not in (None, '') else None
+        if field in (
+            'is_active', 'requires_specialist_supervision',
+            'requires_vet_clearance',
+        ):
+            if isinstance(value, str):
+                return value.lower() in ('true', '1', 'yes', 'on')
+            return bool(value)
+        if field in COURSE_ADMIN_LIST_FIELDS:
+            return value if isinstance(value, list) else []
+        return value
+
+    def _apply_course_data(self, course, data, allowed_fields):
+        """Записать разрешенные поля курса из request.data."""
+        for field in allowed_fields:
+            if field in data:
+                if field == 'author_id':
+                    author_id = data[field]
+                    if author_id in (None, ''):
+                        course.author = None
+                    else:
+                        course.author = User.objects.get(id=author_id, role='course_creator')
+                    continue
+                setattr(course, field, self._normalize_field_value(field, data[field]))
+
+        if course.course_type == 'behavior_correction':
+            course.category = course.category or 'behavior'
+            if course.category != 'behavior':
+                course.category = 'behavior'
+            if not course.format_type:
+                course.format_type = 'mixed'
+            course.is_active = course.status == 'published'
+
+        return course
+
     def get_queryset(self):
         """Получить queryset с фильтрами."""
         # Оптимизация: предзагружаем уроки для избежания N+1
-        queryset = Course.objects.prefetch_related('lessons').all()
+        queryset = (
+            Course.objects
+            .prefetch_related('lessons')
+            .annotate(
+                students_count_value=Count('user_courses', distinct=True),
+                pets_count_value=Count('user_courses__pet', distinct=True),
+                avg_progress_value=Avg('user_progress__progress_percent'),
+            )
+            .all()
+        )
 
         # Создатели курсов видят только свои курсы
         if self._is_course_creator():
@@ -1670,9 +2145,29 @@ class AdminCourseViewSet(viewsets.ModelViewSet):
         if category:
             queryset = queryset.filter(category=category)
 
+        course_type = self.request.query_params.get('course_type', '')
+        if course_type:
+            queryset = queryset.filter(course_type=course_type)
+
+        pet_type = self.request.query_params.get('pet_type', '')
+        if pet_type:
+            queryset = queryset.filter(pet_type=pet_type)
+
         level = self.request.query_params.get('level', '')
         if level:
             queryset = queryset.filter(level=level)
+
+        risk_level = self.request.query_params.get('risk_level', '')
+        if risk_level:
+            queryset = queryset.filter(risk_level=risk_level)
+
+        correction_problem = self.request.query_params.get('correction_problem', '')
+        if correction_problem:
+            queryset = queryset.filter(correction_problem=correction_problem)
+
+        review_status = self.request.query_params.get('review_status', '')
+        if review_status:
+            queryset = queryset.filter(review_status=review_status)
 
         is_active = self.request.query_params.get('is_active', '')
         if is_active:
@@ -1695,21 +2190,31 @@ class AdminCourseViewSet(viewsets.ModelViewSet):
         """Создать новый курс (черновик)."""
         try:
             data = request.data.copy()
+            course_type = data.get('course_type', 'general')
             course = Course.objects.create(
                 title=data.get('title', 'Новый курс'),
                 description=data.get('description', ''),
                 duration=int(data.get('duration', 60)),
-                category=data.get('category', 'basics'),
+                category='behavior' if course_type == 'behavior_correction' else data.get('category', 'basics'),
                 level=data.get('level', 'beginner'),
                 pet_type=data.get('pet_type', 'all'),
-                format_type=data.get('format_type', 'video'),
+                format_type='mixed' if course_type == 'behavior_correction' else data.get('format_type', 'video'),
                 price=Decimal(str(data.get('price', 0))) if data.get('price') else Decimal('0'),
                 is_active=False,
                 status='draft',
                 instructor_name=data.get('instructor_name', ''),
                 instructor_bio=data.get('instructor_bio', ''),
                 author=request.user,
+                course_type=course_type,
             )
+            if not self._is_course_creator() and data.get('author_id'):
+                course.author = User.objects.get(id=data.get('author_id'), role='course_creator')
+            self._apply_course_data(course, data, COURSE_ADMIN_WRITE_FIELDS)
+            course.is_active = False
+            course.status = 'draft'
+            if self._is_course_creator():
+                course.author = request.user
+            course.save()
             return Response(self._serialize_course(course), status=status.HTTP_201_CREATED)
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
@@ -1718,6 +2223,11 @@ class AdminCourseViewSet(viewsets.ModelViewSet):
         """Получить один курс."""
         try:
             course = Course.objects.get(id=pk)
+            if self._is_course_creator() and course.author_id != request.user.id:
+                return Response(
+                    {'error': 'Вы можете смотреть только свои курсы'},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
             return Response(self._serialize_course(course))
         except Course.DoesNotExist:
             return Response({'error': 'Курс не найден'}, status=status.HTTP_404_NOT_FOUND)
@@ -1741,28 +2251,16 @@ class AdminCourseViewSet(viewsets.ModelViewSet):
                     status=status.HTTP_403_FORBIDDEN,
                 )
 
-            allowed_fields = [
-                'title', 'description', 'detailed_description', 'what_you_will_learn',
-                'category', 'subcategory', 'level', 'pet_type', 'format_type',
-                'price', 'duration', 'completion_time',
-                'is_active', 'status',
-                'instructor_name', 'instructor_bio',
-            ]
+            allowed_fields = list(COURSE_ADMIN_WRITE_FIELDS)
 
             # Создатели курсов не могут менять статус и is_active
             if self._is_course_creator():
-                allowed_fields = [f for f in allowed_fields if f not in ('status', 'is_active')]
+                allowed_fields = [
+                    f for f in allowed_fields
+                    if f not in ('status', 'is_active', 'review_status', 'review_notes', 'author_id')
+                ]
 
-            for field in allowed_fields:
-                if field in request.data:
-                    value = request.data[field]
-                    if field == 'price':
-                        value = Decimal(str(value)) if value else Decimal('0')
-                    elif field == 'duration':
-                        value = int(value) if value else 60
-                    elif field == 'is_active':
-                        value = bool(value)
-                    setattr(course, field, value)
+            self._apply_course_data(course, request.data, allowed_fields)
             course.save()
             return Response(self._serialize_course(course))
         except Course.DoesNotExist:
@@ -1786,6 +2284,157 @@ class AdminCourseViewSet(viewsets.ModelViewSet):
                 {'error': 'Курс не найден'},
                 status=status.HTTP_404_NOT_FOUND
             )
+
+    @action(detail=True, methods=['get'], url_path='publish-check')
+    def publish_check(self, request, pk=None):
+        """Проверка готовности курса к публикации."""
+        try:
+            course = Course.objects.get(id=pk)
+        except Course.DoesNotExist:
+            return Response({'error': 'Курс не найден'}, status=status.HTTP_404_NOT_FOUND)
+
+        if self._is_course_creator() and course.author_id != request.user.id:
+            return Response(
+                {'error': 'Вы можете проверять только свои курсы'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        return Response(course.get_behavior_correction_publish_check(request.user))
+
+    @action(detail=True, methods=['post'], url_path='submit-for-review')
+    def submit_for_review(self, request, pk=None):
+        """Отправить курс на проверку."""
+        try:
+            course = Course.objects.get(id=pk)
+        except Course.DoesNotExist:
+            return Response({'error': 'Курс не найден'}, status=status.HTTP_404_NOT_FOUND)
+
+        if self._is_course_creator() and course.author_id != request.user.id:
+            return Response(
+                {'error': 'Вы можете отправлять на проверку только свои курсы'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        course.review_status = 'in_review'
+        course.save(update_fields=['review_status', 'updated_at'])
+        return Response(self._serialize_course(course))
+
+    @action(detail=True, methods=['post'], url_path='request-changes')
+    def request_changes(self, request, pk=None):
+        """Вернуть курс автору на доработку."""
+        if self._is_course_creator():
+            return Response({'error': 'Недостаточно прав'}, status=status.HTTP_403_FORBIDDEN)
+
+        try:
+            course = Course.objects.get(id=pk)
+        except Course.DoesNotExist:
+            return Response({'error': 'Курс не найден'}, status=status.HTTP_404_NOT_FOUND)
+
+        course.review_status = 'changes_requested'
+        course.review_notes = request.data.get('review_notes', course.review_notes or '')
+        course.save(update_fields=['review_status', 'review_notes', 'updated_at'])
+        return Response(self._serialize_course(course))
+
+    @action(detail=True, methods=['post'], url_path='approve')
+    def approve(self, request, pk=None):
+        """Одобрить курс после проверки."""
+        if self._is_course_creator():
+            return Response({'error': 'Недостаточно прав'}, status=status.HTTP_403_FORBIDDEN)
+
+        try:
+            course = Course.objects.get(id=pk)
+        except Course.DoesNotExist:
+            return Response({'error': 'Курс не найден'}, status=status.HTTP_404_NOT_FOUND)
+
+        course.review_status = 'approved'
+        course.review_notes = request.data.get('review_notes', course.review_notes or '')
+        course.save(update_fields=['review_status', 'review_notes', 'updated_at'])
+        return Response(self._serialize_course(course))
+
+    @action(detail=True, methods=['get'], url_path='students')
+    def students(self, request, pk=None):
+        """Реальные пользователи и питомцы, проходящие курс."""
+        try:
+            course = Course.objects.get(id=pk)
+        except Course.DoesNotExist:
+            return Response({'error': 'Курс не найден'}, status=status.HTTP_404_NOT_FOUND)
+
+        if self._is_course_creator() and course.author_id != request.user.id:
+            return Response({'error': 'Недостаточно прав'}, status=status.HTTP_403_FORBIDDEN)
+
+        enrollments = (
+            UserCourse.objects
+            .filter(course=course)
+            .select_related('user', 'pet', 'pet__breed')
+            .order_by('-purchased_at')
+        )
+        progress_by_key = {
+            (progress.user_id, progress.pet_id): progress
+            for progress in UserCourseProgress.objects.filter(course=course)
+        }
+
+        data = []
+        for enrollment in enrollments:
+            progress = progress_by_key.get((enrollment.user_id, enrollment.pet_id))
+            pet = enrollment.pet
+            user_name = ' '.join(
+                part for part in [
+                    getattr(enrollment.user, 'first_name', ''),
+                    getattr(enrollment.user, 'last_name', ''),
+                ] if part
+            ) or enrollment.user.email
+            data.append({
+                'id': enrollment.id,
+                'user_id': str(enrollment.user_id),
+                'user_email': enrollment.user.email,
+                'user_name': user_name,
+                'pet': {
+                    'id': str(pet.id),
+                    'name': pet.name,
+                    'species': pet.species,
+                    'breed_name': pet.breed.name if pet.breed else None,
+                    'age_months': pet.age_months,
+                    'behavioral_problems': getattr(pet, 'behavioral_problems', []) or [],
+                } if pet else None,
+                'purchased_at': enrollment.purchased_at.isoformat() if enrollment.purchased_at else None,
+                'progress': progress.progress_percent if progress else enrollment.progress,
+                'status': progress.status if progress else 'not_started',
+                'last_activity_at': progress.last_activity_at.isoformat() if progress and progress.last_activity_at else None,
+            })
+
+        return Response({
+            'count': len(data),
+            'results': data,
+        })
+
+    @action(detail=True, methods=['get'], url_path='analytics')
+    def analytics(self, request, pk=None):
+        """Базовая аналитика курса только по реальным данным."""
+        try:
+            course = Course.objects.get(id=pk)
+        except Course.DoesNotExist:
+            return Response({'error': 'Курс не найден'}, status=status.HTTP_404_NOT_FOUND)
+
+        if self._is_course_creator() and course.author_id != request.user.id:
+            return Response({'error': 'Недостаточно прав'}, status=status.HTTP_403_FORBIDDEN)
+
+        enrollments = UserCourse.objects.filter(course=course)
+        progress_qs = UserCourseProgress.objects.filter(course=course)
+        total_students = enrollments.count()
+        total_pets = enrollments.exclude(pet__isnull=True).values('pet_id').distinct().count()
+        completed = progress_qs.filter(status='completed').count()
+        avg_progress = progress_qs.aggregate(value=Avg('progress_percent'))['value'] or 0
+
+        return Response({
+            'students_count': total_students,
+            'pets_count': total_pets,
+            'completed_count': completed,
+            'completion_rate': round(float(avg_progress), 1),
+            'in_progress_count': progress_qs.filter(status='in_progress').count(),
+            'not_started_count': max(total_students - progress_qs.exclude(status='not_started').count(), 0),
+            'revenue': None,
+            'revenue_note': 'Выручка не рассчитана: в модели курса нет отдельной подтвержденной оплаты курса',
+        })
 
 
 @api_view(['GET'])

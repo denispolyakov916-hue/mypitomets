@@ -14,6 +14,65 @@ const parseLabels = {
 const smallBadgeClass = 'inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium';
 const formatDate = (value) => value ? new Date(value).toLocaleDateString('ru-RU') : '-';
 
+// Окно номеров страниц с многоточиями: [1, gap, 4, 5, 6, gap, 33]
+const buildPageWindow = (page, pageCount) => {
+  const sorted = [...new Set([1, pageCount, page, page - 1, page + 1])]
+    .filter(p => p >= 1 && p <= pageCount)
+    .sort((a, b) => a - b);
+  const out = [];
+  let prev = 0;
+  sorted.forEach(p => {
+    if (p - prev > 1) out.push(`gap-${p}`);
+    out.push(p);
+    prev = p;
+  });
+  return out;
+};
+
+const pageNavBtn = 'inline-flex items-center justify-center rounded-md border border-gray-300 px-2 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50';
+
+const Pagination = ({ page, pageCount, loading, onChange }) => {
+  const [jump, setJump] = useState('');
+  const go = (p) => onChange(Math.min(pageCount, Math.max(1, Number(p) || 1)));
+  return (
+    <div className="flex flex-wrap items-center gap-1.5">
+      <button type="button" disabled={page <= 1 || loading} onClick={() => go(page - 1)} className={pageNavBtn} aria-label="Назад">
+        <ChevronLeft className="h-3.5 w-3.5" />
+      </button>
+      {buildPageWindow(page, pageCount).map(p => (typeof p === 'string'
+        ? <span key={p} className="px-1 text-xs text-gray-400">…</span>
+        : (
+          <button
+            key={p}
+            type="button"
+            disabled={loading}
+            onClick={() => go(p)}
+            className={`min-w-[2rem] rounded-md border px-2 py-1.5 text-xs font-medium ${p === page ? 'border-primary-600 bg-primary-600 text-white' : 'border-gray-300 text-gray-700 hover:bg-gray-50'}`}
+          >
+            {p}
+          </button>
+        )))}
+      <button type="button" disabled={page >= pageCount || loading} onClick={() => go(page + 1)} className={pageNavBtn} aria-label="Далее">
+        <ChevronRight className="h-3.5 w-3.5" />
+      </button>
+      <form onSubmit={(e) => { e.preventDefault(); go(jump); setJump(''); }} className="ml-1 flex items-center gap-1">
+        <input
+          type="number"
+          min={1}
+          max={pageCount}
+          value={jump}
+          onChange={(e) => setJump(e.target.value)}
+          placeholder={`${page}`}
+          aria-label="Перейти к странице"
+          className="w-14 rounded-md border border-gray-300 px-2 py-1 text-xs"
+        />
+        <button type="submit" className={pageNavBtn}>Перейти</button>
+        <span className="text-xs text-gray-400">из {pageCount}</span>
+      </form>
+    </div>
+  );
+};
+
 const SupplierProducts = () => {
   const [products, setProducts] = useState([]);
   const [search, setSearch] = useState('');
@@ -119,27 +178,7 @@ const SupplierProducts = () => {
         <div>
           {loading ? 'Загружаю ассортимент...' : `Показано ${from}-${to} из ${count} позиций`}
         </div>
-        <div className="grid grid-cols-[auto_1fr_auto] items-center gap-2 sm:flex">
-          <button
-            type="button"
-            disabled={page <= 1 || loading}
-            onClick={() => setPage(prev => Math.max(1, prev - 1))}
-            className="inline-flex items-center justify-center rounded-md border border-gray-300 px-2.5 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-          >
-            <ChevronLeft className="mr-1 h-3.5 w-3.5" />
-            Назад
-          </button>
-          <span className="text-center text-xs text-gray-500">Стр. {page} из {pageCount}</span>
-          <button
-            type="button"
-            disabled={page >= pageCount || loading}
-            onClick={() => setPage(prev => Math.min(pageCount, prev + 1))}
-            className="inline-flex items-center justify-center rounded-md border border-gray-300 px-2.5 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-          >
-            Далее
-            <ChevronRight className="ml-1 h-3.5 w-3.5" />
-          </button>
-        </div>
+        <Pagination page={page} pageCount={pageCount} loading={loading} onChange={setPage} />
       </div>
 
       {error && (
@@ -147,7 +186,8 @@ const SupplierProducts = () => {
       )}
 
       <div className="space-y-3 md:hidden">
-        {products.map(item => {
+        {products.map((item, idx) => {
+          const rowNo = (page - 1) * pageSize + idx + 1;
           const data = item.data || {};
           const origin = item.changed_fields || {};
           const itemParseStatus = origin.parse_status || data.parse_status;
@@ -156,6 +196,7 @@ const SupplierProducts = () => {
             <article key={item.id} className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
+                  <span className="text-xs font-semibold text-gray-400">№{rowNo}</span>
                   <a href={`/supplier-panel/products/${item.id}`} className="block line-clamp-3 text-sm font-semibold text-gray-900 hover:text-primary-700">
                     {item.title}
                   </a>
@@ -209,6 +250,7 @@ const SupplierProducts = () => {
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
+              <th className="w-14 px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">№</th>
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Корм</th>
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Классификация</th>
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Проверка</th>
@@ -217,13 +259,15 @@ const SupplierProducts = () => {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
-            {products.map(item => {
+            {products.map((item, idx) => {
+              const rowNo = (page - 1) * pageSize + idx + 1;
               const data = item.data || {};
               const origin = item.changed_fields || {};
               const parseStatus = origin.parse_status || data.parse_status;
               const errorsCount = (item.validation_errors?.shop?.length || 0) + (item.validation_errors?.recommendation?.length || 0);
               return (
                 <tr key={item.id} className="hover:bg-gray-50">
+                  <td className="px-4 py-4 text-sm font-medium text-gray-400 align-top">{rowNo}</td>
                   <td className="px-4 py-4">
                     <a href={`/supplier-panel/products/${item.id}`} className="block font-medium text-gray-900 hover:text-primary-700">
                       {item.title}
@@ -270,7 +314,7 @@ const SupplierProducts = () => {
             })}
             {!loading && products.length === 0 && (
               <tr>
-                <td colSpan={5} className="px-4 py-12 text-center text-sm text-gray-500">
+                <td colSpan={6} className="px-4 py-12 text-center text-sm text-gray-500">
                   Корма не найдены
                 </td>
               </tr>

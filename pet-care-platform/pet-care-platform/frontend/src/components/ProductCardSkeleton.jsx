@@ -53,7 +53,7 @@ function ProductCardSkeleton() {
  */
 export function ProductGridSkeleton({ count = 20 }) {
   return (
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 lg:gap-5">
+    <div className="grid grid-cols-1 min-[420px]:grid-cols-2 md:grid-cols-4 gap-3 min-[420px]:gap-4 lg:gap-5">
       {[...Array(count)].map((_, index) => (
         <div
           key={index}

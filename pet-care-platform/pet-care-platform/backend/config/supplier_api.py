@@ -362,7 +362,11 @@ class SupplierProductSubmissionViewSet(viewsets.ModelViewSet):
         if not access or not access.can_edit_catalog:
             raise serializers.ValidationError('Нет прав на редактирование ассортимента')
         instance = self.get_object()
-        if instance.status in [
+        # Обычным поставщикам нельзя править утверждённые/архивные заявки (нужно ревью).
+        # Администратору/владельцу платформы разрешаем править любой статус — иначе
+        # бОльшая часть каталога Динозаврика (approved_for_recommendation = 943 шт.)
+        # просто не сохранялась, а фронт ошибку не показывал.
+        if not _is_admin_user(self.request.user) and instance.status in [
             SupplierProductSubmission.STATUS_APPROVED_FOR_RECOMMENDATION,
             SupplierProductSubmission.STATUS_ARCHIVED,
         ]:

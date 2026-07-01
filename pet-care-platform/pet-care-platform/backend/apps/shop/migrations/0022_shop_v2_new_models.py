@@ -164,23 +164,23 @@ class Migration(migrations.Migration):
         ),
         migrations.AddField(
             model_name='brand',
-            name='kotmatros_brand_id',
-            field=models.BigIntegerField(blank=True, db_column='external_id', null=True, unique=True, verbose_name='ID в Kotmatros'),
+            name='external_id',
+            field=models.BigIntegerField(blank=True, db_column='external_id', null=True, unique=True, verbose_name='ID внешнего источника'),
         ),
         migrations.AddField(
             model_name='category',
-            name='kotmatros_category_id',
-            field=models.BigIntegerField(blank=True, db_column='external_id', help_text='ID категории из внешнего API Kotmatros', null=True, unique=True, verbose_name='ID в Kotmatros'),
+            name='external_id',
+            field=models.BigIntegerField(blank=True, db_column='external_id', help_text='ID категории из внешнего API', null=True, unique=True, verbose_name='ID внешнего источника'),
         ),
         migrations.AddField(
             model_name='product',
-            name='kotmatros_product_id',
-            field=models.BigIntegerField(blank=True, db_column='external_id', help_text='ID товара из внешнего API Kotmatros', null=True, unique=True, verbose_name='ID в Kotmatros'),
+            name='external_id',
+            field=models.BigIntegerField(blank=True, db_column='external_id', help_text='ID товара из внешнего API', null=True, unique=True, verbose_name='ID внешнего источника'),
         ),
         migrations.AddField(
             model_name='productsku',
-            name='kotmatros_variant_id',
-            field=models.BigIntegerField(blank=True, db_column='external_id', null=True, unique=True, verbose_name='ID SKU в Kotmatros'),
+            name='external_id',
+            field=models.BigIntegerField(blank=True, db_column='external_id', null=True, unique=True, verbose_name='ID SKU внешнего источника'),
         ),
         migrations.AlterField(
             model_name='productsku',
@@ -189,15 +189,15 @@ class Migration(migrations.Migration):
         ),
         migrations.AddIndex(
             model_name='brand',
-            index=models.Index(fields=['kotmatros_brand_id'], name='idx_brand_kotmatros'),
+            index=models.Index(fields=['external_id'], name='idx_brand_external'),
         ),
         migrations.AddIndex(
             model_name='category',
-            index=models.Index(fields=['kotmatros_category_id'], name='idx_cat_kotmatros'),
+            index=models.Index(fields=['external_id'], name='idx_cat_external'),
         ),
         migrations.AddIndex(
             model_name='productsku',
-            index=models.Index(fields=['kotmatros_variant_id'], name='idx_skus_kotmatros'),
+            index=models.Index(fields=['external_id'], name='idx_skus_external'),
         ),
         migrations.AddField(
             model_name='wishlist',

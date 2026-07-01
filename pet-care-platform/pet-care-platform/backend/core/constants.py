@@ -72,6 +72,7 @@ class UserRole:
     SUPPLIER_MANAGER = 'supplier_manager'
     SUPPLIER_EDITOR = 'supplier_editor'
     SUPPLIER_ANALYST = 'supplier_analyst'
+    MARKETING_MANAGER = 'marketing_manager'
     ADMIN = 'admin'
 
     CHOICES = [
@@ -80,6 +81,7 @@ class UserRole:
         (SUPPLIER_MANAGER, 'Менеджер поставщика'),
         (SUPPLIER_EDITOR, 'Редактор поставщика'),
         (SUPPLIER_ANALYST, 'Аналитик поставщика'),
+        (MARKETING_MANAGER, 'Маркетолог'),
         (ADMIN, 'Администратор'),
     ]
 

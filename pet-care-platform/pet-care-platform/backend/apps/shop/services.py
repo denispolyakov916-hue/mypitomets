@@ -1171,7 +1171,7 @@ class RecommendationEngine:
             if source_product.new_category:
                 source_code = _normalize(
                     source_product.new_category.code
-                    or CATEGORY_CODE_MAPPING.get(source_product.new_category.kotmatros_category_id)
+                    or CATEGORY_CODE_MAPPING.get(source_product.new_category.external_id)
                 )
 
             filtered = []
@@ -1209,7 +1209,7 @@ class RecommendationEngine:
         recommendations = []
 
         def _code_for(cat):
-            return cat.code or CATEGORY_CODE_MAPPING.get(cat.kotmatros_category_id)
+            return cat.code or CATEGORY_CODE_MAPPING.get(cat.external_id)
 
         def _normalize(code):
             if not code:
@@ -1274,7 +1274,7 @@ class RecommendationEngine:
         source_code = _normalize(_code_for(source_cat)) if source_cat else None
         source_root = source_code.split('.', 1)[0] if source_code else None
 
-        categories = list(Category.objects.filter(is_active=True).only('id', 'code', 'kotmatros_category_id', 'name'))
+        categories = list(Category.objects.filter(is_active=True).only('id', 'code', 'external_id', 'name'))
         code_to_ids = {}
         code_to_name = {}
         for cat in categories:
