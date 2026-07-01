@@ -580,7 +580,7 @@ const PetsEmptyState = React.memo(({ onCreateClick }) => (
               <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-teal-600 text-white text-sm font-bold">3</span>
               <div>
                 <h4 className="font-semibold text-gray-900">Напоминания</h4>
-                <p className="text-sm text-gray-600 mt-1">Прививки, визиты и дневник здоровья — меньше шансов что-то забыть.</p>
+                <p className="text-sm text-gray-600 mt-1">Прививки, визиты и дневник питомца — меньше шансов что-то забыть.</p>
               </div>
             </li>
           </ol>

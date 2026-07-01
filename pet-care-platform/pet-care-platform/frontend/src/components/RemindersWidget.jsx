@@ -196,7 +196,7 @@ function RemindersWidget({ limit = 5 }) {
           )}
         </div>
         <Link 
-          to="/reminders" 
+          to="/health-diary" 
           className="text-sm text-primary-600 hover:text-primary-700 font-medium"
         >
           Все →
@@ -207,7 +207,7 @@ function RemindersWidget({ limit = 5 }) {
         <div className="text-center py-8">
           <span className="text-4xl block mb-3">✨</span>
           <p className="text-gray-600 mb-4">Нет предстоящих напоминаний</p>
-          <Link to="/reminders/new">
+          <Link to="/health-diary">
             <Button variant="primary" size="sm" className="inline-flex items-center gap-1">
               Создать напоминание →
             </Button>
@@ -227,12 +227,12 @@ function RemindersWidget({ limit = 5 }) {
       
       {reminders.length > 0 && (
         <div className="mt-4 pt-4 border-t border-gray-100 flex justify-between items-center">
-          <Link to="/reminders/new">
+          <Link to="/health-diary">
             <Button variant="ghost" size="sm">
               + Добавить
             </Button>
           </Link>
-          <Link to="/reminders">
+          <Link to="/health-diary">
             <Button variant="secondary" size="sm">
               Все напоминания
             </Button>

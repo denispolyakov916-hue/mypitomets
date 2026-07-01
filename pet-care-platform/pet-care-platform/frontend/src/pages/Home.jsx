@@ -50,7 +50,7 @@ const welfareDomains = [
     borderColor: 'border-rose-200',
     description: 'Ранняя диагностика спасает жизни. Отслеживание изменений позволяет предотвратить критические состояния.',
     features: [
-      'Дневник здоровья и веса',
+      'Дневник питомца и веса',
       'Напоминания о прививках',
       'График посещений ветеринара',
       'Анализ динамики показателей'
@@ -443,7 +443,7 @@ function Home() {
                       to="/health-diary"
                       className="px-8 py-4 bg-white/10 backdrop-blur-sm border border-white/30 rounded-xl font-bold text-lg hover:bg-white/20 transition-all duration-300 text-center"
                     >
-                      Дневник здоровья
+                      Дневник питомца
                     </Link>
                   </>
                 ) : (

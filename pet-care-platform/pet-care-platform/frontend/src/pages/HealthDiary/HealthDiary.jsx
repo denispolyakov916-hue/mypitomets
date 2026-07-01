@@ -1,5 +1,5 @@
 /**
- * Дневник здоровья питомца с календарём и вкладками Обзор / Календарь / Список
+ * Дневник питомца с календарём и вкладками Обзор / Календарь / Список
  */
 
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
@@ -311,7 +311,7 @@ function HealthDiary() {
         <div className="card text-center py-12">
           <div aria-hidden="true" className="mx-auto w-32 h-32 mb-3"><PuffLottie name="sit" size={128} alt="Пуфыч" /></div>
           <h3 className="text-lg font-semibold text-gray-900 mb-2">У вас пока нет питомцев</h3>
-          <p className="text-gray-600 mb-4">Добавьте профиль питомца, чтобы вести дневник здоровья</p>
+          <p className="text-gray-600 mb-4">Добавьте профиль питомца, чтобы вести дневник питомца</p>
           <Link to="/pet-id" className="btn-primary">
             Добавить питомца
           </Link>
@@ -445,7 +445,7 @@ function HealthDiary() {
         <div className="relative flex flex-col lg:flex-row lg:items-center gap-6 lg:gap-8">
           {/* Заголовок + CTA */}
           <div className="lg:max-w-sm">
-            <h1 className="text-3xl sm:text-4xl font-extrabold text-primary-900 tracking-tight" style={{ fontFamily: 'Manrope, system-ui, sans-serif' }}>Дневник здоровья</h1>
+            <h1 className="text-3xl sm:text-4xl font-extrabold text-primary-900 tracking-tight" style={{ fontFamily: 'Manrope, system-ui, sans-serif' }}>Дневник питомца</h1>
             <p className="text-gray-500 mt-1.5">
               Прививки, обработки, визиты и заметки — всё под рукой.{selectedPet ? ` Здоровье ${selectedPet.name} под контролем.` : ''}
             </p>

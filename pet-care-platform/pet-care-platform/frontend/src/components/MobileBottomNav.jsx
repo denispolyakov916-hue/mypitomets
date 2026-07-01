@@ -23,7 +23,7 @@ const ctaVolumeShadow =
   'inset 0 1px 0 rgba(255, 255, 255, 0.4), inset 0 -1px 0 rgba(0, 0, 0, 0.1), 0 6px 16px rgba(0, 0, 0, 0.12), 0 2px 6px rgba(0, 0, 0, 0.08)'
 
 /** Подписи из двух слов — на двух строках, чтобы не наезжали в узкой панели */
-const TWO_WORD_NAV_LABELS = new Set(['Мои питомцы', 'Подбор питания', 'Дневник здоровья'])
+const TWO_WORD_NAV_LABELS = new Set(['Мои питомцы', 'Подбор питания', 'Дневник питомца'])
 
 function NavItemLabel({ text }) {
   const base =
@@ -135,7 +135,7 @@ function MobileBottomNav() {
             {({ isActive }) => (
               <>
                 <Stethoscope className={sectionIcon(isActive)} strokeWidth={2} aria-hidden />
-                <NavItemLabel text="Дневник здоровья" />
+                <NavItemLabel text="Дневник питомца" />
               </>
             )}
           </NavLink>

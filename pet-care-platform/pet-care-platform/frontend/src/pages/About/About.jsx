@@ -18,7 +18,7 @@ const TIMELINE = [
   {
     year: '2025',
     title: 'Первая версия',
-    text: 'Запустили цифровой паспорт PetID, дневник здоровья и умный подбор питания на основе породы, возраста и особенностей.',
+    text: 'Запустили цифровой паспорт PetID, дневник питомца и умный подбор питания на основе породы, возраста и особенностей.',
   },
   {
     year: '2026',
@@ -139,7 +139,7 @@ export default function About() {
             Начните заботиться о питомце вместе с нами
           </h2>
           <p className="mx-auto mt-3 max-w-xl text-white/85">
-            Подбор питания, дневник здоровья, курсы и магазин — всё вокруг вашего любимца.
+            Подбор питания, дневник питомца, курсы и магазин — всё вокруг вашего любимца.
           </p>
           <div className="mt-7 flex flex-wrap justify-center gap-3">
             <BrandButton as={Link} to="/start" variant="primary" size="lg" rightIcon={<ArrowRight className="h-5 w-5" />}>
