@@ -33,6 +33,8 @@ import Layout from './components/Layout'
 import PrivateRoute from './components/PrivateRoute'
 import AdminRoute from './components/AdminRoute'
 import SupplierRoute from './components/SupplierRoute'
+import SpecialistRoute from './components/SpecialistRoute'
+import MarketingRoute from './components/MarketingRoute'
 
 // Витрина страниц (для редизайна)
 import PagesRouter from './Страницы/Роутер'
@@ -64,6 +66,9 @@ import About from './pages/About/About'
 // Ленивая загрузка страниц пород
 const BreedsPage = lazy(() => import('./pages/Breeds/BreedsPage'))
 const BreedDetailPage = lazy(() => import('./pages/Breeds/BreedDetailPage'))
+const NewsEventsPage = lazy(() => import('./pages/NewsEvents/NewsEventsPage'))
+const EventDetailPage = lazy(() => import('./pages/NewsEvents/EventDetailPage'))
+const NewsDetailPage = lazy(() => import('./pages/NewsEvents/NewsDetailPage'))
 import Shop from './pages/Shop/Shop'
 import ProductDetail from './pages/Shop/ProductDetail'
 import Cart from './pages/Shop/Cart'
@@ -101,6 +106,8 @@ const Offer = lazy(() => import('./pages/Legal/Offer'))
 // Ленивая загрузка React админ-панели
 const AdminApp = lazy(() => import('./admin/App'))
 const SupplierApp = lazy(() => import('./supplier/App'))
+const SpecialistApp = lazy(() => import('./specialist/App'))
+const MarketingApp = lazy(() => import('./marketing/App'))
 
 // Хранилище для состояния аутентификации
 import { useAuthStore } from './store/authStore'
@@ -150,6 +157,28 @@ function App() {
               <SupplierApp />
             </Suspense>
           </SupplierRoute>
+        }
+      />
+
+      <Route
+        path="/specialist-panel/*"
+        element={
+          <SpecialistRoute>
+            <Suspense fallback={<AdminPanelLoader />}>
+              <SpecialistApp />
+            </Suspense>
+          </SpecialistRoute>
+        }
+      />
+
+      <Route
+        path="/marketing-panel/*"
+        element={
+          <MarketingRoute>
+            <Suspense fallback={<AdminPanelLoader />}>
+              <MarketingApp />
+            </Suspense>
+          </MarketingRoute>
         }
       />
 
@@ -273,6 +302,11 @@ function App() {
               {/* Курсы - Публичный каталог */}
               <Route path="/courses" element={<Courses />} />
               <Route path="/courses/:id" element={<CourseDetail />} />
+
+              {/* Новости и Мероприятия - Публичный */}
+              <Route path="/news-events" element={<Suspense fallback={<Loader />}><NewsEventsPage /></Suspense>} />
+              <Route path="/news-events/events/:slug" element={<Suspense fallback={<Loader />}><EventDetailPage /></Suspense>} />
+              <Route path="/news-events/news/:slug" element={<Suspense fallback={<Loader />}><NewsDetailPage /></Suspense>} />
 
               {/* Оплата - Требует аутентификации */}
               <Route path="/payment" element={<Payment />} />

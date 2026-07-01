@@ -45,13 +45,13 @@ import { useAdminStore } from './stores/adminStore';
 import { useAuthStore } from '../store/authStore';
 
 /**
- * Редирект на страницу по умолчанию в зависимости от роли:
- * course_creator → /admin-panel/courses, остальные → /admin-panel/dashboard
+ * Редирект на страницу по умолчанию для общей админки компании.
+ * Специалисты по курсам работают в /specialist-panel.
  */
 const AdminDefaultRedirect = () => {
   const user = useAuthStore(s => s.user);
   const target = user?.role === 'course_creator'
-    ? '/admin-panel/courses'
+    ? '/specialist-panel/courses'
     : '/admin-panel/dashboard';
   return <Navigate to={target} replace />;
 };

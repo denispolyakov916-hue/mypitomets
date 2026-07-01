@@ -10,9 +10,25 @@ import { ConfirmModal } from '../../../components/ui/Modal';
 import { adminAPI } from '../../utils/api';
 import { useAuthStore } from '../../../store/authStore';
 
-const CoursesTable = () => {
+const correctionProblemOptions = [
+  { value: 'aggression_dogs', label: 'Агрессия к собакам' },
+  { value: 'aggression_people', label: 'Агрессия к людям' },
+  { value: 'aggression_cats', label: 'Агрессия к кошкам' },
+  { value: 'separation_anxiety', label: 'Тревога разлуки' },
+  { value: 'excessive_barking', label: 'Чрезмерный лай' },
+  { value: 'destructive_behavior', label: 'Разрушительное поведение' },
+  { value: 'fear_phobias', label: 'Страхи и фобии' },
+  { value: 'marking_territory', label: 'Метки территории' },
+  { value: 'excessive_licking', label: 'Чрезмерное вылизывание' },
+  { value: 'food_aggression', label: 'Агрессия за еду' },
+  { value: 'leash_pulling', label: 'Тянет поводок' },
+  { value: 'jumping_on_people', label: 'Прыжки на людей' },
+];
+
+const CoursesTable = ({ panelBase = '/admin-panel', specialistMode = false }) => {
   const user = useAuthStore(s => s.user);
   const isCourseCreator = user?.role === 'course_creator';
+  const routeBase = panelBase.replace(/\/$/, '');
   const navigate = useNavigate();
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [courseToDelete, setCourseToDelete] = useState(null);
@@ -23,9 +39,12 @@ const CoursesTable = () => {
   const [pagination, setPagination] = useState(null);
   const [filters, setFilters] = useState({
     search: '',
+    course_type: specialistMode ? 'behavior_correction' : '',
     pet_type: '',
     category: '',
     level: '',
+    risk_level: '',
+    correction_problem: '',
     is_active: '',
     is_free: '',
     price_min: '',
@@ -43,6 +62,7 @@ const CoursesTable = () => {
 
       const response = await adminAPI.courses.list({
         ...filters,
+        ...(specialistMode ? { course_type: 'behavior_correction' } : {}),
         ...params,
         page: params.page || 1,
         page_size: params.page_size || 50
@@ -75,7 +95,7 @@ const CoursesTable = () => {
 
   const handleAction = useCallback(async (action, course) => {
     if (action === 'edit') {
-      navigate(`/admin-panel/courses/${course.id}/edit`);
+      navigate(`${routeBase}/courses/${course.id}/edit`);
       return;
     }
     if (action === 'preview') {
@@ -94,15 +114,20 @@ const CoursesTable = () => {
           category: courseData.category || 'basics',
           level: courseData.level || 'beginner',
           pet_type: courseData.pet_type || 'all',
+          course_type: courseData.course_type || 'general',
           format_type: courseData.format_type || 'video',
           price: courseData.price ?? 0,
           instructor_name: courseData.instructor_name || '',
           instructor_bio: courseData.instructor_bio || '',
+          correction_problem: courseData.correction_problem || '',
+          correction_problem_tags: courseData.correction_problem_tags || [],
+          addresses_behavioral_problems: courseData.addresses_behavioral_problems || [],
+          risk_level: courseData.risk_level || 'low',
           status: 'draft'
         };
         const { data: newCourse } = await adminAPI.courses.create(copyPayload);
         await loadData();
-        navigate(`/admin-panel/courses/${newCourse.id}/edit`);
+        navigate(`${routeBase}/courses/${newCourse.id}/edit`);
       } catch (err) {
         console.error('[CoursesTable] Duplicate error:', err);
         setError(err.response?.data?.error || 'Ошибка дублирования курса');
@@ -144,14 +169,14 @@ const CoursesTable = () => {
       setCourseToDelete(course);
       return;
     }
-  }, [navigate]);
+  }, [navigate, routeBase]);
 
   const handleCreate = () => {
     setShowCreateModal(true);
   };
 
   const handleCourseCreated = (courseId) => {
-    navigate(`/admin-panel/courses/${courseId}/edit`);
+    navigate(`${routeBase}/courses/${courseId}/edit`);
   };
 
   const handleDeleteConfirm = useCallback(async () => {
@@ -227,6 +252,16 @@ const CoursesTable = () => {
       )
     },
     {
+      key: 'author_email',
+      label: 'Специалист',
+      sortable: false,
+      render: (value) => (
+        <span className="text-sm text-gray-600">
+          {value || 'Не назначен'}
+        </span>
+      )
+    },
+    {
       key: 'price',
       label: 'Цена',
       sortable: true,
@@ -260,6 +295,39 @@ const CoursesTable = () => {
            '🐾 Все'}
         </span>
       )
+    },
+    {
+      key: 'course_type',
+      label: 'Тип',
+      sortable: true,
+      render: (value) => (
+        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+          value === 'behavior_correction'
+            ? 'bg-purple-100 text-purple-800'
+            : 'bg-gray-100 text-gray-700'
+        }`}>
+          {value === 'behavior_correction' ? 'Коррекция' : 'Обычный'}
+        </span>
+      )
+    },
+    {
+      key: 'risk_level',
+      label: 'Риск',
+      sortable: true,
+      render: (value, row) => {
+        if (row.course_type !== 'behavior_correction') return <span className="text-gray-400">-</span>
+        const cfg = {
+          low: { label: 'Низкий', cls: 'bg-green-100 text-green-800' },
+          medium: { label: 'Средний', cls: 'bg-yellow-100 text-yellow-800' },
+          high: { label: 'Высокий', cls: 'bg-red-100 text-red-800' },
+        }
+        const c = cfg[value] || cfg.low
+        return (
+          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${c.cls}`}>
+            {c.label}
+          </span>
+        )
+      }
     },
     {
       key: 'category',
@@ -367,6 +435,16 @@ const CoursesTable = () => {
       ]
     },
     {
+      key: 'course_type',
+      label: 'Тип курса',
+      type: 'select',
+      value: filters.course_type,
+      options: [
+        { value: 'general', label: 'Обычные' },
+        { value: 'behavior_correction', label: 'Коррекция поведения' }
+      ]
+    },
+    {
       key: 'category',
       label: 'Категория',
       type: 'select',
@@ -395,6 +473,24 @@ const CoursesTable = () => {
       ]
     },
     {
+      key: 'risk_level',
+      label: 'Риск',
+      type: 'select',
+      value: filters.risk_level,
+      options: [
+        { value: 'low', label: 'Низкий' },
+        { value: 'medium', label: 'Средний' },
+        { value: 'high', label: 'Высокий' }
+      ]
+    },
+    {
+      key: 'correction_problem',
+      label: 'Проблема коррекции',
+      type: 'select',
+      value: filters.correction_problem,
+      options: correctionProblemOptions
+    },
+    {
       key: 'is_active',
       label: 'Статус',
       type: 'select',
@@ -411,35 +507,39 @@ const CoursesTable = () => {
       value_min: filters.price_min,
       value_max: filters.price_max
     }
-  ], [filters]);
+  ].filter(filter => !(specialistMode && filter.key === 'course_type')), [filters, specialistMode]);
 
   // Конфигурация массовых действий
-  const bulkActions = useMemo(() => [
-    {
-      key: 'activate',
-      label: 'Активировать',
-      icon: '✅',
-      variant: 'success'
-    },
-    {
-      key: 'deactivate',
-      label: 'Деактивировать',
-      icon: '🚫',
-      variant: 'danger'
-    },
-    {
-      key: 'make_free',
-      label: 'Сделать бесплатными',
-      icon: '🎁',
-      variant: 'success'
-    },
-    {
-      key: 'make_paid',
-      label: 'Сделать платными',
-      icon: '💰',
-      variant: 'warning'
-    }
-  ], []);
+  const bulkActions = useMemo(() => {
+    if (isCourseCreator || specialistMode) return [];
+
+    return [
+      {
+        key: 'activate',
+        label: 'Активировать',
+        icon: '✅',
+        variant: 'success'
+      },
+      {
+        key: 'deactivate',
+        label: 'Деактивировать',
+        icon: '🚫',
+        variant: 'danger'
+      },
+      {
+        key: 'make_free',
+        label: 'Сделать бесплатными',
+        icon: '🎁',
+        variant: 'success'
+      },
+      {
+        key: 'make_paid',
+        label: 'Сделать платными',
+        icon: '💰',
+        variant: 'warning'
+      }
+    ];
+  }, [isCourseCreator, specialistMode]);
 
   // Конфигурация действий: primaryActionKey + getDropdownActions
   const rowActions = useMemo(() => [
@@ -452,7 +552,7 @@ const CoursesTable = () => {
       { key: 'duplicate', label: 'Дублировать', icon: '📋', variant: 'primary' },
     ];
 
-    if (!isCourseCreator) {
+    if (!isCourseCreator && !specialistMode) {
       const statusAction = row.status === 'published'
         ? { key: 'unpublish', label: 'Снять с публикации', icon: '📤', variant: 'warning' }
         : { key: 'publish', label: 'Опубликовать', icon: '✅', variant: 'success' };
@@ -461,15 +561,18 @@ const CoursesTable = () => {
     }
 
     return actions;
-  }, [isCourseCreator]);
+  }, [isCourseCreator, specialistMode]);
 
   // Обработчик сброса фильтров
   const handleResetFilters = () => {
     setFilters({
       search: '',
+      course_type: specialistMode ? 'behavior_correction' : '',
       pet_type: '',
       category: '',
       level: '',
+      risk_level: '',
+      correction_problem: '',
       is_active: '',
       is_free: '',
       price_min: '',
@@ -486,7 +589,7 @@ const CoursesTable = () => {
   return (
     <>
     <DataTable
-      title="Управление курсами"
+      title={specialistMode ? 'Мои курсы коррекции' : 'Управление курсами'}
       columns={columns}
       data={data}
       loading={loading}
@@ -503,9 +606,9 @@ const CoursesTable = () => {
       onPageChange={handlePageChange}
       onBulkAction={handleBulkAction}
       onAction={handleAction}
-      onCreate={handleCreate}
+      onCreate={specialistMode ? undefined : handleCreate}
       createButtonText="Создать курс"
-      emptyMessage="Курсы не найдены"
+      emptyMessage={specialistMode ? 'Назначенные курсы не найдены' : 'Курсы не найдены'}
       onResetFilters={handleResetFilters}
       onShowSettings={handleShowSettings}
       currentFilters={filters}
@@ -516,6 +619,8 @@ const CoursesTable = () => {
       isOpen={showCreateModal}
       onClose={() => setShowCreateModal(false)}
       onCreated={handleCourseCreated}
+      defaultCourseType={specialistMode ? 'behavior_correction' : 'general'}
+      lockCourseType={specialistMode}
     />
 
     <ConfirmModal

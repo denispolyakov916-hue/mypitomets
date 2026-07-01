@@ -35,9 +35,9 @@ export const useAdminStore = create(
 
         const { role } = get();
 
-        // Создатели курсов не имеют доступа к stats/summary —
+        // Создатели курсов и маркетологи не имеют доступа к stats/summary —
         // доверяем роли из профиля, она уже установлена через setUser()
-        if (role === 'course_creator') {
+        if (role === 'course_creator' || role === 'marketing_manager') {
           set({
             isAuthenticated: true,
             error: null,
@@ -126,6 +126,14 @@ export const useAdminStore = create(
             'edit_courses',
           ];
           return creatorPermissions.includes(permission);
+        }
+
+        if (role === 'marketing_manager') {
+          const marketingPermissions = [
+            'view_marketing_content',
+            'edit_marketing_content',
+          ];
+          return marketingPermissions.includes(permission);
         }
         
         return false;

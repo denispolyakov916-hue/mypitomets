@@ -793,8 +793,10 @@ class OrderService(BaseService):
                     OrderItem.objects.create(
                         order=order,
                         product=item.product,
+                        sku=item.sku,
+                        sku_name=item.sku.name if item.sku else None,
                         product_name=item.product.name,
-                        price=item.product.discounted_price,
+                        price=item.get_unit_price(),
                         quantity=item.quantity
                     )
                 elif item.course:
@@ -1169,7 +1171,7 @@ class RecommendationEngine:
             if source_product.new_category:
                 source_code = _normalize(
                     source_product.new_category.code
-                    or CATEGORY_CODE_MAPPING.get(source_product.new_category.kotmatros_category_id)
+                    or CATEGORY_CODE_MAPPING.get(source_product.new_category.external_id)
                 )
 
             filtered = []
@@ -1207,7 +1209,7 @@ class RecommendationEngine:
         recommendations = []
 
         def _code_for(cat):
-            return cat.code or CATEGORY_CODE_MAPPING.get(cat.kotmatros_category_id)
+            return cat.code or CATEGORY_CODE_MAPPING.get(cat.external_id)
 
         def _normalize(code):
             if not code:
@@ -1272,7 +1274,7 @@ class RecommendationEngine:
         source_code = _normalize(_code_for(source_cat)) if source_cat else None
         source_root = source_code.split('.', 1)[0] if source_code else None
 
-        categories = list(Category.objects.filter(is_active=True).only('id', 'code', 'kotmatros_category_id', 'name'))
+        categories = list(Category.objects.filter(is_active=True).only('id', 'code', 'external_id', 'name'))
         code_to_ids = {}
         code_to_name = {}
         for cat in categories:
@@ -2132,9 +2134,12 @@ class OrderCRUDService(BaseCRUDService):
             OrderItem.objects.create(
                 order=order,
                 product=cart_item.product,
+                sku=cart_item.sku,
                 course=cart_item.course,
+                product_name=cart_item.product.name if cart_item.product else cart_item.course.title,
+                sku_name=cart_item.sku.name if cart_item.sku else None,
                 quantity=cart_item.quantity,
-                price=cart_item.price,
+                price=cart_item.get_unit_price(),
                 pet=cart_item.pet
             )
 
@@ -2153,4 +2158,3 @@ class OrderCRUDService(BaseCRUDService):
 product_service = ProductService()
 cart_crud_service = CartCRUDService()
 order_crud_service = OrderCRUDService()
-

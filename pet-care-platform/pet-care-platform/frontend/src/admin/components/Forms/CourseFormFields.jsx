@@ -83,7 +83,12 @@ function Select({ value, onChange, options, placeholder }) {
   )
 }
 
-export default function CourseFormFields({ values, onChange }) {
+export default function CourseFormFields({
+  values,
+  onChange,
+  specialistOptions = [],
+  canManageAuthor = false,
+}) {
   const set = (field) => (val) => onChange(field, val)
 
   return (
@@ -159,6 +164,24 @@ export default function CourseFormFields({ values, onChange }) {
           </div>
         </CardBody>
       </Card>
+
+      {canManageAuthor && (
+        <Card variant="default">
+          <CardHeader>
+            <CardTitle className="text-sm">Специалист</CardTitle>
+          </CardHeader>
+          <CardBody className="space-y-4">
+            <Field label="Назначенный специалист" hint="Он увидит курс в своем кабинете и сможет собрать уроки в конструкторе">
+              <Select
+                value={values.author_id}
+                onChange={set('author_id')}
+                options={specialistOptions}
+                placeholder="Не назначен"
+              />
+            </Field>
+          </CardBody>
+        </Card>
+      )}
 
       {/* Instructor */}
       <Card variant="default">

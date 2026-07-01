@@ -13,7 +13,7 @@
  */
 
 import React, { useEffect, useState, useRef } from 'react';
-import { useLocation } from 'react-router-dom';
+import { Navigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import AdminLoginPage from '../admin/components/Auth/AdminLoginPage';
 
@@ -24,7 +24,6 @@ import AdminLoginPage from '../admin/components/Auth/AdminLoginPage';
  * @param {React.ReactNode} props.children - Дочерние компоненты для рендеринга
  */
 const AdminRoute = ({ children }) => {
-  const location = useLocation();
   const isAuthenticated = useAuthStore(s => s.isAuthenticated);
   const user = useAuthStore(s => s.user);
   const isLoading = useAuthStore(s => s.isLoading);
@@ -105,8 +104,16 @@ const AdminRoute = ({ children }) => {
     );
   }
 
-  // Проверяем права: администратор или создатель курсов
-  const hasAdminAccess = user.is_staff || user.is_superuser || user.role === 'course_creator';
+  if (user.role === 'course_creator') {
+    return <Navigate to="/specialist-panel/courses" replace />;
+  }
+
+  if (user.role === 'marketing_manager') {
+    return <Navigate to="/marketing-panel/content" replace />;
+  }
+
+  // Проверяем права: общая админка доступна только администраторам компании
+  const hasAdminAccess = user.is_staff || user.is_superuser || user.role === 'admin';
   if (!hasAdminAccess) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-red-900 to-slate-800">
@@ -150,7 +157,7 @@ const AdminRoute = ({ children }) => {
             <p className="text-red-200/60 text-xs uppercase tracking-wider mb-2">Текущий аккаунт</p>
             <p className="text-white font-medium">{user.email}</p>
             <p className="text-red-300/60 text-sm mt-1">
-              Роль: {user.role === 'admin' ? 'Администратор' : user.role === 'course_creator' ? 'Создатель курсов' : 'Пользователь'}
+              Роль: {user.role === 'admin' ? 'Администратор' : user.role === 'course_creator' ? 'Создатель курсов' : user.role === 'marketing_manager' ? 'Маркетолог' : 'Пользователь'}
             </p>
           </div>
 

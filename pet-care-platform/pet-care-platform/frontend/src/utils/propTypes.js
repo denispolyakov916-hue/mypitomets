@@ -17,7 +17,15 @@ export const UserPropTypes = PropTypes.shape({
   phone: PropTypes.string,
   city: PropTypes.string,
   date_of_birth: PropTypes.string,
-  role: PropTypes.oneOf(['user', 'course_creator', 'admin']),
+  role: PropTypes.oneOf([
+    'user',
+    'course_creator',
+    'supplier_manager',
+    'supplier_editor',
+    'supplier_analyst',
+    'marketing_manager',
+    'admin',
+  ]),
   is_staff: PropTypes.bool,
   is_superuser: PropTypes.bool,
   is_active: PropTypes.bool,
@@ -186,4 +194,3 @@ export const ClassNamePropTypes = PropTypes.string
  * PropTypes для стилей
  */
 export const StylePropTypes = PropTypes.object
-

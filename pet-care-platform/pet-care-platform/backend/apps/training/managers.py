@@ -273,12 +273,13 @@ class CourseManager(models.Manager):
             queryset = queryset.filter(pet_type__in=[pet.species, 'all'])
 
         # Уровень сложности по опыту
-        if pet.training_experience:
-            if pet.training_experience == 'none':
+        training_experience = getattr(pet, 'training_experience', None)
+        if training_experience:
+            if training_experience == 'none':
                 queryset = queryset.filter(level='beginner')
-            elif pet.training_experience == 'basic':
+            elif training_experience == 'basic':
                 queryset = queryset.filter(level__in=['beginner', 'intermediate'])
-            elif pet.training_experience == 'intermediate':
+            elif training_experience == 'intermediate':
                 queryset = queryset.filter(level__in=['intermediate', 'advanced'])
 
         # Сортировка по релевантности (в будущем можно улучшить)
@@ -304,31 +305,55 @@ class CourseManager(models.Manager):
         if pet.species in ['dog', 'cat']:
             queryset = queryset.filter(pet_type__in=[pet.species, 'all'])
 
+        behavioral_problems = getattr(pet, 'behavioral_problems', None) or []
+        health_issues = getattr(pet, 'health_issues', None) or []
+        age_months = getattr(pet, 'age_months', None)
+
+        if behavioral_problems:
+            queryset = queryset.exclude(
+                course_type='behavior_correction',
+                excluded_behavioral_problems__overlap=behavioral_problems,
+            )
+
+        if health_issues:
+            queryset = queryset.exclude(
+                course_type='behavior_correction',
+                excluded_health_issues__overlap=health_issues,
+            )
+
+        if age_months is not None:
+            queryset = queryset.filter(
+                Q(min_age_months__isnull=True) | Q(min_age_months__lte=age_months),
+                Q(max_age_months__isnull=True) | Q(max_age_months__gte=age_months),
+            )
+
         # Фильтр по поведению
         if pet.behavior_type and pet.behavior_type != '':
             queryset = queryset.filter(
                 Q(recommended_behavior_types__contains=[pet.behavior_type]) |
-                Q(recommended_behavior_types__len=0)  # Курсы без специфики поведения
+                Q(recommended_behavior_types=[])  # Курсы без специфики поведения
             )
 
         # Фильтр по активности
         if pet.activity_level and pet.activity_level != '':
             queryset = queryset.filter(
                 Q(recommended_activity_levels__contains=[pet.activity_level]) |
-                Q(recommended_activity_levels__len=0)
+                Q(recommended_activity_levels=[])  # Курсы без специфики активности
             )
 
         # Фильтр по социализации
         if pet.social_level and pet.social_level != '':
             queryset = queryset.filter(
                 Q(recommended_social_levels__contains=[pet.social_level]) |
-                Q(recommended_social_levels__len=0)
+                Q(recommended_social_levels=[])  # Курсы без специфики социализации
             )
 
         # Фильтр по опыту дрессировки
-        if pet.training_experience and pet.training_experience != '':
-            experience_levels = ['none', 'basic', 'intermediate', 'advanced', 'professional']
-            pet_level_index = experience_levels.index(pet.training_experience)
+        # Атрибут может отсутствовать на модели Pet — читаем безопасно
+        training_experience = getattr(pet, 'training_experience', None)
+        experience_levels = ['none', 'basic', 'intermediate', 'advanced', 'professional']
+        if training_experience and training_experience in experience_levels:
+            pet_level_index = experience_levels.index(training_experience)
 
             # Курсы с подходящим минимальным уровнем опыта
             suitable_levels = []
@@ -346,10 +371,11 @@ class CourseManager(models.Manager):
             queryset = queryset.filter(min_training_experience__in=suitable_levels)
 
         # Фильтр по здоровью (исключаем несовместимые)
-        if pet.health_issues:
+        # Атрибут может отсутствовать на модели Pet — читаем безопасно
+        if health_issues:
             # Курсы которые либо совместимы с проблемами здоровья, либо не имеют специфики
             queryset = queryset.filter(
-                Q(compatible_health_issues__overlap=pet.health_issues) |
+                Q(compatible_health_issues__overlap=health_issues) |
                 Q(compatible_health_issues__len=0)
             )
 
@@ -371,16 +397,20 @@ class CourseManager(models.Manager):
         filters = Q()
 
         # Курсы для поведенческих проблем
-        if pet.behavioral_problems:
-            filters |= Q(addresses_behavioral_problems__overlap=pet.behavioral_problems)
+        behavioral_problems = getattr(pet, 'behavioral_problems', None) or []
+        health_issues = getattr(pet, 'health_issues', None) or []
+        if behavioral_problems:
+            filters |= Q(addresses_behavioral_problems__overlap=behavioral_problems)
+            filters |= Q(course_type='behavior_correction', correction_problem_tags__overlap=behavioral_problems)
 
         # Курсы для особых потребностей
-        if pet.special_needs:
-            filters |= Q(addresses_special_needs__overlap=pet.special_needs)
+        special_needs = getattr(pet, 'special_needs', None) or []
+        if special_needs:
+            filters |= Q(addresses_special_needs__overlap=special_needs)
 
         # Курсы для проблем здоровья
-        if pet.health_issues:
-            filters |= Q(compatible_health_issues__overlap=pet.health_issues)
+        if health_issues:
+            filters |= Q(compatible_health_issues__overlap=health_issues)
 
         if filters:
             queryset = queryset.filter(filters)
@@ -388,6 +418,25 @@ class CourseManager(models.Manager):
             # Приоритет по типу питомца
             if pet.species in ['dog', 'cat']:
                 queryset = queryset.filter(pet_type__in=[pet.species, 'all'])
+
+            if behavioral_problems:
+                queryset = queryset.exclude(
+                    course_type='behavior_correction',
+                    excluded_behavioral_problems__overlap=behavioral_problems,
+                )
+
+            if health_issues:
+                queryset = queryset.exclude(
+                    course_type='behavior_correction',
+                    excluded_health_issues__overlap=health_issues,
+                )
+
+            age_months = getattr(pet, 'age_months', None)
+            if age_months is not None:
+                queryset = queryset.filter(
+                    Q(min_age_months__isnull=True) | Q(min_age_months__lte=age_months),
+                    Q(max_age_months__isnull=True) | Q(max_age_months__gte=age_months),
+                )
 
             return queryset.order_by('-created_at')[:limit]
 
@@ -406,9 +455,10 @@ class CourseManager(models.Manager):
         """
         queryset = self.catalog()
 
-        if pet.preferred_activities:
+        preferred_activities = getattr(pet, 'preferred_activities', None) or []
+        if preferred_activities:
             queryset = queryset.filter(
-                suitable_activities__overlap=pet.preferred_activities
+                suitable_activities__overlap=preferred_activities
             )
 
             # Приоритет по типу питомца
@@ -418,4 +468,3 @@ class CourseManager(models.Manager):
             return queryset.order_by('-created_at')[:limit]
 
         return self.get_queryset().none()
-

@@ -36,7 +36,18 @@ class IsAdminOrCourseAuthor(BasePermission):
     def has_permission(self, request, view):
         if not request.user or not request.user.is_authenticated:
             return False
-        return request.user.is_staff or getattr(request.user, 'role', None) == 'course_creator'
+        return request.user.is_staff or request.user.is_superuser or getattr(request.user, 'role', None) == 'course_creator'
+
+
+def can_edit_course(user, course):
+    return user.is_staff or user.is_superuser or course.author_id == user.id
+
+
+def course_owner_denied_response():
+    return Response(
+        {'error': 'Вы можете редактировать только свои курсы'},
+        status=status.HTTP_403_FORBIDDEN,
+    )
 from ..serializers import (
     CourseBuilderSerializer, CoursePageSerializer,
     ContentBlockSerializer, BlockTemplateSerializer
@@ -56,11 +67,8 @@ class CourseBuilderView(APIView):
 
     def _check_ownership(self, request, course):
         """Создатели курсов могут работать только со своими курсами."""
-        if not request.user.is_staff and course.author_id != request.user.id:
-            return Response(
-                {'error': 'Вы можете редактировать только свои курсы'},
-                status=status.HTTP_403_FORBIDDEN,
-            )
+        if not can_edit_course(request.user, course):
+            return course_owner_denied_response()
         return None
 
     def get(self, request, course_id):
@@ -112,9 +120,14 @@ class CoursePublishView(APIView):
             return Response({'error': 'Курс не найден'}, status=status.HTTP_404_NOT_FOUND)
 
         pages_count = CoursePage.objects.filter(course_id=course.id, is_active=True).count()
-        if pages_count == 0:
+        publish_check = course.get_behavior_correction_publish_check(request.user)
+        if not publish_check['can_publish']:
             return Response(
-                {'error': 'Нельзя опубликовать курс без страниц. Добавьте уроки в конструкторе.'},
+                {
+                    'error': publish_check['blocking_errors'][0] if publish_check['blocking_errors'] else 'Курс нельзя опубликовать',
+                    'blocking_errors': publish_check['blocking_errors'],
+                    'warnings': publish_check['warnings'],
+                },
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -144,6 +157,9 @@ class BlockReorderView(APIView):
         except CoursePage.DoesNotExist:
             return Response({'error': 'Страница не найдена'}, status=status.HTTP_404_NOT_FOUND)
 
+        if not can_edit_course(request.user, page.course):
+            return course_owner_denied_response()
+
         for i, block_id in enumerate(block_ids, start=1):
             ContentBlock.objects.filter(id=block_id, page=page).update(order=i)
 
@@ -161,6 +177,9 @@ class PagesReorderView(APIView):
             return Response({'error': 'page_ids обязателен'}, status=status.HTTP_400_BAD_REQUEST)
 
         course = get_object_or_404(Course, id=course_id)
+        if not can_edit_course(request.user, course):
+            return course_owner_denied_response()
+
         if module_id is None:
             queryset = CoursePage.objects.filter(course_id=course.id, module__isnull=True, is_active=True)
         else:
@@ -188,7 +207,11 @@ class ModulesReorderView(APIView):
         if not module_ids:
             return Response({'error': 'module_ids обязателен'}, status=status.HTTP_400_BAD_REQUEST)
 
-        queryset = CourseModule.objects.filter(course_id=course_id, is_active=True)
+        course = get_object_or_404(Course, id=course_id)
+        if not can_edit_course(request.user, course):
+            return course_owner_denied_response()
+
+        queryset = CourseModule.objects.filter(course_id=course.id, is_active=True)
         existing_ids = set(queryset.values_list('id', flat=True))
         if set(module_ids) != existing_ids:
             return Response(
@@ -209,19 +232,21 @@ class ModulesReorderView(APIView):
 
 class PageMoveToModuleView(APIView):
     """Move a page to a different module (or to orphan). Atomic operation."""
-    permission_classes = [IsAdminUser]
+    permission_classes = [IsAdminOrCourseAuthor]
 
     def patch(self, request, page_id):
         target_module_id = request.data.get('target_module_id')
 
         page = get_object_or_404(CoursePage, id=page_id, is_active=True)
+        if not can_edit_course(request.user, page.course):
+            return course_owner_denied_response()
         source_module_id = page.module_id
 
         if source_module_id == target_module_id:
             return Response({'message': 'Страница уже в этом модуле'})
 
         if target_module_id is not None:
-            target_module = get_object_or_404(CourseModule, id=target_module_id)
+            target_module = get_object_or_404(CourseModule, id=target_module_id, course_id=page.course_id)
             page.module = target_module
         else:
             page.module = None
@@ -266,13 +291,19 @@ class CoursePageViewSet(ModelViewSet):
 
     def get_queryset(self):
         course_id = self.kwargs.get('course_id')
+        queryset = CoursePage.objects.filter(is_active=True)
+        if not (self.request.user.is_staff or self.request.user.is_superuser):
+            queryset = queryset.filter(course__author=self.request.user)
         if course_id is not None:
-            return CoursePage.objects.filter(course_id=course_id, is_active=True)
-        return CoursePage.objects.filter(is_active=True)
+            return queryset.filter(course_id=course_id)
+        return queryset
 
     def perform_create(self, serializer):
         course_id = self.kwargs.get('course_id')
         course = get_object_or_404(Course, id=course_id)
+        if not can_edit_course(self.request.user, course):
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied('Вы можете редактировать только свои курсы')
 
         # Автоматически устанавливаем order_number
         max_order = CoursePage.objects.filter(course_id=course.id).aggregate(
@@ -292,13 +323,19 @@ class ContentBlockViewSet(ModelViewSet):
 
     def get_queryset(self):
         page_id = self.kwargs.get('page_id')
+        queryset = ContentBlock.objects.filter(is_active=True)
+        if not (self.request.user.is_staff or self.request.user.is_superuser):
+            queryset = queryset.filter(page__course__author=self.request.user)
         if page_id:
-            return ContentBlock.objects.filter(page_id=page_id, is_active=True)
-        return ContentBlock.objects.filter(is_active=True)
+            return queryset.filter(page_id=page_id)
+        return queryset
 
     def perform_create(self, serializer):
         page_id = self.kwargs.get('page_id')
         page = get_object_or_404(CoursePage, id=page_id)
+        if not can_edit_course(self.request.user, page.course):
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied('Вы можете редактировать только свои курсы')
 
         # Автоматически устанавливаем order
         max_order = ContentBlock.objects.filter(page=page).aggregate(

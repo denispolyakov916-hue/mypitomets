@@ -13,7 +13,7 @@ import { useAuthStore } from '../store/authStore';
 // владельца показывается ТОЛЬКО суперпользователю (владельцу) — см. isOwner ниже.
 const FOOTER_PARTNERS = [
   { to: '/supplier-panel', label: 'Подрядчик по корму' },
-  { to: '/admin-panel', label: 'Специалист по курсам' },
+  { to: '/specialist-panel', label: 'Специалист по курсам' },
 ];
 
 // Сервисы — соответствуют разделам главной (Питомцы, Питание, Здоровье, обучение)
@@ -126,6 +126,7 @@ export function Footer() {
   // Владелец = суперпользователь. Ссылку на «Мою админку» показываем ТОЛЬКО ему.
   // Это лишь видимость в футере; доступ к панелям всё равно проверяется на сервере.
   const isOwner = user?.is_superuser === true;
+  const canOpenMarketingPanel = user?.role === 'marketing_manager' || user?.role === 'admin' || user?.is_staff || user?.is_superuser;
 
   const handleSubscribe = (e) => {
     e.preventDefault();
@@ -216,6 +217,14 @@ export function Footer() {
                 className="font-semibold text-amber-300 hover:text-amber-200 transition-colors"
               >
                 Моя админка
+              </Link>
+            )}
+            {canOpenMarketingPanel && (
+              <Link
+                to="/marketing-panel"
+                className="font-semibold text-emerald-200 hover:text-emerald-100 transition-colors"
+              >
+                Кабинет маркетолога
               </Link>
             )}
           </div>

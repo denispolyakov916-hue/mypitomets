@@ -26,6 +26,9 @@ from .admin_api import (
     AdminProductViewSet,
     AdminOrderViewSet, 
     AdminCourseViewSet,
+    AdminMarketingDashboardViewSet,
+    AdminMarketingEventViewSet,
+    AdminMarketingNewsViewSet,
     admin_stats_summary
 )
 from .supplier_api import (
@@ -50,6 +53,9 @@ admin_router.register(r'pets', AdminPetViewSet, basename='admin-pets')
 admin_router.register(r'products', AdminProductViewSet, basename='admin-products')
 admin_router.register(r'orders', AdminOrderViewSet, basename='admin-orders')
 admin_router.register(r'courses', AdminCourseViewSet, basename='admin-courses')
+admin_router.register(r'marketing', AdminMarketingDashboardViewSet, basename='admin-marketing')
+admin_router.register(r'marketing-news', AdminMarketingNewsViewSet, basename='admin-marketing-news')
+admin_router.register(r'marketing-events', AdminMarketingEventViewSet, basename='admin-marketing-events')
 admin_router.register(r'suppliers', AdminSupplierViewSet, basename='admin-suppliers')
 admin_router.register(r'supplier-users', AdminSupplierUserAccessViewSet, basename='admin-supplier-users')
 admin_router.register(r'supplier-submissions', AdminSupplierSubmissionViewSet, basename='admin-supplier-submissions')

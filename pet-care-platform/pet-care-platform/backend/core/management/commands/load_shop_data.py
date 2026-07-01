@@ -63,7 +63,7 @@ class Command(BaseCommand):
         
         self.stdout.write(self.style.WARNING(
             'Команда устарела для новой структуры магазина. '
-            'Используйте import_shop_data_v2.'
+            'Используйте import_dinozavrik и import_dinozavrik_to_shop.'
         ))
         return
 

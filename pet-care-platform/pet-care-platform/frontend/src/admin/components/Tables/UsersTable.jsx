@@ -129,6 +129,7 @@ const UsersTable = () => {
         const cfg = {
           admin: { label: 'Администратор', cls: 'bg-primary-100 text-primary-800' },
           course_creator: { label: 'Создатель курсов', cls: 'bg-primary-100 text-primary-800' },
+          marketing_manager: { label: 'Маркетолог', cls: 'bg-emerald-100 text-emerald-800' },
           user: { label: 'Пользователь', cls: 'bg-gray-100 text-gray-800' },
         };
         const c = cfg[value] || cfg.user;
@@ -198,6 +199,7 @@ const UsersTable = () => {
       options: [
         { value: 'admin', label: 'Администраторы' },
         { value: 'course_creator', label: 'Создатели курсов' },
+        { value: 'marketing_manager', label: 'Маркетологи' },
         { value: 'user', label: 'Пользователи' }
       ]
     },

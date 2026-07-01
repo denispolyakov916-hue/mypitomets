@@ -80,6 +80,16 @@ function parseBackendDate(startDate, startTime) {
   return dt
 }
 
+/** Русское склонение существительного по числу: [1, 2, 5]. */
+function pluralRu(n, forms) {
+  const a = Math.abs(n) % 100
+  const b = a % 10
+  if (a > 10 && a < 20) return forms[2]
+  if (b > 1 && b < 5) return forms[1]
+  if (b === 1) return forms[0]
+  return forms[2]
+}
+
 /** Быстрые шаблоны создания типовых событий дневника. */
 const QUICK_TEMPLATES = [
   { key: 'vaccination', type: 'vaccination', title: 'Прививка', label: 'Прививка' },
@@ -253,8 +263,9 @@ function HealthDiary() {
   const eventStats = useMemo(() => {
     const stats = {}
     Object.keys(EVENT_TYPES).forEach((type) => {
-      stats[type] = events.filter((ev) => ev.type === type).length
+      stats[type] = events.filter((ev) => ev.type === type && !isWeightEvent(ev)).length
     })
+    stats.weight = events.filter((ev) => isWeightEvent(ev)).length
     return stats
   }, [events])
 
@@ -319,6 +330,14 @@ function HealthDiary() {
   /** Блоки обзора (без карточки питомца — выбор уже в чипах / select) */
   const cardCls = 'bg-white rounded-2xl border border-primary-100 shadow-[0_4px_24px_rgba(82,47,129,0.06)] p-5'
   const statTypes = EVENT_TYPE_OPTIONS.filter((info) => (eventStats[info.value] || 0) > 0)
+  const statItems = [
+    ...statTypes.map((info) => ({
+      key: info.value, icon: info.icon, color: info.color, bgColor: info.bgColor, label: info.shortLabel, count: eventStats[info.value],
+    })),
+    ...(eventStats.weight > 0
+      ? [{ key: 'weight', icon: WEIGHT_META.icon, color: WEIGHT_META.color, bgColor: WEIGHT_META.bgColor, label: WEIGHT_META.shortLabel, count: eventStats.weight }]
+      : []),
+  ]
 
   const overviewGrid = selectedPet ? (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
@@ -333,7 +352,7 @@ function HealthDiary() {
         {upcomingEvents.length === 0 ? (
           <div className="flex items-center gap-3 rounded-2xl bg-gray-50 p-4">
             <div aria-hidden="true" className="w-12 h-12 shrink-0"><PuffLottie name="stay" size={48} alt="Пуфыч" /></div>
-            <p className="text-sm text-gray-600">Ближайших событий нет. Запланируйте прививку, обработку или визит — Пуфыч напомнит вовремя.</p>
+            <p className="text-sm text-gray-600">Ближайших событий нет. Запланируйте прививку, обработку или визит — они будут под рукой в дневнике.</p>
           </div>
         ) : (
           <div className="relative">
@@ -371,17 +390,17 @@ function HealthDiary() {
       <div className="space-y-4">
         <div className={cardCls}>
           <h3 className="font-bold text-primary-900 mb-3" style={{ fontFamily: 'Manrope, system-ui, sans-serif' }}>Статистика</h3>
-          {statTypes.length === 0 ? (
+          {statItems.length === 0 ? (
             <p className="text-sm text-gray-500">Событий пока нет.</p>
           ) : (
             <div className="grid grid-cols-2 gap-2">
-              {statTypes.map((info) => {
+              {statItems.map((info) => {
                 const Icon = info.icon
                 return (
-                  <div key={info.value} className="flex items-center gap-2 rounded-xl p-2" style={{ backgroundColor: info.bgColor }}>
+                  <div key={info.key} className="flex items-center gap-2 rounded-xl p-2" style={{ backgroundColor: info.bgColor }}>
                     <Icon className="w-4 h-4 shrink-0" style={{ color: info.color }} />
-                    <span className="text-sm font-bold" style={{ color: info.color }}>{eventStats[info.value]}</span>
-                    <span className="text-xs text-gray-600 truncate">{info.shortLabel}</span>
+                    <span className="text-sm font-bold" style={{ color: info.color }}>{info.count}</span>
+                    <span className="text-xs text-gray-600 truncate">{info.label}</span>
                   </div>
                 )
               })}
@@ -528,8 +547,8 @@ function HealthDiary() {
                     <AlertTriangle className="w-5 h-5" />
                   </span>
                   <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-amber-900">Есть событие, которое стоит проверить</p>
-                    <p className="text-sm text-amber-700">Мягко напоминаем: {overdueEvents.length} не отмечено выполненным.</p>
+                    <p className="font-semibold text-amber-900">{overdueEvents.length === 1 ? 'Есть событие, которое стоит проверить' : 'Есть события, которые стоит проверить'}</p>
+                    <p className="text-sm text-amber-700">{overdueEvents.length} {pluralRu(overdueEvents.length, ['событие', 'события', 'событий'])} не отмечено выполненным.</p>
                   </div>
                   <button
                     type="button"

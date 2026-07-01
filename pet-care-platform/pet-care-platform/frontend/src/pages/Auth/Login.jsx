@@ -55,12 +55,18 @@ function Login() {
       
       if (!redirectPath) {
         if (user.role === 'course_creator') {
-          redirectPath = '/admin-panel/courses'
+          redirectPath = '/specialist-panel/courses'
+        } else if (user.role === 'marketing_manager') {
+          redirectPath = '/marketing-panel/content'
         } else if (user.is_staff || user.is_superuser) {
           redirectPath = '/admin-panel/dashboard'
         } else {
           redirectPath = '/pet-id'
         }
+      } else if (user.role === 'course_creator' && redirectPath.startsWith('/admin-panel')) {
+        redirectPath = '/specialist-panel/courses'
+      } else if (user.role === 'marketing_manager' && redirectPath.startsWith('/admin-panel')) {
+        redirectPath = '/marketing-panel/content'
       }
       
       navigate(redirectPath, { replace: true })

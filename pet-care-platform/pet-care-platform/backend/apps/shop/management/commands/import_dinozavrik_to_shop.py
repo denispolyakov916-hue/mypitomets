@@ -8,8 +8,8 @@
 
 Идемпотентно: повторный запуск не плодит дубли (ключи Product.food_recipe и
 ProductSKU.supplier_offer), обновляет цены/остатки/наименования/картинки.
-Кота Матроса НЕ трогает: работает только со строками, у которых выставлены
-food_recipe / supplier_offer (у товаров КотМатроса они = NULL).
+Работает только со строками, у которых выставлены food_recipe / supplier_offer,
+и не меняет товары без связи с нормализованным слоем Динозаврика.
 
 Запуск:
     python manage.py import_dinozavrik_to_shop
@@ -94,7 +94,7 @@ class Command(BaseCommand):
     def _brand_for(self, code):
         """Бренд по slug-коду FoodRecipe.brand с красивым shop.Brand.name. Идемпотентно.
 
-        1) переиспользовать существующий бренд с красивым именем (в т.ч. курируемый КМ-бренд);
+        1) переиспользовать существующий бренд с красивым именем;
         2) иначе переименовать slug-бренд прошлого импорта (name==code) в красивое;
         3) иначе создать. Связь с FoodRecipe.brand (код) не рвём.
         """
@@ -122,7 +122,7 @@ class Command(BaseCommand):
         return brand
 
     def _ensure_categories(self):
-        """Создать недостающие dog food-категории (идемпотентно). Кошачьи/КМ не трогаем."""
+        """Создать недостающие dog food-категории идемпотентно."""
         parent = Category.objects.filter(code=GENERIC_CODE['dog']).first()  # food.dog
         if parent and parent.product_group != 'food':
             parent.product_group = 'food'
