@@ -183,7 +183,6 @@ export const useAnalytics = (autoRefresh = false, refreshInterval = 300000) => {
         setError('Не удалось загрузить данные аналитики. Проверьте подключение к серверу.');
       }
     } catch (err) {
-      hasFetched.current = false;
       setError('Ошибка загрузки аналитических данных');
       devLog.error('[Analytics] Load error:', err);
     } finally {
