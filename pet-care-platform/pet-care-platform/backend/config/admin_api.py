@@ -11,6 +11,7 @@ import json
 from datetime import timedelta
 from decimal import Decimal
 
+from django.db import transaction
 from django.db.models import Count, Sum, Avg, Q, F
 from django.db.models.functions import TruncDate
 from django.utils import timezone
@@ -802,6 +803,12 @@ class AdminAnalyticsViewSet(viewsets.ViewSet, DashboardCacheMixin):
         return Response({'orders': data})
 
 
+# Поля пользователя, безопасные для массового обновления обычным админом.
+USER_BULK_ALLOWED_FIELDS = {'is_active', 'first_name', 'last_name', 'phone'}
+# Привилегии вычисляются из роли (User.save()) — напрямую задавать нельзя.
+USER_DERIVED_PRIVILEGE_FIELDS = {'is_staff', 'is_superuser'}
+
+
 class AdminManagementViewSet(viewsets.ViewSet):
     """ViewSet для операций управления данными."""
 
@@ -856,7 +863,13 @@ class AdminManagementViewSet(viewsets.ViewSet):
 
     @action(detail=False, methods=['post'])
     def bulk_update_users(self, request):
-        """Массовое обновление пользователей."""
+        """Массовое обновление пользователей.
+
+        Безопасно: строгий whitelist полей, привилегии (role) — только владельцу
+        платформы, is_staff/is_superuser напрямую не принимаются (выводятся из роли),
+        учётную запись владельца может менять только владелец, апдейт идёт через
+        User.save() (а не queryset.update()), чтобы флаги привилегий пересинхронизировались.
+        """
         user_ids = request.data.get('user_ids', [])
         updates = request.data.get('updates', {})
 
@@ -865,12 +878,52 @@ class AdminManagementViewSet(viewsets.ViewSet):
                 {'error': 'Не указаны ID пользователей'},
                 status=status.HTTP_400_BAD_REQUEST
             )
+        if not isinstance(updates, dict) or not updates:
+            return Response(
+                {'error': 'Не указаны изменения (updates)'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
-        updated_count = User.objects.filter(id__in=user_ids).update(**updates)
+        is_owner = bool(request.user and request.user.is_superuser)
+        keys = set(updates)
+
+        # is_staff/is_superuser — производные от роли, напрямую не задаются никем.
+        if USER_DERIVED_PRIVILEGE_FIELDS & keys:
+            return Response(
+                {'error': 'is_staff/is_superuser вычисляются из роли и не задаются напрямую'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        # Менять роль (в т.ч. выдать admin/владельца) может только владелец платформы.
+        if 'role' in keys and not is_owner:
+            return Response(
+                {'error': 'Менять роль пользователей может только владелец платформы'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        allowed = set(USER_BULK_ALLOWED_FIELDS) | ({'role'} if is_owner else set())
+        unknown = keys - allowed
+        if unknown:
+            return Response(
+                {'error': f'Недопустимые для массового обновления поля: {sorted(unknown)}'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        targets = list(User.objects.filter(id__in=user_ids))
+        # Учётную запись владельца платформы (superuser) может менять только владелец.
+        if not is_owner and any(u.is_superuser for u in targets):
+            return Response(
+                {'error': 'Изменять учётную запись владельца платформы может только владелец'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        with transaction.atomic():
+            for user in targets:
+                for field, value in updates.items():
+                    setattr(user, field, value)
+                user.save()  # ре-синхронизирует is_staff/is_superuser по роли
 
         return Response({
-            'updated_count': updated_count,
-            'message': f'Обновлено пользователей: {updated_count}'
+            'updated_count': len(targets),
+            'message': f'Обновлено пользователей: {len(targets)}'
         })
 
     @action(detail=False, methods=['post'])
@@ -1256,6 +1309,12 @@ class AdminUserViewSet(AdminModelViewSet):
         """Обновить пользователя (PUT и PATCH)."""
         try:
             user = User.objects.get(id=pk)
+            # Учётную запись владельца платформы (superuser) может менять только владелец.
+            if user.is_superuser and not request.user.is_superuser:
+                return Response(
+                    {'error': 'Изменять учётную запись владельца платформы может только владелец'},
+                    status=status.HTTP_403_FORBIDDEN
+                )
             # Менять роль (в т.ч. выдать admin/владельца) может ТОЛЬКО владелец платформы
             # (is_superuser). Иначе обычный admin мог бы повысить кого угодно.
             if 'role' in request.data and not request.user.is_superuser:
@@ -1279,6 +1338,12 @@ class AdminUserViewSet(AdminModelViewSet):
         """Удалить пользователя."""
         try:
             user = User.objects.get(id=pk)
+            # Удалить учётную запись владельца платформы может только владелец.
+            if user.is_superuser and not request.user.is_superuser:
+                return Response(
+                    {'error': 'Удалить учётную запись владельца платформы может только владелец'},
+                    status=status.HTTP_403_FORBIDDEN
+                )
             user.delete()
             return Response(status=status.HTTP_204_NO_CONTENT)
         except User.DoesNotExist:

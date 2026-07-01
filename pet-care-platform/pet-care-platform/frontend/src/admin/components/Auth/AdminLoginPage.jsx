@@ -61,7 +61,13 @@ const AdminLoginPage = ({ panel = 'admin' }) => {
   };
 
   const getRedirectPath = (currentUser) => {
-    const savedPath = location.state?.from?.pathname;
+    // Гвард (AdminRoute/SpecialistRoute/MarketingRoute) рендерит эту форму НА МЕСТЕ,
+    // по исходному URL — поэтому глубокий путь берём из state.from → ?redirect= →
+    // текущего location.pathname. Ниже он ещё валидируется по префиксу панели.
+    const savedPath =
+      location.state?.from?.pathname ||
+      new URLSearchParams(location.search).get('redirect') ||
+      location.pathname;
     if (currentUser?.role === 'course_creator') {
       if (
         savedPath &&
@@ -143,42 +149,34 @@ const AdminLoginPage = ({ panel = 'admin' }) => {
     e.preventDefault();
     e.stopPropagation();
     
-    console.log('[AdminLogin] Form submitted', { email, hasPassword: !!password });
     setLocalError('');
     clearError();
     
     // Валидация формы
     if (!validateForm()) {
-      console.log('[AdminLogin] Validation failed');
       return;
     }
     
     // Предотвращаем повторную отправку
     if (isSubmitting || showSuccess) {
-      console.log('[AdminLogin] Already submitting or success');
       return;
     }
     
     setIsSubmitting(true);
     
     try {
-      console.log('[AdminLogin] Calling login API...');
       const success = await login(email.trim(), password);
-      console.log('[AdminLogin] Login API result:', success);
       
       if (!success) {
         // Ошибка уже установлена в authStore через set({ error: ... })
-        console.log('[AdminLogin] Login failed - check authStore error');
         setIsSubmitting(false);
         return;
       }
       
       // Получаем обновлённого пользователя из store
       const currentUser = useAuthStore.getState().user;
-      console.log('[AdminLogin] Current user from store:', currentUser);
       
       if (!currentUser) {
-        console.error('[AdminLogin] User is null after successful login');
         setLocalError('Не удалось получить данные пользователя');
         setIsSubmitting(false);
         return;
@@ -186,7 +184,6 @@ const AdminLoginPage = ({ panel = 'admin' }) => {
       
       // Проверяем права под конкретный кабинет
       if (!hasPanelAccess(currentUser)) {
-        console.log('[AdminLogin] User is not staff');
         setLocalError('У вас нет прав для доступа к этой панели. Обратитесь к администратору системы.');
         // Выходим, так как обычный пользователь не должен оставаться залогиненным в админке
         await useAuthStore.getState().logout();
@@ -194,29 +191,23 @@ const AdminLoginPage = ({ panel = 'admin' }) => {
         return;
       }
       
-      console.log('[AdminLogin] User has admin rights, setting in adminStore');
       // Устанавливаем пользователя в adminStore
       setUser(currentUser);
       
       // Проверяем доступ к админ API
-      console.log('[AdminLogin] Checking admin API access...');
       const hasAccess = await checkAuth();
-      console.log('[AdminLogin] Admin API check result:', hasAccess);
       
       if (hasAccess) {
-        console.log('[AdminLogin] Access granted, redirecting...');
         setShowSuccess(true);
         const redirectTo = getRedirectPath(currentUser);
         setTimeout(() => {
           navigate(redirectTo, { replace: true });
         }, 500);
       } else {
-        console.log('[AdminLogin] Admin API access denied');
         setLocalError('Не удалось получить доступ к админ-панели. Попробуйте позже.');
         setIsSubmitting(false);
       }
     } catch (error) {
-      console.error('[AdminLogin] Unexpected error:', error);
       setLocalError(error.message || 'Произошла неожиданная ошибка при входе');
       setIsSubmitting(false);
     }
@@ -242,7 +233,6 @@ const AdminLoginPage = ({ panel = 'admin' }) => {
   useEffect(() => {
     if (authError && !localError && !isSubmitting) {
       // Ошибка из authStore уже отображается через displayError
-      console.log('[AdminLogin] Auth error from store:', authError);
     }
   }, [authError, localError, isSubmitting]);
 

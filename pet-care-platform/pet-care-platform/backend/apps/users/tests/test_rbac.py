@@ -37,6 +37,11 @@ URL_ADMIN_COURSES = '/api/admin/courses/'
 URL_SUPPLIER_ME = '/api/supplier/profile/me/'
 URL_LOGIN = '/api/auth/login/'
 URL_REFRESH = '/api/auth/refresh/'
+URL_BULK_USERS = '/api/admin/management/bulk_update_users/'
+URL_SUPPLIER_DASHBOARD = '/api/supplier/dashboard/'
+URL_SUPPLIER_ORDERS = '/api/supplier/orders/'
+URL_SUPPLIER_RETURNS = '/api/supplier/returns/'
+URL_SUPPLIER_IMPORTS = '/api/supplier/imports/'
 
 
 def make_user(email, role=UserRole.USER, **extra):
@@ -264,3 +269,117 @@ class TokenCookieRBACTests(APITestCase):
         r = self.client.get(URL_REFRESH)
         self.assertEqual(r.status_code, status.HTTP_200_OK, getattr(r, 'data', None))
         self.assertIn('accessToken', r.data)
+
+
+@override_settings(SECURE_SSL_REDIRECT=False)
+class BulkUserUpdateRBACTests(APITestCase):
+    """P0: массовое обновление пользователей без эскалации привилегий + защита владельца."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.owner = User.objects.create_superuser(email='bowner@t.local')
+        cls.admin = make_user('badmin@t.local', role=UserRole.ADMIN)
+        cls.u1 = make_user('bu1@t.local')
+        cls.u2 = make_user('bu2@t.local')
+
+    def _bulk(self, user, ids, updates):
+        self.client.force_authenticate(user)
+        return self.client.post(
+            URL_BULK_USERS,
+            {'user_ids': [str(i) for i in ids], 'updates': updates},
+            format='json',
+        )
+
+    def test_admin_cannot_grant_superuser(self):
+        r = self._bulk(self.admin, [self.u1.id], {'is_superuser': True})
+        self.assertEqual(r.status_code, status.HTTP_400_BAD_REQUEST, r.data)
+        self.u1.refresh_from_db()
+        self.assertFalse(self.u1.is_superuser)
+
+    def test_admin_cannot_grant_is_staff(self):
+        r = self._bulk(self.admin, [self.u1.id], {'is_staff': True})
+        self.assertEqual(r.status_code, status.HTTP_400_BAD_REQUEST, r.data)
+        self.u1.refresh_from_db()
+        self.assertFalse(self.u1.is_staff)
+
+    def test_admin_cannot_set_role(self):
+        r = self._bulk(self.admin, [self.u1.id], {'role': UserRole.PLATFORM_OWNER})
+        self.assertEqual(r.status_code, status.HTTP_403_FORBIDDEN, r.data)
+        self.u1.refresh_from_db()
+        self.assertEqual(self.u1.role, UserRole.USER)
+        self.assertFalse(self.u1.is_superuser)
+
+    def test_admin_cannot_touch_owner(self):
+        r = self._bulk(self.admin, [self.owner.id], {'is_active': False})
+        self.assertEqual(r.status_code, status.HTTP_403_FORBIDDEN, r.data)
+        self.owner.refresh_from_db()
+        self.assertTrue(self.owner.is_active)
+
+    def test_admin_unknown_field_rejected(self):
+        r = self._bulk(self.admin, [self.u1.id], {'password': 'whatever-123'})
+        self.assertEqual(r.status_code, status.HTTP_400_BAD_REQUEST, r.data)
+
+    def test_admin_safe_bulk_update_ok(self):
+        r = self._bulk(self.admin, [self.u1.id, self.u2.id], {'is_active': False})
+        self.assertEqual(r.status_code, status.HTTP_200_OK, r.data)
+        self.u1.refresh_from_db()
+        self.u2.refresh_from_db()
+        self.assertFalse(self.u1.is_active)
+        self.assertFalse(self.u2.is_active)
+        # флаги привилегий не поехали
+        self.assertFalse(self.u1.is_staff)
+        self.assertFalse(self.u1.is_superuser)
+
+    def test_owner_can_bulk_set_role(self):
+        r = self._bulk(self.owner, [self.u1.id], {'role': UserRole.MARKETING_MANAGER})
+        self.assertEqual(r.status_code, status.HTTP_200_OK, r.data)
+        self.u1.refresh_from_db()
+        self.assertEqual(self.u1.role, UserRole.MARKETING_MANAGER)
+
+
+@override_settings(SECURE_SSL_REDIRECT=False)
+class OwnerProtectionRBACTests(APITestCase):
+    """P0: обычный админ не может изменить или удалить учётную запись владельца платформы."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.owner = User.objects.create_superuser(email='powner@t.local')
+        cls.admin = make_user('padmin@t.local', role=UserRole.ADMIN)
+
+    def test_admin_cannot_patch_owner(self):
+        self.client.force_authenticate(self.admin)
+        r = self.client.patch(f'{URL_ADMIN_USERS}{self.owner.id}/', {'is_active': False}, format='json')
+        self.assertEqual(r.status_code, status.HTTP_403_FORBIDDEN, r.data)
+        self.owner.refresh_from_db()
+        self.assertTrue(self.owner.is_active)
+
+    def test_admin_cannot_delete_owner(self):
+        self.client.force_authenticate(self.admin)
+        r = self.client.delete(f'{URL_ADMIN_USERS}{self.owner.id}/')
+        self.assertEqual(r.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertTrue(User.objects.filter(id=self.owner.id).exists())
+
+
+@override_settings(SECURE_SSL_REDIRECT=False)
+class SupplierRoutesRBACTests(APITestCase):
+    """P2: dashboard/orders/returns/imports зарегистрированы и закрыты HasSupplierAccess."""
+
+    @classmethod
+    def setUpTestData(cls):
+        from apps.pets.food_recipe_models import Supplier, SupplierUserAccess
+
+        cls.supplier_user = make_user('sroutes@t.local')
+        cls.plain_user = make_user('snoacc@t.local')
+        supplier = Supplier.objects.create(code='RT', name='Routes', is_active=True)
+        SupplierUserAccess.objects.create(user=cls.supplier_user, supplier=supplier)
+
+    def test_routes_registered_for_supplier(self):
+        self.client.force_authenticate(self.supplier_user)
+        for url in (URL_SUPPLIER_DASHBOARD, URL_SUPPLIER_ORDERS, URL_SUPPLIER_RETURNS, URL_SUPPLIER_IMPORTS):
+            resp = self.client.get(url)
+            self.assertNotEqual(resp.status_code, status.HTTP_404_NOT_FOUND, f'{url} не зарегистрирован')
+            self.assertEqual(resp.status_code, status.HTTP_200_OK, f'{url}: {getattr(resp, "data", None)}')
+
+    def test_routes_denied_without_access(self):
+        self.client.force_authenticate(self.plain_user)
+        self.assertEqual(self.client.get(URL_SUPPLIER_DASHBOARD).status_code, status.HTTP_403_FORBIDDEN)

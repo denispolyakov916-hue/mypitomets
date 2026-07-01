@@ -422,6 +422,10 @@ class SupplierDashboardViewSet(viewsets.ViewSet):
             return None, Response({'detail': 'Нет доступа к финансовым данным'}, status=status.HTTP_403_FORBIDDEN)
         return access, None
 
+    def list(self, request):
+        """GET /api/supplier/dashboard/ — сводка кабинета (алиас summary)."""
+        return self.summary(request)
+
     @action(detail=False, methods=['get'])
     def summary(self, request):
         access, error = self._access_or_response(request, require_finance=True)

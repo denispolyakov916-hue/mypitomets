@@ -7,6 +7,9 @@
 
 import axios from 'axios';
 
+// Логи только в dev-сборке: в проде запросы/статусы/ошибки админки не светятся в консоль.
+const devLog = import.meta.env.DEV ? console : { log() {}, warn() {}, error() {} };
+
 // Создаем экземпляр axios для админ API
 const adminApi = axios.create({
   baseURL: '/api/',
@@ -23,17 +26,17 @@ adminApi.interceptors.request.use(
     const token = localStorage.getItem('access_token');
     
     // Debug logging для диагностики
-    console.log('[AdminAPI] Request:', config.url, token ? 'with token' : 'NO TOKEN');
+    devLog.log('[AdminAPI] Request:', config.url, token ? 'with token' : 'NO TOKEN');
     
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     } else {
-      console.warn('[AdminAPI] No access_token in localStorage!');
+      devLog.warn('[AdminAPI] No access_token in localStorage!');
     }
     return config;
   },
   (error) => {
-    console.error('[AdminAPI] Request error:', error);
+    devLog.error('[AdminAPI] Request error:', error);
     return Promise.reject(error);
   }
 );
@@ -41,15 +44,15 @@ adminApi.interceptors.request.use(
 // Интерцептор для обработки ошибок
 adminApi.interceptors.response.use(
   (response) => {
-    console.log('[AdminAPI] Response OK:', response.config.url);
+    devLog.log('[AdminAPI] Response OK:', response.config.url);
     return response;
   },
   (error) => {
-    console.error('[AdminAPI] Response error:', error.response?.status, error.config?.url, error.message);
+    devLog.error('[AdminAPI] Response error:', error.response?.status, error.config?.url, error.message);
     
     if (error.response?.status === 401) {
       // Токен истек или недействителен
-      console.warn('[AdminAPI] Unauthorized - clearing tokens and redirecting');
+      devLog.warn('[AdminAPI] Unauthorized - clearing tokens and redirecting');
       // Очищаем токены
       localStorage.removeItem('access_token');
       localStorage.removeItem('refresh_token');
@@ -63,10 +66,10 @@ adminApi.interceptors.response.use(
       }
     } else if (error.response?.status === 403) {
       // Нет прав доступа
-      console.warn('[AdminAPI] Forbidden - user does not have admin permissions');
+      devLog.warn('[AdminAPI] Forbidden - user does not have admin permissions');
     } else if (!error.response) {
       // Сетевая ошибка
-      console.error('[AdminAPI] Network error - backend might be down');
+      devLog.error('[AdminAPI] Network error - backend might be down');
     }
     return Promise.reject(error);
   }
