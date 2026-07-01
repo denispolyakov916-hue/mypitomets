@@ -110,6 +110,33 @@ else:
     EMAIL_USE_TLS = True
     EMAIL_USE_SSL = False
 
+# Таймаут SMTP-соединения (сек) — чтобы зависший сервер не держал воркер/поток.
+EMAIL_TIMEOUT = int(os.getenv('EMAIL_TIMEOUT', '20'))
+
+# =============================================================================
+# CELERY (фоновые задачи: транзакционные письма и т.п.)
+# =============================================================================
+# Брокер — Redis (отдельный контейнер, только внутренняя сеть). Кэш остаётся на
+# LocMem/собственном REDIS_URL и НЕ делит инстанс с брокером: у брокера политика
+# noeviction, а кэшу нужно вытеснение — поэтому это разные назначения Redis.
+CELERY_BROKER_URL = os.getenv('CELERY_BROKER_URL', 'redis://redis:6379/0')
+# Результаты задач не храним — письма fire-and-forget (меньше нагрузки на брокер).
+CELERY_RESULT_BACKEND = None
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_ENABLE_UTC = True
+CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
+CELERY_BROKER_TRANSPORT_OPTIONS = {'visibility_timeout': 3600}
+CELERY_TASK_ACKS_LATE = True                 # ack после выполнения — переживаем падение воркера
+CELERY_TASK_REJECT_ON_WORKER_LOST = True
+CELERY_WORKER_PREFETCH_MULTIPLIER = 1
+CELERY_TASK_TIME_LIMIT = 120                 # жёсткий лимит задачи, сек
+CELERY_TASK_SOFT_TIME_LIMIT = 90
+# Dev/CI без брокера: синхронное выполнение (не требует Redis).
+CELERY_TASK_ALWAYS_EAGER = os.getenv('CELERY_TASK_ALWAYS_EAGER', 'false').lower() == 'true'
+CELERY_TASK_EAGER_PROPAGATES = True
+
 # =============================================================================
 # SMS / OTP (регистрация и вход по телефону)
 # =============================================================================

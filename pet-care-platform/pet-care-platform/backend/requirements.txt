@@ -40,6 +40,9 @@ icalendar==5.0.13
 # S3-совместимое облачное хранилище (Yandex Cloud Object Storage)
 django-storages[s3]==1.14.4
 
+# Celery + Redis — фоновые задачи (отправка транзакционных писем вне HTTP-цикла)
+celery[redis]==5.4.0
+
 # Тестирование: фабрики для генерации тестовых данных
 factory-boy==3.3.1
 

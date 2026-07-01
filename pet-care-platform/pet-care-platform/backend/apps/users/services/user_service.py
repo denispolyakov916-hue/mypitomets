@@ -112,18 +112,11 @@ class UserService:
         logger.info(f"Пользователь создан: ID={user.id}, Email={email}")
         logger.debug(f"Код активации: {activation_code}, Ссылка: {activation_url}")
 
-        # Письмо-подтверждение шлём в ФОНЕ — иначе регистрация ждёт ~30с на SMTP.
-        # Аккаунт уже активирован, письмо не блокирует вход.
-        import threading
-
-        def _send_confirmation():
-            try:
-                MailService.send_activation_mail(email, activation_url, activation_code)
-                logger.info(f"Письмо-подтверждение отправлено на {email}")
-            except Exception as e:
-                logger.error(f"Не удалось отправить письмо на {email}: {str(e)}")
-
-        threading.Thread(target=_send_confirmation, daemon=True).start()
+        # Письмо-подтверждение — в фоне через очередь (Celery), с ретраями и
+        # fallback на синхронную отправку при недоступном брокере. Аккаунт уже
+        # активирован и токены выданы — SMTP не блокирует регистрацию/вход.
+        from apps.users.tasks import dispatch_activation_email
+        dispatch_activation_email(email, activation_url, activation_code)
         
         # Бета: аккаунт уже активирован — выдаём токены и логиним пользователя сразу.
         tokens = TokenService.generate_tokens(user)
@@ -422,11 +415,8 @@ class UserService:
         
         logger.info(f"Повторная отправка кода активации для {email}")
 
-        try:
-            MailService.send_activation_mail(email, activation_url, new_code)
-            logger.info(f"Письмо активации повторно отправлено на {email}")
-        except Exception as e:
-            logger.error(f"Ошибка отправки письма активации: {str(e)}")
+        from apps.users.tasks import dispatch_activation_email
+        dispatch_activation_email(email, activation_url, new_code)
         
         return {
             'success': True,
@@ -465,11 +455,8 @@ class UserService:
         
         logger.debug(f"Код восстановления для {email}: {reset_code}")
 
-        try:
-            MailService.send_password_reset_mail(email, reset_code)
-            logger.info(f"Письмо восстановления пароля отправлено на {email}")
-        except Exception as e:
-            logger.error(f"Ошибка отправки письма восстановления: {str(e)}")
+        from apps.users.tasks import dispatch_password_reset_email
+        dispatch_password_reset_email(email, reset_code)
         
         return {
             'success': True,

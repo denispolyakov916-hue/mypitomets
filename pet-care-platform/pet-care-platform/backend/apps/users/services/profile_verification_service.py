@@ -11,7 +11,6 @@
 """
 
 import logging
-import threading
 from datetime import timedelta
 
 from django.contrib.auth import get_user_model
@@ -43,15 +42,10 @@ class ProfileVerificationService:
 
         code = UserService._generate_code_with_timestamp(user)
 
-        # Письмо шлём в фоне, чтобы запрос не ждал ~30с на SMTP.
-        def _send():
-            try:
-                MailService.send_activation_mail(user.email, '', code)
-                logger.info(f"[ProfileVerify] Код подтверждения email отправлен на {user.email}")
-            except Exception as e:
-                logger.error(f"[ProfileVerify] Не удалось отправить код на {user.email}: {e}")
-
-        threading.Thread(target=_send, daemon=True).start()
+        # Письмо с кодом — в фоне через очередь (Celery), с fallback на
+        # синхронную отправку при недоступном брокере.
+        from apps.users.tasks import dispatch_activation_email
+        dispatch_activation_email(user.email, '', code)
         return {'message': f'Код отправлен на {user.email}'}
 
     @staticmethod
