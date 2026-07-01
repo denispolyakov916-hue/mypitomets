@@ -5,8 +5,9 @@
  */
 
 import { useEffect, useState } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams, useLocation } from 'react-router-dom'
 import { useAuthStore } from '../../store/authStore'
+import { resolvePostAuthRedirect } from '../../utils/postAuthRedirect'
 import * as authApi from '../../api/auth'
 
 /**
@@ -16,6 +17,7 @@ import * as authApi from '../../api/auth'
  */
 function Activate() {
   const navigate = useNavigate()
+  const location = useLocation()
   const [searchParams] = useSearchParams()
   const setUser = useAuthStore(s => s.setUser)
   const [status, setStatus] = useState('loading') // loading, success, error
@@ -39,7 +41,7 @@ function Activate() {
           setUser(response.user)
           setStatus('success')
           setTimeout(() => {
-            navigate('/pet-id', { replace: true })
+            navigate(resolvePostAuthRedirect({ location, user: response.user }), { replace: true })
           }, 2000)
         })
         .catch((err) => {

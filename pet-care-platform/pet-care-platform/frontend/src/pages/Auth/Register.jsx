@@ -9,9 +9,10 @@
  */
 
 import { useState, useEffect } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { useAuthStore } from '../../store/authStore'
+import { resolvePostAuthRedirect } from '../../utils/postAuthRedirect'
 import { ButtonLoader } from '../../components/Loader'
 import { Eye, EyeOff } from 'lucide-react'
 
@@ -26,6 +27,7 @@ import { Eye, EyeOff } from 'lucide-react'
  */
 function Register() {
   const navigate = useNavigate()
+  const location = useLocation()
   const isLoading = useAuthStore(s => s.isLoading)
   const error = useAuthStore(s => s.error)
   const { register, activateByCode, resendActivationCode, clearError } = useAuthStore()
@@ -224,9 +226,9 @@ function Register() {
     }
     
     const success = await activateByCode(activationCode)
-    
+
     if (success) {
-      navigate('/pet-id', { replace: true })
+      navigate(resolvePostAuthRedirect({ location, user: useAuthStore.getState().user }), { replace: true })
     }
   }
   

@@ -56,8 +56,14 @@ function PersonalRecommendations({
         () => getPersonalRecommendations(requestOptions),
         300000
       )
-      // API возвращает объект с products и courses, объединяем их в один массив с метками типа
-      const products = (response.products || []).map(item => ({ ...item, itemType: 'product' }))
+      // API возвращает nested {product, reason, pet_name} — как и курсы; разворачиваем product,
+      // иначе в карточку не попадут name/price/image_url (были в item.product, а не в item).
+      const products = (response.products || []).map(item => ({
+        ...item.product,
+        itemType: 'product',
+        recommendation_reason: item.reason,
+        pet_name: item.pet_name
+      }))
       const courses = (response.courses || []).map(item => ({
         ...item.course,
         itemType: 'course',

@@ -582,6 +582,7 @@ class PetUpdateSerializer(serializers.Serializer):
     chronic_conditions_notes = serializers.CharField(
         required=False,
         allow_blank=True,
+        allow_null=True,
         help_text="Заметки по здоровью"
     )
     
@@ -631,6 +632,11 @@ class PetUpdateSerializer(serializers.Serializer):
     def validate_vet_notes(self, value):
         # Колонка pets.vet_notes — NOT NULL (TextField без null=True). Пустые заметки
         # храним как '' , а не NULL, иначе клиентский null → IntegrityError при сохранении.
+        return value or ''
+
+    def validate_chronic_conditions_notes(self, value):
+        # Колонка pets.chronic_conditions_notes — тоже NOT NULL. Единый подход: пустые
+        # заметки храним как '' (не NULL), клиентский null безопасно приводим к ''.
         return value or ''
     
     # === КЛИМАТ ===
