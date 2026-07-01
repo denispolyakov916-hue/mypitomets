@@ -6,10 +6,17 @@ FROM node:20-alpine AS frontend-build
 
 WORKDIR /app
 COPY frontend/package.json frontend/package-lock.json* ./
-# --include=dev обязателен: vite/@vitejs — в devDependencies, нужны для сборки.
-# (Раньше слой брался из кэша и маскировал проблему; при холодной сборке devDeps
-# не доставлялись, и `vite build` падал с "vite: not found".)
-RUN npm ci --include=dev --no-audit --no-fund
+# vite/@vitejs — в devDependencies (нужны для сборки), поэтому --include=dev.
+# node:20-alpine — плавающий тег; на части версий npm падает внутренней ошибкой
+# "Exit handler never called!" и не доставляет пакеты. Поэтому: чистим кэш,
+# повторяем ci, а при упорном крахе npm — фолбэк на npm install (лишь бы devDeps
+# и vite встали и сборка прошла). Раньше слой брался из кэша и это маскировалось.
+ENV npm_config_audit=false npm_config_fund=false
+RUN npm cache clean --force \
+    && ( npm ci --include=dev \
+         || ( echo ">>> retry npm ci" && npm cache clean --force && npm ci --include=dev ) \
+         || ( echo ">>> fallback npm install" && npm install --include=dev ) ) \
+    && test -x node_modules/.bin/vite
 COPY frontend/ .
 RUN npm run build
 
