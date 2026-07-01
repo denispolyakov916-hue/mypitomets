@@ -21,14 +21,15 @@ def health_check(request):
     Доступен без аутентификации для использования в мониторинге.
     """
     health_status = HealthCheck.full_check()
-    
+
     http_status = status.HTTP_200_OK
     if health_status['status'] == 'unhealthy':
         http_status = status.HTTP_503_SERVICE_UNAVAILABLE
-    elif health_status['status'] == 'warning':
-        http_status = status.HTTP_200_OK  # Warning не является ошибкой
-    
-    return Response(health_status, status=http_status)
+
+    # Публично отдаём ТОЛЬКО общий статус — без версий Python/Django, платформы,
+    # debug, таймзоны и диска. Детальная диагностика — в /api/health/detailed/
+    # (permission IsAdminUser). Так публичный healthcheck не раскрывает внутренности.
+    return Response({'status': health_status.get('status', 'ok')}, status=http_status)
 
 
 @api_view(['GET'])
