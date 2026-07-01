@@ -12,6 +12,7 @@ import { confirmPayment, getPayment, createPayment, getPaymentByOrder } from '..
 import { PageLoader, ButtonLoader } from '../../components/Loader'
 import AuthGuard from '../../components/AuthGuard'
 import { formatPrice } from '../../utils/format'
+import { devLog } from '../../utils/logger'
 
 /**
  * Компонент страницы Payment
@@ -53,23 +54,23 @@ function Payment() {
 
   // Отладка метода оплаты
   useEffect(() => {
-    console.log('Payment method from URL:', method)
+    devLog.log('Payment method from URL:', method)
   }, [method])
 
   /**
    * Принудительная прокрутка наверх при загрузке страницы оплаты
    */
   useEffect(() => {
-    console.log('💳 Payment page: Forcing scroll to top')
+    devLog.log('💳 Payment page: Forcing scroll to top')
 
     const scrollToTop = () => {
-      console.log('📍 Current scroll position before:', window.scrollY)
+      devLog.log('📍 Current scroll position before:', window.scrollY)
       window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
       document.documentElement.scrollTop = 0
       document.body.scrollTop = 0
       document.documentElement.scrollLeft = 0
       document.body.scrollLeft = 0
-      console.log('📍 Scroll position after:', window.scrollY)
+      devLog.log('📍 Scroll position after:', window.scrollY)
     }
 
     // Немедленная прокрутка
@@ -129,7 +130,7 @@ function Payment() {
         setIsPaid(true)
       }
     } catch (err) {
-      console.error('Payment loading error:', err)
+      devLog.error('Payment loading error:', err)
       const status = err.response?.status
       let errorMessage = 'Не удалось загрузить информацию о платеже'
 
@@ -227,7 +228,7 @@ function Payment() {
       }
     } catch (err) {
       // Платеж не найден - это нормально, будем создавать при оплате
-      console.log('Существующий платеж не найден, будет создан при оплате')
+      devLog.log('Существующий платеж не найден, будет создан при оплате')
     }
 
     // Платеж не найден - просто завершаем загрузку, платеж будет создан при нажатии кнопки
@@ -351,7 +352,7 @@ function Payment() {
       // Оплата не прошла: заказ НЕ теряется — он сохраняется на бэкенде со статусом
       // "Ожидает оплаты". Ведём пользователя на страницу заказа, где он может
       // повторить оплату, отменить заказ или вернуться в магазин.
-      console.error('Ошибка при обработке платежа:', err)
+      devLog.error('Ошибка при обработке платежа:', err)
       handlePaymentFailure(err)
     } finally {
       setIsProcessing(false)
@@ -439,7 +440,7 @@ function Payment() {
   }
 
   if (!isAuthenticated) {
-    console.log('User not authenticated, redirecting to login')
+    devLog.log('User not authenticated, redirecting to login')
     return (
       <div className="page-container">
         <div className="card text-center py-12">
