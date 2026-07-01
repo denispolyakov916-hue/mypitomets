@@ -12,6 +12,7 @@ import {
 import AppShell from '../../components/app/AppShell'
 import { BrandSection, BrandCard, BrandButton, BrandBadge, BrandTabs, PuffLottie } from '../../components/brand'
 import { saveQuizDraft } from '../../utils/petQuizDraft'
+import NewsEventsTeaser from '../NewsEvents/NewsEventsTeaser'
 
 /* ----------------------------- данные ----------------------------- */
 const PAINS = {
@@ -282,6 +283,9 @@ export default function HomePage() {
         </header>
         <ConsiderGroups />
       </BrandSection>
+
+      {/* 5.5 НОВОСТИ И МЕРОПРИЯТИЯ — лента сообщества (скрывается, если контента нет) */}
+      <NewsEventsTeaser />
 
       {/* 6. ФИНАЛЬНЫЙ CTA — премиальная кульминация лендинга */}
       <section className="relative isolate overflow-hidden text-center">
