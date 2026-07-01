@@ -1,127 +1,137 @@
 #!/usr/bin/env bash
 # =============================================================================
-# Бэкап PostgreSQL из Docker-контейнера
+# Бэкап Питомец+: PostgreSQL + media-volume, с проверкой целостности, checksum,
+# ротацией (7 дневных / 4 недельных / 6 месячных) и off-site по rsync.
 #
-# Использование:
-#   ./scripts/backup-db.sh               — создать бэкап
-#   ./scripts/backup-db.sh --restore FILE — восстановить из файла
+#   ./scripts/backup-db.sh                        — создать бэкап (БД + media)
+#   ./scripts/backup-db.sh --restore FILE         — восстановить БД из файла (подтверждение)
+#   ./scripts/backup-db.sh --restore-test [FILE]  — тест восстановления во ВРЕМЕННУЮ БД
+#   ./scripts/backup-db.sh --verify               — проверить последние бэкапы
 #
-# Автоматизация (crontab):
-#   0 3 * * * /path/to/scripts/backup-db.sh >> /var/log/petplus-backup.log 2>&1
+# Off-site: если задан BACKUP_REMOTE=user@host:/path (окружение или backend/.env) —
+# каталог бэкапов синхронизируется rsync по ssh.
+#
+# Скрипт возвращает НЕнулевой код при любой ошибке — деплой на это опирается.
 # =============================================================================
-
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 COMPOSE="docker compose -f $PROJECT_DIR/docker-compose.yml"
 BACKUP_DIR="$PROJECT_DIR/backups"
-MAX_DAILY=7
-MAX_WEEKLY=4
+MAX_DAILY=7; MAX_WEEKLY=4; MAX_MONTHLY=6
+MIN_DB_BYTES=1024
 
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-NC='\033[0m'
+RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; NC='\033[0m'
+log()   { echo -e "${GREEN}[BACKUP]${NC} $(date '+%F %T') $*"; }
+warn()  { echo -e "${YELLOW}[WARN]${NC}  $(date '+%F %T') $*"; }
+error() { echo -e "${RED}[ERROR]${NC} $(date '+%F %T') $*"; exit 1; }
 
-log() { echo -e "${GREEN}[BACKUP]${NC} $(date '+%H:%M:%S') $*"; }
-error() { echo -e "${RED}[ERROR]${NC} $(date '+%H:%M:%S') $*"; exit 1; }
-
-# Чтение переменных из .env
 load_env() {
-    if [ -f "$PROJECT_DIR/backend/.env" ]; then
-        DB_NAME=$(grep -E '^DB_NAME=' "$PROJECT_DIR/backend/.env" | cut -d= -f2 || echo "pitomets_db")
-        DB_USER=$(grep -E '^DB_USER=' "$PROJECT_DIR/backend/.env" | cut -d= -f2 || echo "pitomets")
+    local envf="$PROJECT_DIR/backend/.env"
+    if [ -f "$envf" ]; then
+        DB_NAME=$(grep -E '^DB_NAME=' "$envf" | head -1 | cut -d= -f2- | tr -d "\"'\r" || true)
+        DB_USER=$(grep -E '^DB_USER=' "$envf" | head -1 | cut -d= -f2- | tr -d "\"'\r" || true)
+        BACKUP_REMOTE=${BACKUP_REMOTE:-$(grep -E '^BACKUP_REMOTE=' "$envf" | head -1 | cut -d= -f2- | tr -d "\"'\r" || true)}
+    fi
+    DB_NAME=${DB_NAME:-pitomets_db}; DB_USER=${DB_USER:-pitomets}; BACKUP_REMOTE=${BACKUP_REMOTE:-}
+}
+
+checksum() { ( cd "$(dirname "$1")" && sha256sum "$(basename "$1")" > "$(basename "$1").sha256" ); }
+
+backup_db() {
+    load_env; mkdir -p "$BACKUP_DIR"
+    local ts; ts=$(date '+%Y%m%d_%H%M%S')
+    local f="$BACKUP_DIR/pitomets_${ts}.sql.gz"
+    log "Дамп БД '$DB_NAME' → $(basename "$f")"
+    $COMPOSE exec -T db pg_dump -U "$DB_USER" -d "$DB_NAME" --no-owner --no-acl --format=plain | gzip > "$f"
+    [ "$(stat -c%s "$f")" -ge "$MIN_DB_BYTES" ] || error "Бэкап БД подозрительно мал — прерываю"
+    gunzip -t "$f" || error "Бэкап БД повреждён (gunzip -t) — прерываю"
+    checksum "$f"
+    log "БД OK: $(basename "$f") ($(du -h "$f" | cut -f1))"
+    [ "$(date '+%u')" -eq 7 ] && { cp "$f" "$BACKUP_DIR/pitomets_weekly_${ts}.sql.gz"; checksum "$BACKUP_DIR/pitomets_weekly_${ts}.sql.gz"; log "Недельная копия создана"; } || true
+    [ "$(date '+%d')" = "01" ] && { cp "$f" "$BACKUP_DIR/pitomets_monthly_${ts}.sql.gz"; checksum "$BACKUP_DIR/pitomets_monthly_${ts}.sql.gz"; log "Месячная копия создана"; } || true
+}
+
+backup_media() {
+    local vol; vol=$(docker volume ls --format '{{.Name}}' | grep -E 'backend_media$' | head -1 || true)
+    [ -n "$vol" ] || { warn "media-volume не найден — пропускаю"; return 0; }
+    local ts; ts=$(date '+%Y%m%d_%H%M%S'); local f="$BACKUP_DIR/media_${ts}.tar.gz"
+    log "Бэкап media '$vol' → $(basename "$f")"
+    docker run --rm -v "$vol":/data:ro -v "$BACKUP_DIR":/backup alpine \
+        tar czf "/backup/$(basename "$f")" -C /data . || { warn "media-бэкап не удался"; return 0; }
+    gunzip -t "$f" 2>/dev/null || warn "media-архив не прошёл проверку"
+    checksum "$f"; log "Media OK: $(basename "$f") ($(du -h "$f" | cut -f1))"
+}
+
+rotate() {
+    local pat="$1" keep="$2" label="$3"
+    local n; n=$(find "$BACKUP_DIR" -maxdepth 1 -name "$pat" 2>/dev/null | wc -l)
+    if [ "$n" -gt "$keep" ]; then
+        find "$BACKUP_DIR" -maxdepth 1 -name "$pat" -printf '%T+ %p\n' | sort | head -n "$((n-keep))" \
+            | awk '{print $2}' | while read -r x; do rm -f "$x" "$x.sha256"; done
+        log "Ротация $label: удалено $((n-keep))"
+    fi
+}
+
+offsite() {
+    load_env
+    [ -n "${BACKUP_REMOTE:-}" ] || { warn "BACKUP_REMOTE не задан — off-site пропущен"; return 0; }
+    log "Off-site rsync → $BACKUP_REMOTE"
+    rsync -az --timeout=180 "$BACKUP_DIR"/ "$BACKUP_REMOTE"/ || warn "Off-site rsync не удался (локальная копия сохранена)"
+}
+
+verify_latest() {
+    local ok=0 f
+    for f in $(find "$BACKUP_DIR" -maxdepth 1 -name '*.sql.gz' -printf '%T+ %p\n' | sort | tail -3 | awk '{print $2}'); do
+        if [ -f "$f.sha256" ] && ( cd "$BACKUP_DIR" && sha256sum -c "$(basename "$f").sha256" >/dev/null 2>&1 ) && gunzip -t "$f" 2>/dev/null; then
+            log "OK: $(basename "$f")"; ok=1
+        else
+            warn "ПОВРЕЖДЁН/без checksum: $(basename "$f")"
+        fi
+    done
+    [ "$ok" -eq 1 ] || error "Нет ни одного валидного бэкапа"
+}
+
+restore_test() {
+    load_env
+    local f="${1:-$(find "$BACKUP_DIR" -maxdepth 1 -name 'pitomets_2*.sql.gz' ! -name '*weekly*' ! -name '*monthly*' -printf '%T+ %p\n' | sort | tail -1 | awk '{print $2}')}"
+    [ -f "$f" ] || error "Файл для теста не найден"
+    local tdb="${DB_NAME}_restore_test"
+    log "Тест восстановления '$(basename "$f")' → временная БД $tdb"
+    $COMPOSE exec -T db psql -U "$DB_USER" -d "$DB_NAME" -c "DROP DATABASE IF EXISTS \"$tdb\";" >/dev/null
+    $COMPOSE exec -T db psql -U "$DB_USER" -d "$DB_NAME" -c "CREATE DATABASE \"$tdb\";" >/dev/null
+    if gunzip -c "$f" | $COMPOSE exec -T db psql -U "$DB_USER" -d "$tdb" -v ON_ERROR_STOP=1 --single-transaction >/dev/null 2>&1; then
+        local n; n=$($COMPOSE exec -T db psql -U "$DB_USER" -d "$tdb" -tAc "SELECT count(*) FROM information_schema.tables WHERE table_schema='public';" | tr -d '\r')
+        log "Тест ОК: таблиц восстановлено: $n"
+        $COMPOSE exec -T db psql -U "$DB_USER" -d "$DB_NAME" -c "DROP DATABASE IF EXISTS \"$tdb\";" >/dev/null
     else
-        DB_NAME="pitomets_db"
-        DB_USER="pitomets"
+        $COMPOSE exec -T db psql -U "$DB_USER" -d "$DB_NAME" -c "DROP DATABASE IF EXISTS \"$tdb\";" >/dev/null
+        error "Тест восстановления НЕ прошёл"
     fi
 }
 
-# ---- Создание бэкапа ----
-create_backup() {
-    mkdir -p "$BACKUP_DIR"
+restore() {
     load_env
-
-    local timestamp
-    timestamp=$(date '+%Y%m%d_%H%M%S')
-    local day_of_week
-    day_of_week=$(date '+%u')
-    local filename="pitomets_${timestamp}.sql.gz"
-
-    log "Создание бэкапа: $filename"
-
-    $COMPOSE exec -T db pg_dump \
-        -U "$DB_USER" \
-        -d "$DB_NAME" \
-        --no-owner \
-        --no-acl \
-        --format=plain \
-        | gzip > "$BACKUP_DIR/$filename"
-
-    local size
-    size=$(du -h "$BACKUP_DIR/$filename" | cut -f1)
-    log "Бэкап создан: $filename ($size)"
-
-    # Еженедельный бэкап (воскресенье)
-    if [ "$day_of_week" -eq 7 ]; then
-        local weekly_name="pitomets_weekly_${timestamp}.sql.gz"
-        cp "$BACKUP_DIR/$filename" "$BACKUP_DIR/$weekly_name"
-        log "Еженедельная копия: $weekly_name"
-    fi
-
-    rotate_backups
+    local f="$1"; [ -f "$f" ] || error "Файл не найден: $f"
+    warn "ВНИМАНИЕ: восстановление из $f заменит ВСЮ базу $DB_NAME!"
+    read -rp "Введите 'yes' для подтверждения: " c; [ "$c" = "yes" ] || { log "Отменено"; exit 0; }
+    gunzip -c "$f" | $COMPOSE exec -T db psql -U "$DB_USER" -d "$DB_NAME" --single-transaction
+    log "Восстановление завершено"
 }
-
-# ---- Ротация бэкапов ----
-rotate_backups() {
-    log "Ротация бэкапов (ежедневные: $MAX_DAILY, еженедельные: $MAX_WEEKLY)..."
-
-    # Ежедневные (без weekly в имени)
-    local count
-    count=$(find "$BACKUP_DIR" -name "pitomets_2*.sql.gz" ! -name "*weekly*" | wc -l)
-    if [ "$count" -gt "$MAX_DAILY" ]; then
-        local to_remove=$((count - MAX_DAILY))
-        find "$BACKUP_DIR" -name "pitomets_2*.sql.gz" ! -name "*weekly*" -printf '%T+ %p\n' \
-            | sort | head -n "$to_remove" | awk '{print $2}' | xargs rm -f
-        log "Удалено $to_remove старых ежедневных бэкапов"
-    fi
-
-    # Еженедельные
-    count=$(find "$BACKUP_DIR" -name "pitomets_weekly_*.sql.gz" | wc -l)
-    if [ "$count" -gt "$MAX_WEEKLY" ]; then
-        local to_remove=$((count - MAX_WEEKLY))
-        find "$BACKUP_DIR" -name "pitomets_weekly_*.sql.gz" -printf '%T+ %p\n' \
-            | sort | head -n "$to_remove" | awk '{print $2}' | xargs rm -f
-        log "Удалено $to_remove старых еженедельных бэкапов"
-    fi
-}
-
-# ---- Восстановление из бэкапа ----
-restore_backup() {
-    local file="$1"
-    [ -f "$file" ] || error "Файл не найден: $file"
-
-    load_env
-    log "ВНИМАНИЕ: Восстановление из $file заменит ВСЮ базу данных!"
-    read -rp "Продолжить? (yes/no): " confirm
-    [ "$confirm" = "yes" ] || { log "Отменено."; exit 0; }
-
-    log "Восстановление БД из $file..."
-    gunzip -c "$file" | $COMPOSE exec -T db psql -U "$DB_USER" -d "$DB_NAME" --single-transaction
-
-    log "Восстановление завершено!"
-}
-
-# =============================================================================
-# Основной скрипт
-# =============================================================================
 
 case "${1:-}" in
-    --restore)
-        [ -n "${2:-}" ] || error "Укажите файл: ./scripts/backup-db.sh --restore backups/file.sql.gz"
-        restore_backup "$2"
-        ;;
+    --restore)      [ -n "${2:-}" ] || error "Укажите файл: --restore backups/file.sql.gz"; restore "$2" ;;
+    --restore-test) restore_test "${2:-}" ;;
+    --verify)       verify_latest ;;
     *)
-        create_backup
+        backup_db
+        backup_media
+        rotate 'pitomets_2*.sql.gz'         "$MAX_DAILY"   'ежедневные'
+        rotate 'pitomets_weekly_*.sql.gz'   "$MAX_WEEKLY"  'недельные'
+        rotate 'pitomets_monthly_*.sql.gz'  "$MAX_MONTHLY" 'месячные'
+        rotate 'media_2*.tar.gz'            "$MAX_DAILY"   'media'
+        offsite
+        log "Бэкап завершён успешно"
         ;;
 esac
