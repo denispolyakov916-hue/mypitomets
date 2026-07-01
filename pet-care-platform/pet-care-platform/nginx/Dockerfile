@@ -6,7 +6,10 @@ FROM node:20-alpine AS frontend-build
 
 WORKDIR /app
 COPY frontend/package.json frontend/package-lock.json* ./
-RUN npm ci --prefer-offline
+# --include=dev обязателен: vite/@vitejs — в devDependencies, нужны для сборки.
+# (Раньше слой брался из кэша и маскировал проблему; при холодной сборке devDeps
+# не доставлялись, и `vite build` падал с "vite: not found".)
+RUN npm ci --include=dev --no-audit --no-fund
 COPY frontend/ .
 RUN npm run build
 
