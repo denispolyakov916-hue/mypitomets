@@ -1856,6 +1856,23 @@ class CoursePage(models.Model):
         """Получить блоки страницы в правильном порядке."""
         return self.blocks.filter(is_active=True).order_by('order')
 
+    def get_course(self):
+        """Курс, которому принадлежит страница.
+
+        У CoursePage нет прямого FK на курс: course_id — денормализованный
+        PositiveIntegerField (не ForeignKey), а module — опциональный путь
+        CourseModule → Course. Резолвим сперва по course_id, затем по модулю.
+        Может вернуть None (осиротевшая страница). Использовать вместо `page.course`,
+        которого не существует.
+        """
+        if self.course_id:
+            course = Course.objects.filter(id=self.course_id).first()
+            if course is not None:
+                return course
+        if self.module_id:
+            return self.module.course
+        return None
+
 
 class ContentBlock(models.Model):
     """

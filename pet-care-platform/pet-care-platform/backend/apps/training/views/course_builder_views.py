@@ -43,6 +43,16 @@ def can_edit_course(user, course):
     return user.is_staff or user.is_superuser or course.author_id == user.id
 
 
+def author_pages_filter(user):
+    """Q-фильтр «страницы, чей курс принадлежит user» — по course_id или модулю.
+
+    Нельзя писать course__author (course_id — обычное число, а не FK), поэтому
+    берём id курсов автора и матчим по денормализованному course_id + через модуль.
+    """
+    own_ids = list(Course.objects.filter(author=user).values_list('id', flat=True))
+    return models.Q(course_id__in=own_ids) | models.Q(module__course__author=user)
+
+
 def course_owner_denied_response():
     return Response(
         {'error': 'Вы можете редактировать только свои курсы'},
@@ -157,7 +167,8 @@ class BlockReorderView(APIView):
         except CoursePage.DoesNotExist:
             return Response({'error': 'Страница не найдена'}, status=status.HTTP_404_NOT_FOUND)
 
-        if not can_edit_course(request.user, page.course):
+        course = page.get_course()
+        if course is None or not can_edit_course(request.user, course):
             return course_owner_denied_response()
 
         for i, block_id in enumerate(block_ids, start=1):
@@ -238,7 +249,8 @@ class PageMoveToModuleView(APIView):
         target_module_id = request.data.get('target_module_id')
 
         page = get_object_or_404(CoursePage, id=page_id, is_active=True)
-        if not can_edit_course(request.user, page.course):
+        course = page.get_course()
+        if course is None or not can_edit_course(request.user, course):
             return course_owner_denied_response()
         source_module_id = page.module_id
 
@@ -293,7 +305,7 @@ class CoursePageViewSet(ModelViewSet):
         course_id = self.kwargs.get('course_id')
         queryset = CoursePage.objects.filter(is_active=True)
         if not (self.request.user.is_staff or self.request.user.is_superuser):
-            queryset = queryset.filter(course__author=self.request.user)
+            queryset = queryset.filter(author_pages_filter(self.request.user))
         if course_id is not None:
             return queryset.filter(course_id=course_id)
         return queryset
@@ -325,7 +337,13 @@ class ContentBlockViewSet(ModelViewSet):
         page_id = self.kwargs.get('page_id')
         queryset = ContentBlock.objects.filter(is_active=True)
         if not (self.request.user.is_staff or self.request.user.is_superuser):
-            queryset = queryset.filter(page__course__author=self.request.user)
+            own_ids = list(
+                Course.objects.filter(author=self.request.user).values_list('id', flat=True)
+            )
+            queryset = queryset.filter(
+                models.Q(page__course_id__in=own_ids)
+                | models.Q(page__module__course__author=self.request.user)
+            )
         if page_id:
             return queryset.filter(page_id=page_id)
         return queryset
@@ -333,7 +351,8 @@ class ContentBlockViewSet(ModelViewSet):
     def perform_create(self, serializer):
         page_id = self.kwargs.get('page_id')
         page = get_object_or_404(CoursePage, id=page_id)
-        if not can_edit_course(self.request.user, page.course):
+        course = page.get_course()
+        if course is None or not can_edit_course(self.request.user, course):
             from rest_framework.exceptions import PermissionDenied
             raise PermissionDenied('Вы можете редактировать только свои курсы')
 
@@ -430,7 +449,8 @@ class BlockTemplateViewSet(ModelViewSet):
         # Проверка прав: админ ИЛИ автор курса, которому принадлежит страница.
         # Владелец курса (course_creator) может собирать блоки из шаблонов на своих
         # страницах; чужой курс так тронуть нельзя.
-        if not can_edit_course(request.user, page.course):
+        course = page.get_course()
+        if course is None or not can_edit_course(request.user, course):
             return Response(
                 {'error': 'Недостаточно прав'},
                 status=status.HTTP_403_FORBIDDEN

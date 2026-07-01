@@ -196,8 +196,8 @@ class PageCommentsView(APIView):
                 status=status.HTTP_404_NOT_FOUND
             )
 
-        course = page.course
-        if not has_course_access(request.user, course):
+        course = page.get_course()
+        if course and not has_course_access(request.user, course):
             return Response(
                 {'error': 'У вас нет доступа к этому курсу'},
                 status=status.HTTP_403_FORBIDDEN
@@ -446,7 +446,7 @@ class CommentDetailView(APIView):
         # Проверяем доступ к комментарию через связанный курс
         related_course = comment.course or (comment.lesson.course if comment.lesson else None)
         if not related_course and comment.page:
-            related_course = comment.page.course
+            related_course = comment.page.get_course()
 
         if related_course and not has_course_access(request.user, related_course):
             return Response(
@@ -528,7 +528,7 @@ class CommentReactionView(APIView):
         # Проверяем доступ к комментарию через связанный курс
         related_course = comment.course or (comment.lesson.course if comment.lesson else None)
         if not related_course and comment.page:
-            related_course = comment.page.course
+            related_course = comment.page.get_course()
 
         if related_course and not has_course_access(request.user, related_course):
             return Response(
