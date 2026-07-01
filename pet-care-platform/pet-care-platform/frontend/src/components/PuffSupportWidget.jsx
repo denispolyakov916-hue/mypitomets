@@ -185,7 +185,12 @@ export default function PuffSupportWidget({ stackGuestStrip = false }) {
     setIsSending(true)
     setPuff('think')
     try {
-      const data = await sendChatMessage({ message: text, petId: effectivePetId })
+      // Память контекста: шлём недавние реплики (без приветствия и служебных сообщений).
+      const history = messages
+        .filter((m) => m && m.text && m.text !== GREETING && m.text !== LOGIN_PROMPT && m.text !== ERROR_REPLY)
+        .slice(-12)
+        .map((m) => ({ role: m.isUser ? 'user' : 'assistant', content: m.text }))
+      const data = await sendChatMessage({ message: text, petId: effectivePetId, history })
       setMessages((prev) => [...prev, {
         text: data?.reply || 'Готово.',
         isUser: false,

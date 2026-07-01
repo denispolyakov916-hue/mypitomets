@@ -48,6 +48,7 @@ class AssistantChatView(APIView):
                 message=data['message'],
                 pet_id=data.get('pet_id'),
                 capability=data.get('capability'),
+                history=data.get('history'),
             )
             return Response(reply.to_dict(), status=status.HTTP_200_OK)
 

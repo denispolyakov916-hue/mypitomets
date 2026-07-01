@@ -15,12 +15,14 @@ import api from './client'
  * @param {string} params.message - текст сообщения пользователя
  * @param {string|null} [params.petId] - id питомца (для вопросов о здоровье/питании)
  * @param {string|null} [params.capability] - принудительная тема: 'support'|'health'|'food'
+ * @param {Array<{role: 'user'|'assistant', content: string}>} [params.history] - недавние реплики диалога (память контекста)
  * @returns {Promise<{reply: string, capability: string, sources: Array, disclaimer: ?string, provider: string, needs_pet: boolean}>}
  */
-export const sendChatMessage = async ({ message, petId = null, capability = null } = {}) => {
+export const sendChatMessage = async ({ message, petId = null, capability = null, history = null } = {}) => {
   const payload = { message }
   if (petId) payload.pet_id = petId
   if (capability) payload.capability = capability
+  if (Array.isArray(history) && history.length) payload.history = history
   return await api.post('/assistant/chat/', payload)
 }
 
