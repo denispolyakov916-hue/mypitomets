@@ -1063,9 +1063,10 @@ class CartView(APIView):
         sku_id = data.get('sku_id')
         quantity = data.get('quantity', 1)
 
-        # Проверка существования товара
+        # Проверка существования товара (только активный: неактивный status=0
+        # не должен попадать в корзину, даже если is_available ещё True).
         try:
-            product = Product.objects.get(id=product_id)
+            product = Product.objects.get(id=product_id, status=1)
         except Product.DoesNotExist:
             return Response(
                 {'error': 'Товар не найден'},
@@ -1591,7 +1592,8 @@ class OrderCreateView(APIView):
             
             for item in cart_items:
                 product = products.get(item.product_id)
-                if not product or not product.is_available:
+                # Неактивный (status=0) товар недоступен для заказа, даже если is_available=True.
+                if not product or not product.is_available or product.status != 1:
                     unavailable_items.append(item.product.name if item.product else f'ID {item.product_id}')
             
             # Возврат ошибок валидации

@@ -278,7 +278,7 @@ class PetBreedComparisonService:
         """Расчет заполненности профиля"""
         required_fields = [
             pet.name, pet.species, pet.breed, pet.date_of_birth,
-            pet.weight, pet.gender
+            pet.weight, pet.sex
         ]
         
         filled = sum(1 for field in required_fields if field)
