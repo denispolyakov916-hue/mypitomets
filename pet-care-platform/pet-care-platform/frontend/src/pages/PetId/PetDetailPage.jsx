@@ -26,16 +26,13 @@ import QuickWeightModal from '../../components/health/QuickWeightModal';
 import WeightSparkline from '../../components/health/WeightSparkline';
 import { usePetWeightHistory } from '../../hooks/usePetWeightHistory';
 import { isWeightEvent, WEIGHT_META } from '../../constants/weight';
-import { saveQuizDraft, clearQuizDraft, petToQuizDraft } from '../../utils/petQuizDraft';
 
 /**
- * Открыть рекомендации по питанию для УЖЕ сохранённого питомца, не заполняя анкету заново.
- * Повторяет StartPage.choosePet: собираем черновик из питомца и идём к результату.
+ * Открыть страницу подбора рациона (FoodRecommendationPage) для УЖЕ сохранённого
+ * питомца — по ?pet_id=, без повторного заполнения анкеты.
  */
 function goToRecommendations(pet, navigate) {
-  clearQuizDraft();
-  saveQuizDraft(petToQuizDraft(pet));
-  navigate('/recommendations');
+  navigate(`/food-recommendation?pet_id=${pet.id}`);
 }
 
 /**

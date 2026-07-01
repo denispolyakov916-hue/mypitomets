@@ -9,7 +9,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Cat, Dog, ArrowRight, PawPrint, Plus } from 'lucide-react'
 import AppShell from '../../components/app/AppShell'
 import { BrandSection, BrandCard, PuffLottie } from '../../components/brand'
-import { saveQuizDraft, clearQuizDraft, petToQuizDraft } from '../../utils/petQuizDraft'
+import { saveQuizDraft, clearQuizDraft } from '../../utils/petQuizDraft'
 import { useAuthStore } from '../../store/authStore'
 import { getPets } from '../../api/pets'
 
@@ -57,11 +57,9 @@ export default function StartPage() {
     navigate(`/pet-quiz?species=${species}`)
   }
 
-  // Существующий питомец: собираем черновик из его данных и сразу к рекомендациям.
+  // Существующий питомец: открываем страницу подбора рациона (FoodRecommendationPage) по pet_id.
   const choosePet = (pet) => {
-    clearQuizDraft()
-    saveQuizDraft(petToQuizDraft(pet))
-    navigate('/recommendations')
+    navigate(`/food-recommendation?pet_id=${pet.id}`)
   }
 
   const hasPets = pets.length > 0
