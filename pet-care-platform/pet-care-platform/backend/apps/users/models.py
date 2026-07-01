@@ -26,9 +26,9 @@ class UserManager(BaseUserManager):
         return user
     
     def create_superuser(self, email, password=None, **extra_fields):
-        """Создание суперпользователя."""
+        """Создание суперпользователя = владельца платформы."""
         from core.constants import UserRole
-        extra_fields.setdefault('role', UserRole.ADMIN)
+        extra_fields.setdefault('role', UserRole.PLATFORM_OWNER)
         extra_fields.setdefault('is_staff', True)
         extra_fields.setdefault('is_superuser', True)
         return self.create_user(email, password, **extra_fields)
@@ -160,11 +160,22 @@ class User(AbstractBaseUser, PermissionsMixin):
         return self.email
 
     def save(self, *args, **kwargs):
-        """Синхронизация is_staff/is_superuser при изменении роли."""
+        """Синхронизация is_staff/is_superuser по роли.
+
+        platform_owner — владелец платформы: is_staff + is_superuser.
+        admin — админ компании: только is_staff (НЕ superuser).
+        остальные роли — ни staff, ни superuser.
+        """
         from core.constants import UserRole
-        is_admin = self.role == UserRole.ADMIN
-        self.is_staff = is_admin
-        self.is_superuser = is_admin
+        if self.role == UserRole.PLATFORM_OWNER:
+            self.is_staff = True
+            self.is_superuser = True
+        elif self.role == UserRole.ADMIN:
+            self.is_staff = True
+            self.is_superuser = False
+        else:
+            self.is_staff = False
+            self.is_superuser = False
         super().save(*args, **kwargs)
 
 

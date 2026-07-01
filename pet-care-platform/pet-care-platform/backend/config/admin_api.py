@@ -1256,6 +1256,13 @@ class AdminUserViewSet(AdminModelViewSet):
         """Обновить пользователя (PUT и PATCH)."""
         try:
             user = User.objects.get(id=pk)
+            # Менять роль (в т.ч. выдать admin/владельца) может ТОЛЬКО владелец платформы
+            # (is_superuser). Иначе обычный admin мог бы повысить кого угодно.
+            if 'role' in request.data and not request.user.is_superuser:
+                return Response(
+                    {'error': 'Менять роль пользователя может только владелец платформы'},
+                    status=status.HTTP_403_FORBIDDEN
+                )
             allowed_fields = ['email', 'first_name', 'last_name', 'phone', 'is_active', 'role']
             for field in allowed_fields:
                 if field in request.data:

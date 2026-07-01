@@ -73,7 +73,8 @@ class UserRole:
     SUPPLIER_EDITOR = 'supplier_editor'
     SUPPLIER_ANALYST = 'supplier_analyst'
     MARKETING_MANAGER = 'marketing_manager'
-    ADMIN = 'admin'
+    ADMIN = 'admin'                    # админ компании: is_staff, НЕ superuser
+    PLATFORM_OWNER = 'platform_owner'  # владелец платформы: is_staff + is_superuser
 
     CHOICES = [
         (USER, 'Пользователь'),
@@ -83,6 +84,7 @@ class UserRole:
         (SUPPLIER_ANALYST, 'Аналитик поставщика'),
         (MARKETING_MANAGER, 'Маркетолог'),
         (ADMIN, 'Администратор'),
+        (PLATFORM_OWNER, 'Владелец платформы'),
     ]
 
 
