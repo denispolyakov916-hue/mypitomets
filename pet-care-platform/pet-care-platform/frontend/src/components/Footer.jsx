@@ -47,8 +47,12 @@ const FOOTER_COMPANY = [
 const FOOTER_DOCS = [
   { to: '/privacy', label: 'Политика конфиденциальности' },
   { to: '/terms', label: 'Пользовательское соглашение' },
-  { to: '/consent', label: 'Согласие на обработку персональных данных' },
   { to: '/offer', label: 'Публичная оферта' },
+  { to: '/consent', label: 'Согласие на обработку ПДн' },
+  { to: '/consent-distribution', label: 'Согласие на распространение ПДн' },
+  { to: '/cookie', label: 'Cookie и веб-аналитика' },
+  { to: '/marketing-consent', label: 'Согласие на рекламные сообщения' },
+  { to: '/sellers', label: 'Продавцы и партнёры' },
 ];
 
 const SOCIAL_LINKS = [

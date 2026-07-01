@@ -1,0 +1,174 @@
+/* =============================================================================
+   Юридические документы — «журнальный» шаблон (LegalHtmlPage)
+   Бренд: тёмно-фиолетовый #522f81, золото #fbba2d, молоко #F5F5F5, Manrope/Inter.
+   Контент вставляется как дословный HTML во .legal-prose (dangerouslySetInnerHTML),
+   поэтому стилизуем по вложенным тегам.
+   ============================================================================= */
+
+.legal-shell {
+  --lg-purple: #522f81;
+  --lg-purple-900: #2b1845;
+  --lg-purple-700: #3e2362;
+  --lg-gold: #fbba2d;
+  --lg-milk: #f5f5f5;
+  --lg-ink: #34264a;
+  --lg-muted: #7a6b93;
+  background: var(--lg-milk);
+  min-height: 100vh;
+}
+
+/* ---------- HERO ---------- */
+.legal-hero {
+  position: relative;
+  overflow: hidden;
+  color: #fff;
+  background:
+    radial-gradient(120% 140% at 88% -10%, rgba(251, 186, 45, 0.32) 0%, rgba(251, 186, 45, 0) 46%),
+    radial-gradient(90% 120% at 8% 120%, rgba(200, 107, 250, 0.30) 0%, rgba(200, 107, 250, 0) 50%),
+    linear-gradient(135deg, #3e2362 0%, #522f81 55%, #2b1845 100%);
+  padding: clamp(2.25rem, 6vw, 4.75rem) clamp(1.1rem, 5vw, 3rem) clamp(2rem, 5vw, 3.5rem);
+}
+.legal-hero__inner { max-width: 72rem; margin: 0 auto; position: relative; z-index: 2; }
+/* Большой призрачный номер-водяной знак документа */
+.legal-hero__ghost {
+  position: absolute; right: clamp(-1rem, 2vw, 2rem); top: -1.4rem;
+  font-family: 'Manrope', system-ui, sans-serif;
+  font-weight: 800; font-size: clamp(7rem, 20vw, 15rem); line-height: 1;
+  color: rgba(255, 255, 255, 0.06); letter-spacing: -0.04em; z-index: 1; user-select: none;
+  pointer-events: none;
+}
+.legal-hero__kicker {
+  display: inline-flex; align-items: center; gap: 0.5rem;
+  font-size: 0.72rem; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase;
+  color: var(--lg-gold);
+  background: rgba(251, 186, 45, 0.12);
+  border: 1px solid rgba(251, 186, 45, 0.35);
+  padding: 0.35rem 0.85rem; border-radius: 999px;
+}
+.legal-hero__title {
+  font-family: 'Manrope', system-ui, sans-serif;
+  font-weight: 800; letter-spacing: -0.02em; line-height: 1.05;
+  font-size: clamp(1.9rem, 5vw, 3.4rem);
+  margin: 1rem 0 0; max-width: 20ch; text-wrap: balance;
+}
+.legal-hero__meta { display: flex; flex-wrap: wrap; gap: 0.55rem; margin-top: 1.35rem; }
+.legal-hero__chip {
+  display: inline-flex; align-items: center; gap: 0.4rem;
+  font-size: 0.8rem; font-weight: 600; color: #f3ecff;
+  background: rgba(255, 255, 255, 0.10);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  padding: 0.4rem 0.8rem; border-radius: 999px; backdrop-filter: blur(4px);
+}
+.legal-hero__chip b { color: #fff; font-weight: 800; }
+
+/* ---------- BODY LAYOUT ---------- */
+.legal-body {
+  max-width: 72rem; margin: 0 auto;
+  padding: clamp(1.5rem, 4vw, 3rem) clamp(1.1rem, 5vw, 3rem) 4rem;
+  display: grid; grid-template-columns: 1fr; gap: 2rem;
+}
+@media (min-width: 960px) {
+  .legal-body { grid-template-columns: 250px minmax(0, 1fr); gap: 3rem; align-items: start; }
+}
+
+/* ---------- TABLE OF CONTENTS ---------- */
+.legal-toc { display: none; }
+@media (min-width: 960px) {
+  .legal-toc {
+    display: block; position: sticky; top: 1.5rem; align-self: start;
+    max-height: calc(100vh - 3rem); overflow-y: auto;
+  }
+}
+.legal-toc__title {
+  font-size: 0.72rem; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--lg-muted); margin: 0 0 0.75rem 0.9rem;
+}
+.legal-toc__link {
+  display: block; padding: 0.4rem 0.9rem; border-left: 2px solid #e7dff5;
+  font-size: 0.86rem; line-height: 1.35; color: var(--lg-muted);
+  text-decoration: none; transition: color .15s, border-color .15s, background .15s;
+  border-radius: 0 8px 8px 0;
+}
+.legal-toc__link:hover { color: var(--lg-purple); background: #efe8fb; }
+.legal-toc__link.is-active {
+  color: var(--lg-purple); border-left-color: var(--lg-gold);
+  background: #efe8fb; font-weight: 700;
+}
+
+/* ---------- PROSE (дословный контент) ---------- */
+.legal-prose {
+  background: #fff; border: 1px solid #ece4fb; border-radius: 24px;
+  box-shadow: 0 4px 24px rgba(82, 47, 129, 0.07);
+  padding: clamp(1.4rem, 4vw, 3rem);
+  color: var(--lg-ink); font-family: 'Inter', system-ui, sans-serif;
+  font-size: 1rem; line-height: 1.72; counter-reset: legal-sec;
+  overflow-wrap: break-word;
+}
+.legal-prose p { margin: 0 0 0.9rem; }
+.legal-prose b, .legal-prose strong { color: var(--lg-purple-700); font-weight: 700; }
+/* Формальная «шапка» документа (УТВЕРЖДАЮ / название / редакция) — курсивные строки */
+.legal-prose i { font-style: normal; }
+.legal-prose p:first-child,
+.legal-prose p:has(> b > i),
+.legal-prose p:has(> i) { text-align: center; color: var(--lg-muted); }
+.legal-prose p:has(> b > i) b { color: var(--lg-purple); }
+
+/* Заголовки разделов с золотым номером-бейджем */
+.legal-prose h2 {
+  font-family: 'Manrope', system-ui, sans-serif;
+  font-weight: 800; color: var(--lg-purple); letter-spacing: -0.01em;
+  font-size: clamp(1.15rem, 2.4vw, 1.5rem); line-height: 1.25;
+  margin: 2.4rem 0 1rem; padding-top: 1.4rem; scroll-margin-top: 1.5rem;
+  border-top: 1px solid #efe7fb; text-align: left;
+}
+.legal-prose h2:first-child { border-top: 0; padding-top: 0; margin-top: 0; }
+
+/* Списки/таблицы */
+.legal-prose ul, .legal-prose ol { margin: 0 0 1rem 1.2rem; }
+.legal-prose li { margin: 0.3rem 0; }
+.legal-prose table {
+  width: 100%; border-collapse: collapse; margin: 1rem 0 1.4rem;
+  font-size: 0.9rem; display: block; overflow-x: auto; white-space: normal;
+  border: 1px solid #e7dff5; border-radius: 14px;
+}
+.legal-prose thead td, .legal-prose th { background: #f3eefc; }
+.legal-prose td, .legal-prose th {
+  border: 1px solid #ece4fb; padding: 0.6rem 0.8rem; vertical-align: top; text-align: left;
+  min-width: 8.5rem;
+}
+.legal-prose tr:nth-child(even) td { background: #faf8fe; }
+.legal-prose td p { margin: 0 0 0.35rem; }
+.legal-prose td p:last-child { margin-bottom: 0; }
+.legal-prose a { color: var(--lg-purple); font-weight: 600; text-decoration: underline; }
+
+/* ---------- RELATED / FOOTER ---------- */
+.legal-related {
+  max-width: 72rem; margin: 0 auto; padding: 0 clamp(1.1rem, 5vw, 3rem) 4rem;
+}
+.legal-related__title { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.14em;
+  text-transform: uppercase; color: var(--lg-muted); margin-bottom: 0.9rem; }
+.legal-related__grid { display: grid; grid-template-columns: 1fr; gap: 0.7rem; }
+@media (min-width: 640px) { .legal-related__grid { grid-template-columns: 1fr 1fr; } }
+.legal-related__card {
+  display: flex; align-items: center; justify-content: space-between; gap: 0.75rem;
+  background: #fff; border: 1px solid #ece4fb; border-radius: 14px;
+  padding: 0.85rem 1.1rem; color: var(--lg-purple-700); font-weight: 600;
+  text-decoration: none; transition: border-color .15s, box-shadow .15s, transform .15s;
+}
+.legal-related__card:hover { border-color: #d9c4f5; box-shadow: 0 6px 18px rgba(82,47,129,.10); transform: translateY(-1px); }
+.legal-related__card span:last-child { color: var(--lg-gold); font-size: 1.15rem; }
+
+/* ---------- floating «наверх» ---------- */
+.legal-top {
+  position: fixed; right: 1.1rem; bottom: 1.4rem; z-index: 30;
+  width: 46px; height: 46px; border-radius: 50%; border: none; cursor: pointer;
+  background: var(--lg-purple); color: #fff; font-size: 1.2rem; line-height: 1;
+  box-shadow: 0 8px 22px rgba(82, 47, 129, 0.35); transition: opacity .2s, transform .2s;
+}
+.legal-top:hover { transform: translateY(-2px); }
+
+@media print {
+  .legal-hero { color: #000; background: none; padding: 0 0 1rem; }
+  .legal-hero__ghost, .legal-toc, .legal-top, .legal-related { display: none !important; }
+  .legal-prose { border: 0; box-shadow: none; padding: 0; }
+}

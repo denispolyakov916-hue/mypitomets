@@ -102,6 +102,10 @@ const PrivacyPolicy = lazy(() => import('./pages/Legal/PrivacyPolicy'))
 const TermsOfUse = lazy(() => import('./pages/Legal/TermsOfUse'))
 const DataConsent = lazy(() => import('./pages/Legal/DataConsent'))
 const Offer = lazy(() => import('./pages/Legal/Offer'))
+const CookieConsent = lazy(() => import('./pages/Legal/CookieConsent'))
+const DistributionConsent = lazy(() => import('./pages/Legal/DistributionConsent'))
+const MarketingConsent = lazy(() => import('./pages/Legal/MarketingConsent'))
+const Sellers = lazy(() => import('./pages/Legal/Sellers'))
 
 // Ленивая загрузка React админ-панели
 const AdminApp = lazy(() => import('./admin/App'))
@@ -256,6 +260,10 @@ function App() {
                   </Suspense>
                 }
               />
+              <Route path="/cookie" element={<Suspense fallback={<Loader />}><CookieConsent /></Suspense>} />
+              <Route path="/consent-distribution" element={<Suspense fallback={<Loader />}><DistributionConsent /></Suspense>} />
+              <Route path="/marketing-consent" element={<Suspense fallback={<Loader />}><MarketingConsent /></Suspense>} />
+              <Route path="/sellers" element={<Suspense fallback={<Loader />}><Sellers /></Suspense>} />
 
               {/* Brand UI Kit — внутренняя витрина компонентов.
                   Монтируется ТОЛЬКО в dev: в продакшне /brand-kit отдаёт обычный 404

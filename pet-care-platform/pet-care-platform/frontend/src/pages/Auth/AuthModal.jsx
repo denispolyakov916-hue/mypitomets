@@ -74,7 +74,7 @@ function AuthModal() {
   const [validationErrors, setValidationErrors] = useState({})
 
   // P1.11.1: обязательные согласия при регистрации (блокируют отправку).
-  const [consents, setConsents] = useState({ terms: false, personalData: false })
+  const [consents, setConsents] = useState({ terms: false, personalData: false, marketing: false })
 
   // Повторная отправка кода активации (email) с кулдауном 60с
   const [resendCooldown, setResendCooldown] = useState(0)
@@ -159,7 +159,7 @@ const toggleMode = () => {
   setValidationErrors({})
   setRegistrationSuccess(false)
   setActivationCode('')
-  setConsents({ terms: false, personalData: false })
+  setConsents({ terms: false, personalData: false, marketing: false })
 }
 
   /**
@@ -540,6 +540,26 @@ const toggleMode = () => {
                   {validationErrors.personalData && (
                     <div className="auth-field-error" role="alert">{validationErrors.personalData}</div>
                   )}
+
+                  <label
+                    htmlFor="consent-marketing"
+                    style={{ display: 'flex', gap: '8px', alignItems: 'flex-start', fontSize: '13px', color: '#4b3a63', cursor: 'pointer', lineHeight: 1.5, marginTop: '10px' }}
+                  >
+                    <input
+                      type="checkbox"
+                      id="consent-marketing"
+                      name="marketing"
+                      checked={consents.marketing}
+                      onChange={handleConsentChange}
+                      disabled={isLoading}
+                      style={{ marginTop: '3px', flexShrink: 0 }}
+                    />
+                    <span>
+                      Согласен(на) получать{' '}
+                      <a href="/marketing-consent" target="_blank" rel="noopener noreferrer" style={{ color: '#522f81', fontWeight: 600 }}>рекламные и информационные сообщения</a>{' '}
+                      <span style={{ color: '#8a7aa3' }}>— необязательно</span>
+                    </span>
+                  </label>
                 </div>
               )}
 
