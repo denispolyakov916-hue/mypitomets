@@ -14,7 +14,8 @@
  */
 
 import axios from 'axios'
-import { refreshToken } from './auth'
+// Refresh делаем ИНЛАЙНОМ через локальный api-инстанс (ниже), чтобы не импортировать
+// ./auth и не создавать циклическую зависимость client.js ↔ auth.js.
 
 // Базовый URL API - использует прокси из vite.config.js
 // Все запросы на /api/* проксируются на localhost:8077
@@ -125,7 +126,7 @@ api.interceptors.response.use(
       // он покажет гостевое состояние. Редирект — только при истёкшей сессии (ниже).
       const hasTokens =
         typeof window !== 'undefined' &&
-        !!(localStorage.getItem('access_token') || localStorage.getItem('refresh_token'))
+        !!localStorage.getItem('access_token')
       if (!hasTokens) {
         return Promise.reject({
           status,
@@ -145,7 +146,8 @@ api.interceptors.response.use(
         
         // Перенаправляем на страницу входа, если ещё не там
         if (window.location.pathname !== '/login' && window.location.pathname !== '/register') {
-          window.location.href = '/login'
+          const redirect = encodeURIComponent(window.location.pathname + window.location.search)
+          window.location.href = `/login?redirect=${redirect}`
         }
         
         return Promise.reject({
@@ -159,9 +161,11 @@ api.interceptors.response.use(
       originalRequest._retry = true
       
       try {
-        const newTokens = await refreshToken()
-        
+        // Инлайн refresh через локальный api — refresh-токен берётся из httpOnly-cookie.
+        const newTokens = await api.get('/auth/refresh/', { withCredentials: true })
+
         if (newTokens && newTokens.accessToken) {
+          localStorage.setItem('access_token', newTokens.accessToken)
           // Обновляем токен в заголовке и повторяем запрос
           originalRequest.headers.Authorization = `Bearer ${newTokens.accessToken}`
           return api(originalRequest)
@@ -171,7 +175,8 @@ api.interceptors.response.use(
         localStorage.removeItem('access_token')
         
         if (window.location.pathname !== '/login' && window.location.pathname !== '/register') {
-          window.location.href = '/login'
+          const redirect = encodeURIComponent(window.location.pathname + window.location.search)
+          window.location.href = `/login?redirect=${redirect}`
         }
         
         return Promise.reject({

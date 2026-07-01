@@ -68,9 +68,9 @@ export const login = async (email, password) => {
   })
   
   // Сохраняем токены при успешном входе
-  if (response.accessToken && response.refreshToken) {
+  if (response.accessToken) {
+    // refresh-токен НЕ храним в localStorage — он живёт только в httpOnly-cookie (XSS-безопасно)
     localStorage.setItem('access_token', response.accessToken)
-    localStorage.setItem('refresh_token', response.refreshToken)
   }
 
   return response
@@ -120,9 +120,8 @@ export const logout = async () => {
     // Игнорируем ошибки при выходе
     console.error('Ошибка при выходе:', error)
   } finally {
-    // Очищаем токены в любом случае
+    // Очищаем access-токен (refresh — только в httpOnly-cookie, чистит сервер на /logout/)
     localStorage.removeItem('access_token')
-    localStorage.removeItem('refresh_token')
   }
 }
 
@@ -166,10 +165,8 @@ export const refreshToken = async () => {
   if (response.accessToken) {
     localStorage.setItem('access_token', response.accessToken)
   }
-  if (response.refreshToken) {
-    localStorage.setItem('refresh_token', response.refreshToken)
-  }
-  
+  // refresh-токен обновляется сервером в httpOnly-cookie; в localStorage не пишем.
+
   return response
 }
 
@@ -189,9 +186,9 @@ export const activateByCode = async (activationCode) => {
   })
   
   // Сохраняем токены после успешной активации
-  if (response.accessToken && response.refreshToken) {
+  if (response.accessToken) {
+    // refresh-токен НЕ храним в localStorage — он живёт только в httpOnly-cookie (XSS-безопасно)
     localStorage.setItem('access_token', response.accessToken)
-    localStorage.setItem('refresh_token', response.refreshToken)
   }
   
   return response
@@ -213,9 +210,9 @@ export const exchangeAuthCode = async (authCode) => {
   })
   
   // Сохраняем токены
-  if (response.accessToken && response.refreshToken) {
+  if (response.accessToken) {
+    // refresh-токен НЕ храним в localStorage — он живёт только в httpOnly-cookie (XSS-безопасно)
     localStorage.setItem('access_token', response.accessToken)
-    localStorage.setItem('refresh_token', response.refreshToken)
   }
   
   return response
@@ -305,9 +302,9 @@ export const confirmPasswordReset = async (email, code, newPassword, newPassword
   })
   
   // Сохраняем токены после успешного сброса пароля
-  if (response.accessToken && response.refreshToken) {
+  if (response.accessToken) {
+    // refresh-токен НЕ храним в localStorage — он живёт только в httpOnly-cookie (XSS-безопасно)
     localStorage.setItem('access_token', response.accessToken)
-    localStorage.setItem('refresh_token', response.refreshToken)
   }
   
   return response

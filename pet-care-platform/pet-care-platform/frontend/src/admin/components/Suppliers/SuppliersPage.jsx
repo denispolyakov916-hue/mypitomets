@@ -15,7 +15,7 @@ const initialSupplierForm = {
 const initialAccessForm = {
   user: '',
   supplier: '',
-  role: 'supplier_manager',
+  role: 'manager',
   can_edit_catalog: true,
   can_view_finance: true,
   can_export_reports: true,
@@ -225,9 +225,9 @@ const SuppliersPage = () => {
             </Field>
             <Field label="Роль">
               <select className={inputClass} value={accessForm.role} onChange={e => setAccessValue('role', e.target.value)}>
-                <option value="supplier_manager">Менеджер</option>
-                <option value="supplier_editor">Редактор ассортимента</option>
-                <option value="supplier_analyst">Аналитик</option>
+                <option value="manager">Менеджер</option>
+                <option value="editor">Редактор ассортимента</option>
+                <option value="analyst">Аналитик</option>
               </select>
             </Field>
             <Field label="Активность">
