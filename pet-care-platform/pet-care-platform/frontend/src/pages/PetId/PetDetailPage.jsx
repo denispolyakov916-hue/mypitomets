@@ -1284,9 +1284,14 @@ function CreateReminderModal({ petId, petName, onClose, onCreated }) {
     if (!title.trim()) { setFormError('Введите название'); return; }
     if (!date) { setFormError('Выберите дату'); return; }
     setSubmitting(true); setFormError('');
+    // Только сам POST оборачиваем в try/catch. Раньше сюда же попадал onCreated()
+    // (закрытие модалки + перезагрузка списка): если follow-up падал, catch показывал
+    // «ошибку создания», хотя напоминание уже создано (201). Теперь ошибка ловится
+    // строго на неудаче POST — success-путь не может её вызвать.
+    let created = false;
     try {
       // Успех = промис зафиксировался (axios-клиент уже вернул data, см. api/client.js).
-      // 201 НЕ считается ошибкой: на этой ветке показываем успех и закрываем модалку.
+      // 201 НЕ считается ошибкой.
       await createReminder({
         pet_id: petId,
         title: title.trim(),
@@ -1295,8 +1300,7 @@ function CreateReminderModal({ petId, petName, onClose, onCreated }) {
         reminder_time: time || undefined,
         frequency,
       });
-      if (showSuccess) showSuccess('Напоминание создано');
-      onCreated(); // обновит список и закроет модалку
+      created = true;
     } catch (err) {
       // Интерцептор уплощает ошибку до { status, message, errors } — никакого err.response.
       // Берём реальное сообщение бэкенда (например «Дата не может быть в прошлом»).
@@ -1305,6 +1309,13 @@ function CreateReminderModal({ petId, petName, onClose, onCreated }) {
       if (showError) showError(msg);
     } finally {
       setSubmitting(false);
+    }
+
+    // Follow-up вне try: на 2xx показываем успех, обновляем список и закрываем модалку.
+    // Возможная ошибка в onCreated() уже не «превратится» в ложную ошибку создания.
+    if (created) {
+      if (showSuccess) showSuccess('Напоминание создано');
+      onCreated(); // обновит список и закроет модалку
     }
   };
 

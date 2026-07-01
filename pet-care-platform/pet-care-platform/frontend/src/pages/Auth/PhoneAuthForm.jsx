@@ -149,10 +149,12 @@ export default function PhoneAuthForm({ redirectPath = '/' }) {
               maxLength={6}
               value={code}
               onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
-              placeholder="Код из SMS"
+              placeholder="Код"
               required
               autoFocus
-              style={{ letterSpacing: '0.4em', textAlign: 'center', fontWeight: 700 }}
+              // Широкий letter-spacing применяем ТОЛЬКО к введённым цифрам:
+              // на длинном плейсхолдере он растягивал текст за пределы поля и обрезал его.
+              style={{ letterSpacing: code ? '0.4em' : 'normal', textAlign: 'center', fontWeight: 700, textOverflow: 'ellipsis' }}
             />
             <i className="bx bxs-key"></i>
           </div>

@@ -108,7 +108,13 @@
   text-align: center;
   font-size: 24px;
   letter-spacing: 4px;
-  padding: 15px 20px;
+  /* Резервируем справа место под иконку-ключ (right: 20px), чтобы цифры и
+     плейсхолдер не заезжали под неё и не обрезались. text-indent компенсирует
+     хвостовой letter-spacing после последнего символа, удерживая текст по центру. */
+  padding: 15px 44px 15px 44px;
+  text-indent: 4px;
+  text-overflow: ellipsis;
+  overflow: hidden;
 }
 
 .auth-field-error {
