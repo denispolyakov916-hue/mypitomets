@@ -156,3 +156,6 @@ catalog_filtered.json
 # Резервные копии и легаси
 backups/
 pet-care-platform_myfiles/
+
+# IDE artifacts
+.cursor/
