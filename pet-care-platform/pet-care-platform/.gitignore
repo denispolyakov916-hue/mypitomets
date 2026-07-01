@@ -192,6 +192,8 @@ docker-compose.override.yml
 
 backups/
 deploy.log
+deploy.log.*
+.last-deploy
 certbot/
 
 # ============================================

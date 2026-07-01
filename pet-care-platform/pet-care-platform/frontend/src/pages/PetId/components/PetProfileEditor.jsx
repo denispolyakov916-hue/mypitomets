@@ -1491,7 +1491,7 @@ export default function PetProfileEditor({ pet, onClose, onSave, isLoading, serv
       heart_rate: formData.heart_rate ? parseInt(formData.heart_rate, 10) : null,
       respiratory_rate: formData.respiratory_rate ? parseInt(formData.respiratory_rate, 10) : null,
       temperature: formData.temperature ? parseFloat(formData.temperature) : null,
-      vet_notes: formData.vet_notes?.trim() || null,
+      vet_notes: formData.vet_notes?.trim() || '',  // '' (не null): колонка pets.vet_notes — NOT NULL
       walk_frequency: formData.walk_frequency || null,
       walk_duration: formData.walk_duration || null,
       is_draft: isDraft,

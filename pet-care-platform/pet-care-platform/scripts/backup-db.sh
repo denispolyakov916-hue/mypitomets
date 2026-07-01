@@ -59,8 +59,8 @@ backup_media() {
     local ts; ts=$(date '+%Y%m%d_%H%M%S'); local f="$BACKUP_DIR/media_${ts}.tar.gz"
     log "Бэкап media '$vol' → $(basename "$f")"
     docker run --rm -v "$vol":/data:ro -v "$BACKUP_DIR":/backup alpine \
-        tar czf "/backup/$(basename "$f")" -C /data . || { warn "media-бэкап не удался"; return 0; }
-    gunzip -t "$f" 2>/dev/null || warn "media-архив не прошёл проверку"
+        tar czf "/backup/$(basename "$f")" -C /data . || error "media-бэкап НЕ создан — прерываю (строгий режим: деплой требует DB+media)"
+    gunzip -t "$f" || error "media-архив повреждён (gunzip -t) — прерываю"
     checksum "$f"; log "Media OK: $(basename "$f") ($(du -h "$f" | cut -f1))"
 }
 
@@ -114,10 +114,30 @@ restore_test() {
 restore() {
     load_env
     local f="$1"; [ -f "$f" ] || error "Файл не найден: $f"
-    warn "ВНИМАНИЕ: восстановление из $f заменит ВСЮ базу $DB_NAME!"
-    read -rp "Введите 'yes' для подтверждения: " c; [ "$c" = "yes" ] || { log "Отменено"; exit 0; }
-    gunzip -c "$f" | $COMPOSE exec -T db psql -U "$DB_USER" -d "$DB_NAME" --single-transaction
-    log "Восстановление завершено"
+    if [ -f "$f.sha256" ]; then
+        ( cd "$(dirname "$f")" && sha256sum -c "$(basename "$f").sha256" >/dev/null ) || error "checksum не сошёлся — файл повреждён"
+    fi
+    gunzip -t "$f" || error "Дамп повреждён (gunzip -t)"
+    warn "ВНИМАНИЕ: база $DB_NAME будет ПЕРЕСОЗДАНА (DROP/CREATE) и залита из:"
+    warn "  $f"
+    warn "Приложение будет НЕДОСТУПНО на время восстановления."
+    read -rp "Введите 'RESTORE' для подтверждения: " c; [ "$c" = "RESTORE" ] || { log "Отменено"; exit 0; }
+    log "Останавливаю backend/celery (отключаю от БД)…"
+    $COMPOSE stop backend celery-worker >/dev/null 2>&1 || true
+    log "Пересоздаю базу $DB_NAME…"
+    $COMPOSE exec -T db psql -U "$DB_USER" -d postgres -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname='$DB_NAME' AND pid<>pg_backend_pid();" >/dev/null
+    $COMPOSE exec -T db psql -U "$DB_USER" -d postgres -c "DROP DATABASE IF EXISTS \"$DB_NAME\";" >/dev/null
+    $COMPOSE exec -T db psql -U "$DB_USER" -d postgres -c "CREATE DATABASE \"$DB_NAME\" OWNER \"$DB_USER\";" >/dev/null
+    log "Заливаю дамп в чистую базу…"
+    if gunzip -c "$f" | $COMPOSE exec -T db psql -U "$DB_USER" -d "$DB_NAME" -v ON_ERROR_STOP=1 --single-transaction >/dev/null 2>&1; then
+        log "Восстановление успешно"
+    else
+        $COMPOSE start backend celery-worker >/dev/null 2>&1 || true
+        error "Ошибка восстановления — БД может быть неполной. Backend перезапущен; проверьте вручную."
+    fi
+    log "Запускаю backend/celery…"
+    $COMPOSE start backend celery-worker >/dev/null 2>&1 || $COMPOSE up -d backend celery-worker >/dev/null 2>&1
+    log "Готово. Проверьте приложение."
 }
 
 case "${1:-}" in

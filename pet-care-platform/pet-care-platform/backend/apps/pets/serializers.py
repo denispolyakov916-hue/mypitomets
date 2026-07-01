@@ -627,6 +627,11 @@ class PetUpdateSerializer(serializers.Serializer):
         allow_null=True,
         help_text="Заметки ветеринара"
     )
+
+    def validate_vet_notes(self, value):
+        # Колонка pets.vet_notes — NOT NULL (TextField без null=True). Пустые заметки
+        # храним как '' , а не NULL, иначе клиентский null → IntegrityError при сохранении.
+        return value or ''
     
     # === КЛИМАТ ===
     
