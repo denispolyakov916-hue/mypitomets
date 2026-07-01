@@ -6,12 +6,26 @@
  *  2. ?redirect=<внутренний путь> из query (единый параметр, который ставят
  *     ProtectedRoute/PrivateRoute и остальные части приложения);
  *  3. location.state.from.pathname (внутренний путь, обратная совместимость);
- *  4. дефолт /pet-id.
+ *  4. ролевой дефолт по `user` (кабинет специалиста/маркетолога/админа), иначе /pet-id.
  *
- * Это сохраняет обычный сценарий входа (без воронки → /pet-id) и возвращает
- * пользователя на защищённую страницу, с которой его «отбросило» на логин.
+ * Это сохраняет обычный сценарий входа (без воронки → /pet-id), возвращает
+ * пользователя на защищённую страницу, с которой его «отбросило» на логин, и
+ * ведёт специалиста/маркетолога/админа сразу в его панель.
+ *
+ * `user` необязателен — без него поведение прежнее (дефолт /pet-id). Права
+ * поставщика приходят из SupplierUserAccess (сервер), а не из User.role, поэтому
+ * supplier-редирект живёт в SupplierRoute, а не здесь.
  */
 import { loadPendingFunnelAction } from './pendingFunnelAction'
+
+// Домашняя панель по роли — куда вести, когда явного пути возврата нет.
+function roleHome(user) {
+  const role = user?.role
+  if (role === 'course_creator') return '/specialist-panel/courses'
+  if (role === 'marketing_manager') return '/marketing-panel/content'
+  if (user?.is_staff || user?.is_superuser) return '/admin-panel/dashboard'
+  return '/pet-id'
+}
 
 // Куда воронка имеет право вернуть пользователя после логина.
 const ALLOWED_RETURN_TO = ['/recommendations', '/pet-id', '/shop', '/cart', '/start']
@@ -40,15 +54,25 @@ function readRedirectParam(search) {
   }
 }
 
-export function resolvePostAuthRedirect({ location } = {}) {
+export function resolvePostAuthRedirect({ location, user } = {}) {
   const pending = loadPendingFunnelAction()
   if (pending && isAllowedReturnTo(pending.returnTo)) return pending.returnTo
 
   const redirectParam = readRedirectParam(location?.search)
-  if (redirectParam) return redirectParam
-
   const from = location?.state?.from?.pathname
-  if (isInternalPath(from)) return from
+  const requested = redirectParam || (isInternalPath(from) ? from : null)
 
-  return '/pet-id'
+  if (requested) {
+    // Специалиста/маркетолога не заводим в админ-панель — уводим в их кабинет.
+    const role = user?.role
+    if (role === 'course_creator' && requested.startsWith('/admin-panel')) {
+      return '/specialist-panel/courses'
+    }
+    if (role === 'marketing_manager' && requested.startsWith('/admin-panel')) {
+      return '/marketing-panel/content'
+    }
+    return requested
+  }
+
+  return roleHome(user)
 }

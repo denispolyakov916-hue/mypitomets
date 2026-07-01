@@ -427,8 +427,10 @@ class BlockTemplateViewSet(ModelViewSet):
                 status=status.HTTP_404_NOT_FOUND
             )
 
-        # Проверка прав: для создания блока нужно быть администратором
-        if not request.user.is_staff:
+        # Проверка прав: админ ИЛИ автор курса, которому принадлежит страница.
+        # Владелец курса (course_creator) может собирать блоки из шаблонов на своих
+        # страницах; чужой курс так тронуть нельзя.
+        if not can_edit_course(request.user, page.course):
             return Response(
                 {'error': 'Недостаточно прав'},
                 status=status.HTTP_403_FORBIDDEN

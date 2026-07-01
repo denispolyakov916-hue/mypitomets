@@ -15,6 +15,7 @@ import { motion } from 'framer-motion'
 import { useAuthStore } from '../../store/authStore'
 import { ButtonLoader } from '../../components/Loader'
 import { Eye, EyeOff } from 'lucide-react'
+import { resolvePostAuthRedirect } from '../../utils/postAuthRedirect'
 
 /**
  * Компонент страницы входа
@@ -46,30 +47,11 @@ function Login() {
     clearError()
   }, [clearError])
   
-  // Редирект после успешного логина
+  // Редирект после успешного логина — единый резолвер (anti-open-redirect,
+  // funnel-aware, ролевой дефолт: специалист/маркетолог/админ → своя панель).
   useEffect(() => {
     if (user && !isLoading) {
-      // Редирект на целевую страницу или в зависимости от роли
-      let redirectPath = location.state?.from?.pathname || 
-                         new URLSearchParams(location.search).get('redirect')
-      
-      if (!redirectPath) {
-        if (user.role === 'course_creator') {
-          redirectPath = '/specialist-panel/courses'
-        } else if (user.role === 'marketing_manager') {
-          redirectPath = '/marketing-panel/content'
-        } else if (user.is_staff || user.is_superuser) {
-          redirectPath = '/admin-panel/dashboard'
-        } else {
-          redirectPath = '/pet-id'
-        }
-      } else if (user.role === 'course_creator' && redirectPath.startsWith('/admin-panel')) {
-        redirectPath = '/specialist-panel/courses'
-      } else if (user.role === 'marketing_manager' && redirectPath.startsWith('/admin-panel')) {
-        redirectPath = '/marketing-panel/content'
-      }
-      
-      navigate(redirectPath, { replace: true })
+      navigate(resolvePostAuthRedirect({ location, user }), { replace: true })
     }
   }, [user, isLoading, navigate, location])
   

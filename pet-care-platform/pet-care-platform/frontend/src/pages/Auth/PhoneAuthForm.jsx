@@ -5,8 +5,9 @@
  */
 
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuthStore } from '../../store/authStore'
+import { resolvePostAuthRedirect } from '../../utils/postAuthRedirect'
 import { formatPhoneDisplay, normalizePhone, isPhoneComplete } from './phoneFormat'
 
 const linkBtnStyle = {
@@ -34,8 +35,9 @@ const successBoxStyle = {
   width: '100%',
 }
 
-export default function PhoneAuthForm({ redirectPath = '/' }) {
+export default function PhoneAuthForm() {
   const navigate = useNavigate()
+  const location = useLocation()
   const isLoading = useAuthStore((s) => s.isLoading)
   const storeError = useAuthStore((s) => s.error)
   const { requestPhoneCode, loginWithPhone, clearError } = useAuthStore()
@@ -101,7 +103,12 @@ export default function PhoneAuthForm({ redirectPath = '/' }) {
       return
     }
     const ok = await loginWithPhone(normalizePhone(phone), code)
-    if (ok) navigate(redirectPath, { replace: true })
+    if (ok) {
+      // Резолвим по свежему user из стора — ролевой дефолт (специалист/маркетолог/
+      // админ → своя панель), funnel-aware, с anti-open-redirect.
+      const target = resolvePostAuthRedirect({ location, user: useAuthStore.getState().user })
+      navigate(target, { replace: true })
+    }
   }
 
   const displayError = localError || storeError

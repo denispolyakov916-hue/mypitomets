@@ -283,7 +283,7 @@ const toggleMode = () => {
     const success = await login(loginData.email, loginData.password)
 
     if (success) {
-      navigate(resolvePostAuthRedirect({ location }), { replace: true })
+      navigate(resolvePostAuthRedirect({ location, user: useAuthStore.getState().user }), { replace: true })
     }
   }
 
@@ -307,7 +307,7 @@ const toggleMode = () => {
 
       // Бета: регистрация сразу логинит — если пришёл токен, уходим в сервис
       if (res && res.accessToken) {
-        navigate(resolvePostAuthRedirect({ location }), { replace: true })
+        navigate(resolvePostAuthRedirect({ location, user: useAuthStore.getState().user }), { replace: true })
       } else {
         setRegistrationSuccess(true)
       }
@@ -330,7 +330,7 @@ const toggleMode = () => {
     const success = await activateByCode(activationCode)
 
     if (success) {
-      navigate(resolvePostAuthRedirect({ location }), { replace: true })
+      navigate(resolvePostAuthRedirect({ location, user: useAuthStore.getState().user }), { replace: true })
     }
   }
 
@@ -372,7 +372,7 @@ const toggleMode = () => {
                   <div className="auth-info-box" role="status">{authGateMessage}</div>
                 )}
                 {methodTabs}
-                <PhoneAuthForm redirectPath={resolvePostAuthRedirect({ location })} />
+                <PhoneAuthForm />
               </div>
             ) : (
             <form onSubmit={isRegisterMode ? handleRegisterSubmit : handleLoginSubmit} className="auth-form">
