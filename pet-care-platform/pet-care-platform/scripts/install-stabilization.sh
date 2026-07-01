@@ -108,9 +108,10 @@ fix_env_secret() {
     local before after
     before=$($COMPOSE exec -T backend python -c "from django.conf import settings;import hashlib;print(hashlib.sha256(settings.SECRET_KEY.encode()).hexdigest())" | tr -d '\r')
     log "sha256(SECRET_KEY) ДО:    $before"
-    cp "$ENV_FILE" "/root/.env.pre-tsfix.$(date '+%s')"
+    local backup="/root/.env.pre-tsfix.$(date '+%s')"
+    cp "$ENV_FILE" "$backup"
     sed -i '/^DJANGO_SECRET_KEY=/s/\$TS//g' "$ENV_FILE"
-    log "Убрал \$TS из .env, пересоздаю backend для проверки…"
+    log "Убрал \$TS из .env (копия: $backup), пересоздаю backend для проверки…"
     $COMPOSE up -d backend >/dev/null
     sleep 6
     after=$($COMPOSE exec -T backend python -c "from django.conf import settings;import hashlib;print(hashlib.sha256(settings.SECRET_KEY.encode()).hexdigest())" | tr -d '\r')
@@ -118,7 +119,10 @@ fix_env_secret() {
     if [ "$before" = "$after" ]; then
         log "✅ SECRET_KEY НЕ изменился — авторизация/сессии целы, предупреждение \$TS устранено."
     else
-        die "❌ SECRET_KEY ИЗМЕНИЛСЯ! Восстановите .env из /root/.env.pre-tsfix.* и пересоздайте backend. НЕ оставляйте так."
+        log "❌ SECRET_KEY изменился бы — АВТО-ОТКАТ .env и пересоздание backend…"
+        cp "$backup" "$ENV_FILE"
+        $COMPOSE up -d backend >/dev/null; sleep 4
+        die "Откатил .env к исходному ($backup), backend восстановлен со старым ключом. Разбираемся вручную."
     fi
 }
 
