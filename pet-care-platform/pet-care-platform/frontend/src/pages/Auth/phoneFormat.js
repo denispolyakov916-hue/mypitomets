@@ -17,13 +17,13 @@
  * @returns {string} До 10 цифр национального номера
  */
 export const extractPhoneDigits = (value) => {
-  let digits = String(value ?? '').replace(/\D/g, '')
-
-  // Отбрасываем код страны: «8XXXXXXXXXX»/«7XXXXXXXXXX» (11 цифр) → «XXXXXXXXXX».
-  if (digits.length > 10 && (digits.startsWith('7') || digits.startsWith('8'))) {
-    digits = digits.slice(1)
-  }
-
+  // Снимаем ЛИТЕРАЛЬНЫЙ код страны в НАЧАЛЕ строки («+7», «7» или «8») ДО того,
+  // как выкинуть остальные не-цифры. Иначе цифра «7» из отображаемого префикса
+  // «+7» считалась бы национальной и при вводе/удалении «съедала» бы номер
+  // (это и была причина «дичи» и лишней семёрки). Национальная часть после
+  // префикса сохраняется как есть — даже если начинается с 7 или 8.
+  const withoutCountry = String(value ?? '').replace(/^[\s+]*[78]/, '')
+  const digits = withoutCountry.replace(/\D/g, '')
   return digits.slice(0, 10)
 }
 
