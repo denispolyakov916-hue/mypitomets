@@ -61,7 +61,9 @@ class RegisterView(APIView):
             first_name = serializer.validated_data.get('first_name', '')
             last_name = serializer.validated_data.get('last_name', '')
 
-            user_data = UserService.registration(email, password, first_name, last_name)
+            marketing = bool(request.data.get('marketing_notifications', False))
+            user_data = UserService.registration(email, password, first_name, last_name,
+                                                 marketing=marketing, request=request)
             response = Response(user_data, status=status.HTTP_201_CREATED)
             # Бета: регистрация сразу логинит — ставим refresh-cookie, как при входе
             if user_data.get('refreshToken'):

@@ -299,7 +299,10 @@ const toggleMode = () => {
       const res = await register(
         registerData.email,
         registerData.password,
-        registerData.passwordConfirm
+        registerData.passwordConfirm,
+        '',
+        '',
+        { marketing: consents.marketing }
       )
 
       // Бета: регистрация сразу логинит — если пришёл токен, уходим в сервис

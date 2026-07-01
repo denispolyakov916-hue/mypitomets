@@ -67,7 +67,7 @@ class UserService:
         return code
     
     @staticmethod
-    def registration(email, password, first_name=None, last_name=None):
+    def registration(email, password, first_name=None, last_name=None, marketing=False, request=None):
         """
         Регистрация нового пользователя.
 
@@ -111,6 +111,16 @@ class UserService:
         
         logger.info(f"Пользователь создан: ID={user.id}, Email={email}")
         logger.debug(f"Код активации: {activation_code}, Ссылка: {activation_url}")
+
+        # Маркетинговое согласие (опционально) + журнал согласий: сам факт
+        # регистрации фиксирует принятие соглашения и обработки ПДн.
+        from apps.users.models import CONSENT_DOC_VERSION, record_consent
+        if marketing:
+            user.marketing_notifications = True
+            user.save(update_fields=['marketing_notifications'])
+        for ctype, granted in (('terms', True), ('personal_data', True), ('marketing', bool(marketing))):
+            record_consent(request=request, user=user, consent_type=ctype, granted=granted,
+                           doc_version=CONSENT_DOC_VERSION, source='registration')
 
         # Письмо-подтверждение — в фоне через очередь (Celery), с ретраями и
         # fallback на синхронную отправку при недоступном брокере. Аккаунт уже

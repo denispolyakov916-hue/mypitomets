@@ -115,6 +115,7 @@ const MarketingApp = lazy(() => import('./marketing/App'))
 
 // Хранилище для состояния аутентификации
 import { useAuthStore } from './store/authStore'
+import CookieConsentBanner from './components/CookieConsentBanner'
 
 /**
  * AdminPanelLoader - Скелетон загрузки админ-панели
@@ -138,7 +139,9 @@ function App() {
   const isAuthenticated = useAuthStore(s => s.isAuthenticated)
 
   return (
-    <Routes>
+    <>
+      <CookieConsentBanner />
+      <Routes>
       {/* ============================================= */}
       {/* REACT АДМИН-ПАНЕЛЬ - Отдельный Layout */}
       {/* ============================================= */}
@@ -477,6 +480,7 @@ function App() {
         }
       />
     </Routes>
+    </>
   )
 }
 

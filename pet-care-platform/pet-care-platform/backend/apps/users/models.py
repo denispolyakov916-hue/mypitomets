@@ -227,3 +227,79 @@ class PhoneOtp(models.Model):
 # Заявки на доступ к партнёрским кабинетам (поставщик / специалист по курсам).
 # Модель вынесена в отдельный модуль; импорт здесь регистрирует её в app 'users'.
 from .partner_access_models import PartnerAccessRequest  # noqa: E402,F401
+
+
+# Версия правового пакета документов (ред. 9.5) — штампуется в журнале согласий.
+CONSENT_DOC_VERSION = 'ред. 9.5 (25.05.2026)'
+
+
+class ConsentEvent(models.Model):
+    """Журнал согласий (append-only) — доказуемость: кто, на что, когда, версия.
+
+    Пишется при регистрации (соглашение / ПДн / маркетинг), в cookie-баннере
+    (в т.ч. для анонимных посетителей) и при изменении согласий пользователем.
+    """
+    TYPE_TERMS = 'terms'
+    TYPE_PERSONAL_DATA = 'personal_data'
+    TYPE_MARKETING = 'marketing'
+    TYPE_COOKIE_FUNCTIONAL = 'cookie_functional'
+    TYPE_COOKIE_ANALYTICS = 'cookie_analytics'
+    TYPE_COOKIE_ADVERTISING = 'cookie_advertising'
+    TYPE_DISTRIBUTION = 'distribution'
+    TYPE_CHOICES = [
+        (TYPE_TERMS, 'Пользовательское соглашение'),
+        (TYPE_PERSONAL_DATA, 'Обработка персональных данных'),
+        (TYPE_MARKETING, 'Рекламные сообщения'),
+        (TYPE_COOKIE_FUNCTIONAL, 'Cookie: функциональные'),
+        (TYPE_COOKIE_ANALYTICS, 'Cookie: аналитические'),
+        (TYPE_COOKIE_ADVERTISING, 'Cookie: рекламные'),
+        (TYPE_DISTRIBUTION, 'ПДн для распространения'),
+    ]
+
+    user = models.ForeignKey(
+        'users.User', null=True, blank=True, on_delete=models.SET_NULL,
+        related_name='consent_events', verbose_name='Пользователь',
+    )
+    consent_type = models.CharField(max_length=32, choices=TYPE_CHOICES, db_index=True, verbose_name='Тип согласия')
+    granted = models.BooleanField(default=True, verbose_name='Дано')
+    doc_version = models.CharField(max_length=64, blank=True, default='', verbose_name='Версия документа')
+    source = models.CharField(max_length=32, blank=True, default='', verbose_name='Источник')
+    ip_address = models.GenericIPAddressField(null=True, blank=True, verbose_name='IP-адрес')
+    user_agent = models.CharField(max_length=400, blank=True, default='', verbose_name='User-Agent')
+    meta = models.JSONField(default=dict, blank=True, verbose_name='Доп. сведения')
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True, verbose_name='Дата')
+
+    class Meta:
+        verbose_name = 'Согласие (запись)'
+        verbose_name_plural = 'Журнал согласий'
+        db_table = 'consent_event'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        who = self.user_id or self.ip_address or 'anon'
+        return f"{self.consent_type}={'да' if self.granted else 'нет'} · {who}"
+
+
+def client_ip_ua(request):
+    """(ip, user_agent) из запроса — для журнала согласий."""
+    if request is None:
+        return (None, '')
+    xff = request.META.get('HTTP_X_FORWARDED_FOR', '')
+    ip = (xff.split(',')[0].strip() if xff else request.META.get('REMOTE_ADDR')) or None
+    ua = (request.META.get('HTTP_USER_AGENT', '') or '')[:400]
+    return (ip, ua)
+
+
+def record_consent(*, request=None, user=None, consent_type, granted=True,
+                   doc_version='', source='', meta=None):
+    """Создать запись согласия. Не роняет основной поток при ошибке."""
+    import logging
+    try:
+        ip, ua = client_ip_ua(request)
+        ConsentEvent.objects.create(
+            user=user, consent_type=consent_type, granted=bool(granted),
+            doc_version=doc_version or '', source=source or '',
+            ip_address=ip, user_agent=ua, meta=meta or {},
+        )
+    except Exception:  # noqa: BLE001 — журнал не должен ломать регистрацию/баннер
+        logging.getLogger('apps.users').warning('[consent] не удалось записать согласие', exc_info=True)

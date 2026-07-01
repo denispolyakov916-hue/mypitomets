@@ -28,13 +28,14 @@ import api from './client'
  * @example
  *   const response = await register('user@example.com', 'secret123', 'secret123', 'Иван', 'Иванов')
  */
-export const register = async (email, password, passwordConfirm, firstName = '', lastName = '') => {
+export const register = async (email, password, passwordConfirm, firstName = '', lastName = '', options = {}) => {
   const response = await api.post('/auth/registration/', {
     email,
     password,
     password_confirm: passwordConfirm,
     first_name: firstName,
-    last_name: lastName
+    last_name: lastName,
+    marketing_notifications: !!options.marketing
   })
   
   // Бета: регистрация сразу логинит — сохраняем access токен (refresh приходит в cookie)

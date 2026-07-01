@@ -27,6 +27,9 @@ from django.conf.urls.static import static
 # Health check и мониторинг
 from core.views import health_check, health_check_detailed, metrics
 
+# Журнал согласий (запись из cookie-баннера и др.)
+from apps.users.consent_views import ConsentRecordView
+
 # =============================================================================
 # URL МАРШРУТЫ
 # =============================================================================
@@ -77,6 +80,9 @@ urlpatterns = [
     # ИИ-ассистент «Пуф»
     # Обрабатывает: диалог с ассистентом (поддержка / здоровье / питание)
     path('api/assistant/', include('apps.assistant.urls')),
+
+    # Журнал согласий пользователя/посетителя (cookie-баннер, регистрация)
+    path('api/consent/', ConsentRecordView.as_view(), name='consent-record'),
 
     # Интеграции с поставщиками: Dinozavrik catalog.sync, fulfillment webhooks
     path('api/integrations/', include('apps.integrations.urls')),

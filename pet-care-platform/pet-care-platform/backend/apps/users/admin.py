@@ -8,7 +8,26 @@ from django.core.exceptions import ValidationError
 from django.utils.html import format_html
 from django.urls import reverse
 from django.utils.safestring import mark_safe
-from .models import User, Token, PartnerAccessRequest
+from .models import User, Token, PartnerAccessRequest, ConsentEvent
+
+
+@admin.register(ConsentEvent)
+class ConsentEventAdmin(admin.ModelAdmin):
+    """Журнал согласий — только просмотр (append-only, доказуемость)."""
+    list_display = ('created_at', 'consent_type', 'granted', 'user', 'source', 'doc_version', 'ip_address')
+    list_filter = ('consent_type', 'granted', 'source', 'created_at')
+    search_fields = ('user__email', 'ip_address', 'doc_version')
+    readonly_fields = ('user', 'consent_type', 'granted', 'doc_version', 'source', 'ip_address', 'user_agent', 'meta', 'created_at')
+    date_hierarchy = 'created_at'
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
 
 
 class PetInline(admin.TabularInline):
