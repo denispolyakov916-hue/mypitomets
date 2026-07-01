@@ -766,6 +766,10 @@ function SummarySection({
         )}
       </button>
 
+      <p className="mt-3 text-center text-xs font-medium text-amber-600">
+        Тестовая оплата — платёжная система в разработке, реальные деньги не списываются.
+      </p>
+
       {!canSubmit && (
         <div className="mt-3 text-center">
           <p className="text-sm text-secondary-600">

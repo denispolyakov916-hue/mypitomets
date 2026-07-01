@@ -510,6 +510,15 @@ function Payment() {
     <AuthGuard>
       <div className="page-container animate-fadeIn">
         <div className="max-w-2xl mx-auto">
+          {!isFree && (
+            <div className="mb-4 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800 flex items-start gap-2">
+              <span className="text-lg leading-none" aria-hidden="true">⚠️</span>
+              <span>
+                <b>Тестовая оплата.</b> Платёжная система в разработке — реальные деньги
+                не списываются, это демонстрация оформления заказа.
+              </span>
+            </div>
+          )}
           {isPaid ? (
             <div className="card text-center py-12">
             <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
@@ -518,12 +527,12 @@ function Payment() {
               </svg>
             </div>
             <h1 className="text-3xl font-bold text-gray-900 mb-4">
-              {isFree ? 'Курс успешно добавлен!' : 'Оплата успешно выполнена!'}
+              {isFree ? 'Курс успешно добавлен!' : 'Тестовая оплата выполнена!'}
             </h1>
             <p className="text-gray-600 mb-6">
               {isFree
                 ? 'Курс добавлен в вашу библиотеку. Вы можете начать обучение прямо сейчас.'
-                : 'Ваш заказ успешно оплачен. Мы отправим вам подтверждение на email.'}
+                : 'Демонстрация: заказ оформлен как оплаченный (тестовый режим, деньги не списаны). Подтверждение отправим на email.'}
             </p>
             <p className="text-sm text-gray-500">
               Перенаправление...
