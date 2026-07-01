@@ -27,6 +27,15 @@ function roleHome(user) {
   return '/pet-id'
 }
 
+// Специалиста/маркетолога не заводим в админ-панель — уводим в их кабинет.
+function adjustRequestedForRole(requested, user) {
+  if (!requested.startsWith('/admin-panel')) return requested
+  const role = user?.role
+  if (role === 'course_creator') return '/specialist-panel/courses'
+  if (role === 'marketing_manager') return '/marketing-panel/content'
+  return requested
+}
+
 // Куда воронка имеет право вернуть пользователя после логина.
 const ALLOWED_RETURN_TO = ['/recommendations', '/pet-id', '/shop', '/cart', '/start']
 
@@ -62,17 +71,6 @@ export function resolvePostAuthRedirect({ location, user } = {}) {
   const from = location?.state?.from?.pathname
   const requested = redirectParam || (isInternalPath(from) ? from : null)
 
-  if (requested) {
-    // Специалиста/маркетолога не заводим в админ-панель — уводим в их кабинет.
-    const role = user?.role
-    if (role === 'course_creator' && requested.startsWith('/admin-panel')) {
-      return '/specialist-panel/courses'
-    }
-    if (role === 'marketing_manager' && requested.startsWith('/admin-panel')) {
-      return '/marketing-panel/content'
-    }
-    return requested
-  }
-
+  if (requested) return adjustRequestedForRole(requested, user)
   return roleHome(user)
 }
