@@ -30,26 +30,48 @@ class _IsAdminOrCourseCreator(BasePermission):
             return False
         return request.user.is_staff or getattr(request.user, 'role', None) == 'course_creator'
 
+    def has_object_permission(self, request, view, obj):
+        # obj — CourseModule. Владелец = автор курса; администратор — ко всем.
+        # P0: закрывает доступ специалиста к модулям ЧУЖОГО курса.
+        u = request.user
+        if u.is_staff or u.is_superuser:
+            return True
+        author_id = getattr(obj.course, 'author_id', None)
+        return author_id is not None and author_id == u.id
+
 
 class CourseModuleViewSet(ModelViewSet):
     """
-    CRUD для модулей курса (администраторы и авторы курса).
+    CRUD для модулей курса. Админ — ко всем; специалист (course_creator) — только
+    к модулям СВОИХ курсов (author == пользователь).
     """
     serializer_class = CourseModuleSerializer
     permission_classes = [_IsAdminOrCourseCreator]
 
+    def _is_admin(self):
+        u = self.request.user
+        return bool(u.is_staff or u.is_superuser)
+
     def get_queryset(self):
+        qs = CourseModule.objects.filter(is_active=True)
         course_id = self.kwargs.get('course_id')
         if course_id is not None:
-            return CourseModule.objects.filter(
-                course_id=course_id,
-                is_active=True,
-            ).order_by('order_number')
-        return CourseModule.objects.filter(is_active=True).order_by('order_number')
+            qs = qs.filter(course_id=course_id)
+        # Специалист видит/правит только модули своих курсов (иначе detail → 404).
+        if not self._is_admin():
+            qs = qs.filter(course__author_id=self.request.user.id)
+        return qs.order_by('order_number')
 
     def perform_create(self, serializer):
+        from rest_framework.exceptions import NotFound, PermissionDenied
         course_id = self.kwargs.get('course_id')
-        course = Course.objects.get(id=course_id)
+        try:
+            course = Course.objects.get(id=course_id)
+        except Course.DoesNotExist:
+            raise NotFound('Курс не найден')
+        # Owner-check: добавлять модули можно только в свой курс.
+        if not self._is_admin() and course.author_id != self.request.user.id:
+            raise PermissionDenied('Можно управлять модулями только своих курсов')
 
         # Автоинкремент order_number (используем _base_manager для учёта soft-deleted)
         max_order = CourseModule._base_manager.filter(course_id=course_id).aggregate(

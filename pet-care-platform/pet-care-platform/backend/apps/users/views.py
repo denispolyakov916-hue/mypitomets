@@ -11,7 +11,7 @@ import logging
 from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.permissions import AllowAny, IsAuthenticated, IsAdminUser
 from django.http import HttpResponseRedirect
 from django.conf import settings
 
@@ -343,13 +343,13 @@ class ExchangeAuthCodeView(APIView):
 
 class GetUsersView(APIView):
     """
-    Получение списка всех пользователей (для тестирования).
-    
+    Получение списка всех пользователей.
+
     GET /api/auth/users/
-    Требует аутентификации.
+    ТОЛЬКО для админов (раскрывает email/телефон/роли/флаги всех пользователей).
     """
-    
-    permission_classes = [IsAuthenticated]
+
+    permission_classes = [IsAdminUser]
     
     def get(self, request):
         try:

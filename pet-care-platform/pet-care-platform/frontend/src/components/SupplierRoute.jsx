@@ -1,35 +1,41 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useAuthStore } from '../store/authStore';
+import { supplierAPI } from '../supplier/utils/api';
 import SupplierLoginPage from '../supplier/pages/SupplierLoginPage';
 
-const SUPPLIER_ROLES = ['supplier_manager', 'supplier_editor', 'supplier_analyst', 'admin'];
-
+// P0-фикс: источник прав поставщика — СЕРВЕР (SupplierUserAccess), а не User.role.
+// Гейтимся на /api/supplier/profile/me/ (permission HasSupplierAccess): 200 отдаётся
+// пользователю с активным доступом (даже при role='user') и админу. Так пользователь
+// с доступом к Динозаврику больше не блокируется ошибочно по роли.
 const SupplierRoute = ({ children }) => {
   const isAuthenticated = useAuthStore(s => s.isAuthenticated);
-  const user = useAuthStore(s => s.user);
   const isLoading = useAuthStore(s => s.isLoading);
-  const loadProfile = useAuthStore(s => s.loadProfile);
   const [checking, setChecking] = useState(true);
-  const loadedRef = useRef(false);
+  const [hasAccess, setHasAccess] = useState(false);
+  const ranRef = useRef(false);
 
   useEffect(() => {
     let mounted = true;
     const run = async () => {
-      if (isAuthenticated && !user && !loadedRef.current) {
-        loadedRef.current = true;
-        try {
-          await loadProfile();
-        } catch {
-          loadedRef.current = false;
-        }
+      if (!isAuthenticated) {
+        if (mounted) setChecking(false);
+        return;
       }
-      if (mounted) setChecking(false);
+      if (ranRef.current) return;
+      ranRef.current = true;
+      if (mounted) setChecking(true);
+      try {
+        await supplierAPI.profile.me();
+        if (mounted) setHasAccess(true);
+      } catch {
+        if (mounted) setHasAccess(false);
+      } finally {
+        if (mounted) setChecking(false);
+      }
     };
     run();
-    return () => {
-      mounted = false;
-    };
-  }, []);
+    return () => { mounted = false; };
+  }, [isAuthenticated]);
 
   if (isLoading || checking) {
     return (
@@ -43,15 +49,7 @@ const SupplierRoute = ({ children }) => {
     return <SupplierLoginPage />;
   }
 
-  if (!user) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-950 text-white">
-        Загрузка профиля...
-      </div>
-    );
-  }
-
-  if (!SUPPLIER_ROLES.includes(user.role) && !user.is_staff && !user.is_superuser) {
+  if (!hasAccess) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-950 px-4">
         <div className="max-w-md rounded-lg border border-white/10 bg-white p-6 text-center shadow-xl">

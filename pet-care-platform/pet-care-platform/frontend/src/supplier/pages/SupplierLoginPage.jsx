@@ -1,8 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { LogIn, Store } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
-
-const SUPPLIER_ROLES = ['supplier_manager', 'supplier_editor', 'supplier_analyst', 'admin'];
+import { supplierAPI } from '../utils/api';
 
 const SupplierLoginPage = () => {
   const login = useAuthStore(s => s.login);
@@ -32,11 +31,13 @@ const SupplierLoginPage = () => {
     try {
       const success = await login(email.trim(), password);
       if (!success) return;
-      const currentUser = useAuthStore.getState().user;
-      const hasSupplierRole = SUPPLIER_ROLES.includes(currentUser?.role) || currentUser?.is_staff || currentUser?.is_superuser;
-      if (!hasSupplierRole) {
+      // Право входа в кабинет определяет СЕРВЕР (SupplierUserAccess), не User.role:
+      // /api/supplier/profile/me/ → 200, если есть активный доступ (в т.ч. при role='user') или админ.
+      try {
+        await supplierAPI.profile.me();
+      } catch {
         await logout();
-        setLocalError('Для входа нужен доступ поставщика');
+        setLocalError('Для входа нужен доступ поставщика. Обратитесь к администратору платформы.');
       }
     } finally {
       setSubmitting(false);
