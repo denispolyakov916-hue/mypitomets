@@ -12,8 +12,6 @@
 import { useEffect, useState } from 'react'
 import Lottie from 'lottie-react'
 
-const FALLBACK_IMG = '/purple-monster.png'
-
 function prefersReducedMotion() {
   return typeof window !== 'undefined'
     && typeof window.matchMedia === 'function'
@@ -53,7 +51,6 @@ export default function PuffLottie({
   }, [])
 
   useEffect(() => {
-    if (reduced) return undefined
     let alive = true
     setData(null)
     setFailed(false)
@@ -61,26 +58,20 @@ export default function PuffLottie({
       .then((j) => { if (alive) setData(j) })
       .catch(() => { if (alive) setFailed(true) })
     return () => { alive = false }
-  }, [name, reduced])
+  }, [name])
 
-  // Статичный fallback: при reduced-motion, ошибке или пока грузится JSON
-  if (reduced || failed || !data) {
-    return (
-      <img
-        src={FALLBACK_IMG}
-        alt={alt}
-        style={box}
-        className={`object-contain select-none pointer-events-none ${className}`}
-        draggable={false}
-      />
-    )
+  // Пока JSON грузится или при ошибке — ПУСТОЙ бокс (никаких старых картинок,
+  // чтобы ничего не «мигало»; старый /purple-monster.png удалён из системы).
+  if (failed || !data) {
+    return <span style={box} className={`inline-block align-middle ${className}`} aria-label={alt} role="img" />
   }
 
+  // reduced-motion → показываем НОВЫЙ маскот статично (без автоплея и цикла).
   return (
     <Lottie
       animationData={data}
-      loop={loop}
-      autoplay={autoplay}
+      loop={reduced ? false : loop}
+      autoplay={reduced ? false : autoplay}
       onComplete={onComplete}
       style={box}
       className={`select-none ${className}`}

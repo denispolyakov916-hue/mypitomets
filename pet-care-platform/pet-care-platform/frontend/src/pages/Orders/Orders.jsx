@@ -9,13 +9,14 @@
 import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { PawPrint, Lock, ShoppingCart, Search, ChevronRight } from 'lucide-react'
-import { createPayment } from '../../api/payments'
 import { getProfile } from '../../api/auth'
 import { PageLoader } from '../../components/Loader'
 import { Card } from '../../components/ui/Card'
 import { Button } from '../../components/ui/Button'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { useOrders } from '../../hooks/useOrders'
+import { useCartStore } from '../../store/cartStore'
+import { useToastStore } from '../../store/toastStore'
 import OrderTimer from '../../components/OrderTimer'
 import { formatPrice } from '../../utils/format'
 /**
@@ -190,7 +191,7 @@ function getOrderPets(order) {
   return pets
 }
 
-function OrderCard({ order, onOrderExpired, onRepeat, onTrack, collapsed, onToggleCollapse }) {
+function OrderCard({ order, onOrderExpired, onRepeat, onTrack, isRepeating, collapsed, onToggleCollapse }) {
   const navigate = useNavigate()
   const status = statusConfig[order.status] || statusConfig.pending
   const items = order.items || []
@@ -219,8 +220,9 @@ function OrderCard({ order, onOrderExpired, onRepeat, onTrack, collapsed, onTogg
         size="sm"
         leftIcon={<ShoppingCart className="w-4 h-4" />}
         onClick={handleRepeat}
+        disabled={isRepeating}
       >
-        Повторить заказ
+        {isRepeating ? 'Добавляем…' : 'Повторить заказ'}
       </Button>
       <Button
         variant="primary"
@@ -339,14 +341,65 @@ function OrderCard({ order, onOrderExpired, onRepeat, onTrack, collapsed, onTogg
 }
 
 /**
+ * Заново добавить позиции заказа (товары и курсы) в корзину.
+ *
+ * Количества товаров и привязка курса к питомцу сохраняются.
+ * Возвращает число успешно добавленных позиций.
+ *
+ * @param {Object} order - Заказ с массивом items
+ * @param {Function} addItem - cartStore.addItem(productId, quantity)
+ * @param {Function} addCourse - cartStore.addCourse(courseId, petId, disclaimerAccepted)
+ * @returns {Promise<number>} Количество добавленных позиций
+ */
+const addOrderItemsToCart = async (order, addItem, addCourse) => {
+  const items = order.items || []
+  let addedCount = 0
+
+  for (const item of items) {
+    if (item.product_id) {
+      if (await addItem(item.product_id, item.quantity || 1)) addedCount += 1
+    } else if (item.course_id) {
+      if (await addCourse(item.course_id, item.pet?.id || null, true)) addedCount += 1
+    }
+  }
+
+  return addedCount
+}
+
+/**
  * Страница заказов
  */
 function Orders() {
   const navigate = useNavigate()
   const { orders, isLoading, error, refetch, handleOrderExpired } = useOrders()
+  const { addItem, addCourse } = useCartStore()
+  const { success, error: showError } = useToastStore()
   const [profile, setProfile] = useState(null)
   const [collapsedIds, setCollapsedIds] = useState(new Set())
   const [selectedPetId, setSelectedPetId] = useState(null) // null = все заказы, иначе id питомца
+  const [repeatingOrderId, setRepeatingOrderId] = useState(null)
+
+  /**
+   * Повторить заказ: добавить его позиции в корзину и перейти в корзину.
+   */
+  const handleRepeatOrder = async (order) => {
+    if (!order || repeatingOrderId) return
+
+    setRepeatingOrderId(order.id)
+    try {
+      const addedCount = await addOrderItemsToCart(order, addItem, addCourse)
+      if (addedCount === 0) {
+        showError('Не удалось повторить заказ. Возможно, товары больше недоступны.')
+        return
+      }
+      success('Товары из заказа добавлены в корзину')
+      navigate('/cart')
+    } catch (err) {
+      showError(err?.message || 'Не удалось повторить заказ')
+    } finally {
+      setRepeatingOrderId(null)
+    }
+  }
 
   /** Заказы с учётом выбранного питомца: только заказы, в которых есть позиции для этого питомца */
   const ordersFiltered =
@@ -459,8 +512,9 @@ function Orders() {
                     key={order.id}
                     order={order}
                     onOrderExpired={handleOrderExpired}
-                    onRepeat={() => navigate('/shop')}
+                    onRepeat={handleRepeatOrder}
                     onTrack={() => navigate(`/orders/${order.id}`)}
+                    isRepeating={repeatingOrderId === order.id}
                     collapsed={collapsedIds.has(order.id)}
                     onToggleCollapse={() => toggleCollapse(order.id)}
                   />

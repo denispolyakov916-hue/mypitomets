@@ -476,18 +476,8 @@ function Home() {
               {/* Placeholder for future animation - reserved space */}
               <div className="relative">
                 <div className="bg-white/10 backdrop-blur-md rounded-3xl p-6 border border-white/20 overflow-hidden" style={{ minHeight: '426px' }}>
-                  {/* Image placeholder - cropped to object level */}
-                  <img 
-                    src="/purple-monster.png" 
-                    alt="Pet character"
-                    className="w-full h-full object-cover rounded-2xl"
-                    style={{ 
-                      width: '100%', 
-                      height: '426px',
-                      objectFit: 'cover',
-                      objectPosition: 'center'
-                    }}
-                  />
+                  {/* старая картинка /purple-monster.png удалена из системы */}
+                  <div className="w-full rounded-2xl bg-white/5" style={{ height: '426px' }} aria-hidden="true" />
                 </div>
               </div>
             </motion.div>

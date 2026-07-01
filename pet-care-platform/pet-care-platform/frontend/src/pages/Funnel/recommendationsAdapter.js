@@ -7,6 +7,13 @@
  * варианта (эконом / оптимальный / премиум) и «набор заботы на месяц» (корм + доп. товар).
  * Когда появится анонимный scored-эндпоинт — заменить только тело buildRecommendations,
  * контракт данных (tiers/bundle/profile/reasons) оставить.
+ *
+ * BUG-FIX (рацион 70/30): раньше подбирался ОДИН корм на тир, и рацион по факту был
+ * либо полностью сухим, либо полностью влажным — но экран обещал смесь «70/30».
+ * Теперь на каждый тир подбираем ДВА корма (сухой + влажный) из одного пула (после
+ * единого исключения аллергенов) и строим настоящую смесь с честной пропорцией. Если
+ * после фильтра доступна только одна форма — не врём: пропорция схлопывается в 100%
+ * доступной формы, а mix.label честно это отражает.
  */
 import { getProducts } from '../../api/shop'
 import { formatPrice } from '../../utils/format'
@@ -26,6 +33,9 @@ const ADDON_LABELS = {
 const BUDGET_LABELS = { economy: 'Экономно', balanced: 'Сбалансированно', premium: 'Премиум' }
 const GOAL_LABELS = { maintain: 'Поддержание формы', weight: 'Контроль веса', sensitive: 'Чувствительность' }
 
+// Целевая доля сухого корма в смешанном рационе (сухой/влажный). Остальное — влажный.
+export const DRY_SHARE = 0.7
+
 async function fetchGroup(species, group) {
   try {
     const res = await getProducts({ animal: species, product_group: group, page_size: 24 })
@@ -33,6 +43,81 @@ async function fetchGroup(species, group) {
   } catch {
     return []
   }
+}
+
+/**
+ * Влажный корм? — определяем по названию / короткому описанию / названию категории
+ * (полного состава каталог не отдаёт). Совпадение по влажным маркерам = wet.
+ */
+export function isWetFood(product) {
+  if (!product) return false
+  const hay = `${product.name || ''} ${product.short_description || ''} ${product.category_name || ''} ${product.category?.name || ''} ${product.category?.code || ''}`.toLowerCase()
+  return /влаж|консерв|пауч|пресерв|wet|мусс|желе|паштет|кусочки в соусе|соус|pouch/i.test(hay)
+}
+
+/** Сухой корм? — не помечен влажным (по доступным текстовым сигналам). */
+export function isDryFood(product) {
+  return !!product && !isWetFood(product)
+}
+
+/**
+ * rationMix(dry, wet, dryShare) → честная смесь двух форм с пропорцией и подписью.
+ * Чистая функция (без API) — тестируется отдельно.
+ *
+ * — Обе формы есть → пропорция dryShare/(1-dryShare), подпись «X% сухой / Y% влажный».
+ * — Только сухой → 100% сухой, подпись честно про одну форму.
+ * — Только влажный → 100% влажный.
+ * — Ничего → null.
+ *
+ * cost = взвешенная стоимость рациона на период (share × цена каждой формы),
+ * чтобы «итого/на период» соответствовало заявленной смеси, а не одной пачке.
+ */
+export function rationMix(dry = null, wet = null, dryShare = DRY_SHARE) {
+  const clamp = (x) => Math.min(1, Math.max(0, x))
+  const share = clamp(Number.isFinite(dryShare) ? dryShare : DRY_SHARE)
+
+  if (dry && wet) {
+    const dryPct = Math.round(share * 100)
+    const wetPct = 100 - dryPct
+    return {
+      dry,
+      wet,
+      dryPct,
+      wetPct,
+      mixed: true,
+      form: 'mixed',
+      label: `${dryPct}% сухой / ${wetPct}% влажный`,
+      note: null,
+      cost: Math.round((dry.price || 0) * share + (wet.price || 0) * (1 - share)),
+    }
+  }
+  if (dry) {
+    return {
+      dry,
+      wet: null,
+      dryPct: 100,
+      wetPct: 0,
+      mixed: false,
+      form: 'dry',
+      label: '100% сухой',
+      note: 'Влажный корм без выбранных аллергенов не нашёлся — рацион только из сухого.',
+      cost: Math.round(dry.price || 0),
+    }
+  }
+  if (wet) {
+    return {
+      dry: null,
+      wet,
+      dryPct: 0,
+      wetPct: 100,
+      mixed: false,
+      form: 'wet',
+      label: '100% влажный',
+      note: 'Сухой корм без выбранных аллергенов не нашёлся — рацион только из влажного.',
+      cost: Math.round(wet.price || 0),
+    }
+  }
+  return null
 }
 
 /** Привязки атрибутов товара (для блока «почему подходит» и бейджей карточек). */
@@ -58,6 +143,20 @@ function pickOptimal(sorted) {
   const band = sorted.slice(lo, hi)
   const byValue = [...band].sort((a, b) => (b.rating || 0) - (a.rating || 0) || (a.price || 0) - (b.price || 0))
   return byValue[0] || sorted[Math.floor(n / 2)]
+}
+
+/**
+ * Три «ценовых точки» из отсортированного (по цене) пула: эконом / оптимальный / премиум.
+ * Работает и для сухого, и для влажного пула по отдельности.
+ */
+function tierPicksFrom(pool) {
+  const sorted = [...pool].sort((a, b) => (a.price || 0) - (b.price || 0))
+  if (!sorted.length) return { economy: null, optimal: null, premium: null }
+  return {
+    economy: sorted[0],
+    optimal: pickOptimal(sorted) || sorted[0],
+    premium: sorted[sorted.length - 1],
+  }
 }
 
 function neuteredLabel(value) {
@@ -105,8 +204,16 @@ function healthReasonText(draft, optimal) {
   return 'Поддерживает форму здорового питомца.'
 }
 
+/** Текст «Тип рациона» для блока «почему подходит» — из реальной смеси. */
+function rationReasonText(mix) {
+  if (!mix) return 'Смешанный рацион под потребности питомца.'
+  if (mix.mixed) return `Смешанный рацион: ${mix.label} — сухой для зубов и сытости, влажный для влаги и аппетита.`
+  if (mix.form === 'dry') return 'Рацион из сухого корма (влажного без ваших аллергенов не нашлось).'
+  return 'Рацион из влажного корма (сухого без ваших аллергенов не нашлось).'
+}
+
 /** Блок «Почему подходит» — каждый пункт опирается на реальные данные питомца. */
-function buildReasons(draft, optimal, monthly) {
+function buildReasons(draft, optimal, monthly, mix) {
   const reasons = []
   const ageLabel = formatAgeLabel(draft)
   if (ageLabel) {
@@ -119,6 +226,7 @@ function buildReasons(draft, optimal, monthly) {
       : `Порции и калорийность под вес ${draft.weight} кг.`
     reasons.push({ key: 'weight', title: 'Учитывает вес', text })
   }
+  reasons.push({ key: 'ration', title: 'Сбалансированный рацион', text: rationReasonText(mix) })
   reasons.push({ key: 'budget', title: 'Подходит под бюджет', text: `Уложились в бюджет «${BUDGET_LABELS[draft.budget] || 'сбалансированно'}».` })
 
   reasons.push({ key: 'health', title: 'Учитывает здоровье и цель', text: healthReasonText(draft, optimal) })
@@ -141,10 +249,11 @@ async function fetchFoodPool(species, allergyTags) {
 }
 
 /** Доп. товар набора заботы — тоже без аллергенов (набор уходит в корзину). */
-async function pickAddon(species, allergyTags, excludeId) {
+async function pickAddon(species, allergyTags, excludeIds) {
+  const exclude = new Set((excludeIds || []).filter((id) => id != null))
   for (const group of ADDON_GROUPS) {
     const items = filterOutAllergens(await fetchGroup(species, group), allergyTags)
-      .filter((it) => it.id !== excludeId)
+      .filter((it) => !exclude.has(it.id))
     if (items.length) {
       const byPrice = [...items].sort((a, b) => (a.price || 0) - (b.price || 0))
       // не самый дешёвый «мусор» и не самый дорогой — берём из нижней трети
@@ -152,6 +261,78 @@ async function pickAddon(species, allergyTags, excludeId) {
     }
   }
   return { addon: null, group: null }
+}
+
+// Метаданные трёх ценовых тиров (эконом / оптимальный / премиум).
+const TIER_KEYS = [
+  { key: 'optimal', label: 'Оптимальный выбор', badge: 'gold', recommended: true, why: 'Лучшее соотношение пользы и цены под вашего питомца.' },
+  { key: 'economy', label: 'Экономный вариант', badge: 'soft', recommended: false, why: 'Бережёт бюджет и закрывает базовые потребности.' },
+  { key: 'premium', label: 'Премиум-решение', badge: 'violet', recommended: false, why: 'Премиальный состав для максимальной заботы.' },
+]
+
+/** Стоимость рациона за (условный) месяц — взвешенная по смеси. */
+const monthlyOfMix = (mix) => (mix ? Math.round(mix.cost || 0) : 0)
+
+/** Честное «нет безопасного корма» сообщение (или null). */
+function noSafeFoodNotice(hasAllergens, excludedAll, allergyTags) {
+  return (hasAllergens && excludedAll)
+    ? `Не нашли корм без выбранных аллергенов (${allergyTags.join(', ')}). Измените список аллергий или обратитесь к специалисту.`
+    : null
+}
+
+/**
+ * Собрать 3 тира настоящих смесей (сухой + влажный) из безопасного пула.
+ * Дедупим по паре (dry,wet): при малом каталоге тиры могут совпасть целиком.
+ */
+function buildTiers(food) {
+  const dryPicks = tierPicksFrom(food.filter(isDryFood))
+  const wetPicks = tierPicksFrom(food.filter(isWetFood))
+  // Ценовые точки по всему пулу — чтобы при отсутствии одной формы честно
+  // деградировать до 100% доступной формы, сохранив 3 тира.
+  const allPicks = tierPicksFrom(food)
+
+  const seen = new Set()
+  const tiers = []
+  for (const t of TIER_KEYS) {
+    const dry = dryPicks[t.key] || allPicks[t.key] || null
+    const wet = wetPicks[t.key] || null
+    const mix = rationMix(dry, wet, DRY_SHARE)
+    if (!mix) continue
+    const sig = `${mix.dry?.id ?? '-'}|${mix.wet?.id ?? '-'}`
+    if (seen.has(sig)) continue
+    seen.add(sig)
+    // Представитель тира для конструктора-UI: сухой корм (или влажный, если сухого нет).
+    const product = mix.dry || mix.wet
+    tiers.push({ ...t, product, mix, attrs: productAttrs(product), monthly: monthlyOfMix(mix) })
+  }
+  return tiers
+}
+
+/** Набор заботы: рацион (смесь сухой+влажный) + доп. товар. total — за условный месяц. */
+function buildBundle(mix, addon, addonGroup) {
+  const rationCost = mix.cost || 0
+  return {
+    // main — представитель рациона для UI (сухой корм); полный рацион в mix.
+    main: mix.dry || mix.wet,
+    mix,
+    dry: mix.dry,
+    wet: mix.wet,
+    addon,
+    addonGroup,
+    addonLabel: addonGroup ? ADDON_LABELS[addonGroup] : null,
+    days: '28–30',
+    rationCost,
+    total: rationCost + (addon?.price || 0),
+    monthly: monthlyOfMix(mix),
+  }
+}
+
+/** Прозрачное сообщение: про деградацию смеси и/или исключённые аллергены. */
+function buildNotice(mix, hasAllergens, allergyTags) {
+  const parts = []
+  if (!mix.mixed && mix.note) parts.push(mix.note)
+  if (hasAllergens) parts.push(`Из подбора исключены корма с выбранными аллергенами: ${allergyTags.join(', ')}.`)
+  return parts.length ? parts.join(' ') : null
 }
 
 export async function buildRecommendations(draft = {}) {
@@ -164,53 +345,25 @@ export async function buildRecommendations(draft = {}) {
 
   const { safe: food, excludedAll } = await fetchFoodPool(species, allergyTags)
 
-  const sorted = [...food].sort((a, b) => (a.price || 0) - (b.price || 0))
-  if (sorted.length === 0) {
+  // Делим уже безопасный (без аллергенов) пул на сухой и влажный, собираем тиры-смеси.
+  const tiers = buildTiers(food)
+
+  if (tiers.length === 0) {
     // Честное сообщение вместо подсовывания корма с аллергеном.
-    const noticeNoSafeFood = (hasAllergens && excludedAll)
-      ? `Не нашли корм без выбранных аллергенов (${allergyTags.join(', ')}). Измените список аллергий или обратитесь к специалисту.`
-      : null
-    return { species, tiers: [], profile: buildProfile(draft), reasons: [], bundle: null, notice: noticeNoSafeFood }
+    const notice = noSafeFoodNotice(hasAllergens, excludedAll, allergyTags)
+    return { species, tiers: [], profile: buildProfile(draft), reasons: [], bundle: null, mix: null, notice }
   }
 
-  const economy = sorted[0]
-  const premium = sorted[sorted.length - 1]
-  const optimal = pickOptimal(sorted) || economy
+  const optimalMix = (tiers.find((t) => t.key === 'optimal') || tiers[0]).mix
+  const optimal = optimalMix.dry || optimalMix.wet
 
-  // Месячная стоимость — предварительно (≈1 упаковка/мес). TODO(adapter): расчёт по норме кормления.
-  const monthlyOf = (p) => (p ? Math.round(p.price || 0) : 0)
+  // Набор заботы: рацион (сухой + влажный, если есть) + доп. товар из смежной группы.
+  const { addon, group: addonGroup } = await pickAddon(species, allergyTags, [optimalMix.dry?.id, optimalMix.wet?.id])
+  const bundle = buildBundle(optimalMix, addon, addonGroup)
 
-  const rawTiers = [
-    { key: 'optimal', label: 'Оптимальный выбор', badge: 'gold', recommended: true, product: optimal, why: 'Лучшее соотношение пользы и цены под вашего питомца.' },
-    { key: 'economy', label: 'Экономный вариант', badge: 'soft', recommended: false, product: economy, why: 'Бережёт бюджет и закрывает базовые потребности.' },
-    { key: 'premium', label: 'Премиум-решение', badge: 'violet', recommended: false, product: premium, why: 'Премиальный состав для максимальной заботы.' },
-  ]
-  // Дедуп (если кормов мало, разные тиры могут совпасть).
-  const seen = new Set()
-  const tiers = rawTiers
-    .filter((t) => t.product && !seen.has(t.product.id) && seen.add(t.product.id))
-    .map((t) => ({ ...t, attrs: productAttrs(t.product), monthly: monthlyOf(t.product) }))
-
-  // Набор заботы: основной корм (оптимальный) + доп. товар из смежной группы.
-  const { addon, group: addonGroup } = await pickAddon(species, allergyTags, optimal.id)
-  const main = optimal
-  const bundle = {
-    main,
-    addon,
-    addonGroup,
-    addonLabel: addonGroup ? ADDON_LABELS[addonGroup] : null,
-    days: '28–30',
-    total: (main?.price || 0) + (addon?.price || 0),
-    monthly: monthlyOf(main),
-  }
-
-  const reasons = buildReasons(draft, optimal, monthlyOf(optimal))
+  const reasons = buildReasons(draft, optimal, monthlyOfMix(optimalMix), optimalMix)
   const profile = buildProfile(draft)
+  const notice = buildNotice(optimalMix, hasAllergens, allergyTags)
 
-  // Сообщение, если корм подобран, но часть отсеяна по аллергии (для прозрачности).
-  const notice = hasAllergens
-    ? `Из подбора исключены корма с выбранными аллергенами: ${allergyTags.join(', ')}.`
-    : null
-
-  return { species, tiers, bundle, profile, reasons, notice }
+  return { species, tiers, bundle, mix: optimalMix, profile, reasons, notice }
 }

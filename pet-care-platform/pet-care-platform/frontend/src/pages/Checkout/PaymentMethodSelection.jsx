@@ -21,7 +21,9 @@ function PaymentMethodSelection() {
   // Получаем данные из параметров URL или localStorage
   const orderId = searchParams.get('order_id')
   const amount = searchParams.get('amount') || totalPrice
-  const type = searchParams.get('type') || 'order'
+  // По умолчанию — заказ товаров: страница /payment ждёт shop_order/unified_checkout,
+  // чтобы при отмене/сбое СБП вернуть пользователя на страницу заказа, а не в курсы.
+  const type = searchParams.get('type') || 'shop_order'
 
   useEffect(() => {
     if (!isAuthenticated) {

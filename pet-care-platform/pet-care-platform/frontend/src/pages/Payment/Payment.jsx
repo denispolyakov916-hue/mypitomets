@@ -361,6 +361,23 @@ function Payment() {
 
 
   /**
+   * Определить, является ли платёж заказом товаров (shop/unified).
+   *
+   * Важно для СБП: при оплате из деталей заказа страница открывается по
+   * payment_id (без order_id и без type в URL). Тип берём в первую очередь из
+   * paymentInfo (авторитетный источник с бэкенда), а также принимаем 'order'
+   * и 'shop_order' из URL (используется PaymentMethodSelection). Курс — только
+   * когда явно указан course_id / payment_type === 'course'.
+   */
+  const isShopOrderPayment = () => {
+    const effectiveType = paymentInfo?.payment_type || type
+    if (effectiveType === 'course') return false
+    if (['shop_order', 'unified_checkout', 'order'].includes(effectiveType)) return true
+    // Нет явного course_id и есть id заказа — считаем заказом товаров.
+    return !courseId && !!(orderId || paymentInfo?.object_id)
+  }
+
+  /**
    * Обработка неуспешной оплаты.
    *
    * Заказ сохраняется на бэкенде со статусом "Ожидает оплаты". Для заказов
@@ -368,9 +385,8 @@ function Payment() {
    */
   const handlePaymentFailure = (err) => {
     const targetOrderId = orderId || paymentInfo?.object_id
-    const isShopOrder = type === 'shop_order' || type === 'unified_checkout'
 
-    if (isShopOrder && targetOrderId) {
+    if (isShopOrderPayment() && targetOrderId) {
       navigate(`/orders/${targetOrderId}`, {
         state: { message: 'Оплата не завершена. Заказ ожидает оплаты — вы можете оплатить его позже или отменить.' }
       })
@@ -387,9 +403,8 @@ function Payment() {
    */
   const handleCancelPayment = () => {
     const targetOrderId = orderId || paymentInfo?.object_id
-    const isShopOrder = type === 'shop_order' || type === 'unified_checkout'
 
-    if (isShopOrder && targetOrderId) {
+    if (isShopOrderPayment() && targetOrderId) {
       navigate(`/orders/${targetOrderId}`)
     } else if (courseId) {
       navigate(`/courses/${courseId}`)

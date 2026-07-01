@@ -26,6 +26,29 @@ import QuickWeightModal from '../../components/health/QuickWeightModal';
 import WeightSparkline from '../../components/health/WeightSparkline';
 import { usePetWeightHistory } from '../../hooks/usePetWeightHistory';
 import { isWeightEvent, WEIGHT_META } from '../../constants/weight';
+import { saveQuizDraft, clearQuizDraft, petToQuizDraft } from '../../utils/petQuizDraft';
+
+/**
+ * Открыть рекомендации по питанию для УЖЕ сохранённого питомца, не заполняя анкету заново.
+ * Повторяет StartPage.choosePet: собираем черновик из питомца и идём к результату.
+ */
+function goToRecommendations(pet, navigate) {
+  clearQuizDraft();
+  saveQuizDraft(petToQuizDraft(pet));
+  navigate('/recommendations');
+}
+
+/**
+ * Открыть магазин, предфильтрованный под этого питомца: категория «корм» + вид (собака/кошка).
+ * Названия query-параметров соответствуют тем, что читает Shop.jsx (animal, category_code).
+ */
+function goToShopFood(pet, navigate) {
+  const params = new URLSearchParams({ category_code: 'food' });
+  if (pet?.species === 'dog' || pet?.species === 'cat') {
+    params.set('animal', pet.species);
+  }
+  navigate(`/shop?${params.toString()}`);
+}
 
 // Цвета для статусов
 const STATUS_COLORS = {
@@ -965,8 +988,8 @@ function EmptyState({ icon: Icon, title, subtitle, children }) {
 function QuickActions({ pet, navigate, onAddEvent, onRecordWeight }) {
   // Спокойная палитра: золото — действия про корм (главная ценность), фиолетовый — остальное.
   const actions = [
-    { label: 'Купить корм', icon: ShoppingCart, primary: true, onClick: () => navigate('/shop') },
-    { label: 'Подобрать рацион', icon: UtensilsCrossed, primary: true, onClick: () => navigate(`/food-recommendation?pet_id=${pet.id}`) },
+    { label: 'Купить корм', icon: ShoppingCart, primary: true, onClick: () => goToShopFood(pet, navigate) },
+    { label: 'Подобрать рацион', icon: UtensilsCrossed, primary: true, onClick: () => goToRecommendations(pet, navigate) },
     { label: 'Записать вес', icon: Weight, onClick: onRecordWeight },
     { label: 'Добавить событие', icon: CalendarPlus, onClick: onAddEvent },
     { label: 'Дневник', icon: BookOpen, onClick: () => navigate(`/health-diary?pet_id=${pet.id}`) },
@@ -1033,7 +1056,7 @@ function RationBlock({ pet, navigate }) {
           </div>
           <p className="text-[11px] text-gray-400 mt-2">Источник: Dinozavrik · собственная база питания</p>
           <div className="flex flex-wrap gap-2 mt-3">
-            <button onClick={() => navigate(`/food-recommendation?pet_id=${pet.id}`)} className={SOFT_CTA}><Edit className="w-4 h-4" /> Изменить рацион</button>
+            <button onClick={() => goToRecommendations(pet, navigate)} className={SOFT_CTA}><Edit className="w-4 h-4" /> Изменить рацион</button>
           </div>
         </div>
       ) : hasFood ? (
@@ -1052,10 +1075,10 @@ function RationBlock({ pet, navigate }) {
             {pet.updated_at && <p className="text-xs text-gray-400 mt-3">Обновлён {new Date(pet.updated_at).toLocaleDateString('ru-RU')}</p>}
           </div>
           <div className="flex flex-wrap gap-2">
-            <button onClick={() => navigate('/shop')} className={GOLD_CTA}><ShoppingCart className="w-4 h-4" /> Купить рацион</button>
-            <button onClick={() => navigate(`/food-recommendation?pet_id=${pet.id}`)} className={SOFT_CTA}><Edit className="w-4 h-4" /> Изменить рацион</button>
+            <button onClick={() => goToShopFood(pet, navigate)} className={GOLD_CTA}><ShoppingCart className="w-4 h-4" /> Купить рацион</button>
+            <button onClick={() => goToRecommendations(pet, navigate)} className={SOFT_CTA}><Edit className="w-4 h-4" /> Изменить рацион</button>
           </div>
-          <button onClick={() => navigate(`/food-recommendation?pet_id=${pet.id}`)} className={`${GHOST_CTA} mt-3`}>
+          <button onClick={() => goToRecommendations(pet, navigate)} className={`${GHOST_CTA} mt-3`}>
             Подобрать заново <ChevronRight className="w-4 h-4" />
           </button>
         </div>
@@ -1065,7 +1088,7 @@ function RationBlock({ pet, navigate }) {
           title="Подберите первый рацион для вашего питомца"
           subtitle="Учтём вес, возраст и особенности — и предложим подходящий корм."
         >
-          <button onClick={() => navigate(`/food-recommendation?pet_id=${pet.id}`)} className={GOLD_CTA}>
+          <button onClick={() => goToRecommendations(pet, navigate)} className={GOLD_CTA}>
             <Sparkles className="w-4 h-4" /> Подобрать корм
           </button>
         </EmptyState>
@@ -1477,13 +1500,8 @@ function PuffPeek({ size = 166, everyMs = 10000 }) {
   }, [reduced, data, everyMs]);
 
   const box = { width: size, height: size };
-  if (reduced || failed) {
-    return (
-      <img src="/purple-monster.png" alt="" aria-hidden="true" style={box}
-        className="object-contain select-none pointer-events-none" draggable={false} />
-    );
-  }
-  if (!data) return <div aria-hidden="true" style={box} />;
+  // Никаких старых картинок (/purple-monster.png удалён) — пустой бокс.
+  if (reduced || failed || !data) return <div aria-hidden="true" style={box} />;
   return (
     <Lottie
       lottieRef={lottieRef}

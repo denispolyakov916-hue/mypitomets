@@ -145,3 +145,40 @@ class OrderCancelTests(APITestCase):
         self.assertEqual(order.status, 'cancelled')
         order._product.refresh_from_db()
         self.assertTrue(order._product.is_available)
+
+    def test_sbp_pending_order_survives_until_cancel(self):
+        """
+        СБП: заказ, ожидающий оплаты через СБП, не должен пропадать.
+
+        Способ оплаты СБП хранится в metadata платежа (payment_method='card' +
+        metadata={'payment_method': 'sbp'}), поэтому cancel-флоу от него не зависит.
+        Проверяем, что до отмены заказ виден как 'pending' с позициями, а отмена
+        переводит его в 'cancelled' и отменяет СБП-платёж (а не удаляет заказ).
+        """
+        order = self._create_order(self.owner, 'pending', with_product=True)
+        sbp_payment = Payment.objects.create(
+            user=self.owner,
+            payment_type='unified_checkout',
+            object_id=str(order.id),
+            amount=Decimal('100.00'),
+            payment_method='card',
+            status='pending',
+            metadata={'payment_method': 'sbp'},
+        )
+        self.client.force_authenticate(self.owner)
+
+        # До отмены заказ доступен как 'pending' и содержит позиции.
+        detail = self.client.get(f'/api/shop/orders/{order.id}/')
+        self.assertEqual(detail.status_code, status.HTTP_200_OK)
+        self.assertEqual(detail.data['order']['status'], 'pending')
+        self.assertEqual(len(detail.data['order']['items']), 1)
+
+        # Отмена не удаляет заказ, а переводит его в 'cancelled'.
+        response = self.client.post(self._cancel_url(order.id))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['order']['status'], 'cancelled')
+
+        order.refresh_from_db()
+        self.assertEqual(order.status, 'cancelled')
+        sbp_payment.refresh_from_db()
+        self.assertEqual(sbp_payment.status, 'cancelled')

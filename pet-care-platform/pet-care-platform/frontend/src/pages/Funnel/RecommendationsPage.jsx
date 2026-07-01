@@ -55,14 +55,19 @@ function ProfileChips({ profile }) {
 }
 
 /** Блок 3: «Параметры подбора» — то, что собрал Пуфыч (не техническая форма). */
-function ParamsCard({ petName, ration, periodDays, profile }) {
+function ParamsCard({ petName, ration, periodDays, profile, mix }) {
   const goal = profile.find((p) => p.key === 'goal')?.value || '—'
   const budget = profile.find((p) => p.key === 'budget')?.value || '—'
+  // Тип и раскладку сухой/влажный берём из РЕАЛЬНОГО микса адаптера, а не из
+  // захардкоженного «70% / 30%» и одиночной формы ration.wet.
+  const feedType = mix
+    ? (mix.mixed ? 'Сухой + влажный' : (mix.dryPct === 100 ? 'Сухой корм' : 'Влажный корм'))
+    : (ration.wet ? 'Влажный корм' : 'Сухой корм')
   const rows = [
     { label: 'Питомец', value: petName },
-    { label: 'Тип питания', value: ration.wet ? 'Влажный корм' : 'Сухой корм' },
+    { label: 'Тип питания', value: feedType },
     { label: 'Период', value: `${periodDays} дней` },
-    { label: 'Сухой / влажный', value: '70% / 30%' },
+    { label: 'Сухой / влажный', value: mix?.label || '—' },
     { label: 'Бюджет', value: budget },
     { label: 'Цель', value: goal },
   ]
@@ -425,6 +430,7 @@ export default function RecommendationsPage() {
     [tiers, selectedKey],
   )
   const ration = useMemo(() => computeRation(draft, selectedTier?.product), [draft, selectedTier])
+  const mix = useMemo(() => selectedTier?.mix || state.data?.mix || null, [selectedTier, state.data])
   // Стоимость на период: базовая цена товара рассчитана на ~30 дней, масштабируем по periodDays.
   const periodCostOf = (p) => Math.round(((p?.price) || 0) * (periodDays / 30))
 
@@ -523,7 +529,7 @@ export default function RecommendationsPage() {
       <BrandSection bg="milk" container="max-w-6xl" className="pt-0">
         <div className="grid items-start gap-6 lg:grid-cols-[1fr_360px]">
           <div className="space-y-6">
-            <ParamsCard petName={petName} ration={ration} periodDays={periodDays} profile={profile} />
+            <ParamsCard petName={petName} ration={ration} periodDays={periodDays} profile={profile} mix={mix} />
             <RationConstructor
               tiers={tiers}
               selectedKey={selectedTier.key}
