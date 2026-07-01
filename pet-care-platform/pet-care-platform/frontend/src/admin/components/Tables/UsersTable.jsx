@@ -6,6 +6,7 @@ import UserForm from '../Forms/UserForm';
 
 // Hooks
 import { adminAPI } from '../../utils/api';
+import { devLog } from '../../utils/logger';
 
 const UsersTable = () => {
   const [data, setData] = useState([]);
@@ -39,9 +40,9 @@ const UsersTable = () => {
 
       setData(response.data.results || response.data);
       setPagination(response.data.pagination || null);
-      console.log('[UsersTable] Data loaded from API');
+      devLog.log('[UsersTable] Data loaded from API');
     } catch (err) {
-      console.error('Users load error:', err);
+      devLog.error('Users load error:', err);
       setError(err.response?.data?.detail || 'Ошибка загрузки пользователей');
       setData([]);
     } finally {
@@ -78,7 +79,7 @@ const UsersTable = () => {
       }
       await loadData(); // Перезагрузка данных
     } catch (err) {
-      console.error('Bulk action error:', err);
+      devLog.error('Bulk action error:', err);
       setError('Ошибка выполнения массовой операции');
     }
   };

@@ -43,6 +43,7 @@ import CourseEditorPage from './components/Courses/CourseEditorPage';
 // Stores
 import { useAdminStore } from './stores/adminStore';
 import { useAuthStore } from '../store/authStore';
+import { devLog } from './utils/logger';
 
 /**
  * Редирект на страницу по умолчанию для общей админки компании.
@@ -66,7 +67,7 @@ const AdminApp = () => {
       setUser(user);
       // Проверяем доступ к админ API
       checkAuth().catch(err => {
-        console.warn('Admin API check failed:', err);
+        devLog.warn('Admin API check failed:', err);
       });
     }
   }, [user, setUser, checkAuth]);

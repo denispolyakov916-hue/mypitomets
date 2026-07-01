@@ -4,6 +4,7 @@ import { useAuthStore } from '../../../store/authStore';
 
 // Components
 import NotificationCenter from '../Notifications/NotificationCenter';
+import { devLog } from '../../utils/logger';
 
 const Header = ({ onMenuClick }) => {
   const [notificationsOpen, setNotificationsOpen] = useState(false);
@@ -16,7 +17,7 @@ const Header = ({ onMenuClick }) => {
       await authLogout();
       window.location.href = '/admin-panel/login';
     } catch (error) {
-      console.error('Logout failed:', error);
+      devLog.error('Logout failed:', error);
     }
   };
 

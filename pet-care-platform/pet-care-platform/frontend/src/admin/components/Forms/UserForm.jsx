@@ -10,6 +10,7 @@ import { useForm } from '../../hooks/useForm';
 
 // Utils
 import { adminAPI } from '../../utils/api';
+import { devLog } from '../../utils/logger';
 
 const validateUser = (values) => {
   const errors = {};
@@ -88,7 +89,7 @@ const UserForm = ({
       onClose();
     } else {
       // Обработка ошибок API
-      console.error('Save error:', result.error);
+      devLog.error('Save error:', result.error);
     }
   };
 
@@ -102,7 +103,7 @@ const UserForm = ({
       onSuccess?.();
       onClose();
     } catch (error) {
-      console.error('Delete error:', error);
+      devLog.error('Delete error:', error);
     }
   };
 

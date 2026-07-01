@@ -26,6 +26,7 @@ import BehaviorMatchingRules from './BehaviorMatchingRules'
 import BehaviorSafetyChecklist from './BehaviorSafetyChecklist'
 import CourseStudentsPanel from './CourseStudentsPanel'
 import CourseAnalyticsPanel from './CourseAnalyticsPanel'
+import { devLog } from '../../utils/logger';
 
 const STATUS_LABELS = { draft: 'Черновик', published: 'Опубликован', archived: 'Архив' }
 const STATUS_COLORS = {
@@ -114,7 +115,7 @@ export default function CourseEditorPage({ panelBase = '/admin-panel', specialis
           orphan_pages: builder?.orphan_pages ?? [],
         })
       } catch (err) {
-        console.warn('Builder load failed, using empty structure:', err)
+        devLog.warn('Builder load failed, using empty structure:', err)
         setBuilderData({
           ...courseData,
           modules: [],
@@ -123,7 +124,7 @@ export default function CourseEditorPage({ panelBase = '/admin-panel', specialis
         })
       }
     } catch (err) {
-      console.error('Error loading course:', err)
+      devLog.error('Error loading course:', err)
       navigate(`${routeBase}/courses`)
     } finally {
       setLoading(false)
@@ -148,7 +149,7 @@ export default function CourseEditorPage({ panelBase = '/admin-panel', specialis
           label: item.email || `${item.first_name || ''} ${item.last_name || ''}`.trim() || `Специалист #${item.id}`,
         })))
       } catch (err) {
-        console.warn('Failed to load course specialists:', err)
+        devLog.warn('Failed to load course specialists:', err)
         setSpecialists([])
       }
     }
@@ -175,7 +176,7 @@ export default function CourseEditorPage({ panelBase = '/admin-panel', specialis
       setLastSaved(new Date())
       setPublishCheckTick(n => n + 1)
     } catch (err) {
-      console.error('Error saving course:', err)
+      devLog.error('Error saving course:', err)
       setSaveError('Ошибка сохранения')
     } finally {
       setSaving(false)
@@ -225,7 +226,7 @@ export default function CourseEditorPage({ panelBase = '/admin-panel', specialis
       setSaveError(null)
       setPublishCheckTick(n => n + 1)
     } catch (err) {
-      console.error('Error publishing:', err)
+      devLog.error('Error publishing:', err)
       setSaveError(err.response?.data?.blocking_errors?.[0] || err.response?.data?.error || 'Ошибка публикации')
     } finally {
       setSaving(false)
@@ -242,7 +243,7 @@ export default function CourseEditorPage({ panelBase = '/admin-panel', specialis
       setLastSaved(new Date())
       setSaveError(null)
     } catch (err) {
-      console.error('Error submitting course for review:', err)
+      devLog.error('Error submitting course for review:', err)
       setSaveError(err.response?.data?.error || 'Ошибка отправки на проверку')
     } finally {
       setSaving(false)
@@ -257,7 +258,7 @@ export default function CourseEditorPage({ panelBase = '/admin-panel', specialis
       setCourse(prev => ({ ...prev, status: 'draft', is_active: false }))
       setLastSaved(new Date())
     } catch (err) {
-      console.error('Error unpublishing:', err)
+      devLog.error('Error unpublishing:', err)
       setSaveError('Ошибка снятия с публикации')
     } finally {
       setSaving(false)

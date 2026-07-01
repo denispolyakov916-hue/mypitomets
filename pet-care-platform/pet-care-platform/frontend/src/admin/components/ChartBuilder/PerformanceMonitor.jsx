@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { performanceMonitor } from '../../../utils/virtualization';
+import { devLog } from '../../utils/logger';
 
 const PerformanceMonitor = ({ isVisible, onClose, performanceStats, recommendations }) => {
   const [stats, setStats] = useState({});
@@ -160,8 +161,8 @@ const PerformanceMonitor = ({ isVisible, onClose, performanceStats, recommendati
               onClick={() => {
                 const perfStats = performanceMonitor.getStats();
                 const recommendations = performanceMonitor.getOptimizationRecommendations();
-                console.log('Performance Stats:', perfStats);
-                console.log('Optimization Recommendations:', recommendations);
+                devLog.log('Performance Stats:', perfStats);
+                devLog.log('Optimization Recommendations:', recommendations);
                 const data = { timestamp: new Date().toISOString(), stats: perfStats, recommendations };
                 const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
                 const url = URL.createObjectURL(blob);

@@ -8,6 +8,7 @@ import PieChart from '../Charts/PieChart';
 
 // Utils
 import { adminAPI } from '../../utils/api';
+import { devLog } from '../../utils/logger';
 
 const DrillDownModal = ({
   isOpen,
@@ -117,7 +118,7 @@ const DrillDownModal = ({
 
       setData(responseData);
     } catch (err) {
-      console.error('Drill-down data load error:', err);
+      devLog.error('Drill-down data load error:', err);
       setError(err.message || err.response?.data?.detail || 'Ошибка загрузки данных');
     } finally {
       setLoading(false);

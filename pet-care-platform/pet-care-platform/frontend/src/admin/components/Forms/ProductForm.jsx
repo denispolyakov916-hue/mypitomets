@@ -11,6 +11,7 @@ import { useForm } from '../../hooks/useForm';
 
 // Utils
 import { adminAPI } from '../../utils/api';
+import { devLog } from '../../utils/logger';
 
 // Валидация формы товара
 const validateProduct = (values) => {
@@ -181,7 +182,7 @@ const ProductForm = ({
       onSuccess?.(result.data);
       onClose();
     } else {
-      console.error('Save error:', result.error);
+      devLog.error('Save error:', result.error);
     }
   };
 
@@ -195,7 +196,7 @@ const ProductForm = ({
       onSuccess?.();
       onClose();
     } catch (error) {
-      console.error('Delete error:', error);
+      devLog.error('Delete error:', error);
     }
   };
 

@@ -11,6 +11,7 @@ import RowActionsDropdown from './RowActionsDropdown';
 
 // API
 import { adminAPI } from '../../utils/api';
+import { devLog } from '../../utils/logger';
 
 const DataTable = ({
   title,
@@ -72,7 +73,7 @@ const DataTable = ({
 
   const handleExport = async (exportParams) => {
     try {
-      console.log('Starting export with params:', exportParams);
+      devLog.log('Starting export with params:', exportParams);
 
       // Если передан только формат (например, 'csv'), создаем параметры экспорта
       if (typeof exportParams === 'string') {
@@ -84,13 +85,13 @@ const DataTable = ({
         };
       }
 
-      console.log('Final export params:', exportParams);
-      console.log('Current filters:', currentFilters);
-      console.log('Model prop:', model);
+      devLog.log('Final export params:', exportParams);
+      devLog.log('Current filters:', currentFilters);
+      devLog.log('Model prop:', model);
 
       // Проверяем токен авторизации
       const token = localStorage.getItem('access_token');
-      console.log('Auth token exists:', !!token);
+      devLog.log('Auth token exists:', !!token);
 
       if (!token) {
         throw new Error('Пользователь не авторизован. Пожалуйста, войдите в систему.');
@@ -113,11 +114,11 @@ const DataTable = ({
         filename: exportParams.filename
       };
 
-      console.log('Making API call with params:', apiParams);
+      devLog.log('Making API call with params:', apiParams);
 
       const response = await adminAPI.management.exportData(apiParams);
 
-      console.log('API response received:', response.status, response.headers);
+      devLog.log('API response received:', response.status, response.headers);
 
       // Создаем blob из ответа
       const blob = new Blob([response.data], {
@@ -143,9 +144,9 @@ const DataTable = ({
       // Освобождаем URL
       window.URL.revokeObjectURL(url);
 
-      console.log('Export completed successfully');
+      devLog.log('Export completed successfully');
     } catch (error) {
-      console.error('Export failed:', error);
+      devLog.error('Export failed:', error);
 
       let errorMessage = 'Неизвестная ошибка экспорта';
 

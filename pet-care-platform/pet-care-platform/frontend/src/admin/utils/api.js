@@ -7,8 +7,7 @@
 
 import axios from 'axios';
 
-// Логи только в dev-сборке: в проде запросы/статусы/ошибки админки не светятся в консоль.
-const devLog = import.meta.env.DEV ? console : { log() {}, warn() {}, error() {} };
+import { devLog } from './logger';
 
 // Создаем экземпляр axios для админ API
 const adminApi = axios.create({

@@ -6,6 +6,7 @@ import DataTable from './DataTable';
 
 // Hooks
 import { adminAPI } from '../../utils/api';
+import { devLog } from '../../utils/logger';
 
 const OrdersTable = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -39,9 +40,9 @@ const OrdersTable = () => {
 
       setData(response.data.results || response.data);
       setPagination(response.data.pagination || null);
-      console.log('[OrdersTable] Data loaded from API');
+      devLog.log('[OrdersTable] Data loaded from API');
     } catch (err) {
-      console.error('Orders load error:', err);
+      devLog.error('Orders load error:', err);
       setError(err.response?.data?.detail || 'Ошибка загрузки заказов');
       setData([]);
     } finally {
@@ -86,7 +87,7 @@ const OrdersTable = () => {
         await loadData(); // Перезагрузка данных
       }
     } catch (err) {
-      console.error('Bulk action error:', err);
+      devLog.error('Bulk action error:', err);
       setError('Ошибка выполнения массовой операции');
     }
   };

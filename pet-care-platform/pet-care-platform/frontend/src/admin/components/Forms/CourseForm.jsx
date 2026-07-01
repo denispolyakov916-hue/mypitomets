@@ -10,6 +10,7 @@ import { useForm } from '../../hooks/useForm';
 
 // Utils
 import { adminAPI } from '../../utils/api';
+import { devLog } from '../../utils/logger';
 
 // Валидация формы курса
 const validateCourse = (values) => {
@@ -120,7 +121,7 @@ const CourseForm = ({
         onSuccess?.();
         onClose();
       } catch (error) {
-        console.error('Course save error:', error);
+        devLog.error('Course save error:', error);
         throw new Error(error.response?.data?.detail || 'Ошибка сохранения курса');
       }
     },

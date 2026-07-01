@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 
 // Utils
 import { adminAPI } from '../../utils/api';
+import { devLog } from '../../utils/logger';
 
 const ExportButton = ({
   model,
@@ -47,7 +48,7 @@ const ExportButton = ({
       window.URL.revokeObjectURL(url);
 
     } catch (err) {
-      console.error('Export error:', err);
+      devLog.error('Export error:', err);
       setError(err.response?.data?.message || 'Ошибка экспорта данных');
     } finally {
       setIsExporting(false);

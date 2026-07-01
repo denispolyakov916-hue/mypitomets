@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { adminAPI } from '../utils/api';
+import { devLog } from '../utils/logger';
 
 export const useAnalytics = (autoRefresh = false, refreshInterval = 300000) => { // 5 минут
   const [salesData, setSalesData] = useState(null);
@@ -13,16 +14,16 @@ export const useAnalytics = (autoRefresh = false, refreshInterval = 300000) => {
 
   // Формирование данных продаж из трендов
   const formatSalesData = useCallback((salesTrendsData) => {
-    console.log('[Analytics] Formatting sales data:', salesTrendsData);
+    devLog.log('[Analytics] Formatting sales data:', salesTrendsData);
 
     // Используем реальные данные трендов из API
     if (salesTrendsData && salesTrendsData.labels && salesTrendsData.datasets) {
-      console.log('[Analytics] Using real sales trends data');
+      devLog.log('[Analytics] Using real sales trends data');
       return salesTrendsData;
     }
 
     // Fallback на пустые данные, если API вернул null
-    console.log('[Analytics] Using fallback empty data');
+    devLog.log('[Analytics] Using fallback empty data');
     return {
       labels: [],
       datasets: [
@@ -135,7 +136,7 @@ export const useAnalytics = (autoRefresh = false, refreshInterval = 300000) => {
       setLoading(true);
       setError(null);
 
-      console.log('[Analytics] Loading data from available APIs...');
+      devLog.log('[Analytics] Loading data from available APIs...');
 
       // Используем правильные API эндпоинты
       const [salesTrendsResponse, usersResponse, petsResponse, ordersResponse] = await Promise.allSettled([
@@ -152,10 +153,10 @@ export const useAnalytics = (autoRefresh = false, refreshInterval = 300000) => {
 
       // Формируем данные для графиков только если есть данные
       if (salesTrends) {
-        console.log('[Analytics] Sales trends data received:', salesTrends);
+        devLog.log('[Analytics] Sales trends data received:', salesTrends);
         setSalesData(formatSalesData(salesTrends));
       } else {
-        console.log('[Analytics] No sales trends data received');
+        devLog.log('[Analytics] No sales trends data received');
         setSalesData(formatSalesData(null)); // Устанавливаем пустые данные
       }
 
@@ -172,7 +173,7 @@ export const useAnalytics = (autoRefresh = false, refreshInterval = 300000) => {
       }
 
       setLastUpdate(new Date());
-      console.log('[Analytics] Data loaded from API');
+      devLog.log('[Analytics] Data loaded from API');
 
       // Если все запросы провалились - показываем ошибку
       if (salesTrendsResponse.status === 'rejected' &&
@@ -184,7 +185,7 @@ export const useAnalytics = (autoRefresh = false, refreshInterval = 300000) => {
     } catch (err) {
       hasFetched.current = false;
       setError('Ошибка загрузки аналитических данных');
-      console.error('[Analytics] Load error:', err);
+      devLog.error('[Analytics] Load error:', err);
     } finally {
       setLoading(false);
     }
@@ -210,7 +211,7 @@ export const useAnalytics = (autoRefresh = false, refreshInterval = 300000) => {
 
   // Обновление периода (перезагружаем данные)
   const updatePeriod = useCallback(async (period) => {
-    console.log('[Analytics] Period update requested:', period);
+    devLog.log('[Analytics] Period update requested:', period);
     setSelectedPeriod(period); // Сохраняем новый период
     await loadAllData();
   }, [loadAllData]);

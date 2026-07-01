@@ -8,6 +8,7 @@
 import React, { useEffect, useState } from 'react'
 import Modal from '../../../components/ui/Modal'
 import { adminAPI } from '../../utils/api'
+import { devLog } from '../../utils/logger';
 
 const categoryOptions = [
   { value: 'basics', label: 'Основы' },
@@ -98,7 +99,7 @@ export default function CreateCourseModal({
       setCategory(defaultCourseType === 'behavior_correction' ? 'behavior' : 'basics')
       setCorrectionProblem('aggression_dogs')
     } catch (err) {
-      console.error('Error creating course:', err)
+      devLog.error('Error creating course:', err)
       setError(err.response?.data?.error || 'Ошибка создания курса')
     } finally {
       setSubmitting(false)

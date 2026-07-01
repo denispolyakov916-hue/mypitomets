@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { adminAPI } from '../utils/api';
+import { devLog } from '../utils/logger';
 
 export const useDashboardData = () => {
   const [data, setData] = useState(null);
@@ -50,7 +51,7 @@ export const useDashboardData = () => {
       });
     } catch (err) {
       hasFetched.current = false; // Сбрасываем при ошибке для возможности повтора
-      console.error('[Dashboard] Fetch error:', err);
+      devLog.error('[Dashboard] Fetch error:', err);
       setError(err.response?.data?.detail || err.message || 'Ошибка загрузки данных дашборда');
     } finally {
       setLoading(false);

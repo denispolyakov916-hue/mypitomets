@@ -9,6 +9,7 @@ import { ConfirmModal } from '../../../components/ui/Modal';
 // Hooks
 import { adminAPI } from '../../utils/api';
 import { useAuthStore } from '../../../store/authStore';
+import { devLog } from '../../utils/logger';
 
 const correctionProblemOptions = [
   { value: 'aggression_dogs', label: 'Агрессия к собакам' },
@@ -58,7 +59,7 @@ const CoursesTable = ({ panelBase = '/admin-panel', specialistMode = false }) =>
       setLoading(true);
       setError(null);
 
-      console.log('[CoursesTable] Loading data with filters:', filters);
+      devLog.log('[CoursesTable] Loading data with filters:', filters);
 
       const response = await adminAPI.courses.list({
         ...filters,
@@ -68,14 +69,14 @@ const CoursesTable = ({ panelBase = '/admin-panel', specialistMode = false }) =>
         page_size: params.page_size || 50
       });
 
-      console.log('[CoursesTable] Response received:', response);
+      devLog.log('[CoursesTable] Response received:', response);
 
       setData(response.data.results || response.data);
       setPagination(response.data.pagination || null);
-      console.log('[CoursesTable] Data loaded successfully');
+      devLog.log('[CoursesTable] Data loaded successfully');
     } catch (err) {
-      console.error('[CoursesTable] Load error:', err);
-      console.error('[CoursesTable] Error response:', err.response);
+      devLog.error('[CoursesTable] Load error:', err);
+      devLog.error('[CoursesTable] Error response:', err.response);
       setError(err.response?.data?.detail || err.message || 'Ошибка загрузки курсов');
       setData([]);
     } finally {
@@ -129,7 +130,7 @@ const CoursesTable = ({ panelBase = '/admin-panel', specialistMode = false }) =>
         await loadData();
         navigate(`${routeBase}/courses/${newCourse.id}/edit`);
       } catch (err) {
-        console.error('[CoursesTable] Duplicate error:', err);
+        devLog.error('[CoursesTable] Duplicate error:', err);
         setError(err.response?.data?.error || 'Ошибка дублирования курса');
       } finally {
         setActionLoading(false);
@@ -142,7 +143,7 @@ const CoursesTable = ({ panelBase = '/admin-panel', specialistMode = false }) =>
         await adminAPI.courses.publish(course.id);
         await loadData();
       } catch (err) {
-        console.error('[CoursesTable] Publish error:', err);
+        devLog.error('[CoursesTable] Publish error:', err);
         setError(err.response?.data?.error || 'Ошибка публикации');
       } finally {
         setActionLoading(false);
@@ -158,7 +159,7 @@ const CoursesTable = ({ panelBase = '/admin-panel', specialistMode = false }) =>
         });
         await loadData();
       } catch (err) {
-        console.error('[CoursesTable] Unpublish error:', err);
+        devLog.error('[CoursesTable] Unpublish error:', err);
         setError(err.response?.data?.error || 'Ошибка снятия с публикации');
       } finally {
         setActionLoading(false);
@@ -187,7 +188,7 @@ const CoursesTable = ({ panelBase = '/admin-panel', specialistMode = false }) =>
       setCourseToDelete(null);
       await loadData();
     } catch (err) {
-      console.error('[CoursesTable] Delete error:', err);
+      devLog.error('[CoursesTable] Delete error:', err);
       setError(err.response?.data?.error || 'Ошибка удаления курса');
     } finally {
       setActionLoading(false);
@@ -217,7 +218,7 @@ const CoursesTable = ({ panelBase = '/admin-panel', specialistMode = false }) =>
 
       await loadData(); // Перезагрузка данных
     } catch (err) {
-      console.error('Bulk action error:', err);
+      devLog.error('Bulk action error:', err);
       setError('Ошибка выполнения массовой операции');
     }
   };

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { devLog } from '../../utils/logger';
 
 const BulkActions = ({
   selectedCount,
@@ -19,7 +20,7 @@ const BulkActions = ({
       await onAction(action.key, selectedIds);
       // Обработка успешного выполнения
     } catch (error) {
-      console.error('Bulk action error:', error);
+      devLog.error('Bulk action error:', error);
       // Обработка ошибки
     } finally {
       setIsProcessing(false);

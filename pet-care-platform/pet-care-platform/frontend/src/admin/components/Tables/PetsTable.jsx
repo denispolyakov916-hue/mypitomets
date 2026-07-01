@@ -5,6 +5,7 @@ import DataTable from './DataTable';
 
 // Hooks
 import { adminAPI } from '../../utils/api';
+import { devLog } from '../../utils/logger';
 
 const PetsTable = () => {
   const [data, setData] = useState([]);
@@ -36,9 +37,9 @@ const PetsTable = () => {
 
       setData(response.data.results || response.data);
       setPagination(response.data.pagination || null);
-      console.log('[PetsTable] Data loaded from API');
+      devLog.log('[PetsTable] Data loaded from API');
     } catch (err) {
-      console.error('Pets load error:', err);
+      devLog.error('Pets load error:', err);
       setError(err.response?.data?.detail || 'Ошибка загрузки питомцев');
       setData([]);
     } finally {
@@ -58,9 +59,9 @@ const PetsTable = () => {
   const handleBulkAction = async (action, selectedIds) => {
     try {
       // Пока заглушка - в будущем можно добавить массовые операции
-      console.log('Bulk action:', action, 'for pets:', selectedIds);
+      devLog.log('Bulk action:', action, 'for pets:', selectedIds);
     } catch (err) {
-      console.error('Bulk action error:', err);
+      devLog.error('Bulk action error:', err);
       setError('Ошибка выполнения массовой операции');
     }
   };

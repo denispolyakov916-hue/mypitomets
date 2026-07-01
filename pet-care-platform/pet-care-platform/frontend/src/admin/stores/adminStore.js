@@ -10,6 +10,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { adminAPI } from '../utils/api';
+import { devLog } from '../utils/logger';
 
 export const useAdminStore = create(
   persist(
@@ -61,7 +62,7 @@ export const useAdminStore = create(
           
           return true;
         } catch (error) {
-          console.error('Admin auth check failed:', error);
+          devLog.error('Admin auth check failed:', error);
           
           if (error.response?.status === 403) {
             set({
