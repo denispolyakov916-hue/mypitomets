@@ -827,6 +827,7 @@ function UnifiedCheckout() {
   const [error, setError] = useState(null)
   
   const reservationIdRef = useRef(null)
+  const submitInProgressRef = useRef(false)  // синхронный анти-дабл-клик guard для оформления
 
   // Форма checkout
   const [formData, setFormData] = useState({
@@ -930,7 +931,8 @@ function UnifiedCheckout() {
    * Отправка заказа
    */
   const handleSubmit = async () => {
-    console.log('=== handleSubmit STARTED ===')
+    // Синхронный guard: блокирует повторный клик ДО того, как setIsSubmitting перерисует кнопку.
+    if (submitInProgressRef.current) return
     setError(null)
 
     const hasProducts = checkoutData?.products?.items?.length > 0
@@ -955,6 +957,7 @@ function UnifiedCheckout() {
       return
     }
 
+    submitInProgressRef.current = true
     setIsSubmitting(true)
 
     try {
@@ -1080,6 +1083,7 @@ function UnifiedCheckout() {
         setError(err.message || 'Не удалось оформить заказ')
       }
     } finally {
+      submitInProgressRef.current = false
       setIsSubmitting(false)
     }
   }

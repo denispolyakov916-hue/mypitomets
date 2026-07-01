@@ -1554,23 +1554,13 @@ class OrderCreateView(APIView):
         
         shipping_address = serializer.validated_data['shipping_address']
         
-        # Получение корзины
-        try:
-            cart = Cart.objects.prefetch_related('items__product').get(user=request.user)
-        except Cart.DoesNotExist:
-            raise ApiError.bad_request('Корзина пуста', error_code='CART_EMPTY')
-        
-        cart_items = cart.items.all()
-        if not cart_items:
-            raise ApiError.bad_request('Корзина пуста. Добавьте товары перед оформлением заказа.', error_code='CART_EMPTY')
-        
         # Получение дополнительных данных
         address_id = serializer.validated_data.get('address_id')
         delivery_type = serializer.validated_data.get('delivery_type', 'standard')
         delivery_cost = serializer.validated_data.get('delivery_cost', 0)
         recipient_name = serializer.validated_data.get('recipient_name')
         recipient_phone = serializer.validated_data.get('recipient_phone')
-        
+
         # Получение объекта адреса если указан
         address_obj = None
         if address_id:
@@ -1580,10 +1570,22 @@ class OrderCreateView(APIView):
                     shipping_address = address_obj.get_full_address()
             except Address.DoesNotExist:
                 pass
-        
-        # Создание заказа в транзакции с блокировкой товаров
+
+        # Создание заказа в транзакции с блокировкой корзины и товаров
         with transaction.atomic():
-            # Блокируем товары для обновления (предотвращение race condition)
+            # Лочим корзину — анти-дабл-сабмит: второй одновременный запрос ждёт коммита
+            # первого и затем видит корзину пустой, поэтому дубль-заказ не создаётся.
+            try:
+                cart = Cart.objects.select_for_update().get(user=request.user)
+            except Cart.DoesNotExist:
+                raise ApiError.bad_request('Корзина пуста', error_code='CART_EMPTY')
+            cart_items = cart.items.all()
+            if not cart_items:
+                raise ApiError.bad_request(
+                    'Корзина пуста. Добавьте товары перед оформлением заказа.', error_code='CART_EMPTY'
+                )
+
+            # Блокируем товары для обновления (предотвращение race condition остатков)
             product_ids = [item.product_id for item in cart_items]
             products = {p.id: p for p in Product.objects.select_for_update().filter(id__in=product_ids)}
             
@@ -2186,48 +2188,60 @@ class UnifiedCheckoutView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
+        from core.exceptions import ApiError
+        reservations = []
         try:
-            # Получение корзины
-            try:
-                cart = Cart.objects.get(user=request.user)
-            except Cart.DoesNotExist:
-                return Response(
-                    {'error': 'Корзина пуста. Добавьте товары или курсы перед оформлением заказа.'},
-                    status=status.HTTP_400_BAD_REQUEST
+            with transaction.atomic():
+                # Лочим корзину пользователя — это сериализует одновременные оформления
+                # (анти-дабл-сабмит): второй запрос ждёт коммита первого и затем видит
+                # выбранные позиции уже удалёнными → не создаёт дубль-заказ.
+                try:
+                    cart = Cart.objects.select_for_update().get(user=request.user)
+                except Cart.DoesNotExist:
+                    return Response(
+                        {'error': 'Корзина пуста. Добавьте товары или курсы перед оформлением заказа.'},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+
+                validated_data = serializer.validated_data
+
+                # Перечитываем выбранные позиции ПОД локом: сериализатор проверял их ДО лока,
+                # а к моменту оформления их мог уже забрать параллельный запрос.
+                selected = validated_data.get('_selected_cart_items')
+                items_qs = cart.items.all()
+                if selected:
+                    items_qs = items_qs.filter(id__in=[item.id for item in selected])
+                selected_cart_items = list(items_qs)
+                if not selected_cart_items:
+                    return Response(
+                        {'error': 'Эти позиции уже оформлены или корзина пуста.'},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+
+                # Резервирования и заказы — в той же транзакции
+                reservations = ReservationService.create_reservations_from_items(
+                    cart.user, selected_cart_items
+                )
+                orders_data = self._create_orders_from_selected_items(
+                    cart, selected_cart_items, validated_data, reservations
                 )
 
-            validated_data = serializer.validated_data
-            
-            # Получаем выбранные элементы (уже проверены в сериализаторе)
-            selected_cart_items = validated_data.get('_selected_cart_items', list(cart.items.all()))
-            
-            # Создать резервирования только для выбранных элементов
-            reservations = ReservationService.create_reservations_from_items(
-                cart.user, selected_cart_items
-            )
+                # Удалить оформленные элементы из корзины
+                CartItem.objects.filter(
+                    id__in=[item.id for item in selected_cart_items]
+                ).delete()
 
-            # Создать заказы только из выбранных элементов
-            orders_data = self._create_orders_from_selected_items(
-                cart,
-                selected_cart_items,
-                validated_data,
-                reservations
-            )
-
-            # НЕ создаем платеж сразу - он будет создан при попытке оплаты
-            # Удалить выбранные элементы из корзины
-            selected_item_ids = [item.id for item in selected_cart_items]
-            CartItem.objects.filter(id__in=selected_item_ids).delete()
-
+            # НЕ создаем платеж сразу — он будет создан при попытке оплаты
             return Response({
                 'reservation_id': str(reservations[0].id) if reservations else None,
                 'orders': orders_data
-                # Убираем payment из ответа - платеж будет создан позже
             })
 
+        except ApiError:
+            raise
         except Exception as e:
-            # При ошибке отменить резервирования
-            if 'reservations' in locals():
+            # При ошибке отменить резервирования (транзакция уже откатилась)
+            if reservations:
                 try:
                     ReservationService.cancel_reservations(reservations)
                 except Exception as cancel_error:
@@ -2241,18 +2255,9 @@ class UnifiedCheckoutView(APIView):
                         },
                         exc_info=True
                     )
-            
-            # Логирование уже выполняется в middleware и exception_handler
-            # Пробрасываем исключение для обработки в exception_handler
-            from core.exceptions import ApiError
             raise ApiError.internal_error(
                 f'Ошибка при создании заказа: {str(e)}' if settings.DEBUG else None
             )
-            
-            # Возвращаем более понятное сообщение об ошибке
-            error_message = 'Произошла ошибка. Попробуйте позже.'
-            if settings.DEBUG:
-                error_message = str(e)
             
             return Response({'error': error_message}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 

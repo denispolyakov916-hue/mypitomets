@@ -48,3 +48,16 @@ class ActiveProductGateTests(APITestCase):
         r = self.client.post(ORDERS_URL, {'shipping_address': 'ул. Тестовая, 1'}, format='json')
         self.assertNotEqual(r.status_code, status.HTTP_201_CREATED, getattr(r, 'data', None))
         self.assertEqual(Order.objects.filter(user=self.user).count(), 0)
+
+    def test_no_duplicate_order_on_resubmit(self):
+        # Анти-дабл-сабмит: после успешного оформления корзина под локом пуста,
+        # повторный POST не создаёт второй заказ — ровно один заказ в БД.
+        self.client.force_authenticate(self.user)
+        cart = Cart.objects.create(user=self.user)
+        CartItem.objects.create(cart=cart, product=self.active, quantity=1)
+        payload = {'shipping_address': 'ул. Тестовая, 1', 'delivery_type': 'pickup'}
+        r1 = self.client.post(ORDERS_URL, payload, format='json')
+        self.assertIn(r1.status_code, (status.HTTP_200_OK, status.HTTP_201_CREATED), getattr(r1, 'data', None))
+        r2 = self.client.post(ORDERS_URL, payload, format='json')
+        self.assertNotEqual(r2.status_code, status.HTTP_201_CREATED, getattr(r2, 'data', None))
+        self.assertEqual(Order.objects.filter(user=self.user).count(), 1)

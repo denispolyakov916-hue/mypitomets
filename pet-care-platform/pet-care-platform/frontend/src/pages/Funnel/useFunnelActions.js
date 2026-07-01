@@ -46,7 +46,14 @@ export function useFunnelActions() {
     if (!pending || pending.type === 'add_ration_to_cart') { runPendingAction(); return }
     try {
       const res = await getPets({ is_draft: 'false' })
-      const pets = res?.pets || res?.data || res?.results || []
+      const allPets = res?.pets || res?.data || res?.results || []
+      // В плашке показываем только питомцев ТОГО ЖЕ вида, что и в анкете: иначе
+      // собачий рацион можно ошибочно сохранить/добавить в корзину коту (и наоборот).
+      // Если подходящих нет — падаем в runPendingAction (создастся новый нужного вида).
+      const species = pending.draft?.species
+      const pets = species && Array.isArray(allPets)
+        ? allPets.filter((p) => p.species === species)
+        : allPets
       if (Array.isArray(pets) && pets.length > 0) {
         setPicker({ open: true, pets })
         return
