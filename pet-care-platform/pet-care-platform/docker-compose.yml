@@ -49,6 +49,7 @@ services:
       context: ./backend
       dockerfile: Dockerfile
       target: production
+      network: host   # build через host-сеть (иначе pip не достаёт PyPI на холодной сборке)
     restart: unless-stopped
     logging: *default-logging
     env_file:
@@ -76,6 +77,7 @@ services:
     build:
       context: .
       dockerfile: nginx/Dockerfile
+      network: host   # build-сеть контейнеров не ходит в интернет (ufw FORWARD DROP); host — ходит
     restart: unless-stopped
     logging: *default-logging
     ports:
@@ -118,6 +120,7 @@ services:
       context: ./backend
       dockerfile: Dockerfile
       target: production
+      network: host   # build через host-сеть (иначе pip не достаёт PyPI на холодной сборке)
     restart: unless-stopped
     logging: *default-logging
     command: celery -A config.celery:app worker --loglevel=info --concurrency=4 --max-tasks-per-child=200
