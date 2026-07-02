@@ -678,11 +678,17 @@ export const useCartStore = create((set, get) => ({
    * Проверить, есть ли товар в корзине
    *
    * @param {number} productId - ID товара для проверки
-   * @returns {Object|null} Объект товара из корзины или null
+   * @param {number|null} [skuId] - ID фасовки (SKU): если задан, ищем строку именно с этой
+   *   фасовкой (иначе при нескольких фасовках одного товара вернулась бы первая попавшаяся).
+   * @returns {Object|null} Строка корзины или null
    */
-  getItemInCart: (productId) => {
+  getItemInCart: (productId, skuId = null) => {
     const { items } = get()
-    return items.find(item => item.product?.id === productId) || null
+    const matches = items.filter(item => item.product?.id === productId)
+    if (skuId != null) {
+      return matches.find(item => item.sku_id === skuId) || null
+    }
+    return matches[0] || null
   },
 
   /**

@@ -388,7 +388,9 @@ function ProductDetail() {
     }
   }
 
-  const cartItem = product ? getItemInCart(product.id) : null
+  // Учитываем выбранную фасовку: при нескольких SKU одного товара +/- должны менять именно
+  // строку с текущим SKU, а не первую попавшуюся.
+  const cartItem = product ? getItemInCart(product.id, selectedSku?.id ?? null) : null
   const cartQuantity = cartItem?.quantity || 0
   const showQuantity = cartQuantity > 0
 

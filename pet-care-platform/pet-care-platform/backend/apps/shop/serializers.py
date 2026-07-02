@@ -720,6 +720,8 @@ class CartItemSerializer(serializers.Serializer):
     course = serializers.SerializerMethodField()
     pet = serializers.SerializerMethodField()
     quantity = serializers.IntegerField(read_only=True)
+    # Отдаём выбранную фасовку строки, чтобы фронт мог адресовать именно её (getItemInCart по product+sku).
+    sku_id = serializers.IntegerField(read_only=True, allow_null=True)
     disclaimer_accepted = serializers.BooleanField(read_only=True)
     price = serializers.FloatField(read_only=True)
 

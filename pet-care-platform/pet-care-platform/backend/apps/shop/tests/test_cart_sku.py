@@ -133,3 +133,13 @@ class CartSkuAwareTests(APITestCase):
         self.client.force_authenticate(self.user)
         r = self.client.delete(CART_ITEM_URL, {'cart_item_id': 999999}, format='json')
         self.assertEqual(r.status_code, status.HTTP_404_NOT_FOUND, getattr(r, 'data', None))
+
+    def test_cart_item_exposes_sku_id(self):
+        # Фронту нужен sku_id строки, чтобы getItemInCart(product_id, sku_id) находил именно
+        # выбранную фасовку (иначе +/- на странице товара меняют не ту строку).
+        from apps.shop.serializers import CartItemSerializer
+        sku = ProductSKU.objects.create(product=self.product, sku='X1', price='100.00', status=1, available=True)
+        cart = Cart.objects.create(user=self.user)
+        item = CartItem.objects.create(cart=cart, product=self.product, sku=sku, quantity=1)
+        data = CartItemSerializer(item).data
+        self.assertEqual(data.get('sku_id'), sku.id)
