@@ -197,6 +197,25 @@ class SupplierOffer(models.Model):
     raw = models.JSONField('Сырьё оффера', default=dict, blank=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    @property
+    def is_sellable(self):
+        """Единый критерий «продаваемости» фасовки (ТЗ, раздел 4).
+
+        Продаётся, если: в наличии, цена>0, вес фасовки>0, привязан к рецепту и
+        поставщик активен. Только такие офферы дают available=True у ProductSKU и
+        учитываются в подборе. Примечание: обращается к self.supplier — в циклах
+        используйте select_related('supplier'), чтобы не плодить запросы.
+        """
+        if not self.in_stock or self.food_recipe_id is None:
+            return False
+        if self.price is None or self.price <= 0:
+            return False
+        if self.package_weight_kg is None or self.package_weight_kg <= 0:
+            return False
+        if self.supplier_id is None or not self.supplier.is_active:
+            return False
+        return True
+
     class Meta:
         db_table = 'supplier_offers'
         verbose_name = 'Оффер поставщика (фасовка)'

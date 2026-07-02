@@ -15,7 +15,7 @@ from django.test import TestCase, override_settings
 
 from apps.pets.models import Pet
 from apps.pets.nutrition_models import Allergy, PetAllergy
-from apps.pets.food_recipe_models import FoodRecipe, SupplierOffer
+from apps.pets.food_recipe_models import FoodRecipe, Supplier, SupplierOffer
 from apps.pets.allergen_matcher import (
     has_allergen_conflict,
     tokens_for_allergens,
@@ -60,6 +60,11 @@ class RecipeAllergenExclusionTests(TestCase):
             specific_allergen='Куриный белок', display_name='Аллергия на курицу',
         )
         PetAllergy.objects.create(pet=self.pet, allergy=allergy, is_active=True)
+        # Активный поставщик обязателен для продаваемого оффера (is_sellable / _best_offer).
+        self.supplier = Supplier.objects.get(code='dinozavrik')
+        if not self.supplier.is_active:
+            self.supplier.is_active = True
+            self.supplier.save(update_fields=['is_active'])
 
     def _recipe(self, *, name, form, ingredients, main_protein='', allergens=None,
                 price='1000.00', weight_kg='3.000'):
@@ -72,7 +77,8 @@ class RecipeAllergenExclusionTests(TestCase):
             nutrition_complete=True,
         )
         SupplierOffer.objects.create(
-            food_recipe=r, source='dinozavrik', article_number=f'art-{name}',
+            food_recipe=r, supplier=self.supplier, source='dinozavrik',
+            article_number=f'art-{name}',
             price=price, package_weight_kg=weight_kg, in_stock=True,
         )
         return r

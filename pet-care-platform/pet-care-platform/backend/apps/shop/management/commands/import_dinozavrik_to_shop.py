@@ -218,10 +218,10 @@ class Command(BaseCommand):
 
     @staticmethod
     def _default_offer(offers):
-        """Самый дешёвый in_stock оффер; иначе самый дешёвый с ценой; иначе любой."""
+        """Самый выгодный ПРОДАВАЕМЫЙ оффер; иначе самый дешёвый с ценой; иначе любой."""
+        sellable = [o for o in offers if o.is_sellable]
         priced = [o for o in offers if o.price is not None]
-        avail = [o for o in priced if o.in_stock]
-        pool = avail or priced or offers
+        pool = sellable or priced or offers
         if not pool:
             return None
         return min(pool, key=lambda o: (o.price if o.price is not None else BIG, o.article_number or ''))
@@ -236,13 +236,15 @@ class Command(BaseCommand):
 
     # ---------- основной проход ----------
     def _process_recipe(self, recipe):
-        offers = list(recipe.offers.filter(supplier=self.dino))
+        offers = list(recipe.offers.filter(supplier=self.dino).select_related('supplier'))
         if not offers:
             return
         self.stat['recipes'] += 1
 
         default_offer = self._default_offer(offers)
-        is_available = any(o.in_stock for o in offers)
+        # Товар доступен, только если есть ХОТЯ БЫ ОДНА продаваемая фасовка
+        # (in_stock + цена>0 + вес>0 + активный поставщик), а не просто in_stock.
+        is_available = any(o.is_sellable for o in offers)
         price = default_offer.price if (default_offer and default_offer.price is not None) else ZERO
 
         name = (recipe.name or '').strip() or f'Товар {str(recipe.id)[:8]}'
@@ -289,7 +291,9 @@ class Command(BaseCommand):
                     name=(offer.package_name or '')[:255],
                     price=offer.price if offer.price is not None else ZERO,
                     weight_kg=offer.package_weight_kg,
-                    available=offer.in_stock,
+                    # available=True только у продаваемой фасовки (единый критерий is_sellable),
+                    # иначе SKU без цены/веса оказался бы покупаемым.
+                    available=offer.is_sellable,
                     status=1,
                 ),
             )
