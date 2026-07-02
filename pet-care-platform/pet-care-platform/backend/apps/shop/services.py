@@ -184,8 +184,8 @@ class CartService(BaseService):
                 error_code='PRODUCT_NOT_FOUND'
             )
         
-        # Проверка наличия
-        if not product.is_available:
+        # Проверка продаваемости: активен (status=1) И доступен — единый критерий
+        if not product.is_sellable:
             return ServiceResult(
                 success=False,
                 message='Товар отсутствует в наличии',
@@ -438,7 +438,7 @@ class CartService(BaseService):
         
         for item in items:
             if item.product:
-                if not item.product.is_available:
+                if not item.product.is_sellable:
                     errors.append(f'Товар "{item.product.name}" отсутствует в наличии')
                     continue
                 
@@ -533,8 +533,10 @@ class ReservationService:
                 if item.product:
                     # Блокировка строки товара для предотвращения race condition
                     product = Product.objects.select_for_update().get(id=item.product.id)
-                    
-                    if not product.is_available:
+
+                    # Единый критерий продаваемости (активен + доступен) — тот же, что в
+                    # add-to-cart и /api/shop/orders/, чтобы /api/checkout/ не пропускал неактивный товар.
+                    if not product.is_sellable:
                         raise ValueError(
                             f"Товар {product.name} недоступен."
                         )

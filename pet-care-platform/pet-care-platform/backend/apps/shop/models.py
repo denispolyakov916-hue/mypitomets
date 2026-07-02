@@ -632,7 +632,18 @@ class Product(models.Model):
         if self.compare_price and self.compare_price > self.price:
             return self.price
         return self.price
-    
+
+    @property
+    def is_sellable(self):
+        """Товар продаётся: активен (status=1) И доступен (is_available).
+
+        Единый критерий «продаваемости» для всех точек оформления (add-to-cart,
+        валидация корзины, /api/shop/orders/, /api/checkout/, резервирования) — чтобы
+        неактивный/недоступный товар не проходил ни одним путём. Совпадает с
+        ShopProductManager.active() для одиночного объекта.
+        """
+        return self.status == 1 and self.is_available
+
     def get_average_rating(self):
         """
         Средний рейтинг товара.

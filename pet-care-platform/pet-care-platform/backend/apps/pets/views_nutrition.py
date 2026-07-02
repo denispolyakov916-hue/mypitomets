@@ -194,9 +194,12 @@ class NutritionCalculatorView(viewsets.ViewSet):
         try:
             with open(json_path, 'r', encoding='utf-8') as f:
                 return json.load(f)
-        except FileNotFoundError:
-            return None
-    
+        except (FileNotFoundError, OSError, json.JSONDecodeError):
+            # Файла коэффициентов может не быть в образе. Возвращаем {} (а НЕ None), чтобы
+            # прямые coefficients.get(...) в calculate() не падали AttributeError → 500;
+            # расчёт идёт на коэффициентах по умолчанию (1.0).
+            return {}
+
     def _get_coefficient(self, coefficients, category, species, code):
         """Получение коэффициента по категории и коду."""
         if not coefficients:
@@ -233,14 +236,22 @@ class NutritionCalculatorView(viewsets.ViewSet):
         # Получение данных питомца или из запроса
         pet = None
         if data.get('pet_id'):
+            # Эндпоинт публичный (AllowAny) для ручного ввода, НО данные конкретного
+            # питомца доступны только его владельцу: по pet_id обязательна авторизация и
+            # выборка по (id, owner), иначе — раскрытие чужого питомца (IDOR).
+            if not request.user or not request.user.is_authenticated:
+                return Response(
+                    {'error': 'Для расчёта по конкретному питомцу требуется авторизация'},
+                    status=status.HTTP_401_UNAUTHORIZED
+                )
             try:
-                pet = Pet.objects.get(id=data['pet_id'])
+                pet = Pet.objects.get(id=data['pet_id'], owner=request.user)
                 species = pet.species
                 weight_kg = float(pet.weight) if pet.weight else data.get('weight_kg', 10)
                 age_months = pet.age_months or data.get('age_months', 24)
                 is_neutered = pet.is_neutered
                 activity_level = pet.activity_level or 'moderate'
-                size_category = pet.calculated_size or data.get('size_category', 'medium')
+                size_category = pet.calculated_size_category or data.get('size_category', 'medium')
                 coat_type = pet.coat_type or data.get('coat_type', 'short')
                 housing_type = pet.housing_type or data.get('housing_type', 'apartment')
                 living_climate = pet.living_climate or data.get('living_climate', 'warm')

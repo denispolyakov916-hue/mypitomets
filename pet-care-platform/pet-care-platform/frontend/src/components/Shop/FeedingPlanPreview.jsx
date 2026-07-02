@@ -17,7 +17,20 @@ const FeedingPlanPreview = ({ petId, petName, limit = 4, withCard = true, classN
       try {
         setLoading(true)
         setError(null)
-        // Сначала пробуем рекомендации (как на /food-recommendation)
+        // Каноничный источник подбора для интерфейса — /feeding-plan/ (та же схема, что
+        // на основной странице подбора), чтобы рекомендации в разных местах совпадали.
+        const response = await getFeedingPlan(petId)
+        const plan = response?.data || response
+        const components = Array.isArray(plan?.components) ? plan.components : []
+        const supplements = Array.isArray(plan?.supplements) ? plan.supplements : []
+        const merged = [...components, ...supplements]
+
+        if (merged.length > 0) {
+          setItems(merged.slice(0, limit))
+          return
+        }
+
+        // Фолбэк: старые рекомендации, если план питания пуст
         const recResponse = await getFoodRecommendations(petId, { limit })
         const recData = recResponse?.data || recResponse
         const recList = Array.isArray(recData)
@@ -27,19 +40,7 @@ const FeedingPlanPreview = ({ petId, petName, limit = 4, withCard = true, classN
             : recData?.results
               ? recData.results
               : []
-
-        if (recList.length > 0) {
-          setItems(recList.slice(0, limit))
-          return
-        }
-
-        // Фолбэк: план питания (как базовый набор)
-        const response = await getFeedingPlan(petId)
-        const plan = response?.data || response
-        const components = Array.isArray(plan?.components) ? plan.components : []
-        const supplements = Array.isArray(plan?.supplements) ? plan.supplements : []
-        const merged = [...components, ...supplements]
-        setItems(merged.slice(0, limit))
+        setItems(recList.slice(0, limit))
       } catch (err) {
         setError(err?.message || 'Не удалось загрузить рекомендации')
         setItems([])

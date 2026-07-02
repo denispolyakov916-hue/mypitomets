@@ -27,6 +27,7 @@ import {
 } from '../../../data/petHealthData';
 import { validateWeightInput } from '../../../constants/weight';
 import { toLocalISODate } from '../../../utils/date';
+import ErrorBoundary from '../../../components/ErrorBoundary';
 
 // ===== СЕКЦИИ РЕДАКТИРОВАНИЯ =====
 const SECTIONS = [
@@ -2141,7 +2142,20 @@ export default function PetProfileEditor({ pet, onClose, onSave, isLoading, serv
                   exit={{ opacity: 0, x: -20 }}
                   transition={{ duration: 0.2 }}
                 >
-                  {renderSection()}
+                  {/* Локальный ErrorBoundary: render-сбой в активной секции показывает
+                      компактный fallback, а не роняет весь редактор; смена секции (key) сбрасывает. */}
+                  <ErrorBoundary
+                    key={activeSection}
+                    fallback={(
+                      <div className="py-16 px-4 text-center">
+                        <p className="text-base text-gray-500">
+                          Не удалось загрузить этот раздел. Попробуйте обновить страницу.
+                        </p>
+                      </div>
+                    )}
+                  >
+                    {renderSection()}
+                  </ErrorBoundary>
                 </motion.div>
               </AnimatePresence>
             </div>

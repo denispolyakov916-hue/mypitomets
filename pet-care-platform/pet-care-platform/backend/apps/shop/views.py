@@ -1066,10 +1066,16 @@ class CartView(APIView):
         # Проверка существования товара (только активный: неактивный status=0
         # не должен попадать в корзину, даже если is_available ещё True).
         try:
-            product = Product.objects.get(id=product_id, status=1)
+            product = Product.objects.get(id=product_id)
         except Product.DoesNotExist:
             return Response(
                 {'error': 'Товар не найден'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        # Единый критерий продаваемости (активен + доступен) — тот же, что в checkout/резервировании.
+        if not product.is_sellable:
+            return Response(
+                {'error': 'Товар недоступен'},
                 status=status.HTTP_404_NOT_FOUND
             )
 
@@ -1594,8 +1600,8 @@ class OrderCreateView(APIView):
             
             for item in cart_items:
                 product = products.get(item.product_id)
-                # Неактивный (status=0) товар недоступен для заказа, даже если is_available=True.
-                if not product or not product.is_available or product.status != 1:
+                # Единый критерий продаваемости (активен + доступен) — как в add-to-cart и /api/checkout/.
+                if not product or not product.is_sellable:
                     unavailable_items.append(item.product.name if item.product else f'ID {item.product_id}')
             
             # Возврат ошибок валидации
