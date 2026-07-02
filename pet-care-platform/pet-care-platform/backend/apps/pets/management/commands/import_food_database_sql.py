@@ -43,7 +43,7 @@ TABLE_MODELS = {
 
 # Допустимые enum-значения (пустая строка = blank, допускается для необязательных).
 ENUM_VALID = {
-    ('food_recipes', 'species'): {'cat', 'dog', 'other', ''},
+    ('food_recipes', 'species'): {'cat', 'dog', 'cat_dog', 'other', ''},
     ('food_recipes', 'food_form'): {'dry', 'wet', 'treat', 'other', ''},
     ('food_recipes', 'parse_status'): {'pending', 'auto_parsed', 'partial', 'failed'},
     ('food_recipes', 'review_status'): {'unverified', 'auto_parsed', 'manual_verified'},
@@ -236,7 +236,9 @@ class Command(BaseCommand):
         ]
         add('supplier_offers: без цены', 'warning' if no_price else 'ok', len(no_price))
         add('supplier_offers: без веса', 'warning' if no_weight else 'ok', len(no_weight))
-        add('supplier_offers: in_stock=true без цены/веса (не продаётся)', 'error' if instock_bad else 'ok', len(instock_bad), _head(instock_bad))
+        # Import-and-flag: не блокируем — товар может продаваться (при валидной фасовке),
+        # но такие офферы не продаваемы и в подбор/продажу не идут (гейт downstream).
+        add('supplier_offers: in_stock=true без цены/веса (не продаётся)', 'warning' if instock_bad else 'ok', len(instock_bad), _head(instock_bad))
 
         # 9-11. Рецепты без species/food_form/kcal
         add('food_recipes: без species', 'warning' if _any_blank(recipes, 'species') else 'ok', _count_blank(recipes, 'species'))
@@ -244,11 +246,13 @@ class Command(BaseCommand):
         no_kcal = [r for r in recipes if positive_decimal(r.get('kcal_per_100g')) is None]
         add('food_recipes: без kcal_per_100g', 'warning' if no_kcal else 'ok', len(no_kcal))
 
-        # 12. Некорректные enum
+        # 12. Нестандартные enum. Import-and-flag: не блокируем. species вне набора
+        # нормализуется в 'other' при --apply (bird/rodent/…); cat_dog — валиден.
         for (table, col), valid in ENUM_VALID.items():
             rows = data.get(table, {}).get('rows', [])
             bad = [(r.get('id'), r.get(col)) for r in rows if (r.get(col) or '') not in valid]
-            add(f'{table}.{col}: недопустимые enum', 'error' if bad else 'ok', len(bad), _head(bad))
+            note = ' → нормализуется в other при импорте' if col == 'species' else ''
+            add(f'{table}.{col}: нестандартные значения{note}', 'warning' if bad else 'ok', len(bad), _head(bad))
 
         # 13. Битый JSON
         for (table, col) in JSON_COLUMNS:
@@ -301,6 +305,10 @@ class Command(BaseCommand):
                 continue
             raw = row.get(col)
             out[fld.attname] = self._coerce_value(fld, raw, col in array_cols)
+        # Нормализация нестандартных видов: всё вне {cat,dog,cat_dog,other} → other
+        # (bird/rodent/…). cat_dog сохраняется как есть (в подборе идёт в оба фильтра).
+        if model is FoodRecipe and (out.get('species') or '') not in ('cat', 'dog', 'cat_dog', 'other', ''):
+            out['species'] = 'other'
         return out
 
     def _coerce_value(self, fld, raw, is_array):
