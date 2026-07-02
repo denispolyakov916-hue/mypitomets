@@ -54,8 +54,9 @@ function RecommendationProductCard({ product, onAddToCart, showReason = false, c
     e.stopPropagation()
     
     const newQuantity = cartQuantity + delta
-    if (newQuantity >= 0) {
-      await updateQuantity(product.id, newQuantity)
+    // updateQuantity ждёт id строки корзины (CartItem.id), а не product.id.
+    if (cartItem && newQuantity >= 0) {
+      await updateQuantity(cartItem.id, newQuantity)
     }
   }
 

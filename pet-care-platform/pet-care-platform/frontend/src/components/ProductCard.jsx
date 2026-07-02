@@ -334,8 +334,11 @@ const ProductCard = memo(function ProductCard({ product, onAddToCart, isLoading 
   const handleQuantityChange = useCallback(async (delta) => {
     const newQuantity = cartQuantity + delta
     if (newQuantity < 0) return
-    await updateQuantity(product.id, newQuantity)
-  }, [cartQuantity, product.id, updateQuantity])
+    // updateQuantity ждёт id строки корзины (CartItem.id), не product.id.
+    const cartItem = getItemInCart(product.id)
+    if (!cartItem) return
+    await updateQuantity(cartItem.id, newQuantity)
+  }, [cartQuantity, product.id, updateQuantity, getItemInCart])
 
   return (
     <Card as="article" variant="default" hoverable rounded="3xl" className="group flex flex-col h-full overflow-hidden bg-white border border-primary-100/60 shadow-card hover:shadow-card-hover">

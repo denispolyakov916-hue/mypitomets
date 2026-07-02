@@ -16,13 +16,41 @@ from django.test import override_settings
 from rest_framework import status
 from rest_framework.test import APITestCase
 
-from apps.shop.models import Cart, CartItem, Product, ProductSKU
+from apps.shop.models import Cart, CartItem, Order, Product, ProductSKU
 from apps.shop.services import ReservationService
 
 User = get_user_model()
 
 CART_URL = '/api/shop/cart/'
 CART_ITEM_URL = '/api/shop/cart/item/'
+CHECKOUT_URL = '/api/checkout/'
+
+
+@override_settings(SECURE_SSL_REDIRECT=False)
+class UnifiedCheckoutHttpTests(APITestCase):
+    """HTTP-тест именно на POST /api/checkout/ (UnifiedCheckoutView) — не только сервис."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.user = User.objects.create_user(email='uco@t.local')
+        cls.active = Product.objects.create(name='Активный', status=1, is_available=True, price='100.00')
+        cls.inactive = Product.objects.create(name='Неактивный', status=0, is_available=True, price='100.00')
+
+    def test_checkout_rejects_inactive_product(self):
+        cart = Cart.objects.create(user=self.user)
+        CartItem.objects.create(cart=cart, product=self.inactive, quantity=1)
+        self.client.force_authenticate(self.user)
+        r = self.client.post(CHECKOUT_URL, {'delivery_type': 'pickup'}, format='json')
+        self.assertEqual(r.status_code, status.HTTP_400_BAD_REQUEST, getattr(r, 'data', None))
+        self.assertEqual(Order.objects.filter(user=self.user).count(), 0)
+
+    def test_checkout_creates_order_for_active(self):
+        cart = Cart.objects.create(user=self.user)
+        CartItem.objects.create(cart=cart, product=self.active, quantity=1)
+        self.client.force_authenticate(self.user)
+        r = self.client.post(CHECKOUT_URL, {'delivery_type': 'pickup'}, format='json')
+        self.assertEqual(r.status_code, status.HTTP_200_OK, getattr(r, 'data', None))
+        self.assertEqual(Order.objects.filter(user=self.user).count(), 1)
 
 
 @override_settings(SECURE_SSL_REDIRECT=False)
@@ -98,3 +126,10 @@ class CartSkuAwareTests(APITestCase):
         self.assertIn(r.status_code, (status.HTTP_200_OK, status.HTTP_204_NO_CONTENT), getattr(r, 'data', None))
         self.assertFalse(CartItem.objects.filter(id=itemA.id).exists())
         self.assertTrue(CartItem.objects.filter(id=itemB.id).exists())
+
+    def test_delete_nonexistent_cart_item_returns_404_not_500(self):
+        # Регрессия: item_type задаётся ДО raise, иначе except → NameError → 500.
+        Cart.objects.create(user=self.user)
+        self.client.force_authenticate(self.user)
+        r = self.client.delete(CART_ITEM_URL, {'cart_item_id': 999999}, format='json')
+        self.assertEqual(r.status_code, status.HTTP_404_NOT_FOUND, getattr(r, 'data', None))

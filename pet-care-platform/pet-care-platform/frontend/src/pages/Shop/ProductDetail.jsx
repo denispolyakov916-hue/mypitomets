@@ -394,8 +394,9 @@ function ProductDetail() {
 
   const handleQuantityAdjust = async (delta) => {
     const nextQuantity = cartQuantity + delta
-    if (nextQuantity < 0) return
-    await updateQuantity(product.id, nextQuantity)
+    // updateQuantity ждёт id строки корзины (CartItem.id), не product.id.
+    if (nextQuantity < 0 || !cartItem) return
+    await updateQuantity(cartItem.id, nextQuantity)
   }
 
   const animalType = product?.animal_type

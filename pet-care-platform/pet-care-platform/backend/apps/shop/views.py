@@ -1377,9 +1377,9 @@ class CartItemView(APIView):
                 )
                 items_qs = items_qs.filter(id=cart_item_id) if cart_item_id else items_qs.filter(product_id=product_id)
                 cart_item = items_qs.first()
+                item_type = 'товар'  # задаём ДО raise — except CartItem.DoesNotExist использует item_type
                 if cart_item is None:
                     raise CartItem.DoesNotExist
-                item_type = 'товар'
             elif course_id:
                 # Удаление курса
                 # Используем filter().first() для курсов, так как они могут быть привязаны к питомцу
@@ -1387,10 +1387,10 @@ class CartItemView(APIView):
                     cart=cart,
                     course_id=course_id
                 ).first()
-                
+
+                item_type = 'курс'  # задаём ДО raise — except использует item_type
                 if not cart_item:
                     raise CartItem.DoesNotExist
-                item_type = 'курс'
                 
         except Cart.DoesNotExist:
             return Response(
@@ -2250,6 +2250,18 @@ class UnifiedCheckoutView(APIView):
 
         except ApiError:
             raise
+        except ValueError as e:
+            # Товар/фасовка стали недоступны в момент оформления (ReservationService) —
+            # это ожидаемая ситуация: честный 400, а не 500. Транзакция уже откатилась.
+            if reservations:
+                try:
+                    ReservationService.cancel_reservations(reservations)
+                except Exception:  # noqa: BLE001 — отмена не должна ломать ответ
+                    pass
+            return Response(
+                {'error': str(e) or 'Некоторые товары недоступны'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
         except Exception as e:
             # При ошибке отменить резервирования (транзакция уже откатилась)
             if reservations:
