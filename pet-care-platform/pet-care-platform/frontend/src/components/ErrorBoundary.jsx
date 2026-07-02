@@ -27,6 +27,11 @@ class ErrorBoundary extends React.Component {
   render() {
     if (!this.state.hasError) return this.props.children
 
+    // Компактный fallback для изоляции отдельного блока/виджета: если задан проп
+    // `fallback`, показываем его вместо полноэкранного экрана ошибки, чтобы падение
+    // одного виджета не уносило всю страницу.
+    if (this.props.fallback !== undefined) return this.props.fallback
+
     const isDev = typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.DEV
     return (
       <div className="flex min-h-screen items-center justify-center bg-milk px-4">

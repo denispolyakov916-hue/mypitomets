@@ -5,6 +5,7 @@ import BreedComparisonWidget from '../../components/PetID/BreedComparisonWidget'
 import DietCalculationWidget from '../../components/PetID/DietCalculationWidget';
 import HealthRiskAlertsWidget from '../../components/PetID/HealthRiskAlertsWidget';
 import PersonalizedProductsList from '../../components/Shop/PersonalizedProductsList';
+import ErrorBoundary from '../../components/ErrorBoundary';
 
 /**
  * Страница профиля питомца с персонализацией
@@ -113,7 +114,20 @@ const PetProfilePage = () => {
         </button>
       </div>
 
-      {/* Контент */}
+      {/* Контент — изолируем в ErrorBoundary: render-падение виджета показывает компактный
+          fallback, а не роняет всю страницу; key={activeTab} сбрасывает ошибку при смене вкладки. */}
+      <ErrorBoundary
+        key={activeTab}
+        fallback={(
+          <div className="min-h-[400px] flex items-center justify-center">
+            <div className="py-16 px-6 text-center bg-white rounded-xl shadow-md">
+              <p className="text-base text-gray-500">
+                Не удалось загрузить этот раздел. Попробуйте обновить страницу.
+              </p>
+            </div>
+          </div>
+        )}
+      >
       <div className="min-h-[400px]">
         {activeTab === 'overview' && (
           <div className="animate-slideUp">
@@ -150,6 +164,7 @@ const PetProfilePage = () => {
           </div>
         )}
       </div>
+      </ErrorBoundary>
     </div>
   );
 };
