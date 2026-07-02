@@ -399,26 +399,27 @@ export const addCourseToCart = async (courseId, petId = null, disclaimerAccepted
  * 
  * При quantity=0 товар удаляется.
  * 
- * @param {number} productId - Товар для обновления
+ * @param {number} cartItemId - ID строки корзины (CartItem.id) — однозначный ключ,
+ *   корректно работает при нескольких фасовках (SKU) одного товара
  * @param {number} quantity - Новое количество (0 для удаления)
  * @returns {Promise<Object>} Обновлённые данные корзины
  */
-export const updateCartItem = async (productId, quantity) => {
+export const updateCartItem = async (cartItemId, quantity) => {
   return await api.put('/shop/cart/item/', {
-    product_id: productId,
+    cart_item_id: cartItemId,
     quantity
   })
 }
 
 /**
  * Удаление товара из корзины
- * 
- * @param {number} productId - Товар для удаления
+ *
+ * @param {number} cartItemId - ID строки корзины (CartItem.id)
  * @returns {Promise<Object>} Обновлённые данные корзины
  */
-export const removeFromCart = async (productId) => {
+export const removeFromCart = async (cartItemId) => {
   return await api.delete('/shop/cart/item/', {
-    data: { product_id: productId }
+    data: { cart_item_id: cartItemId }
   })
 }
 

@@ -1090,8 +1090,8 @@ class CartView(APIView):
                     status=status.HTTP_404_NOT_FOUND
                 )
             
-            # Проверка доступности SKU
-            if not sku.available:
+            # Проверка продаваемости SKU: активна (status==1) И в наличии (available)
+            if not sku.is_sellable:
                 return Response(
                     {'error': f'Вариация "{sku.name}" недоступна'},
                     status=status.HTTP_400_BAD_REQUEST
@@ -1256,20 +1256,25 @@ class CartItemView(APIView):
             )
 
         product_id = serializer.validated_data.get('product_id')
+        cart_item_id = serializer.validated_data.get('cart_item_id')
         course_id = serializer.validated_data.get('course_id')
         quantity = serializer.validated_data.get('quantity')
         delta_quantity = serializer.validated_data.get('delta_quantity')
 
         try:
             cart = Cart.objects.get(user=request.user)
-            
+
             # Определяем, работаем ли с товаром или курсом
-            if product_id:
-                # Работа с товаром
-                cart_item = CartItem.objects.select_related('product').get(
-                    cart=cart, 
-                    product_id=product_id
+            if cart_item_id or product_id:
+                # Работа с товаром: целевую строку выбираем по cart_item_id (однозначно при
+                # нескольких фасовках одного товара в корзине), иначе по product_id (первую подходящую).
+                items_qs = CartItem.objects.select_related('product', 'sku').filter(
+                    cart=cart, product__isnull=False
                 )
+                items_qs = items_qs.filter(id=cart_item_id) if cart_item_id else items_qs.filter(product_id=product_id)
+                cart_item = items_qs.first()
+                if cart_item is None:
+                    raise CartItem.DoesNotExist
                 
                 # Вычисление нового количества
                 if quantity is not None:
@@ -1351,31 +1356,29 @@ class CartItemView(APIView):
     def delete(self, request):
         """Удаление товара или курса из корзины."""
         product_id = request.data.get('product_id')
+        cart_item_id = request.data.get('cart_item_id')
         course_id = request.data.get('course_id')
-        
-        # Проверка: должен быть указан либо product_id, либо course_id
-        if not product_id and not course_id:
+
+        # Нужен хотя бы один идентификатор строки
+        if not product_id and not course_id and not cart_item_id:
             return Response(
-                {'error': 'Необходимо указать либо product_id, либо course_id'},
+                {'error': 'Необходимо указать cart_item_id, product_id или course_id'},
                 status=status.HTTP_400_BAD_REQUEST
             )
-        
-        # Проверка: нельзя указывать оба одновременно
-        if product_id and course_id:
-            return Response(
-                {'error': 'Нельзя указывать одновременно product_id и course_id'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
+
         try:
             cart = Cart.objects.get(user=request.user)
-            
-            if product_id:
-                # Удаление товара
-                cart_item = CartItem.objects.select_related('product').get(
-                    cart=cart, 
-                    product_id=product_id
+
+            if cart_item_id or product_id:
+                # Удаление товара: по cart_item_id (однозначно при нескольких фасовках одного
+                # товара), иначе по product_id (первая подходящая строка).
+                items_qs = CartItem.objects.select_related('product').filter(
+                    cart=cart, product__isnull=False
                 )
+                items_qs = items_qs.filter(id=cart_item_id) if cart_item_id else items_qs.filter(product_id=product_id)
+                cart_item = items_qs.first()
+                if cart_item is None:
+                    raise CartItem.DoesNotExist
                 item_type = 'товар'
             elif course_id:
                 # Удаление курса
@@ -1600,8 +1603,10 @@ class OrderCreateView(APIView):
             
             for item in cart_items:
                 product = products.get(item.product_id)
-                # Единый критерий продаваемости (активен + доступен) — как в add-to-cart и /api/checkout/.
-                if not product or not product.is_sellable:
+                # Единый критерий продаваемости (активен + доступен) — как в add-to-cart и /api/checkout/;
+                # если у позиции выбрана фасовка (SKU) — она тоже должна быть продаваемой.
+                if (not product or not product.is_sellable
+                        or (item.sku_id and not (item.sku and item.sku.is_sellable))):
                     unavailable_items.append(item.product.name if item.product else f'ID {item.product_id}')
             
             # Возврат ошибок валидации

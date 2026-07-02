@@ -438,7 +438,7 @@ class CartService(BaseService):
         
         for item in items:
             if item.product:
-                if not item.product.is_sellable:
+                if not item.product.is_sellable or (item.sku_id and not (item.sku and item.sku.is_sellable)):
                     errors.append(f'Товар "{item.product.name}" отсутствует в наличии')
                     continue
                 
@@ -535,8 +535,9 @@ class ReservationService:
                     product = Product.objects.select_for_update().get(id=item.product.id)
 
                     # Единый критерий продаваемости (активен + доступен) — тот же, что в
-                    # add-to-cart и /api/shop/orders/, чтобы /api/checkout/ не пропускал неактивный товар.
-                    if not product.is_sellable:
+                    # add-to-cart и /api/shop/orders/, чтобы /api/checkout/ не пропускал неактивный
+                    # товар; выбранная фасовка (SKU), если есть, тоже должна быть продаваемой.
+                    if not product.is_sellable or (item.sku_id and not (item.sku and item.sku.is_sellable)):
                         raise ValueError(
                             f"Товар {product.name} недоступен."
                         )

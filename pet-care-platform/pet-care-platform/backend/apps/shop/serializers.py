@@ -612,6 +612,12 @@ class CartItemUpdateSerializer(serializers.Serializer):
         help_text="ID товара в корзине"
     )
 
+    cart_item_id = serializers.IntegerField(
+        required=False,
+        help_text="ID строки корзины (однозначный ключ; предпочтительнее product_id, "
+                  "когда в корзине несколько фасовок одного товара)"
+    )
+
     course_id = serializers.IntegerField(
         required=False,
         help_text="ID курса в корзине"
@@ -647,14 +653,15 @@ class CartItemUpdateSerializer(serializers.Serializer):
     def validate(self, attrs):
         """Комплексная валидация."""
         product_id = attrs.get('product_id')
+        cart_item_id = attrs.get('cart_item_id')
         course_id = attrs.get('course_id')
         quantity = attrs.get('quantity')
         delta_quantity = attrs.get('delta_quantity')
 
-        # Должен быть указан либо product_id, либо course_id
-        if not product_id and not course_id:
+        # Должен быть указан идентификатор строки: cart_item_id (однозначный), product_id или course_id
+        if not product_id and not course_id and not cart_item_id:
             raise serializers.ValidationError(
-                "Необходимо указать либо product_id, либо course_id"
+                "Необходимо указать cart_item_id, product_id или course_id"
             )
 
         # Нельзя указывать оба одновременно

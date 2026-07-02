@@ -183,14 +183,15 @@ class NutritionCalculatorView(viewsets.ViewSet):
     permission_classes = [AllowAny]
     
     def _load_coefficients(self):
-        """Загрузка коэффициентов из JSON файла."""
-        # Путь к файлу коэффициентов
-        base_path = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+        """Загрузка коэффициентов из JSON, упакованного в пакет (apps/pets/data/).
+
+        Файл лежит рядом с кодом и попадает в Docker-образ через `COPY . .`, поэтому
+        не зависит от внешней папки docs/ (которой в образе нет).
+        """
         json_path = os.path.join(
-            base_path, 'docs', '1 petID + breeds + подбор корма', 
-            'data', 'coefficients_nutrition.json'
+            os.path.dirname(__file__), 'data', 'coefficients_nutrition.json'
         )
-        
+
         try:
             with open(json_path, 'r', encoding='utf-8') as f:
                 return json.load(f)

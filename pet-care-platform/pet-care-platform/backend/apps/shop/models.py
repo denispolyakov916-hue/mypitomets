@@ -1116,7 +1116,17 @@ class ProductSKU(models.Model):
     
     # Статус
     status = models.SmallIntegerField(default=1, verbose_name='Статус')
-    
+
+    @property
+    def is_sellable(self):
+        """SKU продаётся: активен (status==1) И в наличии (available).
+
+        Единый критерий для SKU (аналог Product.is_sellable) — применять во всех
+        точках оформления, чтобы отключённая (status=0) фасовка с available=True
+        не проходила ни add-to-cart, ни checkout.
+        """
+        return self.status == 1 and self.available
+
     class Meta:
         db_table = 'shop_product_skus'
         verbose_name = 'SKU товара'

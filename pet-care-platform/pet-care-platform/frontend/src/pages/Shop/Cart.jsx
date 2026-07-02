@@ -239,18 +239,18 @@ function Cart() {
    * Блокирует только кнопки затронутой строки (per-row loading), не трогая
    * остальную корзину. Само обновление в store оптимистичное с откатом при ошибке.
    */
-  const handleQuantityChange = async (productId, newQuantity) => {
+  const handleQuantityChange = async (cartItemId, newQuantity) => {
     if (newQuantity < 0) return
-    // Защита от параллельных кликов по той же строке
-    if (updatingItems.has(productId)) return
+    // Защита от параллельных кликов по той же строке (ключ — id строки корзины)
+    if (updatingItems.has(cartItemId)) return
 
-    setUpdatingItems(prev => new Set(prev).add(productId))
+    setUpdatingItems(prev => new Set(prev).add(cartItemId))
     try {
-      await updateQuantity(productId, newQuantity)
+      await updateQuantity(cartItemId, newQuantity)
     } finally {
       setUpdatingItems(prev => {
         const next = new Set(prev)
-        next.delete(productId)
+        next.delete(cartItemId)
         return next
       })
     }
@@ -282,16 +282,17 @@ function Cart() {
           showError('Не удалось удалить курс из корзины. Попробуйте обновить страницу.')
         }
       } else {
-        // Для товаров используем стандартное удаление (per-row pending как у +/-)
-        if (updatingItems.has(itemId)) return
-        setUpdatingItems(prev => new Set(prev).add(itemId))
+        // Для товаров удаляем по id строки корзины (per-row pending как у +/-),
+        // чтобы при нескольких фасовках одного товара убрать именно нужную строку.
+        if (updatingItems.has(cartItemId)) return
+        setUpdatingItems(prev => new Set(prev).add(cartItemId))
         try {
-          await removeItem(itemId)
+          await removeItem(cartItemId)
           success('Товар удалён из корзины')
         } finally {
           setUpdatingItems(prev => {
             const next = new Set(prev)
-            next.delete(itemId)
+            next.delete(cartItemId)
             return next
           })
         }
@@ -473,7 +474,7 @@ function Cart() {
 
                   const unit = item.unit_price || item.sku?.price || itemPrice
                   const lineTotal = unit * itemQuantity
-                  const isRowUpdating = item.product?.id != null && updatingItems.has(item.product.id)
+                  const isRowUpdating = updatingItems.has(cartItemId)
 
                   return (
                     <div key={cartItemId} className="py-4 first:pt-0 last:pb-0">
@@ -573,7 +574,7 @@ function Cart() {
                           <div className="flex items-center gap-2">
                             <button
                               type="button"
-                              onClick={() => handleQuantityChange(item.product.id, itemQuantity - 1)}
+                              onClick={() => handleQuantityChange(cartItemId, itemQuantity - 1)}
                               className="flex h-10 w-10 items-center justify-center rounded-lg border border-gray-300 transition-colors hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                               disabled={isRowUpdating || itemQuantity <= 1}
                               aria-label="Уменьшить количество"
@@ -583,7 +584,7 @@ function Cart() {
                             <span className="min-w-[2rem] text-center font-medium">{itemQuantity}</span>
                             <button
                               type="button"
-                              onClick={() => handleQuantityChange(item.product.id, itemQuantity + 1)}
+                              onClick={() => handleQuantityChange(cartItemId, itemQuantity + 1)}
                               className="flex h-10 w-10 items-center justify-center rounded-lg border border-gray-300 transition-colors hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                               disabled={isRowUpdating}
                               aria-label="Увеличить количество"

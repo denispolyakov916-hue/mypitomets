@@ -331,19 +331,21 @@ export const useCartStore = create((set, get) => ({
    * НЕ выставляет глобальный isLoading, чтобы не перемонтировать всю корзину
    * (страница показывает PageLoader только при первичной загрузке).
    *
-   * @param {number} productId - Товар для обновления
+   * @param {number} cartItemId - ID строки корзины (CartItem.id) — однозначный ключ,
+   *   корректный при нескольких фасовках (SKU) одного товара
    * @param {number} quantity - Новое количество (0 для удаления)
    * @returns {Promise<boolean>} True если обновление успешно
    */
-  updateQuantity: async (productId, quantity) => {
+  updateQuantity: async (cartItemId, quantity) => {
     const { items: prevItems, itemsCount: prevCount } = get()
 
-    // Оптимистично обновляем только затронутую строку.
+    // Оптимистично обновляем только затронутую строку — по id строки корзины (не product.id,
+    // иначе при двух фасовках одного товара задели бы обе строки).
     // quantity === 0 — удаление: убираем строку из списка.
     const optimisticItems = quantity === 0
-      ? prevItems.filter(item => item.product?.id !== productId)
+      ? prevItems.filter(item => item.id !== cartItemId)
       : prevItems.map(item =>
-          item.product?.id === productId
+          item.id === cartItemId
             ? { ...item, quantity }
             : item
         )
@@ -351,7 +353,7 @@ export const useCartStore = create((set, get) => ({
     set({ items: optimisticItems, error: null })
 
     try {
-      const response = await shopApi.updateCartItem(productId, quantity)
+      const response = await shopApi.updateCartItem(cartItemId, quantity)
 
       // PUT возвращает: {products: [...], courses: [...], totals: {...}, items_count}
       const products = response.products || []
@@ -398,11 +400,11 @@ export const useCartStore = create((set, get) => ({
   /**
    * Удаление товара из корзины
    * 
-   * @param {number} productId - Товар для удаления
+   * @param {number} cartItemId - ID строки корзины (CartItem.id)
    * @returns {Promise<boolean>} True если удаление успешно
    */
-  removeItem: async (productId) => {
-    return get().updateQuantity(productId, 0)
+  removeItem: async (cartItemId) => {
+    return get().updateQuantity(cartItemId, 0)
   },
   
   /**
@@ -720,7 +722,7 @@ export const useCartStore = create((set, get) => ({
           if (isCourse) {
             await shopApi.removeCourseFromCart(item.course.id)
           } else if (item.product) {
-            await shopApi.updateCartItem(item.product.id, 0)
+            await shopApi.updateCartItem(item.id, 0)
           }
         }
       }
