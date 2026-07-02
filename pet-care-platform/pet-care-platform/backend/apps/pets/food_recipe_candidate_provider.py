@@ -19,10 +19,10 @@ VALID_REVIEW = ('auto_parsed', 'manual_verified')
 
 
 def _best_offer(recipe):
-    """Лучший оффер для MVP — самый дешёвый в наличии с ценой и весом фасовки."""
+    """Лучший ПРОДАВАЕМЫЙ оффер: в наличии, цена>0, вес>0, поставщик активен (единый критерий)."""
     return (
         recipe.offers
-        .filter(in_stock=True, price__isnull=False, package_weight_kg__isnull=False)
+        .filter(in_stock=True, price__gt=0, package_weight_kg__gt=0, supplier__is_active=True)
         .order_by('price')
         .first()
     )
@@ -111,7 +111,8 @@ def get_food_recipe_candidates(pet, food_form=None, limit=20, source='dinozavrik
         qs = qs.filter(source=source)
     species = getattr(pet, 'species', None)
     if species:
-        qs = qs.filter(Q(species=species) | Q(species=''))
+        # cat_dog — универсальный рецепт (годится и кошке, и собаке): попадает в оба подбора.
+        qs = qs.filter(Q(species=species) | Q(species='cat_dog') | Q(species=''))
     if food_form:
         qs = qs.filter(food_form=food_form)
     qs = qs.prefetch_related('offers')

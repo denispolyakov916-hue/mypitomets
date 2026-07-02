@@ -88,6 +88,7 @@ def parse_copy_blocks(path):
     current = None
     cols = None
     table = None
+    malformed = 0
     with open(path, 'r', encoding='utf-8') as f:
         for line in f:
             if current is None:
@@ -96,14 +97,18 @@ def parse_copy_blocks(path):
                     table = m.group(1)
                     cols = [c.strip() for c in m.group(2).split(',')]
                     current = []
+                    malformed = 0
                 continue
             if line.rstrip('\n') == r'\.':
-                data[table] = {'columns': cols, 'rows': current}
+                data[table] = {'columns': cols, 'rows': current, 'malformed': malformed}
                 current = cols = table = None
+                malformed = 0
                 continue
             raw = line.rstrip('\n')
             parts = raw.split('\t')
-            # Если колонок меньше (край дампа) — не падаем, помечаем как есть.
+            # Битая строка: число значений ≠ числу колонок заголовка. Считаем — блокирует --apply.
+            if len(parts) != len(cols):
+                malformed += 1
             row = {cols[i]: unescape_copy(parts[i]) for i in range(min(len(cols), len(parts)))}
             current.append(row)
     return data
@@ -201,6 +206,13 @@ class Command(BaseCommand):
                     f'нет в SQL: {sorted(missing_in_sql)}; лишние в SQL: {sorted(extra_in_sql)}',
                 )
 
+        # 1. Битые строки COPY: число значений ≠ числу колонок заголовка. Блокирует --apply
+        # (иначе часть колонок молча уехала бы на None/сдвиг).
+        for table in TABLE_ORDER:
+            block = data.get(table)
+            if block and block.get('malformed'):
+                add(f'{table}: битые строки COPY (колонок ≠ заголовку)', 'error', block['malformed'])
+
         recipes = data.get('food_recipes', {}).get('rows', [])
         offers = data.get('supplier_offers', {}).get('rows', [])
         raws = data.get('supplier_raw_items', {}).get('rows', [])
@@ -260,7 +272,47 @@ class Command(BaseCommand):
             bad = [r.get('id') for r in rows if not json_ok(r.get(col))]
             add(f'{table}.{col}: битый JSON', 'error' if bad else 'ok', len(bad), _head(bad))
 
+        # 14. Конфликт уникальных ключей с УЖЕ существующей БД. Upsert идёт по UUID, но в моделях
+        # есть отдельные unique-ключи (Supplier.code, SupplierOffer(supplier+article),
+        # SupplierRawItem(supplier+external_id), FoodBrandRule.brand). Если в БД уже есть запись с
+        # тем же ключом, но ДРУГИМ UUID — --apply упал бы с IntegrityError. Блокируем заранее.
+        for name, model, key_cols in [
+            ('suppliers.code', Supplier, ['code']),
+            ('supplier_offers(supplier+article)', SupplierOffer, ['supplier_id', 'article_number']),
+            ('supplier_raw_items(supplier+external_id)', SupplierRawItem, ['supplier_id', 'external_id']),
+            ('food_brand_rules.brand', FoodBrandRule, ['brand']),
+        ]:
+            conflicts = self._db_conflicts(data, model, key_cols)
+            add(f'{name}: конфликт уникального ключа с БД (другой UUID)',
+                'error' if conflicts else 'ok', len(conflicts), _head(conflicts))
+
         return checks
+
+    def _db_conflicts(self, data, model, key_cols):
+        """UUID-конфликты: строки дампа, чей уникальный ключ уже занят в БД записью с ДРУГИМ UUID.
+
+        Именно такой случай — единственный, где идемпотентный upsert по UUID падает с IntegrityError.
+        Пустые ключи пропускаем (unique обычно допускает NULL / такие строки не конфликтуют).
+        """
+        table = model._meta.db_table
+        rows = data.get(table, {}).get('rows', [])
+        if not rows:
+            return []
+        dump = {}
+        for r in rows:
+            key = tuple(r.get(c) for c in key_cols)
+            if any(is_blank(v) for v in key):
+                continue
+            dump[tuple(str(v) for v in key)] = str(r.get('id'))
+        if not dump:
+            return []
+        conflicts = []
+        for e in model.objects.values('id', *key_cols):
+            key = tuple(None if e[c] is None else str(e[c]) for c in key_cols)
+            dump_id = dump.get(key)
+            if dump_id is not None and str(e['id']) != dump_id:
+                conflicts.append(key)
+        return conflicts
 
     def _idempotency_preview(self, data):
         preview = {}
